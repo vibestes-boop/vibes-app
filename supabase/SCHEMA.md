@@ -1,8 +1,8 @@
 # Live-Datenbankschema (Source of Truth)
 
 > Auto-generiert aus `supabase/schema_live.sql` (pg_dump der Live-DB `llymwqfgujwkoxzqxrlm`).
-> **78 Tabellen.** Vor jeder Code-Spaltenreferenz hier prüfen — verhindert Bugs wie das fehlende `profiles.follower_count`.
-> Neu generieren: `pg_dump … --schema=public --schema-only -f supabase/schema_live.sql` + dieses Skript.
+> **93 Tabellen.** Vor jeder Code-Spaltenreferenz hier prüfen — verhindert Bugs wie das fehlende `profiles.follower_count`.
+> Neu generieren: Abzug erneuern (siehe Kopf von `supabase/_ops/schema-md.mjs`), dann `node supabase/_ops/schema-md.mjs`.
 
 ### admin_audit_log (7)
 - `id uuid`
@@ -108,6 +108,15 @@
 - `experiment_name text`
 - `variant text`
 - `assigned_at timestamp`
+
+### auction_carts (7)
+- `id uuid`
+- `buyer_id uuid`
+- `seller_id uuid`
+- `status text`
+- `opened_at timestamp`
+- `closes_at timestamp`
+- `created_at timestamp`
 
 ### bookmarks (4)
 - `id uuid`
@@ -242,6 +251,36 @@
 - `user_id uuid`
 - `created_at timestamp`
 
+### live_auctions (22)
+- `id uuid`
+- `session_id uuid`
+- `seller_id uuid`
+- `product_id uuid`
+- `title text`
+- `image_url text`
+- `start_price_cents integer`
+- `min_increment_cents integer`
+- `buy_now_cents integer`
+- `currency text`
+- `status text`
+- `sort_index integer`
+- `current_bid_cents integer`
+- `current_bidder_id uuid`
+- `bid_count integer`
+- `ends_at timestamp`
+- `started_at timestamp`
+- `settled_at timestamp`
+- `winner_id uuid`
+- `cart_id uuid`
+- `created_at timestamp`
+- `updated_at timestamp`
+
+### live_auto_bids (4)
+- `auction_id uuid`
+- `bidder_id uuid`
+- `max_cents integer`
+- `created_at timestamp`
+
 ### live_battle_history (9)
 - `id uuid`
 - `session_id uuid`
@@ -252,6 +291,13 @@
 - `winner text`
 - `duration_secs integer`
 - `ended_at timestamp`
+
+### live_bids (5)
+- `id uuid`
+- `auction_id uuid`
+- `bidder_id uuid`
+- `amount_cents integer`
+- `created_at timestamp`
 
 ### live_chat_timeouts (5)
 - `session_id uuid`
@@ -318,6 +364,24 @@
 - `created_at timestamp`
 - `expires_at timestamp`
 - `responded_at timestamp`
+
+### live_giveaway_entries (3)
+- `giveaway_id uuid`
+- `user_id uuid`
+- `created_at timestamp`
+
+### live_giveaways (11)
+- `id uuid`
+- `session_id uuid`
+- `host_id uuid`
+- `title text`
+- `image_url text`
+- `requires_follow boolean`
+- `status text`
+- `entry_count integer`
+- `winner_id uuid`
+- `drawn_at timestamp`
+- `created_at timestamp`
 
 ### live_moderators (4)
 - `session_id uuid`
@@ -388,7 +452,7 @@
 - `user_id uuid`
 - `joined_at timestamp`
 
-### live_sessions (37)
+### live_sessions (38)
 - `id uuid`
 - `host_id uuid`
 - `title text`
@@ -426,6 +490,7 @@
 - `ingress_url text`
 - `ingress_stream_key text`
 - `ingress_type text`
+- `followers_only boolean`
 
 ### live_stickers (11)
 - `id uuid`
@@ -480,7 +545,7 @@
 - `host_id uuid`
 - `created_at timestamp`
 
-### notifications (14)
+### notifications (15)
 - `id uuid`
 - `recipient_id uuid`
 - `sender_id uuid`
@@ -495,6 +560,31 @@
 - `gift_name text`
 - `gift_emoji text`
 - `product_name text`
+- `product_id uuid`
+
+### order_disputes (11)
+- `id uuid`
+- `order_id uuid`
+- `reporter_id uuid`
+- `against_id uuid`
+- `reporter_role text`
+- `reason text`
+- `detail text`
+- `status text`
+- `resolution text`
+- `created_at timestamp`
+- `resolved_at timestamp`
+
+### order_reviews (9)
+- `id uuid`
+- `order_id uuid`
+- `reviewer_id uuid`
+- `reviewee_id uuid`
+- `reviewer_role text`
+- `rating integer`
+- `comment text`
+- `created_at timestamp`
+- `updated_at timestamp`
 
 ### orders (10)
 - `id uuid`
@@ -533,11 +623,13 @@
 - `created_at timestamp`
 - `updated_at timestamp`
 
-### post_dwell_log (4)
+### post_dwell_log (6)
 - `user_id uuid`
 - `post_id uuid`
 - `last_seen timestamp`
 - `view_count integer`
+- `last_dwell_ms integer`
+- `observed_at timestamp`
 
 ### post_reports (5)
 - `id uuid`
@@ -557,7 +649,7 @@
 - `user_id uuid`
 - `viewed_at timestamp`
 
-### posts (30)
+### posts (33)
 - `id uuid`
 - `author_id uuid`
 - `caption text`
@@ -588,6 +680,63 @@
 - `is_visible boolean`
 - `women_only boolean`
 - `aspect_ratio text`
+- `bunny_video_id text`
+- `bunny_status text`
+- `product_id uuid`
+
+### preorder_rounds (10)
+- `id uuid`
+- `product_id uuid`
+- `seller_id uuid`
+- `guild_id uuid`
+- `title text`
+- `target_qty integer`
+- `closes_at timestamp`
+- `status text`
+- `created_at timestamp`
+- `closed_at timestamp`
+
+### product_orders (29)
+- `id uuid`
+- `buyer_id uuid`
+- `seller_id uuid`
+- `product_id uuid`
+- `preorder_id uuid`
+- `quantity integer`
+- `unit_price_eur numeric(10,2)`
+- `amount_eur numeric(10,2)`
+- `platform_fee_eur numeric(10,2)`
+- `currency text`
+- `status text`
+- `ship_name text`
+- `ship_street text`
+- `ship_zip text`
+- `ship_city text`
+- `ship_country text`
+- `tracking_carrier text`
+- `tracking_number text`
+- `stripe_session_id text`
+- `stripe_payment_intent text`
+- `payment_requested_at timestamp`
+- `paid_at timestamp`
+- `shipped_at timestamp`
+- `delivered_at timestamp`
+- `created_at timestamp`
+- `updated_at timestamp`
+- `reminded_at timestamp`
+- `cart_id uuid`
+- `title text`
+
+### product_preorders (9)
+- `id uuid`
+- `product_id uuid`
+- `user_id uuid`
+- `quantity integer`
+- `note text`
+- `status text`
+- `created_at timestamp`
+- `updated_at timestamp`
+- `round_id uuid`
 
 ### product_reviews (7)
 - `id uuid`
@@ -598,7 +747,7 @@
 - `comment text`
 - `created_at timestamp`
 
-### products (20)
+### products (22)
 - `id uuid`
 - `seller_id uuid`
 - `title text`
@@ -619,8 +768,10 @@
 - `sale_price_coins integer`
 - `free_shipping boolean`
 - `location text`
+- `sale_mode text`
+- `price_eur numeric(10,2)`
 
-### profiles (37)
+### profiles (41)
 - `id uuid`
 - `username text`
 - `bio text`
@@ -658,6 +809,10 @@
 - `city text`
 - `region_name text`
 - `location_consent_at timestamp`
+- `nav_slot_2 text`
+- `nav_slot_4 text`
+- `referred_by uuid`
+- `locale text`
 
 ### push_tokens (6)
 - `id uuid`
@@ -733,6 +888,35 @@
 - `updated_at timestamp`
 - `aspect_ratio text`
 
+### seller_accounts (7)
+- `user_id uuid`
+- `display_name text`
+- `stripe_connect_id text`
+- `kyc_status text`
+- `payout_enabled boolean`
+- `platform_fee_bps integer`
+- `created_at timestamp`
+
+### shop_banners (18)
+- `id uuid`
+- `tag text`
+- `title text`
+- `subtitle text`
+- `image_url text`
+- `bg_color text`
+- `link text`
+- `sort_order integer`
+- `active boolean`
+- `advertiser_label text`
+- `starts_at timestamp`
+- `ends_at timestamp`
+- `impression_count bigint`
+- `click_count bigint`
+- `created_at timestamp`
+- `tag_ru text`
+- `title_ru text`
+- `subtitle_ru text`
+
 ### stories (8)
 - `id uuid`
 - `user_id uuid`
@@ -795,6 +979,12 @@
 - `note text`
 - `created_at timestamp`
 
+### user_tag_affinity (4)
+- `user_id uuid`
+- `tag text`
+- `affinity double`
+- `updated_at timestamp`
+
 ### user_vibe_profile (5)
 - `user_id uuid`
 - `learned_explore double`
@@ -840,3 +1030,11 @@
 - `created_at timestamp`
 - `last_seen_at timestamp`
 
+### women_only_requests (7)
+- `user_id uuid`
+- `status text`
+- `method text`
+- `requested_at timestamp`
+- `reviewed_at timestamp`
+- `reviewed_by uuid`
+- `note text`

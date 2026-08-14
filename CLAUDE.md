@@ -153,7 +153,21 @@ const { colors } = useTheme();
 7. **Supabase Migrations**: SQL-Dateien in `/supabase/*.sql` — immer `IF NOT EXISTS` nutzen
 8. **LiveKit Token**: `supabase/functions/livekit-token/index.ts` — Guests brauchen `canPublish: true`
 9. **Migration-Dateipfad & -Naming**: Neue Migrations IMMER unter `supabase/migrations/` mit **14-stelligem Timestamp-Prefix** `YYYYMMDDHHMMSS_<slug>.sql` (z. B. `20260428100000_post_aspect_ratio.sql`). Niemals lose unter `supabase/` und niemals nur 8-stellig — `supabase db push` ignoriert sonst still die Datei und das Schema-Tracking läuft auseinander.
-10. **Schema-Wahrheit**: `supabase/SCHEMA.md` (+ Roh-Dump `supabase/schema_live.sql`) ist die **Source of Truth** für reale Tabellen/Spalten der Live-DB. **Vor jeder neuen Spalten-Referenz im Code dort prüfen** — `profiles` hat z. B. KEIN `follower_count` (nur via Aggregation über `follows`). Neu generieren: `pg_dump "<connection-uri>" --schema=public --schema-only --no-owner --no-privileges -f supabase/schema_live.sql`, dann das Parse-Skript für `SCHEMA.md`. Die alten, manuell aufgesetzten Basis-SQL-Dateien liegen archiviert unter `supabase/_legacy/` (nicht mehr maßgeblich).
+10. **Schema-Wahrheit**: `supabase/SCHEMA.md` (+ Roh-Dump `supabase/schema_live.sql`) ist die **Source of Truth** für reale Tabellen/Spalten der Live-DB. **Vor jeder neuen Spalten-Referenz im Code dort prüfen** — `profiles` hat z. B. KEIN `follower_count` (nur via Aggregation über `follows`). Stand des Abzugs: **14.08.2026, 93 Tabellen**. Die alten, manuell aufgesetzten Basis-SQL-Dateien liegen archiviert unter `supabase/_legacy/` (nicht mehr maßgeblich).
+
+    **Neu generieren — ohne Docker und ohne DB-Passwort.** `supabase db dump` braucht Docker (hier nicht installiert), und der alte `pg_dump "<connection-uri>"`-Weg braucht das DB-Passwort. Beides ist unnötig: Die CLI legt sich per Management-API eine kurzlebige Rolle an und kann das fertige `pg_dump`-Skript ausdrucken, statt es auszuführen. Natives `pg_dump` (Homebrew) führt es dann aus:
+
+    ```bash
+    supabase db dump --linked --schema public --keep-comments --dry-run 2>/dev/null \
+      | sed -n '/^#!\/usr\/bin\/env bash/,$p' \
+      | sed 's/^    --schema-only \\$/    --schema-only \\\n    --no-privileges \\/' > /tmp/dump.sh
+    bash /tmp/dump.sh > supabase/schema_live.sql && rm /tmp/dump.sh
+    node supabase/_ops/schema-md.mjs
+    ```
+
+    `/tmp/dump.sh` enthält das kurzlebige Passwort im Klartext — **danach löschen, nie committen, nie ausgeben**. `--keep-comments` muss dabei sein, sonst fallen die `-- Name: …`-Kopfzeilen weg und der Abzug wird unlesbar.
+
+    **`--no-privileges` ist Absicht, nicht Bequemlichkeit.** Das Repo ist **öffentlich**. Ein Abzug mit Rechten trägt ~1000 `GRANT`-Zeilen, also die vollständige Antwort auf „wer darf welche Funktion aufrufen" — für einen Angreifer die Landkarte. Am 14.08.2026 hätte genau das `credit_coins → anon` verraten (siehe `20260814160000_revoke_anon_money_rpcs.sql`). Als Spalten-Nachschlagewerk braucht der Abzug die Rechte nicht. Wer sie zum Prüfen sehen will, zieht sie lokal ohne den Schalter und committet das Ergebnis **nicht**. Das Parse-Skript `supabase/_ops/schema-md.mjs` erzeugt `SCHEMA.md` aus dem Abzug (am 14.08.2026 nachgebaut — CLAUDE.md nannte es seit Juni, im Repo lag es nie, weshalb `SCHEMA.md` zwei Monate nicht nachziehbar war).
 
 ---
 

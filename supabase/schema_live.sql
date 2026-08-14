@@ -2,15 +2,15 @@
 -- PostgreSQL database dump
 --
 
-\restrict PAu9biEB9qphmPDjbC6UgDejrAU8D3JcNauygfhG9h8ftKCnbxBYgjrwguvNrOJ
+-- \restrict fNzzzMsygDvxAS2S2WnZielGq0YchqVdMnOBNJIa7m8FlAKyYge3AmQQJnJW68Z
 
 -- Dumped from database version 17.6
--- Dumped by pg_dump version 18.4
+-- Dumped by pg_dump version 18.4 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
+-- SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -20,24 +20,26 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
+-- Name: public; Type: SCHEMA; Schema: -; Owner: pg_database_owner
 --
 
-CREATE SCHEMA public;
+CREATE SCHEMA IF NOT EXISTS "public";
+
+
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
+
+--
+-- Name: SCHEMA "public"; Type: COMMENT; Schema: -; Owner: pg_database_owner
+--
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 --
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
+-- Name: ai_image_purpose; Type: TYPE; Schema: public; Owner: postgres
 --
 
-COMMENT ON SCHEMA public IS 'standard public schema';
-
-
---
--- Name: ai_image_purpose; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.ai_image_purpose AS ENUM (
+CREATE TYPE "public"."ai_image_purpose" AS ENUM (
     'shop_mockup',
     'post_cover',
     'live_thumbnail',
@@ -47,11 +49,13 @@ CREATE TYPE public.ai_image_purpose AS ENUM (
 );
 
 
+ALTER TYPE "public"."ai_image_purpose" OWNER TO "postgres";
+
 --
--- Name: coin_order_status; Type: TYPE; Schema: public; Owner: -
+-- Name: coin_order_status; Type: TYPE; Schema: public; Owner: postgres
 --
 
-CREATE TYPE public.coin_order_status AS ENUM (
+CREATE TYPE "public"."coin_order_status" AS ENUM (
     'pending',
     'paid',
     'failed',
@@ -60,12 +64,14 @@ CREATE TYPE public.coin_order_status AS ENUM (
 );
 
 
+ALTER TYPE "public"."coin_order_status" OWNER TO "postgres";
+
 --
--- Name: _caption_to_scores(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _caption_to_scores("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._caption_to_scores(p_caption text) RETURNS TABLE(c_brain double precision, c_explore double precision)
-    LANGUAGE plpgsql IMMUTABLE
+CREATE OR REPLACE FUNCTION "public"."_caption_to_scores"("p_caption" "text") RETURNS TABLE("c_brain" double precision, "c_explore" double precision)
+    LANGUAGE "plpgsql" IMMUTABLE
     AS $$
 DECLARE
   cap       TEXT;
@@ -164,13 +170,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_caption_to_scores"("p_caption" "text") OWNER TO "postgres";
+
 --
--- Name: _clear_replay_on_recording_delete(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _clear_replay_on_recording_delete(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._clear_replay_on_recording_delete() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_clear_replay_on_recording_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   UPDATE public.live_sessions
@@ -182,13 +190,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_clear_replay_on_recording_delete"() OWNER TO "postgres";
+
 --
--- Name: _close_duet_history_on_revoke(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _close_duet_history_on_revoke(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._close_duet_history_on_revoke() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_close_duet_history_on_revoke"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF NEW.revoked_at IS NOT NULL AND (OLD.revoked_at IS NULL) THEN
@@ -205,13 +215,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_close_duet_history_on_revoke"() OWNER TO "postgres";
+
 --
--- Name: _close_duet_history_on_session_end(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _close_duet_history_on_session_end(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._close_duet_history_on_session_end() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_close_duet_history_on_session_end"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF NEW.status = 'ended' AND (OLD.status IS DISTINCT FROM 'ended') THEN
@@ -227,13 +239,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_close_duet_history_on_session_end"() OWNER TO "postgres";
+
 --
--- Name: _compute_creator_consistency(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _compute_creator_consistency("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._compute_creator_consistency(p_author_id uuid) RETURNS double precision
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_compute_creator_consistency"("p_author_id" "uuid") RETURNS double precision
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_stddev_explore FLOAT;
@@ -265,13 +279,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_compute_creator_consistency"("p_author_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: _learn_from_post(uuid, uuid, double precision); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _learn_from_post("uuid", "uuid", double precision); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._learn_from_post(p_user_id uuid, p_post_id uuid, p_alpha double precision) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_learn_from_post"("p_user_id" "uuid", "p_post_id" "uuid", "p_alpha" double precision) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_explore FLOAT;
@@ -315,13 +331,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_learn_from_post"("p_user_id" "uuid", "p_post_id" "uuid", "p_alpha" double precision) OWNER TO "postgres";
+
 --
--- Name: _on_bookmark_learn(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _on_bookmark_learn(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._on_bookmark_learn() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_on_bookmark_learn"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   -- Bookmark = stärkstes Signal (alpha 0.12) — User will den Content behalten
@@ -331,13 +349,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_on_bookmark_learn"() OWNER TO "postgres";
+
 --
--- Name: _on_comment_learn(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _on_comment_learn(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._on_comment_learn() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_on_comment_learn"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   -- Kommentar schreiben = sehr starkes Interesse-Signal (alpha 0.10)
@@ -347,13 +367,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_on_comment_learn"() OWNER TO "postgres";
+
 --
--- Name: _on_like_learn(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _on_like_learn(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._on_like_learn() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_on_like_learn"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   -- Like = starkes Signal (alpha 0.08)
@@ -363,13 +385,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_on_like_learn"() OWNER TO "postgres";
+
 --
--- Name: _on_post_update_consistency(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _on_post_update_consistency(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._on_post_update_consistency() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_on_post_update_consistency"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   UPDATE public.profiles
@@ -380,12 +404,14 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_on_post_update_consistency"() OWNER TO "postgres";
+
 --
--- Name: _purge_live_session_viewers_on_end(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _purge_live_session_viewers_on_end(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._purge_live_session_viewers_on_end() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."_purge_live_session_viewers_on_end"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   IF NEW.status = 'ended' AND OLD.status <> 'ended' THEN
@@ -396,12 +422,14 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_purge_live_session_viewers_on_end"() OWNER TO "postgres";
+
 --
--- Name: _set_live_placed_products_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _set_live_placed_products_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._set_live_placed_products_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."_set_live_placed_products_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -409,12 +437,14 @@ BEGIN
 END $$;
 
 
+ALTER FUNCTION "public"."_set_live_placed_products_updated_at"() OWNER TO "postgres";
+
 --
--- Name: _set_live_sessions_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _set_live_sessions_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._set_live_sessions_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."_set_live_sessions_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -423,12 +453,14 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_set_live_sessions_updated_at"() OWNER TO "postgres";
+
 --
--- Name: _set_live_stickers_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _set_live_stickers_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._set_live_stickers_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."_set_live_stickers_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -436,13 +468,15 @@ BEGIN
 END $$;
 
 
+ALTER FUNCTION "public"."_set_live_stickers_updated_at"() OWNER TO "postgres";
+
 --
--- Name: _sync_bookmark_count(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _sync_bookmark_count(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._sync_bookmark_count() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_sync_bookmark_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -455,13 +489,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_sync_bookmark_count"() OWNER TO "postgres";
+
 --
--- Name: _sync_comment_count(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _sync_comment_count(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._sync_comment_count() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_sync_comment_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -480,13 +516,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_sync_comment_count"() OWNER TO "postgres";
+
 --
--- Name: _sync_like_count(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _sync_like_count(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._sync_like_count() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_sync_like_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -499,13 +537,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_sync_like_count"() OWNER TO "postgres";
+
 --
--- Name: _sync_recording_to_session(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _sync_recording_to_session(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._sync_recording_to_session() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."_sync_recording_to_session"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF NEW.status = 'ready' AND NEW.file_url IS NOT NULL AND NEW.is_public THEN
@@ -526,56 +566,69 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."_sync_recording_to_session"() OWNER TO "postgres";
+
 --
--- Name: _update_user_whip_ingresses_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _update_user_whip_ingresses_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public._update_user_whip_ingresses_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."_update_user_whip_ingresses_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$;
 
 
+ALTER FUNCTION "public"."_update_user_whip_ingresses_updated_at"() OWNER TO "postgres";
+
 --
--- Name: add_test_coins(uuid, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: add_user_support_message("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.add_test_coins(p_user_id uuid, p_coins integer DEFAULT 10000, p_diamonds integer DEFAULT 100) RETURNS json
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."add_user_support_message"("p_thread_id" "uuid", "p_body" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
+DECLARE
+  v_actor UUID := auth.uid();
 BEGIN
-  INSERT INTO coins_wallets (user_id, coins, diamonds)
-  VALUES (p_user_id, p_coins, p_diamonds)
-  ON CONFLICT (user_id)
-  DO UPDATE SET
-    coins    = coins_wallets.coins + EXCLUDED.coins,
-    diamonds = coins_wallets.diamonds + EXCLUDED.diamonds,
-    updated_at = now();
+  IF v_actor IS NULL THEN
+    RETURN jsonb_build_object('error', 'not_authenticated');
+  END IF;
 
-  RETURN json_build_object(
-    'success', true,
-    'coins_added', p_coins,
-    'diamonds_added', p_diamonds
-  );
+  IF p_body IS NULL OR length(trim(p_body)) = 0 OR length(p_body) > 4000 THEN
+    RETURN jsonb_build_object('error', 'invalid_body');
+  END IF;
 
-EXCEPTION WHEN OTHERS THEN
-  RETURN json_build_object(
-    'success', false,
-    'error', SQLERRM
-  );
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_support_threads
+     WHERE id = p_thread_id AND user_id = v_actor
+  ) THEN
+    RETURN jsonb_build_object('error', 'not_found');
+  END IF;
+
+  INSERT INTO public.admin_support_messages (thread_id, sender_type, sender_id, body)
+  VALUES (p_thread_id, 'user', v_actor, trim(p_body));
+
+  UPDATE public.admin_support_threads
+     SET last_message_at = NOW(),
+         status = CASE WHEN status IN ('resolved', 'closed') THEN 'pending' ELSE status END
+   WHERE id = p_thread_id;
+
+  RETURN jsonb_build_object('success', true);
 END;
 $$;
 
 
+ALTER FUNCTION "public"."add_user_support_message"("p_thread_id" "uuid", "p_body" "text") OWNER TO "postgres";
+
 --
--- Name: admin_campaign_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_campaign_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_campaign_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_campaign_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_generated_at TIMESTAMPTZ := NOW();
@@ -685,13 +738,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_campaign_snapshot"() OWNER TO "postgres";
+
 --
--- Name: admin_create_activation_support_thread(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_create_activation_support_thread("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_create_activation_support_thread(p_user_id uuid, p_kind text DEFAULT 'first_post'::text, p_body text DEFAULT NULL::text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_create_activation_support_thread"("p_user_id" "uuid", "p_kind" "text" DEFAULT 'first_post'::"text", "p_body" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -814,33 +869,37 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_create_activation_support_thread"("p_user_id" "uuid", "p_kind" "text", "p_body" "text") OWNER TO "postgres";
+
 --
--- Name: admin_enforce_content_report(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_enforce_content_report("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_enforce_content_report(p_report_id uuid, p_action text, p_admin_note text DEFAULT NULL::text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."admin_enforce_content_report"("p_report_id" "uuid", "p_action" "text", "p_admin_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
-  v_actor UUID := auth.uid();
+  v_admin_id UUID := auth.uid();
   v_report public.content_reports%ROWTYPE;
   v_note TEXT := NULLIF(trim(COALESCE(p_admin_note, '')), '');
   v_deleted_post RECORD;
   v_live_session RECORD;
   v_restricted_until TIMESTAMPTZ := NOW() + INTERVAL '7 days';
   v_live_mute_until TIMESTAMPTZ := NOW() + INTERVAL '1 hour';
-  v_actor_roles JSONB;
 BEGIN
-  IF v_actor IS NULL THEN
+  IF v_admin_id IS NULL THEN
     RETURN jsonb_build_object('error', 'not_authenticated');
   END IF;
 
-  IF NOT public.can_moderate() THEN
-    RETURN jsonb_build_object('error', 'not_moderator');
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE id = v_admin_id
+      AND is_admin = TRUE
+  ) THEN
+    RETURN jsonb_build_object('error', 'not_admin');
   END IF;
-
-  SELECT public.current_user_admin_roles() INTO v_actor_roles;
 
   SELECT *
     INTO v_report
@@ -928,7 +987,7 @@ BEGIN
   UPDATE public.content_reports
      SET status = 'actioned',
          admin_note = v_note,
-         reviewed_by = v_actor,
+         reviewed_by = v_admin_id,
          reviewed_at = NOW()
    WHERE id = p_report_id;
 
@@ -940,7 +999,7 @@ BEGIN
     metadata
   )
   VALUES (
-    v_actor,
+    v_admin_id,
     'moderation.enforcement.' || p_action,
     v_report.target_type,
     v_report.target_id,
@@ -948,7 +1007,6 @@ BEGIN
       'report_id', v_report.id,
       'reason', v_report.reason,
       'reporter_id', v_report.reporter_id,
-      'actor_roles', v_actor_roles,
       'admin_note_present', v_note IS NOT NULL,
       'restricted_until', CASE WHEN p_action = 'restrict_profile' THEN v_restricted_until ELSE NULL END,
       'live_mute_until', CASE WHEN p_action = 'mute_live_host' THEN v_live_mute_until ELSE NULL END
@@ -964,12 +1022,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_enforce_content_report"("p_report_id" "uuid", "p_action" "text", "p_admin_note" "text") OWNER TO "postgres";
+
 --
--- Name: admin_get_payout_requests(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_get_payout_requests("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_get_payout_requests(p_status text DEFAULT NULL::text) RETURNS TABLE(id uuid, creator_id uuid, username text, display_name text, avatar_url text, diamonds_amount bigint, euro_amount numeric, iban text, paypal_email text, note text, status text, admin_note text, created_at timestamp with time zone)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."admin_get_payout_requests"("p_status" "text" DEFAULT NULL::"text") RETURNS TABLE("id" "uuid", "creator_id" "uuid", "username" "text", "display_name" "text", "avatar_url" "text", "diamonds_amount" bigint, "euro_amount" numeric, "iban" "text", "paypal_email" "text", "note" "text", "status" "text", "admin_note" "text", "created_at" timestamp with time zone)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   IF NOT public.is_admin() THEN
@@ -990,13 +1051,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_get_payout_requests"("p_status" "text") OWNER TO "postgres";
+
 --
--- Name: admin_get_seller_balances(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_get_seller_balances(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_get_seller_balances() RETURNS TABLE(seller_id uuid, username text, avatar_url text, diamond_balance bigint, total_earned bigint, pending_orders bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_get_seller_balances"() RETURNS TABLE("seller_id" "uuid", "username" "text", "avatar_url" "text", "diamond_balance" bigint, "total_earned" bigint, "pending_orders" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id                                                                      AS seller_id,
@@ -1014,13 +1077,15 @@ CREATE FUNCTION public.admin_get_seller_balances() RETURNS TABLE(seller_id uuid,
 $$;
 
 
+ALTER FUNCTION "public"."admin_get_seller_balances"() OWNER TO "postgres";
+
 --
--- Name: admin_list_support_threads(text, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_list_support_threads("text", integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_list_support_threads(p_status text DEFAULT NULL::text, p_limit integer DEFAULT 50, p_offset integer DEFAULT 0) RETURNS TABLE(id uuid, source text, user_id uuid, username text, subject text, status text, priority text, last_message_at timestamp with time zone, created_at timestamp with time zone)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_list_support_threads"("p_status" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "source" "text", "user_id" "uuid", "username" "text", "subject" "text", "status" "text", "priority" "text", "last_message_at" timestamp with time zone, "created_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     t.id,
@@ -1042,13 +1107,15 @@ CREATE FUNCTION public.admin_list_support_threads(p_status text DEFAULT NULL::te
 $$;
 
 
+ALTER FUNCTION "public"."admin_list_support_threads"("p_status" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
 --
--- Name: admin_record_user_action(uuid, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_record_user_action("uuid", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_record_user_action(p_target_user_id uuid, p_action text, p_metadata jsonb DEFAULT '{}'::jsonb) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'auth', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."admin_record_user_action"("p_target_user_id" "uuid", "p_action" "text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'pg_temp'
     AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -1085,13 +1152,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_record_user_action"("p_target_user_id" "uuid", "p_action" "text", "p_metadata" "jsonb") OWNER TO "postgres";
+
 --
--- Name: admin_region_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_region_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_region_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_region_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_generated_at TIMESTAMPTZ := NOW();
@@ -1169,13 +1238,73 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_region_snapshot"() OWNER TO "postgres";
+
 --
--- Name: admin_reply_support_thread(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_remove_post("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_reply_support_thread(p_thread_id uuid, p_body text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_remove_post"("p_post_id" "uuid", "p_reason" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_admin_id UUID := auth.uid();
+  v_reason   TEXT := NULLIF(trim(COALESCE(p_reason, '')), '');
+  v_deleted  RECORD;
+BEGIN
+  IF v_admin_id IS NULL THEN
+    RETURN jsonb_build_object('error', 'not_authenticated');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.profiles
+     WHERE id = v_admin_id AND is_admin = TRUE
+  ) THEN
+    RETURN jsonb_build_object('error', 'not_admin');
+  END IF;
+
+  DELETE FROM public.posts p
+   WHERE p.id = p_post_id
+   RETURNING p.id, p.author_id INTO v_deleted;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'post_not_found');
+  END IF;
+
+  UPDATE public.content_reports
+     SET status      = 'actioned',
+         reviewed_by = v_admin_id,
+         reviewed_at = NOW()
+   WHERE target_type = 'post'
+     AND target_id   = p_post_id
+     AND status      = 'pending';
+
+  INSERT INTO public.admin_audit_log (
+    actor_id, action, target_type, target_id, metadata
+  )
+  VALUES (
+    v_admin_id,
+    'moderation.remove_post.direct',
+    'post',
+    v_deleted.id,
+    jsonb_build_object('author_id', v_deleted.author_id, 'reason', v_reason)
+  );
+
+  RETURN jsonb_build_object('success', TRUE, 'post_id', v_deleted.id);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."admin_remove_post"("p_post_id" "uuid", "p_reason" "text") OWNER TO "postgres";
+
+--
+-- Name: admin_reply_support_thread("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."admin_reply_support_thread"("p_thread_id" "uuid", "p_body" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -1192,53 +1321,44 @@ BEGIN
     RETURN jsonb_build_object('error', 'not_found');
   END IF;
 
-  INSERT INTO public.admin_support_messages (
-    thread_id,
-    sender_type,
-    sender_id,
-    body,
-    read_at
-  )
-  VALUES (
-    p_thread_id,
-    'admin',
-    v_actor,
-    trim(p_body),
-    NOW()
-  );
+  INSERT INTO public.admin_support_messages (thread_id, sender_type, sender_id, body, read_at)
+  VALUES (p_thread_id, 'admin', v_actor, trim(p_body), NOW());
 
   UPDATE public.admin_support_threads
      SET last_message_at = NOW(),
          status = CASE WHEN status = 'resolved' THEN 'pending' ELSE status END
    WHERE id = p_thread_id;
 
-  INSERT INTO public.admin_audit_log (
-    actor_id,
-    action,
-    target_type,
-    target_id,
-    metadata
-  )
-  VALUES (
-    v_actor,
-    'support.reply',
-    'support_thread',
-    p_thread_id,
-    jsonb_build_object('body_length', length(trim(p_body)))
-  );
+  -- Nutzer benachrichtigen (defensiv — die Antwort darf nie an einer fehlenden
+  -- Notification scheitern). Push feuert automatisch via trg_push_notification.
+  BEGIN
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+    SELECT t.user_id, v_actor, 'support_reply', left(trim(p_body), 140)
+      FROM public.admin_support_threads t
+     WHERE t.id = p_thread_id
+       AND t.user_id IS NOT NULL
+       AND t.user_id <> v_actor;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  INSERT INTO public.admin_audit_log (actor_id, action, target_type, target_id, metadata)
+  VALUES (v_actor, 'support.reply', 'support_thread', p_thread_id,
+          jsonb_build_object('body_length', length(trim(p_body))));
 
   RETURN jsonb_build_object('success', true);
 END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_reply_support_thread"("p_thread_id" "uuid", "p_body" "text") OWNER TO "postgres";
+
 --
--- Name: admin_resolve_content_report(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_resolve_content_report("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_resolve_content_report(p_report_id uuid, p_status text, p_admin_note text DEFAULT NULL::text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_resolve_content_report"("p_report_id" "uuid", "p_status" "text", "p_admin_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -1297,13 +1417,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_resolve_content_report"("p_report_id" "uuid", "p_status" "text", "p_admin_note" "text") OWNER TO "postgres";
+
 --
--- Name: admin_resolve_support_thread(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_resolve_support_thread("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_resolve_support_thread(p_thread_id uuid, p_status text DEFAULT 'resolved'::text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_resolve_support_thread"("p_thread_id" "uuid", "p_status" "text" DEFAULT 'resolved'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -1347,13 +1469,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_resolve_support_thread"("p_thread_id" "uuid", "p_status" "text") OWNER TO "postgres";
+
 --
--- Name: admin_search_users(text, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_search_users("text", integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_search_users(p_query text DEFAULT ''::text, p_limit integer DEFAULT 30, p_offset integer DEFAULT 0) RETURNS TABLE(id uuid, username text, display_name text, avatar_url text, is_verified boolean, is_admin boolean, is_moderator boolean, is_operator boolean, is_creator_ops boolean, is_banned boolean, is_restricted boolean, restricted_until timestamp with time zone, is_shadow_banned boolean, women_only_verified boolean, is_creator boolean, created_at timestamp with time zone, post_count bigint, follower_count bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_search_users"("p_query" "text" DEFAULT ''::"text", "p_limit" integer DEFAULT 30, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "username" "text", "display_name" "text", "avatar_url" "text", "is_verified" boolean, "is_admin" boolean, "is_moderator" boolean, "is_operator" boolean, "is_creator_ops" boolean, "is_banned" boolean, "is_restricted" boolean, "restricted_until" timestamp with time zone, "is_shadow_banned" boolean, "women_only_verified" boolean, "is_creator" boolean, "created_at" timestamp with time zone, "post_count" bigint, "follower_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id,
@@ -1383,13 +1507,15 @@ CREATE FUNCTION public.admin_search_users(p_query text DEFAULT ''::text, p_limit
 $$;
 
 
+ALTER FUNCTION "public"."admin_search_users"("p_query" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
 --
--- Name: admin_sidebar_badges_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_sidebar_badges_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_sidebar_badges_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_sidebar_badges_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $_$
 DECLARE
   v_generated_at TIMESTAMPTZ := NOW();
@@ -1481,13 +1607,15 @@ END;
 $_$;
 
 
+ALTER FUNCTION "public"."admin_sidebar_badges_snapshot"() OWNER TO "postgres";
+
 --
--- Name: admin_support_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_support_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_support_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."admin_support_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_generated_at TIMESTAMPTZ := NOW();
@@ -1561,12 +1689,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_support_snapshot"() OWNER TO "postgres";
+
 --
--- Name: admin_update_payout_status(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_update_payout_status("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_update_payout_status(p_request_id uuid, p_status text, p_admin_note text DEFAULT NULL::text) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."admin_update_payout_status"("p_request_id" "uuid", "p_status" "text", "p_admin_note" "text" DEFAULT NULL::"text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   IF NOT public.is_admin() THEN
@@ -1582,13 +1713,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."admin_update_payout_status"("p_request_id" "uuid", "p_status" "text", "p_admin_note" "text") OWNER TO "postgres";
+
 --
--- Name: admin_user_detail_snapshot(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_user_detail_snapshot("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_user_detail_snapshot(p_user_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'auth', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."admin_user_detail_snapshot"("p_user_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'pg_temp'
     AS $_$
 DECLARE
   v_identity JSONB := '{}'::JSONB;
@@ -1673,13 +1806,15 @@ END;
 $_$;
 
 
+ALTER FUNCTION "public"."admin_user_detail_snapshot"("p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: admin_user_directory_page(text, text, text, text, text, text, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: admin_user_directory_page("text", "text", "text", "text", "text", "text", integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.admin_user_directory_page(p_query text DEFAULT ''::text, p_status text DEFAULT 'all'::text, p_role text DEFAULT 'all'::text, p_verification text DEFAULT 'all'::text, p_activity text DEFAULT 'all'::text, p_risk text DEFAULT 'all'::text, p_limit integer DEFAULT 20, p_offset integer DEFAULT 0) RETURNS TABLE(id uuid, username text, display_name text, avatar_url text, is_verified boolean, is_admin boolean, is_moderator boolean, is_operator boolean, is_creator_ops boolean, is_banned boolean, is_restricted boolean, restricted_until timestamp with time zone, is_shadow_banned boolean, women_only_verified boolean, is_creator boolean, created_at timestamp with time zone, post_count bigint, follower_count bigint, comment_count bigint, report_count bigint, last_activity_at timestamp with time zone, risk_level text, total_count bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'auth', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."admin_user_directory_page"("p_query" "text" DEFAULT ''::"text", "p_status" "text" DEFAULT 'all'::"text", "p_role" "text" DEFAULT 'all'::"text", "p_verification" "text" DEFAULT 'all'::"text", "p_activity" "text" DEFAULT 'all'::"text", "p_risk" "text" DEFAULT 'all'::"text", "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "username" "text", "display_name" "text", "avatar_url" "text", "is_verified" boolean, "is_admin" boolean, "is_moderator" boolean, "is_operator" boolean, "is_creator_ops" boolean, "is_banned" boolean, "is_restricted" boolean, "restricted_until" timestamp with time zone, "is_shadow_banned" boolean, "women_only_verified" boolean, "is_creator" boolean, "created_at" timestamp with time zone, "post_count" bigint, "follower_count" bigint, "comment_count" bigint, "report_count" bigint, "last_activity_at" timestamp with time zone, "risk_level" "text", "total_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'pg_temp'
     AS $$
   WITH post_counts AS (
     SELECT author_id AS user_id, COUNT(*)::BIGINT AS post_count
@@ -1823,13 +1958,68 @@ CREATE FUNCTION public.admin_user_directory_page(p_query text DEFAULT ''::text, 
 $$;
 
 
+ALTER FUNCTION "public"."admin_user_directory_page"("p_query" "text", "p_status" "text", "p_role" "text", "p_verification" "text", "p_activity" "text", "p_risk" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
 --
--- Name: approve_cohost(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: announce_preorder_round("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.approve_cohost(p_session_id uuid, p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."announce_preorder_round"("p_product_id" "uuid", "p_message" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller  uuid := auth.uid();
+  v_product public.products%ROWTYPE;
+  v_msg     text;
+  v_count   int := 0;
+BEGIN
+  SELECT * INTO v_product FROM public.products WHERE id = p_product_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','product_not_found'); END IF;
+
+  IF v_product.seller_id <> v_caller AND NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('error','not_authorized');
+  END IF;
+
+  v_msg := COALESCE(
+    NULLIF(btrim(p_message), ''),
+    'Sammelbestellung läuft! 🌸 „' || v_product.title
+      || '" wird gerade gesammelt — jetzt sichern, solange das Fenster offen ist.'
+  );
+
+  WITH audience AS (
+    SELECT user_id AS uid FROM public.product_preorders
+      WHERE product_id = p_product_id AND status IN ('interested','notified')
+    UNION
+    SELECT user_id AS uid FROM public.saved_products
+      WHERE product_id = p_product_id
+  ),
+  ins AS (
+    INSERT INTO public.notifications
+      (recipient_id, sender_id, type, comment_text, product_name, product_id)
+    SELECT a.uid, v_caller, 'preorder_round_open', v_msg, v_product.title, p_product_id
+      FROM audience a
+     WHERE a.uid <> v_caller
+    RETURNING 1
+  )
+  SELECT count(*) INTO v_count FROM ins;
+
+  RETURN jsonb_build_object('success', true, 'notified', v_count);
+EXCEPTION WHEN OTHERS THEN
+  -- Echten Fehler zurückgeben statt hart zu scheitern (Diagnose + kein Crash).
+  RETURN jsonb_build_object('error', 'exception', 'detail', SQLERRM);
+END $$;
+
+
+ALTER FUNCTION "public"."announce_preorder_round"("p_product_id" "uuid", "p_message" "text") OWNER TO "postgres";
+
+--
+-- Name: approve_cohost("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."approve_cohost"("p_session_id" "uuid", "p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_host       uuid := auth.uid();
@@ -1901,12 +2091,50 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."approve_cohost"("p_session_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: archive_expired_stories(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: approve_women_only("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.archive_expired_stories() RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."approve_women_only"("p_user" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL OR NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_admin');
+  END IF;
+
+  PERFORM set_config('app.woz_bypass', 'on', true);
+  UPDATE profiles
+     SET women_only_verified = true, verification_level = 2, gender = 'female'
+   WHERE id = p_user;
+
+  INSERT INTO women_only_requests (user_id, status, method, reviewed_at, reviewed_by)
+       VALUES (p_user, 'approved', 'admin', now(), v_uid)
+  ON CONFLICT (user_id) DO UPDATE
+       SET status = 'approved', reviewed_at = now(), reviewed_by = v_uid, note = NULL;
+
+  INSERT INTO admin_audit_log (actor_id, action, target_type, target_id, metadata)
+       VALUES (v_uid, 'woz_approve', 'profile', p_user, '{}'::jsonb);
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."approve_women_only"("p_user" "uuid") OWNER TO "postgres";
+
+--
+-- Name: archive_expired_stories(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."archive_expired_stories"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   UPDATE public.stories
@@ -1917,12 +2145,38 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."archive_expired_stories"() OWNER TO "postgres";
+
 --
--- Name: auto_score_post(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: assign_preorder_round(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.auto_score_post() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."assign_preorder_round"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE v_round uuid;
+BEGIN
+  IF NEW.status = 'interested' THEN
+    SELECT id INTO v_round
+      FROM public.preorder_rounds
+      WHERE product_id = NEW.product_id AND status = 'open'
+      ORDER BY created_at DESC LIMIT 1;
+    NEW.round_id := v_round;  -- NULL wenn keine offene Runde
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."assign_preorder_round"() OWNER TO "postgres";
+
+--
+-- Name: auto_score_post(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."auto_score_post"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_tags       TEXT[];
@@ -1990,13 +2244,26 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."auto_score_post"() OWNER TO "postgres";
+
 --
--- Name: block_cohost(uuid, text, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: berkat_server_time(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.block_cohost(p_user_id uuid, p_reason text DEFAULT NULL::text, p_duration_hours integer DEFAULT NULL::integer) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."berkat_server_time"() RETURNS timestamp with time zone
+    LANGUAGE "sql" STABLE
+    AS $$ SELECT now() $$;
+
+
+ALTER FUNCTION "public"."berkat_server_time"() OWNER TO "postgres";
+
+--
+-- Name: block_cohost("uuid", "text", integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."block_cohost"("p_user_id" "uuid", "p_reason" "text" DEFAULT NULL::"text", "p_duration_hours" integer DEFAULT NULL::integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_host    uuid := auth.uid();
@@ -2024,29 +2291,121 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."block_cohost"("p_user_id" "uuid", "p_reason" "text", "p_duration_hours" integer) OWNER TO "postgres";
+
 --
--- Name: block_user(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: block_user("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.block_user(p_blocked_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."block_user"("p_blocked_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
+  IF auth.uid() IS NULL OR p_blocked_id = auth.uid() THEN
+    RETURN;
+  END IF;
+
   INSERT INTO user_blocks (blocker_id, blocked_id)
   VALUES (auth.uid(), p_blocked_id)
   ON CONFLICT DO NOTHING;
+
+  -- Bestehende Follows in BEIDE Richtungen entfernen.
+  DELETE FROM follows
+   WHERE (follower_id = auth.uid()   AND following_id = p_blocked_id)
+      OR (follower_id = p_blocked_id AND following_id = auth.uid());
 END;
 $$;
 
 
+ALTER FUNCTION "public"."block_user"("p_blocked_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: buy_product(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: bump_product_sold_count("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.buy_product(p_product_id uuid, p_quantity integer DEFAULT 1) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."bump_product_sold_count"("p_product_id" "uuid", "p_qty" integer) RETURNS "void"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  UPDATE public.products
+     SET sold_count = sold_count + GREATEST(COALESCE(p_qty, 1), 0)
+   WHERE id = p_product_id;
+$$;
+
+
+ALTER FUNCTION "public"."bump_product_sold_count"("p_product_id" "uuid", "p_qty" integer) OWNER TO "postgres";
+
+--
+-- Name: buy_now_live_auction("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."buy_now_live_auction"("p_auction_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a       public.live_auctions;
+  v_uid   uuid := auth.uid();
+  v_cart  uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF a.buy_now_cents IS NULL THEN
+    RAISE EXCEPTION 'no_buy_now' USING ERRCODE = '22023';
+  END IF;
+  IF a.status NOT IN ('scheduled', 'running') THEN
+    RAISE EXCEPTION 'auction_closed' USING ERRCODE = '22023';
+  END IF;
+  IF a.seller_id = v_uid THEN
+    RAISE EXCEPTION 'seller_cannot_bid' USING ERRCODE = '42501';
+  END IF;
+  -- Sobald jemand über dem Sofortkaufpreis bietet, ist der Sofortkauf weg.
+  IF a.current_bid_cents IS NOT NULL AND a.current_bid_cents >= a.buy_now_cents THEN
+    RAISE EXCEPTION 'buy_now_gone' USING ERRCODE = '22023';
+  END IF;
+
+  v_cart := public.ensure_auction_cart(v_uid, a.seller_id);
+
+  INSERT INTO public.live_bids (auction_id, bidder_id, amount_cents)
+  VALUES (a.id, v_uid, a.buy_now_cents);
+
+  UPDATE public.live_auctions
+     SET status            = 'sold',
+         current_bid_cents = a.buy_now_cents,
+         current_bidder_id = v_uid,
+         winner_id         = v_uid,
+         bid_count         = a.bid_count + 1,
+         settled_at        = now(),
+         ends_at           = now(),
+         cart_id           = v_cart
+   WHERE id = a.id;
+
+  RETURN jsonb_build_object(
+    'auction_id', a.id,
+    'status',     'sold',
+    'winner_id',  v_uid,
+    'cart_id',    v_cart,
+    'paid_cents', a.buy_now_cents
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."buy_now_live_auction"("p_auction_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: buy_product("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."buy_product"("p_product_id" "uuid", "p_quantity" integer DEFAULT 1) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_buyer_id       UUID := auth.uid();
@@ -2057,6 +2416,11 @@ DECLARE
   v_diamond_credit INTEGER;
   v_order_id       UUID;
 BEGIN
+  -- Quantity-Guard: verhindert negative/absurde Mengen VOR jeder Rechnung.
+  IF p_quantity IS NULL OR p_quantity < 1 OR p_quantity > 999 THEN
+    RETURN jsonb_build_object('error', 'bad_quantity');
+  END IF;
+
   SELECT * INTO v_product FROM public.products
   WHERE id = p_product_id AND is_active = true
   FOR UPDATE;
@@ -2097,7 +2461,7 @@ BEGIN
      SET coins = coins - v_cost
    WHERE user_id = v_buyer_id;
 
-  v_diamond_credit := GREATEST(1, ROUND(v_cost * 0.70));
+  v_diamond_credit := GREATEST(1, ROUND(v_cost * 0.125));
   INSERT INTO public.coins_wallets (user_id, coins, diamonds)
        VALUES (v_product.seller_id, 0, v_diamond_credit)
   ON CONFLICT (user_id)
@@ -2129,12 +2493,14 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."buy_product"("p_product_id" "uuid", "p_quantity" integer) OWNER TO "postgres";
+
 --
--- Name: calculate_vibe_scores(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: calculate_vibe_scores(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.calculate_vibe_scores() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."calculate_vibe_scores"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 DECLARE
   v_brain   FLOAT := 0;
@@ -2217,13 +2583,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."calculate_vibe_scores"() OWNER TO "postgres";
+
 --
--- Name: can_creator_ops(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: can_creator_ops(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.can_creator_ops() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."can_creator_ops"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT COALESCE(
     (
@@ -2236,13 +2604,15 @@ CREATE FUNCTION public.can_creator_ops() RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."can_creator_ops"() OWNER TO "postgres";
+
 --
--- Name: can_moderate(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: can_moderate(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.can_moderate() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."can_moderate"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT COALESCE(
     (
@@ -2255,13 +2625,15 @@ CREATE FUNCTION public.can_moderate() RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."can_moderate"() OWNER TO "postgres";
+
 --
--- Name: can_operate(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: can_operate(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.can_operate() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."can_operate"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT COALESCE(
     (
@@ -2274,13 +2646,15 @@ CREATE FUNCTION public.can_operate() RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."can_operate"() OWNER TO "postgres";
+
 --
--- Name: cancel_duet_invite(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: cancel_duet_invite("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.cancel_duet_invite(p_invite_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."cancel_duet_invite"("p_invite_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -2308,13 +2682,105 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."cancel_duet_invite"("p_invite_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: cancel_scheduled_live(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: cancel_live_auction("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.cancel_scheduled_live(p_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."cancel_live_auction"("p_auction_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a     public.live_auctions;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF a.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+  IF a.status NOT IN ('scheduled', 'running') THEN
+    RAISE EXCEPTION 'auction_closed' USING ERRCODE = '22023';
+  END IF;
+  IF a.bid_count > 0 THEN
+    RAISE EXCEPTION 'has_bids' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.live_auctions
+     SET status = 'cancelled', settled_at = now(), ends_at = now()
+   WHERE id = a.id;
+
+  RETURN jsonb_build_object('auction_id', a.id, 'status', 'cancelled');
+END $$;
+
+
+ALTER FUNCTION "public"."cancel_live_auction"("p_auction_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: cancel_product_order("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."cancel_product_order"("p_order_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller uuid := auth.uid();
+  v_order  public.product_orders%ROWTYPE;
+BEGIN
+  IF v_caller IS NULL THEN
+    RETURN jsonb_build_object('error','not_authenticated');
+  END IF;
+
+  SELECT * INTO v_order FROM public.product_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','order_not_found'); END IF;
+
+  IF v_order.buyer_id <> v_caller THEN
+    RETURN jsonb_build_object('error','not_authorized');
+  END IF;
+
+  IF v_order.status = 'paid' THEN
+    RETURN jsonb_build_object('error','already_paid');
+  END IF;
+  IF v_order.status <> 'payment_requested' THEN
+    RETURN jsonb_build_object('error','not_cancellable');
+  END IF;
+
+  UPDATE public.product_orders
+     SET status = 'cancelled', updated_at = now()
+   WHERE id = p_order_id;
+
+  IF v_order.preorder_id IS NOT NULL THEN
+    DELETE FROM public.product_preorders WHERE id = v_order.preorder_id;
+  END IF;
+
+  BEGIN
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+    VALUES (v_order.seller_id, v_caller, 'order_cancelled', 'Eine Bestellung wurde storniert.');
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  RETURN jsonb_build_object('success', true);
+END $$;
+
+
+ALTER FUNCTION "public"."cancel_product_order"("p_order_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: cancel_scheduled_live("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."cancel_scheduled_live"("p_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -2337,13 +2803,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."cancel_scheduled_live"("p_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: cancel_scheduled_post(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: cancel_scheduled_post("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.cancel_scheduled_post(p_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."cancel_scheduled_post"("p_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -2363,13 +2831,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."cancel_scheduled_post"("p_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: check_ai_image_rate_limit(uuid, public.ai_image_purpose); Type: FUNCTION; Schema: public; Owner: -
+-- Name: check_ai_image_rate_limit("uuid", "public"."ai_image_purpose"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.check_ai_image_rate_limit(p_user_id uuid, p_purpose public.ai_image_purpose) RETURNS text
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."check_ai_image_rate_limit"("p_user_id" "uuid", "p_purpose" "public"."ai_image_purpose") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $_$
 DECLARE
   v_feature_enabled BOOLEAN;
@@ -2417,13 +2887,144 @@ END;
 $_$;
 
 
+ALTER FUNCTION "public"."check_ai_image_rate_limit"("p_user_id" "uuid", "p_purpose" "public"."ai_image_purpose") OWNER TO "postgres";
+
 --
--- Name: classify_post_moderation(text, text[], text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: checkout_auction_cart("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.classify_post_moderation(p_caption text DEFAULT NULL::text, p_tags text[] DEFAULT '{}'::text[], p_media_type text DEFAULT NULL::text, p_media_url text DEFAULT NULL::text) RETURNS jsonb
-    LANGUAGE plpgsql IMMUTABLE
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."checkout_auction_cart"("p_cart_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  c           public.auction_carts;
+  v_uid       uuid := auth.uid();
+  v_total     bigint;
+  v_items     int;
+  v_title     text;
+  v_order_id  uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO c FROM public.auction_carts WHERE id = p_cart_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'cart_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF c.buyer_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  -- Idempotenz VOR der Zustandsprüfung. Ein Korb in der Kasse ist nicht mehr
+  -- `open`; wer eine abgebrochene Zahlung nachholt, muss trotzdem wieder zu
+  -- seiner Bestellung finden.
+  SELECT id INTO v_order_id
+    FROM public.product_orders
+   WHERE cart_id = p_cart_id AND status = 'payment_requested'
+   LIMIT 1;
+
+  IF v_order_id IS NOT NULL THEN
+    RETURN v_order_id;
+  END IF;
+
+  IF c.status <> 'open' THEN
+    RAISE EXCEPTION 'cart_closed' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT COALESCE(SUM(current_bid_cents), 0), COUNT(*)
+    INTO v_total, v_items
+    FROM public.live_auctions
+   WHERE cart_id = p_cart_id AND status = 'sold';
+
+  IF v_items = 0 OR v_total <= 0 THEN
+    RAISE EXCEPTION 'cart_empty' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT CASE
+           WHEN v_items = 1 THEN MIN(title)
+           ELSE format('%s Artikel aus der Live-Show', v_items)
+         END
+    INTO v_title
+    FROM public.live_auctions
+   WHERE cart_id = p_cart_id AND status = 'sold';
+
+  INSERT INTO public.product_orders (
+    buyer_id, seller_id, product_id, cart_id, title,
+    quantity, unit_price_eur, amount_eur, currency, status, payment_requested_at
+  ) VALUES (
+    v_uid, c.seller_id, NULL, p_cart_id, v_title,
+    1, (v_total::numeric / 100), (v_total::numeric / 100), 'eur',
+    'payment_requested', now()
+  )
+  RETURNING id INTO v_order_id;
+
+  -- Ab hier nimmt dieser Korb nichts mehr auf. Was danach gewonnen wird,
+  -- landet in einem frischen Korb und wird eine eigene Bestellung.
+  UPDATE public.auction_carts
+     SET status = 'checkout_pending'
+   WHERE id = p_cart_id;
+
+  RETURN v_order_id;
+END $$;
+
+
+ALTER FUNCTION "public"."checkout_auction_cart"("p_cart_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "checkout_auction_cart"("p_cart_id" "uuid"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."checkout_auction_cart"("p_cart_id" "uuid") IS 'Berkat: macht aus einem Sammelkorb genau eine Bestellung und friert ihn dabei ein. Idempotent.';
+
+
+--
+-- Name: claim_referral("text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."claim_referral"("p_code" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_me  uuid := auth.uid();
+  v_ref uuid;
+BEGIN
+  IF v_me IS NULL THEN
+    RETURN jsonb_build_object('error', 'not_authenticated');
+  END IF;
+
+  -- Schon attribuiert → nichts tun (idempotent, kein Überschreiben).
+  IF EXISTS (SELECT 1 FROM public.profiles WHERE id = v_me AND referred_by IS NOT NULL) THEN
+    RETURN jsonb_build_object('success', true, 'already', true);
+  END IF;
+
+  SELECT id INTO v_ref
+    FROM public.profiles
+   WHERE lower(username) = lower(btrim(p_code));
+
+  IF v_ref IS NULL OR v_ref = v_me THEN
+    RETURN jsonb_build_object('error', 'invalid_code');
+  END IF;
+
+  UPDATE public.profiles
+     SET referred_by = v_ref
+   WHERE id = v_me AND referred_by IS NULL;
+
+  RETURN jsonb_build_object('success', true, 'referrer', v_ref);
+END $$;
+
+
+ALTER FUNCTION "public"."claim_referral"("p_code" "text") OWNER TO "postgres";
+
+--
+-- Name: classify_post_moderation("text", "text"[], "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."classify_post_moderation"("p_caption" "text" DEFAULT NULL::"text", "p_tags" "text"[] DEFAULT '{}'::"text"[], "p_media_type" "text" DEFAULT NULL::"text", "p_media_url" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_text TEXT := lower(
@@ -2460,13 +3061,108 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."classify_post_moderation"("p_caption" "text", "p_tags" "text"[], "p_media_type" "text", "p_media_url" "text") OWNER TO "postgres";
+
 --
--- Name: cost_health_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: close_cart_on_order_paid(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.cost_health_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."close_cart_on_order_paid"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF NEW.status = 'paid'
+     AND OLD.status IS DISTINCT FROM 'paid'
+     AND NEW.cart_id IS NOT NULL THEN
+    UPDATE public.auction_carts
+       SET status = 'checked_out'
+     WHERE id = NEW.cart_id
+       AND status IN ('open', 'checkout_pending');
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."close_cart_on_order_paid"() OWNER TO "postgres";
+
+--
+-- Name: close_preorder_round("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."close_preorder_round"("p_round_id" "uuid", "p_status" "text" DEFAULT 'closed'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid   uuid := auth.uid();
+  v_round public.preorder_rounds%ROWTYPE;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
+  END IF;
+  IF p_status NOT IN ('closed', 'arrived') THEN
+    RETURN jsonb_build_object('success', false, 'error', 'bad_status');
+  END IF;
+
+  SELECT * INTO v_round FROM preorder_rounds WHERE id = p_round_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'round_not_found');
+  END IF;
+  IF v_round.seller_id <> v_uid AND NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_seller');
+  END IF;
+
+  UPDATE preorder_rounds
+    SET status = p_status, closed_at = COALESCE(closed_at, now())
+    WHERE id = p_round_id;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."close_preorder_round"("p_round_id" "uuid", "p_status" "text") OWNER TO "postgres";
+
+--
+-- Name: confirm_order_delivered("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."confirm_order_delivered"("p_order_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller uuid := auth.uid();
+  v_order  public.product_orders%ROWTYPE;
+BEGIN
+  SELECT * INTO v_order FROM public.product_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','order_not_found'); END IF;
+
+  IF v_order.buyer_id <> v_caller THEN
+    RETURN jsonb_build_object('error','not_authorized');
+  END IF;
+
+  IF v_order.status <> 'shipped' THEN
+    RETURN jsonb_build_object('error','not_shipped');
+  END IF;
+
+  UPDATE public.product_orders SET status = 'delivered', delivered_at = now()
+   WHERE id = p_order_id;
+
+  RETURN jsonb_build_object('success', true);
+END $$;
+
+
+ALTER FUNCTION "public"."confirm_order_delivered"("p_order_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: cost_health_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."cost_health_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_month_start TIMESTAMPTZ := DATE_TRUNC('month', NOW());
@@ -2592,13 +3288,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."cost_health_snapshot"() OWNER TO "postgres";
+
 --
--- Name: create_duet_invite(uuid, uuid, text, integer, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: create_duet_invite("uuid", "uuid", "text", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.create_duet_invite(p_session_id uuid, p_invitee_id uuid, p_layout text DEFAULT 'side-by-side'::text, p_battle_duration integer DEFAULT NULL::integer, p_message text DEFAULT NULL::text) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."create_duet_invite"("p_session_id" "uuid", "p_invitee_id" "uuid", "p_layout" "text" DEFAULT 'side-by-side'::"text", "p_battle_duration" integer DEFAULT NULL::integer, "p_message" "text" DEFAULT NULL::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller      UUID := auth.uid();
@@ -2666,12 +3364,110 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."create_duet_invite"("p_session_id" "uuid", "p_invitee_id" "uuid", "p_layout" "text", "p_battle_duration" integer, "p_message" "text") OWNER TO "postgres";
+
 --
--- Name: create_post(text, text, text, text, text[], uuid, boolean, text, double precision, text, boolean, boolean, boolean, boolean, integer, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: create_live_auction("uuid", "text", integer, integer, integer, "text", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.create_post(p_caption text DEFAULT NULL::text, p_media_url text DEFAULT NULL::text, p_media_type text DEFAULT 'image'::text, p_thumbnail_url text DEFAULT NULL::text, p_tags text[] DEFAULT '{}'::text[], p_guild_id uuid DEFAULT NULL::uuid, p_is_guild_post boolean DEFAULT false, p_audio_url text DEFAULT NULL::text, p_audio_volume double precision DEFAULT NULL::double precision, p_privacy text DEFAULT 'public'::text, p_allow_comments boolean DEFAULT true, p_allow_download boolean DEFAULT false, p_allow_duet boolean DEFAULT true, p_women_only boolean DEFAULT false, p_cover_time_ms integer DEFAULT NULL::integer, p_aspect_ratio text DEFAULT 'portrait'::text) RETURNS uuid
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."create_live_auction"("p_session_id" "uuid", "p_title" "text", "p_start_price_cents" integer DEFAULT 100, "p_min_increment_cents" integer DEFAULT 100, "p_buy_now_cents" integer DEFAULT NULL::integer, "p_image_url" "text" DEFAULT NULL::"text", "p_product_id" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid    uuid := auth.uid();
+  v_host   uuid;
+  v_next   int;
+  v_new_id uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT host_id INTO v_host FROM public.live_sessions WHERE id = p_session_id;
+  IF v_host IS NULL THEN
+    RAISE EXCEPTION 'session_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  -- Anlegen darf nur der Host. Moderatoren dürfen starten (siehe unten),
+  -- aber nicht bestimmen, was verkauft wird — das ist die Ware des Hosts.
+  IF v_host <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_start_price_cents <= 0 OR p_min_increment_cents <= 0 THEN
+    RAISE EXCEPTION 'invalid_price' USING ERRCODE = '22023';
+  END IF;
+  IF p_buy_now_cents IS NOT NULL AND p_buy_now_cents <= p_start_price_cents THEN
+    RAISE EXCEPTION 'buy_now_below_start' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT COALESCE(MAX(sort_index), 0) + 1 INTO v_next
+    FROM public.live_auctions WHERE session_id = p_session_id;
+
+  INSERT INTO public.live_auctions (
+    session_id, seller_id, product_id, title, image_url,
+    start_price_cents, min_increment_cents, buy_now_cents, sort_index
+  ) VALUES (
+    p_session_id, v_uid, p_product_id, btrim(p_title), p_image_url,
+    p_start_price_cents, p_min_increment_cents, p_buy_now_cents, v_next
+  )
+  RETURNING id INTO v_new_id;
+
+  RETURN v_new_id;
+END $$;
+
+
+ALTER FUNCTION "public"."create_live_auction"("p_session_id" "uuid", "p_title" "text", "p_start_price_cents" integer, "p_min_increment_cents" integer, "p_buy_now_cents" integer, "p_image_url" "text", "p_product_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: create_live_giveaway("uuid", "text", "text", boolean); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."create_live_giveaway"("p_session_id" "uuid", "p_title" "text", "p_image_url" "text" DEFAULT NULL::"text", "p_requires_follow" boolean DEFAULT true) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid  uuid := auth.uid();
+  v_host uuid;
+  v_id   uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT host_id INTO v_host FROM public.live_sessions WHERE id = p_session_id;
+  IF v_host IS NULL THEN
+    RAISE EXCEPTION 'session_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF v_host <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.live_giveaways
+     WHERE session_id = p_session_id AND status = 'open'
+  ) THEN
+    RAISE EXCEPTION 'giveaway_already_open' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.live_giveaways (session_id, host_id, title, image_url, requires_follow)
+  VALUES (p_session_id, v_uid, btrim(p_title), p_image_url, p_requires_follow)
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END $$;
+
+
+ALTER FUNCTION "public"."create_live_giveaway"("p_session_id" "uuid", "p_title" "text", "p_image_url" "text", "p_requires_follow" boolean) OWNER TO "postgres";
+
+--
+-- Name: create_post("text", "text", "text", "text", "text"[], "uuid", boolean, "text", double precision, "text", boolean, boolean, boolean, boolean, integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."create_post"("p_caption" "text" DEFAULT NULL::"text", "p_media_url" "text" DEFAULT NULL::"text", "p_media_type" "text" DEFAULT 'image'::"text", "p_thumbnail_url" "text" DEFAULT NULL::"text", "p_tags" "text"[] DEFAULT '{}'::"text"[], "p_guild_id" "uuid" DEFAULT NULL::"uuid", "p_is_guild_post" boolean DEFAULT false, "p_audio_url" "text" DEFAULT NULL::"text", "p_audio_volume" double precision DEFAULT NULL::double precision, "p_privacy" "text" DEFAULT 'public'::"text", "p_allow_comments" boolean DEFAULT true, "p_allow_download" boolean DEFAULT false, "p_allow_duet" boolean DEFAULT true, "p_women_only" boolean DEFAULT false, "p_cover_time_ms" integer DEFAULT NULL::integer, "p_aspect_ratio" "text" DEFAULT 'portrait'::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql"
     AS $$
 DECLARE
   v_post_id UUID;
@@ -2726,13 +3522,74 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."create_post"("p_caption" "text", "p_media_url" "text", "p_media_type" "text", "p_thumbnail_url" "text", "p_tags" "text"[], "p_guild_id" "uuid", "p_is_guild_post" boolean, "p_audio_url" "text", "p_audio_volume" double precision, "p_privacy" "text", "p_allow_comments" boolean, "p_allow_download" boolean, "p_allow_duet" boolean, "p_women_only" boolean, "p_cover_time_ms" integer, "p_aspect_ratio" "text") OWNER TO "postgres";
+
 --
--- Name: create_report(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: create_preorder_round("uuid", integer, timestamp with time zone, "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.create_report(p_target_type text, p_target_id uuid, p_reason text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."create_preorder_round"("p_product_id" "uuid", "p_target_qty" integer, "p_closes_at" timestamp with time zone, "p_title" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid     uuid := auth.uid();
+  v_product public.products%ROWTYPE;
+  v_title   text;
+  v_round   public.preorder_rounds%ROWTYPE;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
+  END IF;
+
+  SELECT * INTO v_product FROM products WHERE id = p_product_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'product_not_found');
+  END IF;
+  IF v_product.seller_id <> v_uid AND NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_seller');
+  END IF;
+  IF v_product.sale_mode IS DISTINCT FROM 'preorder' OR NOT v_product.is_active THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_preorder_product');
+  END IF;
+  IF p_target_qty IS NULL OR p_target_qty < 1 OR p_target_qty > 9999 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'bad_target');
+  END IF;
+  IF p_closes_at IS NULL OR p_closes_at <= now() THEN
+    RETURN jsonb_build_object('success', false, 'error', 'bad_deadline');
+  END IF;
+
+  v_title := COALESCE(NULLIF(trim(p_title), ''), left('Sammelbestellung: ' || v_product.title, 80));
+
+  -- Vorgänger-Runde still schließen (Unique-Index erlaubt nur eine offene).
+  UPDATE preorder_rounds
+    SET status = 'closed', closed_at = now()
+    WHERE product_id = p_product_id AND status = 'open';
+
+  INSERT INTO preorder_rounds (product_id, seller_id, title, target_qty, closes_at)
+    VALUES (p_product_id, v_product.seller_id, v_title, p_target_qty, p_closes_at)
+    RETURNING * INTO v_round;
+
+  -- Bestehendes aktives Interesse adoptieren: Wer schon vorgemerkt hat,
+  -- wartet auf genau diese Bestell-Runde → zählt ab Sekunde 1 im Fortschritt.
+  UPDATE product_preorders
+    SET round_id = v_round.id
+    WHERE product_id = p_product_id AND status IN ('interested', 'notified');
+
+  RETURN jsonb_build_object('success', true, 'round_id', v_round.id);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_preorder_round"("p_product_id" "uuid", "p_target_qty" integer, "p_closes_at" timestamp with time zone, "p_title" "text") OWNER TO "postgres";
+
+--
+-- Name: create_report("text", "uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."create_report"("p_target_type" "text", "p_target_id" "uuid", "p_reason" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_reporter UUID := auth.uid();
@@ -2775,13 +3632,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."create_report"("p_target_type" "text", "p_target_id" "uuid", "p_reason" "text") OWNER TO "postgres";
+
 --
--- Name: create_support_thread(text, text, text, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: create_support_thread("text", "text", "text", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.create_support_thread(p_subject text, p_body text, p_source text DEFAULT 'manual'::text, p_priority text DEFAULT 'medium'::text, p_metadata jsonb DEFAULT '{}'::jsonb) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."create_support_thread"("p_subject" "text", "p_body" "text", "p_source" "text" DEFAULT 'manual'::"text", "p_priority" "text" DEFAULT 'medium'::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -2838,17 +3697,32 @@ BEGIN
     trim(p_body)
   );
 
+  -- Admins benachrichtigen (defensiv — Thread-Erstellung darf nie an einer
+  -- fehlenden Notification scheitern). Push feuert automatisch via
+  -- trg_push_notification. Nicht sich selbst pingen, falls ein Admin testet.
+  BEGIN
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+    SELECT p.id, v_actor, 'support_new', left(trim(p_subject), 140)
+      FROM public.profiles p
+     WHERE p.is_admin = true
+       AND p.id <> v_actor;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
   RETURN jsonb_build_object('success', true, 'thread_id', v_thread_id);
 END;
 $$;
 
 
+ALTER FUNCTION "public"."create_support_thread"("p_subject" "text", "p_body" "text", "p_source" "text", "p_priority" "text", "p_metadata" "jsonb") OWNER TO "postgres";
+
 --
--- Name: create_user_wallet(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: create_user_wallet(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.create_user_wallet() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."create_user_wallet"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   INSERT INTO public.coins_wallets (user_id, coins, diamonds, total_gifted)
@@ -2862,13 +3736,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."create_user_wallet"() OWNER TO "postgres";
+
 --
--- Name: creator_activation_recovery_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: creator_activation_recovery_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.creator_activation_recovery_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."creator_activation_recovery_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_snapshot JSONB;
@@ -3038,12 +3914,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."creator_activation_recovery_snapshot"() OWNER TO "postgres";
+
 --
--- Name: credit_coins(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: credit_coins("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.credit_coins(p_user_id uuid, p_coins integer) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."credit_coins"("p_user_id" "uuid", "p_coins" integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 begin
   -- Wallet erstellen falls nicht vorhanden, dann Coins addieren
@@ -3056,13 +3935,15 @@ end;
 $$;
 
 
+ALTER FUNCTION "public"."credit_coins"("p_user_id" "uuid", "p_coins" integer) OWNER TO "postgres";
+
 --
--- Name: current_user_admin_roles(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: current_user_admin_roles(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.current_user_admin_roles() RETURNS jsonb
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."current_user_admin_roles"() RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT jsonb_build_object(
     'is_admin', COALESCE(p.is_admin, FALSE),
@@ -3075,75 +3956,15 @@ CREATE FUNCTION public.current_user_admin_roles() RETURNS jsonb
 $$;
 
 
---
--- Name: debug_send_gift(text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.debug_send_gift(p_live_session_id text, p_gift_id text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  v_sender_id    UUID := auth.uid();
-  v_gift         gift_catalog%ROWTYPE;
-  v_sender_coins INTEGER;
-BEGIN
-  -- Gift laden
-  SELECT * INTO v_gift FROM gift_catalog WHERE id = p_gift_id;
-  IF NOT FOUND THEN
-    RETURN jsonb_build_object('error', 'gift_not_found');
-  END IF;
-
-  -- Sender Wallet prüfen (mit Lock)
-  SELECT coins INTO v_sender_coins
-  FROM coins_wallets
-  WHERE user_id = v_sender_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RETURN jsonb_build_object('error', 'no_wallet');
-  END IF;
-
-  IF v_sender_coins < v_gift.coin_cost THEN
-    RETURN jsonb_build_object(
-      'error', 'insufficient_coins',
-      'balance', v_sender_coins,
-      'needed', v_gift.coin_cost
-    );
-  END IF;
-
-  -- Coins vom Sender abziehen
-  UPDATE coins_wallets
-  SET
-    coins        = coins - v_gift.coin_cost,
-    total_gifted = total_gifted + v_gift.coin_cost,
-    updated_at   = now()
-  WHERE user_id = v_sender_id;
-
-  -- Transaktion speichern (Sender = Empfänger für Debug)
-  INSERT INTO gift_transactions
-    (sender_id, recipient_id, live_session_id, gift_id, coin_cost, diamond_value)
-  VALUES
-    (v_sender_id, v_sender_id, p_live_session_id, p_gift_id, v_gift.coin_cost, v_gift.diamond_value);
-
-  RETURN jsonb_build_object(
-    'success', true,
-    'new_balance', v_sender_coins - v_gift.coin_cost,
-    'gift', v_gift.name
-  );
-
-EXCEPTION WHEN OTHERS THEN
-  RETURN jsonb_build_object('success', false, 'error', SQLERRM);
-END;
-$$;
-
+ALTER FUNCTION "public"."current_user_admin_roles"() OWNER TO "postgres";
 
 --
--- Name: decay_dwell_scores(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: decay_dwell_scores(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.decay_dwell_scores() RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."decay_dwell_scores"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   UPDATE public.posts
@@ -3156,13 +3977,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."decay_dwell_scores"() OWNER TO "postgres";
+
 --
--- Name: delete_ai_image_generations(uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: delete_ai_image_generations("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.delete_ai_image_generations(p_ids uuid[]) RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."delete_ai_image_generations"("p_ids" "uuid"[]) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_deleted INT;
@@ -3179,13 +4002,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."delete_ai_image_generations"("p_ids" "uuid"[]) OWNER TO "postgres";
+
 --
--- Name: delete_own_account(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: delete_own_account(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.delete_own_account() RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'auth'
+CREATE OR REPLACE FUNCTION "public"."delete_own_account"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
@@ -3194,12 +4019,14 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."delete_own_account"() OWNER TO "postgres";
+
 --
--- Name: delete_post(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: delete_post("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.delete_post(p_post_id uuid) RETURNS TABLE(author_id uuid, media_url text, thumbnail_url text)
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."delete_post"("p_post_id" "uuid") RETURNS TABLE("author_id" "uuid", "media_url" "text", "thumbnail_url" "text")
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -3219,13 +4046,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."delete_post"("p_post_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: delete_post_draft(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: delete_post_draft("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.delete_post_draft(p_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."delete_post_draft"("p_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -3243,13 +4072,65 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."delete_post_draft"("p_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: end_live_session(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: draw_live_giveaway("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.end_live_session(p_session_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'auth'
+CREATE OR REPLACE FUNCTION "public"."draw_live_giveaway"("p_giveaway_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  g        public.live_giveaways;
+  v_uid    uuid := auth.uid();
+  v_winner uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO g FROM public.live_giveaways WHERE id = p_giveaway_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'giveaway_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF g.host_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+  IF g.status <> 'open' THEN
+    RAISE EXCEPTION 'giveaway_closed' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT user_id INTO v_winner
+    FROM public.live_giveaway_entries
+   WHERE giveaway_id = p_giveaway_id
+   ORDER BY random()
+   LIMIT 1;
+
+  UPDATE public.live_giveaways
+     SET status    = 'drawn',
+         winner_id = v_winner,
+         drawn_at  = now()
+   WHERE id = p_giveaway_id;
+
+  RETURN jsonb_build_object(
+    'giveaway_id', p_giveaway_id,
+    'winner_id',   v_winner,
+    'entry_count', g.entry_count
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."draw_live_giveaway"("p_giveaway_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: end_live_session("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."end_live_session"("p_session_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 BEGIN
   UPDATE public.live_sessions
@@ -3259,13 +4140,169 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."end_live_session"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: enqueue_automated_post_moderation(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: enforce_comment_not_blocked(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.enqueue_automated_post_moderation() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."enforce_comment_not_blocked"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_author uuid;
+BEGIN
+  SELECT author_id INTO v_author FROM posts WHERE id = NEW.post_id;
+  IF v_author IS NOT NULL AND public.users_blocked(NEW.user_id, v_author) THEN
+    RAISE EXCEPTION 'blocked' USING HINT = 'blocked';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_comment_not_blocked"() OWNER TO "postgres";
+
+--
+-- Name: enforce_conversation_not_blocked(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enforce_conversation_not_blocked"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF public.users_blocked(NEW.participant_1, NEW.participant_2) THEN
+    RAISE EXCEPTION 'blocked' USING HINT = 'blocked';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_conversation_not_blocked"() OWNER TO "postgres";
+
+--
+-- Name: enforce_follow_not_blocked(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enforce_follow_not_blocked"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF public.users_blocked(NEW.follower_id, NEW.following_id) THEN
+    RAISE EXCEPTION 'blocked' USING HINT = 'blocked';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_follow_not_blocked"() OWNER TO "postgres";
+
+--
+-- Name: enforce_message_not_blocked(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enforce_message_not_blocked"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  p1 uuid;
+  p2 uuid;
+BEGIN
+  SELECT participant_1, participant_2 INTO p1, p2
+    FROM conversations WHERE id = NEW.conversation_id;
+  IF p1 IS NOT NULL AND public.users_blocked(p1, p2) THEN
+    RAISE EXCEPTION 'blocked' USING HINT = 'blocked';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_message_not_blocked"() OWNER TO "postgres";
+
+--
+-- Name: enforce_sale_mode_admin(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enforce_sale_mode_admin"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF NEW.sale_mode IS DISTINCT FROM 'coins' THEN
+    IF NOT (COALESCE(public.is_admin(), false) OR auth.role() = 'service_role') THEN
+      NEW.sale_mode := 'coins';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_sale_mode_admin"() OWNER TO "postgres";
+
+--
+-- Name: enforce_single_owner_push_token(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enforce_single_owner_push_token"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF NEW.push_token IS NOT NULL
+     AND NEW.push_token IS DISTINCT FROM OLD.push_token THEN
+    UPDATE public.profiles
+       SET push_token = NULL
+     WHERE push_token = NEW.push_token
+       AND id <> NEW.id;
+    DELETE FROM public.push_tokens
+     WHERE token = NEW.push_token
+       AND user_id <> NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_single_owner_push_token"() OWNER TO "postgres";
+
+--
+-- Name: enforce_single_owner_push_tokens_row(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enforce_single_owner_push_tokens_row"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  DELETE FROM public.push_tokens
+   WHERE token = NEW.token
+     AND user_id <> NEW.user_id;
+  UPDATE public.profiles
+     SET push_token = NULL
+   WHERE push_token = NEW.token
+     AND id <> NEW.user_id;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_single_owner_push_tokens_row"() OWNER TO "postgres";
+
+--
+-- Name: enqueue_automated_post_moderation(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enqueue_automated_post_moderation"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_result JSONB;
@@ -3335,13 +4372,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."enqueue_automated_post_moderation"() OWNER TO "postgres";
+
 --
--- Name: enqueue_r2_media_delete(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: enqueue_r2_media_delete(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.enqueue_r2_media_delete() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."enqueue_r2_media_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF OLD.media_url IS NOT NULL OR OLD.thumbnail_url IS NOT NULL THEN
@@ -3364,13 +4403,102 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."enqueue_r2_media_delete"() OWNER TO "postgres";
+
 --
--- Name: expire_duet_invites(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: ensure_auction_cart("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.expire_duet_invites() RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."ensure_auction_cart"("p_buyer_id" "uuid", "p_seller_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_cart_id uuid;
+BEGIN
+  -- Abgelaufene Körbe erst schließen, sonst kollidiert der Unique-Index.
+  UPDATE public.auction_carts
+     SET status = 'expired'
+   WHERE buyer_id = p_buyer_id
+     AND seller_id = p_seller_id
+     AND status = 'open'
+     AND closes_at <= now();
+
+  SELECT id INTO v_cart_id
+    FROM public.auction_carts
+   WHERE buyer_id = p_buyer_id
+     AND seller_id = p_seller_id
+     AND status = 'open'
+   LIMIT 1;
+
+  IF v_cart_id IS NOT NULL THEN
+    RETURN v_cart_id;
+  END IF;
+
+  INSERT INTO public.auction_carts (buyer_id, seller_id)
+  VALUES (p_buyer_id, p_seller_id)
+  RETURNING id INTO v_cart_id;
+
+  RETURN v_cart_id;
+END $$;
+
+
+ALTER FUNCTION "public"."ensure_auction_cart"("p_buyer_id" "uuid", "p_seller_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: enter_live_giveaway("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enter_live_giveaway"("p_giveaway_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  g     public.live_giveaways;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO g FROM public.live_giveaways WHERE id = p_giveaway_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'giveaway_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF g.status <> 'open' THEN
+    RAISE EXCEPTION 'giveaway_closed' USING ERRCODE = '22023';
+  END IF;
+  IF g.host_id = v_uid THEN
+    RAISE EXCEPTION 'host_cannot_enter' USING ERRCODE = '42501';
+  END IF;
+
+  IF g.requires_follow AND NOT EXISTS (
+    SELECT 1 FROM public.follows
+     WHERE follower_id = v_uid AND following_id = g.host_id
+  ) THEN
+    RAISE EXCEPTION 'follow_required' USING ERRCODE = '42501';
+  END IF;
+
+  -- Doppelte Teilnahme ist keine Fehlbedienung, sondern ein zweiter Tipp.
+  INSERT INTO public.live_giveaway_entries (giveaway_id, user_id)
+  VALUES (p_giveaway_id, v_uid)
+  ON CONFLICT DO NOTHING;
+
+  SELECT * INTO g FROM public.live_giveaways WHERE id = p_giveaway_id;
+
+  RETURN jsonb_build_object('giveaway_id', g.id, 'entry_count', g.entry_count, 'entered', true);
+END $$;
+
+
+ALTER FUNCTION "public"."enter_live_giveaway"("p_giveaway_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: expire_duet_invites(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."expire_duet_invites"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE v_count INT;
 BEGIN
@@ -3383,13 +4511,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."expire_duet_invites"() OWNER TO "postgres";
+
 --
--- Name: expire_stale_scheduled_lives(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: expire_stale_scheduled_lives(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.expire_stale_scheduled_lives() RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."expire_stale_scheduled_lives"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_count INT;
@@ -3408,13 +4538,75 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."expire_stale_scheduled_lives"() OWNER TO "postgres";
+
 --
--- Name: finalize_battle(uuid, uuid, integer, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: express_product_interest("uuid", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.finalize_battle(p_session_id uuid, p_guest_id uuid, p_host_score integer, p_guest_score integer, p_duration_secs integer) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."express_product_interest"("p_product_id" "uuid", "p_quantity" integer DEFAULT 1, "p_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid    uuid := auth.uid();
+  v_seller uuid;
+  v_title  text;
+  v_active boolean;
+  v_mode   text;
+  v_qty    int := GREATEST(1, LEAST(COALESCE(p_quantity, 1), 999));
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
+  END IF;
+
+  SELECT seller_id, title, is_active, sale_mode
+    INTO v_seller, v_title, v_active, v_mode
+  FROM public.products WHERE id = p_product_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'product_not_found');
+  END IF;
+  IF NOT v_active THEN
+    RETURN jsonb_build_object('success', false, 'error', 'product_inactive');
+  END IF;
+  IF v_mode <> 'preorder' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_preorder');
+  END IF;
+  IF v_seller = v_uid THEN
+    RETURN jsonb_build_object('success', false, 'error', 'cannot_preorder_own');
+  END IF;
+
+  INSERT INTO public.product_preorders (product_id, user_id, quantity, note, status)
+  VALUES (p_product_id, v_uid, v_qty, NULLIF(p_note, ''), 'interested')
+  ON CONFLICT (product_id, user_id) DO UPDATE
+    SET quantity   = EXCLUDED.quantity,
+        note       = EXCLUDED.note,
+        status     = 'interested',
+        updated_at = now();
+
+  -- Verkäufer benachrichtigen (best-effort — Notification darf den Insert nie kippen).
+  BEGIN
+    INSERT INTO public.notifications (recipient_id, sender_id, type, product_name)
+    VALUES (v_seller, v_uid, 'preorder_interest', v_title);
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."express_product_interest"("p_product_id" "uuid", "p_quantity" integer, "p_note" "text") OWNER TO "postgres";
+
+--
+-- Name: finalize_battle("uuid", "uuid", integer, integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."finalize_battle"("p_session_id" "uuid", "p_guest_id" "uuid", "p_host_score" integer, "p_guest_score" integer, "p_duration_secs" integer) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_host        uuid := auth.uid();
@@ -3478,50 +4670,161 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."finalize_battle"("p_session_id" "uuid", "p_guest_id" "uuid", "p_host_score" integer, "p_guest_score" integer, "p_duration_secs" integer) OWNER TO "postgres";
+
 --
--- Name: fn_send_push_on_notification(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fn_notify_seller_on_save(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.fn_send_push_on_notification() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."fn_notify_seller_on_save"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_url     TEXT;
-  v_secret  TEXT;
+  v_seller uuid;
+  v_title  text;
 BEGIN
-  -- Edge Function URL
-  v_url    := 'https://llymwqfgujwkoxzqxrlm.supabase.co/functions/v1/send-push-notification';
-  v_secret := current_setting('app.supabase_service_role_key', true);
+  SELECT seller_id, title INTO v_seller, v_title
+    FROM public.products WHERE id = NEW.product_id;
 
-  -- Nur an echte User senden (nicht an sich selbst)
-  IF NEW.recipient_id = NEW.sender_id THEN
+  -- Kein Seller (gelöscht) oder eigenes Produkt → kein Ping.
+  IF v_seller IS NULL OR v_seller = NEW.user_id THEN
     RETURN NEW;
   END IF;
 
-  -- Async HTTP POST an Edge Function (fire-and-forget, blockiert nicht)
-  PERFORM net.http_post(
-    url     := v_url,
-    headers := jsonb_build_object(
-      'Content-Type',  'application/json',
-      'Authorization', 'Bearer ' || v_secret
-    ),
-    body    := jsonb_build_object('record', row_to_json(NEW)),
-    timeout_milliseconds := 10000
+  INSERT INTO public.notifications
+    (recipient_id, sender_id, type, product_name, product_id)
+  VALUES
+    (v_seller, NEW.user_id, 'product_saved', v_title, NEW.product_id);
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Ein Merken darf NIE an der Benachrichtigung scheitern.
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."fn_notify_seller_on_save"() OWNER TO "postgres";
+
+--
+-- Name: fn_send_push_on_notification(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."fn_send_push_on_notification"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_actor TEXT;
+  v_title TEXT;
+  v_body  TEXT;
+  v_data  jsonb;
+BEGIN
+  -- Self-Notification nie pushen.
+  IF NEW.recipient_id = NEW.sender_id THEN RETURN NEW; END IF;
+
+  -- Typen mit eigenem Direkt-Push (notify_on_like/comment/follow/dm) hier
+  -- überspringen → sonst Doppel-Push.
+  IF NEW.type IN ('like', 'comment', 'follow', 'follow_request', 'dm') THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT COALESCE(username, 'Jemand') INTO v_actor
+    FROM public.profiles WHERE id = NEW.sender_id;
+
+  CASE NEW.type
+    WHEN 'live' THEN
+      v_title := '🔴 Live auf Serlo';
+      v_body  := v_actor || ' ist jetzt LIVE!' || COALESCE(' — ' || NEW.comment_text, '');
+    WHEN 'live_invite' THEN
+      v_title := '🎥 Live-Einladung';
+      v_body  := v_actor || ' hat dich in sein Live eingeladen!';
+    WHEN 'scheduled_live_reminder' THEN
+      v_title := '🔔 Gleich live';
+      v_body  := COALESCE(v_actor || ' startet in 15 Min: „' || NEW.comment_text || '"',
+                          v_actor || ' geht in 15 Minuten live!');
+    WHEN 'gift' THEN
+      v_title := COALESCE(NEW.gift_emoji, '🎁') || ' Geschenk erhalten';
+      v_body  := v_actor || ' hat dir ' || COALESCE(NEW.gift_emoji, '🎁') || ' '
+                 || COALESCE(NEW.gift_name, 'ein Geschenk') || ' geschickt!';
+    WHEN 'new_order' THEN
+      v_title := '🛍️ Neuer Verkauf!';
+      v_body  := COALESCE(v_actor || ' hat „' || NEW.product_name || '" gekauft',
+                          v_actor || ' hat ein Produkt gekauft');
+    WHEN 'preorder_interest' THEN
+      v_title := '🌸 Neue Vorbestellung';
+      v_body  := COALESCE(v_actor || ' hat „' || NEW.product_name || '" vorbestellt',
+                          v_actor || ' hat ein Produkt vorbestellt');
+    WHEN 'product_saved' THEN
+      v_title := '🔖 Produkt gemerkt';
+      v_body  := COALESCE(v_actor || ' hat „' || NEW.product_name || '" gemerkt',
+                          v_actor || ' hat dein Produkt gemerkt');
+    WHEN 'preorder_round_open' THEN
+      v_title := '🌸 Sammelbestellung läuft';
+      v_body  := COALESCE(NEW.comment_text,
+                          '„' || NEW.product_name || '" wird gerade gesammelt — jetzt sichern!',
+                          'Eine Sammelbestellung ist offen — jetzt sichern!');
+    WHEN 'order_payment_requested' THEN
+      v_title := '💶 Zeit zu bezahlen';
+      v_body  := COALESCE(NEW.comment_text, 'Deine Vorbestellung ist da — jetzt bezahlen 🌸');
+    WHEN 'order_payment_reminder' THEN
+      v_title := '🌸 Dein Parfüm wartet';
+      v_body  := COALESCE(NEW.comment_text, 'Kurz bezahlen — dann geht deine Vorbestellung raus 🌸');
+    WHEN 'order_paid' THEN
+      v_title := '💶 Bestellung bezahlt';
+      v_body  := v_actor || ' hat bezahlt — bitte versenden 📦';
+    WHEN 'order_shipped' THEN
+      v_title := '📦 Unterwegs';
+      v_body  := COALESCE(NEW.comment_text, 'Dein Parfüm ist unterwegs 📦');
+    WHEN 'order_cancelled' THEN
+      v_title := '🚫 Bestellung storniert';
+      v_body  := v_actor || ' hat eine Bestellung storniert';
+    WHEN 'order_address_updated' THEN
+      v_title := '📍 Adresse geändert';
+      v_body  := v_actor || ' hat die Lieferadresse aktualisiert';
+    WHEN 'order_review' THEN
+      v_title := '⭐ Neue Bewertung';
+      v_body  := COALESCE(NEW.comment_text, v_actor || ' hat dich bewertet');
+    WHEN 'order_dispute' THEN
+      v_title := '⚠️ Problem gemeldet';
+      v_body  := COALESCE(NEW.comment_text, 'Ein Problem mit einer Bestellung wurde gemeldet');
+    ELSE
+      v_title := 'Neue Aktivität auf Serlo';
+      v_body  := COALESCE(NEW.comment_text, '');
+  END CASE;
+
+  v_data := jsonb_build_object(
+    'type',      NEW.type,
+    'postId',    NEW.post_id,
+    'sessionId', NEW.session_id,
+    'senderId',  NEW.sender_id,
+    'productId', NEW.product_id
   );
 
+  PERFORM public.send_push_to_user(
+    p_user_id := NEW.recipient_id,
+    p_title   := v_title,
+    p_body    := v_body,
+    p_data    := v_data
+  );
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Push darf den auslösenden INSERT niemals scheitern lassen.
   RETURN NEW;
 END;
 $$;
 
 
+ALTER FUNCTION "public"."fn_send_push_on_notification"() OWNER TO "postgres";
+
 --
--- Name: generate_download_url(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: generate_download_url("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.generate_download_url(p_order_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."generate_download_url"("p_order_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller_id  UUID := auth.uid();
@@ -3579,13 +4882,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."generate_download_url"("p_order_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_active_poll(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_active_poll("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_active_poll(p_session_id uuid) RETURNS jsonb
-    LANGUAGE sql STABLE
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_active_poll"("p_session_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   WITH p AS (
     SELECT id, question, options, created_at, closed_at
@@ -3616,13 +4921,200 @@ CREATE FUNCTION public.get_active_poll(p_session_id uuid) RETURNS jsonb
 $$;
 
 
+ALTER FUNCTION "public"."get_active_poll"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_active_web_push_subs(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_active_preorder_round(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_active_web_push_subs(p_user_id uuid) RETURNS TABLE(id uuid, endpoint text, p256dh text, auth text)
-    LANGUAGE sql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_active_preorder_round"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid   uuid := auth.uid();
+  v_round public.preorder_rounds%ROWTYPE;
+  v_result jsonb;
+BEGIN
+  IF v_uid IS NULL THEN RETURN NULL; END IF;
+
+  SELECT * INTO v_round
+    FROM preorder_rounds
+    WHERE status = 'open'
+    ORDER BY created_at DESC LIMIT 1;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+
+  SELECT jsonb_build_object(
+    'id',                v_round.id,
+    'product_id',        v_round.product_id,
+    'title',             v_round.title,
+    'target_qty',        v_round.target_qty,
+    'closes_at',         v_round.closes_at,
+    'status',            v_round.status,
+    'reserved_qty',      COALESCE((
+      SELECT SUM(pp.quantity) FROM product_preorders pp
+      WHERE pp.round_id = v_round.id AND pp.status <> 'cancelled'
+    ), 0),
+    'participant_count', COALESCE((
+      SELECT COUNT(*) FROM product_preorders pp
+      WHERE pp.round_id = v_round.id AND pp.status <> 'cancelled'
+    ), 0),
+    'me_joined',         EXISTS (
+      SELECT 1 FROM product_preorders pp
+      WHERE pp.round_id = v_round.id AND pp.user_id = v_uid AND pp.status <> 'cancelled'
+    ),
+    'participants',      COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('username', pr.username, 'avatar_url', pr.avatar_url))
+      FROM (
+        SELECT pp.user_id FROM product_preorders pp
+        WHERE pp.round_id = v_round.id AND pp.status <> 'cancelled'
+        ORDER BY pp.created_at DESC LIMIT 3
+      ) latest
+      JOIN profiles pr ON pr.id = latest.user_id
+    ), '[]'::jsonb),
+    'product',           (
+      SELECT jsonb_build_object(
+        'id', p.id, 'title', p.title, 'cover_url', p.cover_url, 'price_eur', p.price_eur
+      ) FROM products p WHERE p.id = v_round.product_id
+    )
+  ) INTO v_result;
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_active_preorder_round"() OWNER TO "postgres";
+
+--
+-- Name: get_active_preorder_round_public(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_active_preorder_round_public"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_round  public.preorder_rounds%ROWTYPE;
+  v_result jsonb;
+BEGIN
+  SELECT * INTO v_round
+    FROM preorder_rounds
+    WHERE status = 'open'
+    ORDER BY created_at DESC LIMIT 1;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+
+  SELECT jsonb_build_object(
+    'id',                v_round.id,
+    'product_id',        v_round.product_id,
+    'title',             v_round.title,
+    'target_qty',        v_round.target_qty,
+    'closes_at',         v_round.closes_at,
+    'status',            v_round.status,
+    'reserved_qty',      COALESCE((
+      SELECT SUM(pp.quantity) FROM product_preorders pp
+      WHERE pp.round_id = v_round.id AND pp.status <> 'cancelled'
+    ), 0),
+    'participant_count', COALESCE((
+      SELECT COUNT(*) FROM product_preorders pp
+      WHERE pp.round_id = v_round.id AND pp.status <> 'cancelled'
+    ), 0),
+    'product',           (
+      SELECT jsonb_build_object(
+        'id', p.id, 'title', p.title, 'cover_url', p.cover_url, 'price_eur', p.price_eur
+      ) FROM products p WHERE p.id = v_round.product_id
+    )
+  ) INTO v_result;
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_active_preorder_round_public"() OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+--
+-- Name: shop_banners; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."shop_banners" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "tag" "text",
+    "title" "text" NOT NULL,
+    "subtitle" "text",
+    "image_url" "text",
+    "bg_color" "text" DEFAULT '#3a2a1a'::"text" NOT NULL,
+    "link" "text",
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "active" boolean DEFAULT true NOT NULL,
+    "advertiser_label" "text",
+    "starts_at" timestamp with time zone,
+    "ends_at" timestamp with time zone,
+    "impression_count" bigint DEFAULT 0 NOT NULL,
+    "click_count" bigint DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "tag_ru" "text",
+    "title_ru" "text",
+    "subtitle_ru" "text",
+    CONSTRAINT "shop_banners_title_len" CHECK ((("char_length"("title") >= 1) AND ("char_length"("title") <= 80))),
+    CONSTRAINT "shop_banners_window" CHECK ((("ends_at" IS NULL) OR ("starts_at" IS NULL) OR ("ends_at" > "starts_at")))
+);
+
+
+ALTER TABLE "public"."shop_banners" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "shop_banners"."tag_ru"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."shop_banners"."tag_ru" IS 'Russische Variante von tag (NULL → Fallback auf tag)';
+
+
+--
+-- Name: COLUMN "shop_banners"."title_ru"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."shop_banners"."title_ru" IS 'Russische Variante von title (NULL → Fallback auf title)';
+
+
+--
+-- Name: COLUMN "shop_banners"."subtitle_ru"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."shop_banners"."subtitle_ru" IS 'Russische Variante von subtitle (NULL → Fallback auf subtitle)';
+
+
+--
+-- Name: get_active_shop_banners(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_active_shop_banners"() RETURNS SETOF "public"."shop_banners"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select *
+  from public.shop_banners
+  where active = true
+    and (starts_at is null or starts_at <= now())
+    and (ends_at   is null or ends_at   >  now())
+  order by sort_order asc, created_at desc
+  limit 10;
+$$;
+
+
+ALTER FUNCTION "public"."get_active_shop_banners"() OWNER TO "postgres";
+
+--
+-- Name: get_active_web_push_subs("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_active_web_push_subs"("p_user_id" "uuid") RETURNS TABLE("id" "uuid", "endpoint" "text", "p256dh" "text", "auth" "text")
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   -- Stale-Filter: 60 Tage. Browser invalidieren Subscriptions ungeprompted
   -- wenn der User die Site lange nicht besucht, wir wollen nicht an tote
@@ -3634,13 +5126,15 @@ CREATE FUNCTION public.get_active_web_push_subs(p_user_id uuid) RETURNS TABLE(id
 $$;
 
 
+ALTER FUNCTION "public"."get_active_web_push_subs"("p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_admin_stats(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_admin_stats(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_admin_stats() RETURNS jsonb
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_admin_stats"() RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT CASE
     WHEN public.has_admin_console_access() THEN jsonb_build_object(
@@ -3657,13 +5151,15 @@ CREATE FUNCTION public.get_admin_stats() RETURNS jsonb
 $$;
 
 
+ALTER FUNCTION "public"."get_admin_stats"() OWNER TO "postgres";
+
 --
--- Name: get_ai_image_daily_report(timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_ai_image_daily_report(timestamp with time zone); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_ai_image_daily_report(p_since timestamp with time zone DEFAULT (now() - '1 day'::interval)) RETURNS jsonb
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."get_ai_image_daily_report"("p_since" timestamp with time zone DEFAULT ("now"() - '1 day'::interval)) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_total_requests    INT;
@@ -3729,13 +5225,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_ai_image_daily_report"("p_since" timestamp with time zone) OWNER TO "postgres";
+
 --
--- Name: get_ai_image_user_quota(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_ai_image_user_quota("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_ai_image_user_quota(p_user_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."get_ai_image_user_quota"("p_user_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_count_day         INT;
@@ -3783,12 +5281,31 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_ai_image_user_quota"("p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_conversations(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_blocked_user_ids(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_conversations() RETURNS TABLE(id uuid, other_user_id uuid, other_username text, other_avatar_url text, last_message text, last_message_at timestamp with time zone, unread_count bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_blocked_user_ids"() RETURNS TABLE("user_id" "uuid")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT blocked_id FROM user_blocks WHERE blocker_id = auth.uid()
+  UNION
+  SELECT blocker_id FROM user_blocks WHERE blocked_id = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."get_blocked_user_ids"() OWNER TO "postgres";
+
+--
+-- Name: get_conversations(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_conversations"() RETURNS TABLE("id" "uuid", "other_user_id" "uuid", "other_username" "text", "other_avatar_url" "text", "last_message" "text", "last_message_at" timestamp with time zone, "unread_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
   WITH my_convs AS (
     -- Alle Konversationen des eingeloggten Users
@@ -3839,12 +5356,15 @@ CREATE FUNCTION public.get_conversations() RETURNS TABLE(id uuid, other_user_id 
 $$;
 
 
+ALTER FUNCTION "public"."get_conversations"() OWNER TO "postgres";
+
 --
--- Name: get_creator_earnings(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_creator_earnings("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_creator_earnings(p_user_id uuid, p_days integer DEFAULT 28) RETURNS TABLE(diamonds_balance bigint, total_gifted bigint, period_gifts bigint, period_diamonds bigint, top_gift_name text, top_gift_emoji text, top_gifter_name text)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_creator_earnings"("p_user_id" "uuid", "p_days" integer DEFAULT 28) RETURNS TABLE("diamonds_balance" bigint, "total_gifted" bigint, "period_gifts" bigint, "period_diamonds" bigint, "top_gift_name" "text", "top_gift_emoji" "text", "top_gifter_name" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_cutoff TIMESTAMPTZ := NOW() - (p_days || ' days')::INTERVAL;
@@ -3896,13 +5416,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_creator_earnings"("p_user_id" "uuid", "p_days" integer) OWNER TO "postgres";
+
 --
--- Name: get_creator_engagement_hours(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_creator_engagement_hours("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_creator_engagement_hours(p_user_id uuid, p_days integer DEFAULT 28) RETURNS TABLE(weekday integer, hour_of_day integer, engagement_count bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_creator_engagement_hours"("p_user_id" "uuid", "p_days" integer DEFAULT 28) RETURNS TABLE("weekday" integer, "hour_of_day" integer, "engagement_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   WITH events AS (
     -- Likes auf eigene Posts
@@ -3930,12 +5452,15 @@ CREATE FUNCTION public.get_creator_engagement_hours(p_user_id uuid, p_days integ
 $$;
 
 
+ALTER FUNCTION "public"."get_creator_engagement_hours"("p_user_id" "uuid", "p_days" integer) OWNER TO "postgres";
+
 --
--- Name: get_creator_follower_growth(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_creator_follower_growth("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_creator_follower_growth(p_user_id uuid, p_days integer DEFAULT 28) RETURNS TABLE(day date, new_followers bigint)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_creator_follower_growth"("p_user_id" "uuid", "p_days" integer DEFAULT 28) RETURNS TABLE("day" "date", "new_followers" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   RETURN QUERY
@@ -3951,12 +5476,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_creator_follower_growth"("p_user_id" "uuid", "p_days" integer) OWNER TO "postgres";
+
 --
--- Name: get_creator_gift_history(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_creator_gift_history("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_creator_gift_history(p_user_id uuid, p_limit integer DEFAULT 10) RETURNS TABLE(gift_name text, gift_emoji text, diamond_value integer, sender_name text, sender_avatar text, created_at timestamp with time zone)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_creator_gift_history"("p_user_id" "uuid", "p_limit" integer DEFAULT 10) RETURNS TABLE("gift_name" "text", "gift_emoji" "text", "diamond_value" integer, "sender_name" "text", "sender_avatar" "text", "created_at" timestamp with time zone)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   RETURN QUERY
@@ -3977,12 +5505,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_creator_gift_history"("p_user_id" "uuid", "p_limit" integer) OWNER TO "postgres";
+
 --
--- Name: get_creator_overview(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_creator_overview("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_creator_overview(p_user_id uuid, p_days integer DEFAULT 28) RETURNS TABLE(total_views bigint, total_likes bigint, total_comments bigint, prev_views bigint, prev_likes bigint, prev_comments bigint, total_followers bigint, new_followers bigint, prev_followers bigint)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_creator_overview"("p_user_id" "uuid", "p_days" integer DEFAULT 28) RETURNS TABLE("total_views" bigint, "total_likes" bigint, "total_comments" bigint, "prev_views" bigint, "prev_likes" bigint, "prev_comments" bigint, "total_followers" bigint, "new_followers" bigint, "prev_followers" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_cutoff      TIMESTAMPTZ := NOW() - (p_days || ' days')::INTERVAL;
@@ -4030,12 +5561,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_creator_overview"("p_user_id" "uuid", "p_days" integer) OWNER TO "postgres";
+
 --
--- Name: get_creator_top_posts(uuid, text, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_creator_top_posts("uuid", "text", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_creator_top_posts(p_user_id uuid, p_sort text DEFAULT 'views'::text, p_limit integer DEFAULT 5) RETURNS TABLE(post_id uuid, caption text, media_url text, media_type text, thumbnail_url text, view_count integer, like_count bigint, comment_count bigint, created_at timestamp with time zone, rank bigint)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_creator_top_posts"("p_user_id" "uuid", "p_sort" "text" DEFAULT 'views'::"text", "p_limit" integer DEFAULT 5) RETURNS TABLE("post_id" "uuid", "caption" "text", "media_url" "text", "media_type" "text", "thumbnail_url" "text", "view_count" integer, "like_count" bigint, "comment_count" bigint, "created_at" timestamp with time zone, "rank" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   RETURN QUERY
@@ -4087,13 +5621,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_creator_top_posts"("p_user_id" "uuid", "p_sort" "text", "p_limit" integer) OWNER TO "postgres";
+
 --
--- Name: get_creator_watch_time_estimate(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_creator_watch_time_estimate("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_creator_watch_time_estimate(p_user_id uuid, p_days integer DEFAULT 28) RETURNS TABLE(total_seconds_est bigint, total_views bigint, avg_seconds_per_view numeric)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_creator_watch_time_estimate"("p_user_id" "uuid", "p_days" integer DEFAULT 28) RETURNS TABLE("total_seconds_est" bigint, "total_views" bigint, "avg_seconds_per_view" numeric)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     (COALESCE(SUM(view_count), 0) * 8)::BIGINT                              AS total_seconds_est,
@@ -4105,13 +5641,15 @@ CREATE FUNCTION public.get_creator_watch_time_estimate(p_user_id uuid, p_days in
 $$;
 
 
+ALTER FUNCTION "public"."get_creator_watch_time_estimate"("p_user_id" "uuid", "p_days" integer) OWNER TO "postgres";
+
 --
--- Name: get_experiment_params(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_experiment_params(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_experiment_params() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_experiment_params"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_experiment RECORD;
@@ -4148,13 +5686,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_experiment_params"() OWNER TO "postgres";
+
 --
--- Name: get_experiment_stats(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_experiment_stats("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_experiment_stats(p_experiment_name text) RETURNS TABLE(variant text, user_count bigint, avg_dwell_score double precision, avg_like_action double precision, avg_post_score double precision)
-    LANGUAGE sql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_experiment_stats"("p_experiment_name" "text") RETURNS TABLE("variant" "text", "user_count" bigint, "avg_dwell_score" double precision, "avg_like_action" double precision, "avg_post_score" double precision)
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     uv.variant,
@@ -4170,12 +5710,15 @@ CREATE FUNCTION public.get_experiment_stats(p_experiment_name text) RETURNS TABL
 $$;
 
 
+ALTER FUNCTION "public"."get_experiment_stats"("p_experiment_name" "text") OWNER TO "postgres";
+
 --
--- Name: get_follow_counts(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_follow_counts("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_follow_counts(target_user_id uuid) RETURNS TABLE(followers bigint, following bigint)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_follow_counts"("target_user_id" "uuid") RETURNS TABLE("followers" bigint, "following" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 begin
   return query select
@@ -4185,12 +5728,15 @@ end;
 $$;
 
 
+ALTER FUNCTION "public"."get_follow_counts"("target_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_guild_feed(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_guild_feed(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_guild_feed(result_limit integer DEFAULT 50) RETURNS TABLE(id uuid, author_id uuid, caption text, media_url text, media_type text, thumbnail_url text, tags text[], created_at timestamp with time zone, username text, avatar_url text, author_guild_id uuid)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_guild_feed"("result_limit" integer DEFAULT 50) RETURNS TABLE("id" "uuid", "author_id" "uuid", "caption" "text", "media_url" "text", "media_type" "text", "thumbnail_url" "text", "tags" "text"[], "created_at" timestamp with time zone, "username" "text", "avatar_url" "text", "author_guild_id" "uuid")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   my_guild_id uuid;
@@ -4213,12 +5759,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_guild_feed"("result_limit" integer) OWNER TO "postgres";
+
 --
--- Name: get_guild_leaderboard(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_guild_leaderboard("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_guild_leaderboard(p_guild_id text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_guild_leaderboard"("p_guild_id" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_top_posts   JSONB;
@@ -4265,12 +5814,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_guild_leaderboard"("p_guild_id" "text") OWNER TO "postgres";
+
 --
--- Name: get_guild_leaderboard(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_guild_leaderboard("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_guild_leaderboard(p_guild_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_guild_leaderboard"("p_guild_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_top_posts   JSONB;
@@ -4320,13 +5872,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_guild_leaderboard"("p_guild_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_live_session_audience(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_live_session_audience("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_live_session_audience(p_session_id uuid, p_limit integer DEFAULT 24) RETURNS TABLE(user_id uuid, username text, display_name text, avatar_url text, is_verified boolean, joined_at timestamp with time zone, is_moderator boolean)
-    LANGUAGE sql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_live_session_audience"("p_session_id" "uuid", "p_limit" integer DEFAULT 24) RETURNS TABLE("user_id" "uuid", "username" "text", "display_name" "text", "avatar_url" "text", "is_verified" boolean, "joined_at" timestamp with time zone, "is_moderator" boolean)
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     v.user_id,
@@ -4354,19 +5908,22 @@ CREATE FUNCTION public.get_live_session_audience(p_session_id uuid, p_limit inte
 $$;
 
 
---
--- Name: FUNCTION get_live_session_audience(p_session_id uuid, p_limit integer); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_live_session_audience(p_session_id uuid, p_limit integer) IS 'Limited active live-room audience snapshot for authenticated viewers. Returns public profile fields only.';
-
+ALTER FUNCTION "public"."get_live_session_audience"("p_session_id" "uuid", "p_limit" integer) OWNER TO "postgres";
 
 --
--- Name: get_my_coin_order_history(integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: FUNCTION "get_live_session_audience"("p_session_id" "uuid", "p_limit" integer); Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_my_coin_order_history(p_limit integer DEFAULT 50, p_offset integer DEFAULT 0) RETURNS TABLE(id uuid, tier_id text, coins integer, bonus_coins integer, price_cents integer, currency text, status public.coin_order_status, invoice_url text, receipt_url text, paid_at timestamp with time zone, created_at timestamp with time zone)
-    LANGUAGE plpgsql SECURITY DEFINER
+COMMENT ON FUNCTION "public"."get_live_session_audience"("p_session_id" "uuid", "p_limit" integer) IS 'Limited active live-room audience snapshot for authenticated viewers. Returns public profile fields only.';
+
+
+--
+-- Name: get_my_coin_order_history(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_my_coin_order_history"("p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "tier_id" "text", "coins" integer, "bonus_coins" integer, "price_cents" integer, "currency" "text", "status" "public"."coin_order_status", "invoice_url" "text", "receipt_url" "text", "paid_at" timestamp with time zone, "created_at" timestamp with time zone)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 begin
   if auth.uid() is null then
@@ -4383,13 +5940,15 @@ begin
 end $$;
 
 
+ALTER FUNCTION "public"."get_my_coin_order_history"("p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
 --
--- Name: get_my_ingress_credentials(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_my_ingress_credentials("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_my_ingress_credentials(p_session_id uuid) RETURNS TABLE(ingress_url text, ingress_stream_key text, ingress_type text)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_my_ingress_credentials"("p_session_id" "uuid") RETURNS TABLE("ingress_url" "text", "ingress_stream_key" "text", "ingress_type" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   -- Nur authenticated User
@@ -4408,13 +5967,51 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_my_ingress_credentials"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_my_whip_ingress(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_my_preorder_summary(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_my_whip_ingress() RETURNS TABLE(ingress_id text, ingress_url text, stream_key text, room_name text)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_my_preorder_summary"() RETURNS TABLE("product_id" "uuid", "title" "text", "cover_url" "text", "interested_count" bigint, "total_quantity" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT p.id, p.title, p.cover_url,
+         count(pp.id)                       AS interested_count,
+         COALESCE(sum(pp.quantity), 0)::bigint AS total_quantity
+  FROM public.products p
+  LEFT JOIN public.product_preorders pp
+    ON pp.product_id = p.id AND pp.status IN ('interested', 'notified')
+  WHERE p.seller_id = auth.uid() AND p.sale_mode = 'preorder'
+  GROUP BY p.id, p.title, p.cover_url
+  ORDER BY interested_count DESC, p.created_at DESC;
+$$;
+
+
+ALTER FUNCTION "public"."get_my_preorder_summary"() OWNER TO "postgres";
+
+--
+-- Name: get_my_referral_count(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_my_referral_count"() RETURNS integer
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT count(*)::int FROM public.profiles WHERE referred_by = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."get_my_referral_count"() OWNER TO "postgres";
+
+--
+-- Name: get_my_whip_ingress(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_my_whip_ingress"() RETURNS TABLE("ingress_id" "text", "ingress_url" "text", "stream_key" "text", "room_name" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   RETURN QUERY
@@ -4425,13 +6022,63 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_my_whip_ingress"() OWNER TO "postgres";
+
 --
--- Name: get_post_comment_counts(uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_my_women_only_status(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_post_comment_counts(p_post_ids uuid[]) RETURNS TABLE(post_id uuid, cnt bigint)
-    LANGUAGE sql STABLE
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_my_women_only_status"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_status text;
+  v_verified boolean;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('status', 'none', 'verified', false);
+  END IF;
+  SELECT women_only_verified INTO v_verified FROM profiles WHERE id = v_uid;
+  SELECT status INTO v_status FROM women_only_requests WHERE user_id = v_uid;
+  RETURN jsonb_build_object(
+    'status', COALESCE(v_status, 'none'),
+    'verified', COALESCE(v_verified, false)
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_my_women_only_status"() OWNER TO "postgres";
+
+--
+-- Name: get_order_rating("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_order_rating"("p_user_id" "uuid") RETURNS TABLE("seller_avg" numeric, "seller_count" bigint, "buyer_avg" numeric, "buyer_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT
+    round(avg(rating) FILTER (WHERE reviewer_role = 'buyer'), 2),
+    count(*)          FILTER (WHERE reviewer_role = 'buyer'),
+    round(avg(rating) FILTER (WHERE reviewer_role = 'seller'), 2),
+    count(*)          FILTER (WHERE reviewer_role = 'seller')
+  FROM public.order_reviews
+  WHERE reviewee_id = p_user_id;
+$$;
+
+
+ALTER FUNCTION "public"."get_order_rating"("p_user_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: get_post_comment_counts("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_post_comment_counts"("p_post_ids" "uuid"[]) RETURNS TABLE("post_id" "uuid", "cnt" bigint)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT c.post_id, COUNT(*)::bigint
   FROM public.comments c
@@ -4440,13 +6087,15 @@ CREATE FUNCTION public.get_post_comment_counts(p_post_ids uuid[]) RETURNS TABLE(
 $$;
 
 
+ALTER FUNCTION "public"."get_post_comment_counts"("p_post_ids" "uuid"[]) OWNER TO "postgres";
+
 --
--- Name: get_post_comments_web(uuid, integer, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_post_comments_web("uuid", integer, "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_post_comments_web(p_post_id uuid, p_limit integer DEFAULT 30, p_viewer_id uuid DEFAULT NULL::uuid) RETURNS TABLE(id uuid, post_id uuid, user_id uuid, parent_id uuid, body text, like_count bigint, liked_by_me boolean, reply_count bigint, created_at timestamp with time zone, author_id uuid, author_username text, author_display_name text, author_avatar_url text, author_verified boolean)
-    LANGUAGE sql STABLE
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_post_comments_web"("p_post_id" "uuid", "p_limit" integer DEFAULT 30, "p_viewer_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("id" "uuid", "post_id" "uuid", "user_id" "uuid", "parent_id" "uuid", "body" "text", "like_count" bigint, "liked_by_me" boolean, "reply_count" bigint, "created_at" timestamp with time zone, "author_id" "uuid", "author_username" "text", "author_display_name" "text", "author_avatar_url" "text", "author_verified" boolean)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   WITH base AS (
     SELECT
@@ -4505,13 +6154,15 @@ CREATE FUNCTION public.get_post_comments_web(p_post_id uuid, p_limit integer DEF
 $$;
 
 
+ALTER FUNCTION "public"."get_post_comments_web"("p_post_id" "uuid", "p_limit" integer, "p_viewer_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_post_like_counts(uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_post_like_counts("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_post_like_counts(p_post_ids uuid[]) RETURNS TABLE(post_id uuid, cnt bigint)
-    LANGUAGE sql STABLE
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_post_like_counts"("p_post_ids" "uuid"[]) RETURNS TABLE("post_id" "uuid", "cnt" bigint)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT l.post_id, COUNT(*)::bigint
   FROM public.likes l
@@ -4520,13 +6171,38 @@ CREATE FUNCTION public.get_post_like_counts(p_post_ids uuid[]) RETURNS TABLE(pos
 $$;
 
 
+ALTER FUNCTION "public"."get_post_like_counts"("p_post_ids" "uuid"[]) OWNER TO "postgres";
+
 --
--- Name: get_profile_posts_web(uuid, integer, integer, timestamp with time zone, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_product_preorders("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_profile_posts_web(p_user_id uuid, result_limit integer DEFAULT 24, result_offset integer DEFAULT 0, before_ts timestamp with time zone DEFAULT NULL::timestamp with time zone, sort_key text DEFAULT 'newest'::text) RETURNS TABLE(id uuid, author_id uuid, caption text, media_url text, media_type text, thumbnail_url text, view_count bigint, tags text[], allow_comments boolean, allow_duet boolean, women_only boolean, is_pinned boolean, aspect_ratio text, created_at timestamp with time zone, like_count bigint, comment_count bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_product_preorders"("p_product_id" "uuid") RETURNS TABLE("user_id" "uuid", "username" "text", "avatar_url" "text", "quantity" integer, "note" "text", "status" "text", "created_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT pp.user_id, pr.username, pr.avatar_url, pp.quantity, pp.note, pp.status, pp.created_at
+  FROM public.product_preorders pp
+  JOIN public.profiles pr ON pr.id = pp.user_id
+  WHERE pp.product_id = p_product_id
+    AND EXISTS (
+      SELECT 1 FROM public.products p
+      WHERE p.id = p_product_id
+        AND (p.seller_id = auth.uid() OR COALESCE(public.is_admin(), false))
+    )
+  ORDER BY pp.created_at DESC;
+$$;
+
+
+ALTER FUNCTION "public"."get_product_preorders"("p_product_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: get_profile_posts_web("uuid", integer, integer, timestamp with time zone, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_profile_posts_web"("p_user_id" "uuid", "result_limit" integer DEFAULT 24, "result_offset" integer DEFAULT 0, "before_ts" timestamp with time zone DEFAULT NULL::timestamp with time zone, "sort_key" "text" DEFAULT 'newest'::"text") RETURNS TABLE("id" "uuid", "author_id" "uuid", "caption" "text", "media_url" "text", "media_type" "text", "thumbnail_url" "text", "view_count" bigint, "tags" "text"[], "allow_comments" boolean, "allow_duet" boolean, "women_only" boolean, "is_pinned" boolean, "aspect_ratio" "text", "created_at" timestamp with time zone, "like_count" bigint, "comment_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id,
@@ -4571,13 +6247,15 @@ CREATE FUNCTION public.get_profile_posts_web(p_user_id uuid, result_limit intege
 $$;
 
 
+ALTER FUNCTION "public"."get_profile_posts_web"("p_user_id" "uuid", "result_limit" integer, "result_offset" integer, "before_ts" timestamp with time zone, "sort_key" "text") OWNER TO "postgres";
+
 --
--- Name: get_public_discover_people_web(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_discover_people_web(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_discover_people_web(result_limit integer DEFAULT 12) RETURNS TABLE(id uuid, username text, display_name text, avatar_url text, verified boolean, reason text)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_discover_people_web"("result_limit" integer DEFAULT 12) RETURNS TABLE("id" "uuid", "username" "text", "display_name" "text", "avatar_url" "text", "verified" boolean, "reason" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id,
@@ -4596,13 +6274,15 @@ CREATE FUNCTION public.get_public_discover_people_web(result_limit integer DEFAU
 $$;
 
 
+ALTER FUNCTION "public"."get_public_discover_people_web"("result_limit" integer) OWNER TO "postgres";
+
 --
--- Name: get_public_explore_feed_web(integer, integer, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_explore_feed_web(integer, integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_explore_feed_web(result_limit integer DEFAULT 12, result_offset integer DEFAULT 0, sort_key text DEFAULT 'newest'::text) RETURNS TABLE(id uuid, user_id uuid, caption text, video_url text, media_type text, thumbnail_url text, view_count bigint, like_count bigint, comment_count bigint, hashtags text[], allow_comments boolean, allow_duet boolean, allow_download boolean, women_only boolean, privacy text, aspect_ratio text, audio_url text, audio_volume double precision, created_at timestamp with time zone, author_id uuid, author_username text, author_display_name text, author_avatar_url text, author_verified boolean)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_explore_feed_web"("result_limit" integer DEFAULT 12, "result_offset" integer DEFAULT 0, "sort_key" "text" DEFAULT 'newest'::"text") RETURNS TABLE("id" "uuid", "user_id" "uuid", "caption" "text", "video_url" "text", "media_type" "text", "thumbnail_url" "text", "view_count" bigint, "like_count" bigint, "comment_count" bigint, "hashtags" "text"[], "allow_comments" boolean, "allow_duet" boolean, "allow_download" boolean, "women_only" boolean, "privacy" "text", "aspect_ratio" "text", "audio_url" "text", "audio_volume" double precision, "created_at" timestamp with time zone, "author_id" "uuid", "author_username" "text", "author_display_name" "text", "author_avatar_url" "text", "author_verified" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   WITH visible_posts AS MATERIALIZED (
     SELECT
@@ -4677,13 +6357,15 @@ CREATE FUNCTION public.get_public_explore_feed_web(result_limit integer DEFAULT 
 $$;
 
 
+ALTER FUNCTION "public"."get_public_explore_feed_web"("result_limit" integer, "result_offset" integer, "sort_key" "text") OWNER TO "postgres";
+
 --
--- Name: get_public_feed_web(integer, timestamp with time zone, uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_feed_web(integer, timestamp with time zone, "uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_feed_web(result_limit integer DEFAULT 12, before_ts timestamp with time zone DEFAULT NULL::timestamp with time zone, exclude_post_ids uuid[] DEFAULT '{}'::uuid[]) RETURNS TABLE(id uuid, user_id uuid, caption text, video_url text, media_type text, thumbnail_url text, view_count bigint, like_count bigint, comment_count bigint, hashtags text[], allow_comments boolean, allow_duet boolean, allow_download boolean, women_only boolean, privacy text, aspect_ratio text, audio_url text, audio_volume double precision, created_at timestamp with time zone, author_id uuid, author_username text, author_display_name text, author_avatar_url text, author_verified boolean)
-    LANGUAGE sql STABLE
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_feed_web"("result_limit" integer DEFAULT 12, "before_ts" timestamp with time zone DEFAULT NULL::timestamp with time zone, "exclude_post_ids" "uuid"[] DEFAULT '{}'::"uuid"[]) RETURNS TABLE("id" "uuid", "user_id" "uuid", "caption" "text", "video_url" "text", "media_type" "text", "thumbnail_url" "text", "view_count" bigint, "like_count" bigint, "comment_count" bigint, "hashtags" "text"[], "allow_comments" boolean, "allow_duet" boolean, "allow_download" boolean, "women_only" boolean, "privacy" "text", "aspect_ratio" "text", "audio_url" "text", "audio_volume" double precision, "created_at" timestamp with time zone, "author_id" "uuid", "author_username" "text", "author_display_name" "text", "author_avatar_url" "text", "author_verified" boolean)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id,
@@ -4725,13 +6407,15 @@ CREATE FUNCTION public.get_public_feed_web(result_limit integer DEFAULT 12, befo
 $$;
 
 
+ALTER FUNCTION "public"."get_public_feed_web"("result_limit" integer, "before_ts" timestamp with time zone, "exclude_post_ids" "uuid"[]) OWNER TO "postgres";
+
 --
--- Name: get_public_feed_web_anon(integer, timestamp with time zone, uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_feed_web_anon(integer, timestamp with time zone, "uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_feed_web_anon(result_limit integer DEFAULT 12, before_ts timestamp with time zone DEFAULT NULL::timestamp with time zone, exclude_post_ids uuid[] DEFAULT '{}'::uuid[]) RETURNS TABLE(id uuid, user_id uuid, caption text, video_url text, media_type text, thumbnail_url text, view_count bigint, like_count bigint, comment_count bigint, hashtags text[], allow_comments boolean, allow_duet boolean, allow_download boolean, women_only boolean, privacy text, aspect_ratio text, audio_url text, audio_volume double precision, created_at timestamp with time zone, author_id uuid, author_username text, author_display_name text, author_avatar_url text, author_verified boolean)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_feed_web_anon"("result_limit" integer DEFAULT 12, "before_ts" timestamp with time zone DEFAULT NULL::timestamp with time zone, "exclude_post_ids" "uuid"[] DEFAULT '{}'::"uuid"[]) RETURNS TABLE("id" "uuid", "user_id" "uuid", "caption" "text", "video_url" "text", "media_type" "text", "thumbnail_url" "text", "view_count" bigint, "like_count" bigint, "comment_count" bigint, "hashtags" "text"[], "allow_comments" boolean, "allow_duet" boolean, "allow_download" boolean, "women_only" boolean, "privacy" "text", "aspect_ratio" "text", "audio_url" "text", "audio_volume" double precision, "created_at" timestamp with time zone, "author_id" "uuid", "author_username" "text", "author_display_name" "text", "author_avatar_url" "text", "author_verified" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id,
@@ -4774,13 +6458,15 @@ CREATE FUNCTION public.get_public_feed_web_anon(result_limit integer DEFAULT 12,
 $$;
 
 
+ALTER FUNCTION "public"."get_public_feed_web_anon"("result_limit" integer, "before_ts" timestamp with time zone, "exclude_post_ids" "uuid"[]) OWNER TO "postgres";
+
 --
--- Name: get_public_feed_web_anon_first_page(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_feed_web_anon_first_page(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_feed_web_anon_first_page(result_limit integer DEFAULT 12) RETURNS TABLE(id uuid, user_id uuid, caption text, video_url text, media_type text, thumbnail_url text, view_count bigint, like_count bigint, comment_count bigint, hashtags text[], allow_comments boolean, allow_duet boolean, allow_download boolean, women_only boolean, privacy text, aspect_ratio text, audio_url text, audio_volume double precision, created_at timestamp with time zone, author_id uuid, author_username text, author_display_name text, author_avatar_url text, author_verified boolean)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_feed_web_anon_first_page"("result_limit" integer DEFAULT 12) RETURNS TABLE("id" "uuid", "user_id" "uuid", "caption" "text", "video_url" "text", "media_type" "text", "thumbnail_url" "text", "view_count" bigint, "like_count" bigint, "comment_count" bigint, "hashtags" "text"[], "allow_comments" boolean, "allow_duet" boolean, "allow_download" boolean, "women_only" boolean, "privacy" "text", "aspect_ratio" "text", "audio_url" "text", "audio_volume" double precision, "created_at" timestamp with time zone, "author_id" "uuid", "author_username" "text", "author_display_name" "text", "author_avatar_url" "text", "author_verified" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   WITH visible_posts AS MATERIALIZED (
     SELECT
@@ -4842,13 +6528,15 @@ CREATE FUNCTION public.get_public_feed_web_anon_first_page(result_limit integer 
 $$;
 
 
+ALTER FUNCTION "public"."get_public_feed_web_anon_first_page"("result_limit" integer) OWNER TO "postgres";
+
 --
--- Name: get_public_post_web(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_post_web("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_post_web(p_post_id uuid) RETURNS TABLE(id uuid, author_id uuid, caption text, media_url text, media_type text, thumbnail_url text, view_count bigint, tags text[], allow_comments boolean, allow_duet boolean, allow_download boolean, privacy text, women_only boolean, aspect_ratio text, audio_url text, audio_volume double precision, created_at timestamp with time zone, like_count bigint, comment_count bigint, author_username text, author_display_name text, author_avatar_url text, author_verified boolean)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_post_web"("p_post_id" "uuid") RETURNS TABLE("id" "uuid", "author_id" "uuid", "caption" "text", "media_url" "text", "media_type" "text", "thumbnail_url" "text", "view_count" bigint, "tags" "text"[], "allow_comments" boolean, "allow_duet" boolean, "allow_download" boolean, "privacy" "text", "women_only" boolean, "aspect_ratio" "text", "audio_url" "text", "audio_volume" double precision, "created_at" timestamp with time zone, "like_count" bigint, "comment_count" bigint, "author_username" "text", "author_display_name" "text", "author_avatar_url" "text", "author_verified" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id,
@@ -4885,13 +6573,15 @@ CREATE FUNCTION public.get_public_post_web(p_post_id uuid) RETURNS TABLE(id uuid
 $$;
 
 
+ALTER FUNCTION "public"."get_public_post_web"("p_post_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: get_public_profile_web(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_profile_web("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_profile_web(p_username text) RETURNS TABLE(id uuid, username text, display_name text, avatar_url text, bio text, is_verified boolean, is_private boolean, website text, teip text, follower_count bigint, following_count bigint, post_count bigint, is_live boolean, live_session_id uuid)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_profile_web"("p_username" "text") RETURNS TABLE("id" "uuid", "username" "text", "display_name" "text", "avatar_url" "text", "bio" "text", "is_verified" boolean, "is_private" boolean, "website" "text", "teip" "text", "follower_count" bigint, "following_count" bigint, "post_count" bigint, "is_live" boolean, "live_session_id" "uuid")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   WITH profile AS (
     SELECT
@@ -4944,13 +6634,15 @@ CREATE FUNCTION public.get_public_profile_web(p_username text) RETURNS TABLE(id 
 $$;
 
 
+ALTER FUNCTION "public"."get_public_profile_web"("p_username" "text") OWNER TO "postgres";
+
 --
--- Name: get_public_shop_preview_products(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_public_shop_preview_products(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_public_shop_preview_products(result_limit integer DEFAULT 6) RETURNS TABLE(id uuid, title text, price_coins integer, sale_price_coins integer, cover_url text)
-    LANGUAGE sql STABLE
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_public_shop_preview_products"("result_limit" integer DEFAULT 6) RETURNS TABLE("id" "uuid", "title" "text", "price_coins" integer, "sale_price_coins" integer, "cover_url" "text")
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     p.id,
@@ -4966,12 +6658,14 @@ CREATE FUNCTION public.get_public_shop_preview_products(result_limit integer DEF
 $$;
 
 
+ALTER FUNCTION "public"."get_public_shop_preview_products"("result_limit" integer) OWNER TO "postgres";
+
 --
--- Name: get_saved_products(integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_saved_products(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_saved_products(p_limit integer DEFAULT 50, p_offset integer DEFAULT 0) RETURNS TABLE(id uuid, seller_id uuid, seller_username text, seller_avatar text, seller_verified boolean, title text, description text, category text, price_coins integer, sale_price_coins integer, cover_url text, image_urls text[], file_url text, stock integer, sold_count integer, is_active boolean, women_only boolean, free_shipping boolean, location text, created_at timestamp with time zone, avg_rating numeric, review_count integer, saved_at timestamp with time zone)
-    LANGUAGE sql STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_saved_products"("p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "seller_id" "uuid", "seller_username" "text", "seller_avatar" "text", "seller_verified" boolean, "title" "text", "description" "text", "category" "text", "price_coins" integer, "sale_price_coins" integer, "price_eur" numeric, "cover_url" "text", "image_urls" "text"[], "file_url" "text", "stock" integer, "sold_count" integer, "is_active" boolean, "women_only" boolean, "free_shipping" boolean, "location" "text", "created_at" timestamp with time zone, "avg_rating" numeric, "review_count" integer, "saved_at" timestamp with time zone, "sale_mode" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$
   SELECT
     p.id,
@@ -4984,6 +6678,7 @@ CREATE FUNCTION public.get_saved_products(p_limit integer DEFAULT 50, p_offset i
     p.category,
     p.price_coins,
     p.sale_price_coins,
+    p.price_eur,
     p.cover_url,
     p.image_urls,
     p.file_url,
@@ -4995,8 +6690,9 @@ CREATE FUNCTION public.get_saved_products(p_limit integer DEFAULT 50, p_offset i
     p.location,
     p.created_at,
     p.avg_rating,
-    COALESCE(p.review_count, 0) AS review_count,
-    sp.created_at          AS saved_at
+    COALESCE(p.review_count, 0)  AS review_count,
+    sp.created_at          AS saved_at,
+    COALESCE(p.sale_mode, 'coins') AS sale_mode
   FROM public.saved_products sp
   JOIN public.products  p  ON p.id  = sp.product_id
   JOIN public.profiles  pr ON pr.id = p.seller_id
@@ -5008,12 +6704,14 @@ CREATE FUNCTION public.get_saved_products(p_limit integer DEFAULT 50, p_offset i
 $$;
 
 
+ALTER FUNCTION "public"."get_saved_products"("p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
 --
--- Name: get_shop_products(uuid, text, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_shop_products("uuid", "text", integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_shop_products(p_seller_id uuid DEFAULT NULL::uuid, p_category text DEFAULT NULL::text, p_limit integer DEFAULT 40, p_offset integer DEFAULT 0) RETURNS TABLE(id uuid, seller_id uuid, seller_username text, seller_avatar text, seller_verified boolean, title text, description text, category text, price_coins integer, sale_price_coins integer, cover_url text, image_urls text[], file_url text, stock integer, sold_count integer, is_active boolean, women_only boolean, free_shipping boolean, location text, created_at timestamp with time zone, avg_rating numeric, review_count integer)
-    LANGUAGE sql STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_shop_products"("p_seller_id" "uuid" DEFAULT NULL::"uuid", "p_category" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 40, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "seller_id" "uuid", "seller_username" "text", "seller_avatar" "text", "seller_verified" boolean, "title" "text", "description" "text", "category" "text", "price_coins" integer, "sale_price_coins" integer, "price_eur" numeric, "cover_url" "text", "image_urls" "text"[], "file_url" "text", "stock" integer, "sold_count" integer, "is_active" boolean, "women_only" boolean, "free_shipping" boolean, "location" "text", "created_at" timestamp with time zone, "avg_rating" numeric, "review_count" integer, "sale_mode" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$
   SELECT
     p.id,
@@ -5026,6 +6724,7 @@ CREATE FUNCTION public.get_shop_products(p_seller_id uuid DEFAULT NULL::uuid, p_
     p.category,
     p.price_coins,
     p.sale_price_coins,
+    p.price_eur,
     p.cover_url,
     p.image_urls,
     p.file_url,
@@ -5037,7 +6736,8 @@ CREATE FUNCTION public.get_shop_products(p_seller_id uuid DEFAULT NULL::uuid, p_
     p.location,
     p.created_at,
     p.avg_rating,
-    COALESCE(p.review_count, 0) AS review_count
+    COALESCE(p.review_count, 0)  AS review_count,
+    COALESCE(p.sale_mode, 'coins') AS sale_mode
   FROM public.products p
   JOIN public.profiles pr ON pr.id = p.seller_id
   WHERE p.is_active = true
@@ -5055,13 +6755,15 @@ CREATE FUNCTION public.get_shop_products(p_seller_id uuid DEFAULT NULL::uuid, p_
 $$;
 
 
+ALTER FUNCTION "public"."get_shop_products"("p_seller_id" "uuid", "p_category" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
 --
--- Name: get_trending_hashtags(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_trending_hashtags(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_trending_hashtags(result_limit integer DEFAULT 20) RETURNS TABLE(tag text, post_count bigint, total_views bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_trending_hashtags"("result_limit" integer DEFAULT 20) RETURNS TABLE("tag" "text", "post_count" bigint, "total_views" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   WITH recent_posts AS (
     SELECT p.tags, p.view_count
@@ -5092,13 +6794,15 @@ CREATE FUNCTION public.get_trending_hashtags(result_limit integer DEFAULT 20) RE
 $$;
 
 
+ALTER FUNCTION "public"."get_trending_hashtags"("result_limit" integer) OWNER TO "postgres";
+
 --
--- Name: get_unread_shell_counts(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_unread_shell_counts(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_unread_shell_counts() RETURNS TABLE(unread_dms bigint, unread_notifications bigint)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_unread_shell_counts"() RETURNS TABLE("unread_dms" bigint, "unread_notifications" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   WITH viewer AS (
     SELECT auth.uid() AS id
@@ -5123,13 +6827,15 @@ CREATE FUNCTION public.get_unread_shell_counts() RETURNS TABLE(unread_dms bigint
 $$;
 
 
+ALTER FUNCTION "public"."get_unread_shell_counts"() OWNER TO "postgres";
+
 --
--- Name: get_user_variant(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_user_variant("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_user_variant(p_experiment_name text) RETURNS text
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."get_user_variant"("p_experiment_name" "text") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_user_id UUID;
@@ -5164,40 +6870,41 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."get_user_variant"("p_experiment_name" "text") OWNER TO "postgres";
+
 --
--- Name: get_vibe_feed(double precision, double precision, integer, text, boolean, uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_vibe_feed(double precision, double precision, integer, "text", boolean, "uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.get_vibe_feed(explore_weight double precision DEFAULT 0.5, brain_weight double precision DEFAULT 0.5, result_limit integer DEFAULT 20, filter_tag text DEFAULT NULL::text, include_seen boolean DEFAULT false, exclude_ids uuid[] DEFAULT '{}'::uuid[]) RETURNS TABLE(id uuid, author_id uuid, caption text, media_url text, media_type text, thumbnail_url text, audio_url text, dwell_time_score double precision, score_explore double precision, score_brain double precision, tags text[], guild_id uuid, is_guild_post boolean, created_at timestamp with time zone, privacy text, allow_comments boolean, allow_download boolean, allow_duet boolean, username text, avatar_url text, is_verified boolean, final_score double precision)
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_vibe_feed"("explore_weight" double precision DEFAULT 0.5, "brain_weight" double precision DEFAULT 0.5, "result_limit" integer DEFAULT 20, "filter_tag" "text" DEFAULT NULL::"text", "include_seen" boolean DEFAULT false, "exclude_ids" "uuid"[] DEFAULT '{}'::"uuid"[]) RETURNS TABLE("id" "uuid", "author_id" "uuid", "caption" "text", "media_url" "text", "media_type" "text", "thumbnail_url" "text", "audio_url" "text", "dwell_time_score" double precision, "score_explore" double precision, "score_brain" double precision, "tags" "text"[], "guild_id" "uuid", "is_guild_post" boolean, "created_at" timestamp with time zone, "privacy" "text", "allow_comments" boolean, "allow_download" boolean, "allow_duet" boolean, "username" "text", "avatar_url" "text", "is_verified" boolean, "final_score" double precision)
+    LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
+#variable_conflict use_column
 DECLARE
   v_user_id         UUID;
   v_is_woz_verified BOOLEAN := FALSE;
+  v_my_guild        UUID;
 BEGIN
   v_user_id := auth.uid();
 
-  -- Women-Only Verifikation des aktuellen Users einmalig prüfen
   IF v_user_id IS NOT NULL THEN
-    SELECT (gender = 'female' AND women_only_verified = TRUE)
-      INTO v_is_woz_verified
+    SELECT (gender = 'female' AND women_only_verified = TRUE), profiles.guild_id
+      INTO v_is_woz_verified, v_my_guild
       FROM public.profiles
-     WHERE id = v_user_id;
+     WHERE profiles.id = v_user_id;
   END IF;
 
   RETURN QUERY
   WITH
 
-  -- ── Bereits gesehene Posts ────────────────────────────────────────────────
+  -- ── Gesehene Posts: DIE Tabelle, in die Dwell + Skip wirklich schreiben ──
   seen_ids AS (
     SELECT post_id
-    FROM public.seen_posts
+    FROM public.post_dwell_log
     WHERE user_id = v_user_id
       AND v_user_id IS NOT NULL
   ),
 
-  -- ── Gefolgten Creatoren des Users ─────────────────────────────────────────
-  -- Wird für Following-Boost genutzt
   following_ids AS (
     SELECT following_id
     FROM public.follows
@@ -5205,7 +6912,15 @@ BEGIN
       AND v_user_id IS NOT NULL
   ),
 
-  -- ── Score-Berechnung ──────────────────────────────────────────────────────
+  -- ── DM-Kontakte: enge Beziehungen leicht bevorzugen ──
+  dm_ids AS (
+    SELECT CASE WHEN c.participant_1 = v_user_id
+                THEN c.participant_2 ELSE c.participant_1 END AS uid
+    FROM public.conversations c
+    WHERE v_user_id IS NOT NULL
+      AND v_user_id IN (c.participant_1, c.participant_2)
+  ),
+
   scored AS (
     SELECT
       p.id,
@@ -5229,83 +6944,96 @@ BEGIN
       pr.username,
       pr.avatar_url,
       COALESCE(pr.is_verified, FALSE)        AS is_verified,
-      (sp.post_id IS NOT NULL)               AS is_seen,
 
-      -- ── Algorithmus v4 FINAL ───────────────────────────────────────────
-      --
-      -- Signal              Gewicht   Begründung
-      -- ─────────────────── ──────── ──────────────────────────────────────
-      -- Dwell Time          40%      Stärkstes Engagement-Signal
-      -- Following-Boost     15%      Creator denen du folgst bevorzugen
-      -- Freshness           15%      Neuere Posts eine Chance geben (72h)
-      -- Explore-Match       15%      User-Slider Präferenz
-      -- Brain-Match         10%      User-Slider Präferenz
-      -- Popularity          05% (LOG)Bewährte Inhalte leicht bevorzugen
-      --
       (
-        -- 1. Dwell Time (40%) — dominantes Signal
-        LEAST(COALESCE(p.dwell_time_score, 0.0), 1.0) * 0.40
+        (
+          -- 1. Dwell (35 %) — weiterhin dominant
+          LEAST(COALESCE(p.dwell_time_score, 0.0), 1.0) * 0.35
 
-        -- 2. Following-Boost (15%) — Post vom gefolgten Creator?
-        + CASE WHEN fi.following_id IS NOT NULL THEN 0.15 ELSE 0.0 END
+          -- 2. Following (15 %)
+          + CASE WHEN fi.following_id IS NOT NULL THEN 0.15 ELSE 0.0 END
 
-        -- 3. Freshness (15%) — linearer Decay über 72h (statt 48h)
-        + GREATEST(
-            0.0,
-            0.15 - EXTRACT(EPOCH FROM (NOW() - p.created_at))
-                   / (72.0 * 3600.0) * 0.15
-          )
+          -- 3. Freshness (12 %, linear über 72h)
+          + GREATEST(
+              0.0,
+              0.12 - EXTRACT(EPOCH FROM (NOW() - p.created_at))
+                     / (72.0 * 3600.0) * 0.12
+            )
 
-        -- 4. Explore-Slider-Match (15%)
-        + (1.0 - ABS(COALESCE(p.score_explore, 0.5) - explore_weight)) * 0.15
+          -- 4. Tag-Affinität (12 %) — echtes gelerntes Interesse
+          + COALESCE(ta.max_aff, 0.0) * 0.12
 
-        -- 5. Brain-Slider-Match (10%)
-        + (1.0 - ABS(COALESCE(p.score_brain, 0.5) - brain_weight)) * 0.10
+          -- 5. Explore-/Brain-Slider-Match (8 % + 5 %)
+          + (1.0 - ABS(COALESCE(p.score_explore, 0.5) - explore_weight)) * 0.08
+          + (1.0 - ABS(COALESCE(p.score_brain,   0.5) - brain_weight))   * 0.05
 
-        -- 6. Popularitäts-Boost (5%) — logarithmisch damit Viral-Posts
-        --    nicht alles dominieren (TikTok-Prinzip: auch kleine Posts Chance)
-        + LEAST(
-            0.05,
-            LN(1.0 + COALESCE(p.view_count, 0) * 0.001 + COALESCE(p.like_count, 0) * 0.01)
-            / 10.0
-          )
+          -- 6. Wilson-Popularity (6 %) — Like-RATE statt Roh-Counts.
+          --    Lower bound des 95%-Konfidenzintervalls von likes/views.
+          + CASE
+              WHEN COALESCE(p.view_count, 0) > 0 THEN
+                0.06 * GREATEST(0.0, (
+                  (LEAST(COALESCE(p.like_count,0)::float / p.view_count, 1.0)
+                    + 1.9208 / p.view_count
+                    - 1.96 * sqrt(
+                        (LEAST(COALESCE(p.like_count,0)::float / p.view_count, 1.0)
+                         * (1.0 - LEAST(COALESCE(p.like_count,0)::float / p.view_count, 1.0))
+                         + 0.9604 / p.view_count
+                        ) / p.view_count
+                      )
+                  ) / (1.0 + 3.8416 / p.view_count)
+                ))
+              ELSE 0.0
+            END
 
-        -- 7. Women-Only Boost (5%) — Verifizierte Frauen sehen WOZ-Posts oben
-        + CASE
-            WHEN p.women_only = TRUE AND v_is_woz_verified = TRUE THEN 0.05
-            ELSE 0.0
+          -- 7. Cold-Start-Boost (≤ 20 %): junge Posts mit wenig Reichweite
+          --    bekommen ein Startpublikum; schmilzt über die ersten 20 Views ab.
+          + CASE
+              WHEN p.created_at > NOW() - INTERVAL '14 days' THEN
+                0.20 * GREATEST(0.0, 1.0 - COALESCE(p.view_count, 0) / 20.0)
+              ELSE 0.0
+            END
+
+          -- 8. Community-/Commerce-Boosts
+          + CASE WHEN v_my_guild IS NOT NULL AND pr.guild_id = v_my_guild THEN 0.05 ELSE 0.0 END
+          + CASE WHEN dm.uid IS NOT NULL THEN 0.04 ELSE 0.0 END
+          + CASE WHEN p.product_id IS NOT NULL THEN 0.02 ELSE 0.0 END
+
+          -- 9. Women-Only-Boost (5 %)
+          + CASE WHEN p.women_only = TRUE AND v_is_woz_verified = TRUE THEN 0.05 ELSE 0.0 END
+        )
+        -- ── Seen-Penalty: weich statt hartem Filter — Gesehenes rutscht nach
+        --    hinten, Feed leert sich nie. include_seen=TRUE (Client-Fallback/
+        --    „alles zeigen") deaktiviert den Penalty.
+        * CASE
+            WHEN include_seen OR sp.post_id IS NULL THEN 1.0
+            ELSE 0.15
           END
+      ) AS final_score,
 
-      ) AS final_score
+      -- Jitter einmal pro Row: ±15 % um 1.0 → jeder Aufruf mischt leicht anders
+      (0.85 + random() * 0.30) AS jitter
 
     FROM public.posts p
     LEFT JOIN public.profiles pr ON pr.id = p.author_id
-    LEFT JOIN seen_ids sp ON sp.post_id = p.id
-    LEFT JOIN following_ids fi ON fi.following_id = p.author_id
+    LEFT JOIN seen_ids sp        ON sp.post_id = p.id
+    LEFT JOIN following_ids fi   ON fi.following_id = p.author_id
+    LEFT JOIN dm_ids dm          ON dm.uid = p.author_id
+    LEFT JOIN LATERAL (
+      SELECT MAX(a.affinity) AS max_aff
+      FROM public.user_tag_affinity a
+      WHERE a.user_id = v_user_id
+        AND a.tag = ANY(COALESCE(p.tags, '{}'))
+    ) ta ON TRUE
     WHERE
       p.is_guild_post IS NOT TRUE
       AND p.privacy = 'public'
       AND COALESCE(p.is_visible, TRUE) = TRUE
-      -- Women-Only: Gefiltert durch RLS, aber doppelt sicher:
-      AND (
-        p.women_only = FALSE
-        OR v_is_woz_verified = TRUE
-      )
-      -- Tag-Filter (optional)
+      AND (p.women_only = FALSE OR v_is_woz_verified = TRUE)
       AND (filter_tag IS NULL OR p.tags @> ARRAY[filter_tag])
-      -- ID-Exclusion cursor (kein OFFSET → keine Duplikate)
       AND (array_length(exclude_ids, 1) IS NULL OR p.id != ALL(exclude_ids))
   ),
 
-  -- ── Seen-Filter ───────────────────────────────────────────────────────────
-  filtered AS (
-    SELECT *
-    FROM scored
-    WHERE (include_seen = TRUE OR is_seen = FALSE)
-  ),
-
-  -- ── Diversity: max 2 Posts pro Creator ───────────────────────────────────
-  -- Verhindert dass ein Creator den ganzen Feed dominiert
+  -- ── Diversity: max 2 Posts pro Creator (nach echtem Score, ohne Jitter) ──
   ranked AS (
     SELECT
       *,
@@ -5313,7 +7041,7 @@ BEGIN
         PARTITION BY author_id
         ORDER BY final_score DESC, created_at DESC
       ) AS author_rank
-    FROM filtered
+    FROM scored
   )
 
   SELECT
@@ -5325,46 +7053,83 @@ BEGIN
     username, avatar_url, is_verified, final_score
   FROM ranked
   WHERE author_rank <= 2
-  ORDER BY final_score DESC, created_at DESC
+  ORDER BY (final_score * jitter) DESC, created_at DESC
   LIMIT result_limit;
 
 END;
 $$;
 
 
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
+ALTER FUNCTION "public"."get_vibe_feed"("explore_weight" double precision, "brain_weight" double precision, "result_limit" integer, "filter_tag" "text", "include_seen" boolean, "exclude_ids" "uuid"[]) OWNER TO "postgres";
 
 --
--- Name: gift_catalog; Type: TABLE; Schema: public; Owner: -
+-- Name: get_women_only_requests("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.gift_catalog (
-    id text NOT NULL,
-    name text NOT NULL,
-    emoji text NOT NULL,
-    coin_cost integer NOT NULL,
-    diamond_value integer NOT NULL,
-    lottie_url text,
-    color text,
-    sort_order integer DEFAULT 0,
-    rarity text DEFAULT 'common'::text NOT NULL,
-    season_tag text,
-    available_from timestamp with time zone,
-    available_until timestamp with time zone,
-    CONSTRAINT gift_catalog_coin_cost_check CHECK ((coin_cost > 0)),
-    CONSTRAINT gift_catalog_diamond_value_check CHECK ((diamond_value > 0)),
-    CONSTRAINT gift_catalog_rarity_check CHECK ((rarity = ANY (ARRAY['common'::text, 'rare'::text, 'epic'::text, 'legendary'::text])))
+CREATE OR REPLACE FUNCTION "public"."get_women_only_requests"("p_status" "text" DEFAULT 'pending'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL OR NOT COALESCE(public.is_admin(), false) THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  RETURN COALESCE((
+    SELECT jsonb_agg(jsonb_build_object(
+             'user_id',      r.user_id,
+             'status',       r.status,
+             'method',       r.method,
+             'requested_at', r.requested_at,
+             'reviewed_at',  r.reviewed_at,
+             'note',         r.note,
+             'username',     p.username,
+             'display_name', p.display_name,
+             'avatar_url',   p.avatar_url
+           ) ORDER BY r.requested_at DESC)
+    FROM women_only_requests r
+    JOIN profiles p ON p.id = r.user_id
+    WHERE p_status = 'all' OR r.status = p_status
+  ), '[]'::jsonb);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_women_only_requests"("p_status" "text") OWNER TO "postgres";
+
+--
+-- Name: gift_catalog; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."gift_catalog" (
+    "id" "text" NOT NULL,
+    "name" "text" NOT NULL,
+    "emoji" "text" NOT NULL,
+    "coin_cost" integer NOT NULL,
+    "diamond_value" integer NOT NULL,
+    "lottie_url" "text",
+    "color" "text",
+    "sort_order" integer DEFAULT 0,
+    "rarity" "text" DEFAULT 'common'::"text" NOT NULL,
+    "season_tag" "text",
+    "available_from" timestamp with time zone,
+    "available_until" timestamp with time zone,
+    CONSTRAINT "gift_catalog_coin_cost_check" CHECK (("coin_cost" > 0)),
+    CONSTRAINT "gift_catalog_diamond_value_check" CHECK (("diamond_value" > 0)),
+    CONSTRAINT "gift_catalog_rarity_check" CHECK (("rarity" = ANY (ARRAY['common'::"text", 'rare'::"text", 'epic'::"text", 'legendary'::"text"])))
 );
 
 
+ALTER TABLE "public"."gift_catalog" OWNER TO "postgres";
+
 --
--- Name: gift_is_active(public.gift_catalog); Type: FUNCTION; Schema: public; Owner: -
+-- Name: gift_is_active("public"."gift_catalog"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.gift_is_active(g public.gift_catalog) RETURNS boolean
-    LANGUAGE sql IMMUTABLE
+CREATE OR REPLACE FUNCTION "public"."gift_is_active"("g" "public"."gift_catalog") RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
     AS $$
   SELECT
     (g.available_from  IS NULL OR g.available_from  <= NOW())
@@ -5372,13 +7137,15 @@ CREATE FUNCTION public.gift_is_active(g public.gift_catalog) RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."gift_is_active"("g" "public"."gift_catalog") OWNER TO "postgres";
+
 --
--- Name: grant_moderator(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: grant_moderator("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.grant_moderator(p_session_id uuid, p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."grant_moderator"("p_session_id" "uuid", "p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE v_host UUID;
 BEGIN
@@ -5405,42 +7172,84 @@ BEGIN
 END $$;
 
 
+ALTER FUNCTION "public"."grant_moderator"("p_session_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: guard_women_only_verified(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.handle_new_user() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."guard_women_only_verified"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
-DECLARE
-  v_username TEXT;
 BEGIN
-  -- Username normalisieren
-  v_username := lower(replace(
-    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-    ' ', '_'
-  ));
-
-  -- Profil anlegen; wenn schon vorhanden (Doppel-Insert) → ignorieren
-  INSERT INTO public.profiles (id, username, explore_vibe, brain_vibe)
-  VALUES (new.id, v_username, 0.5, 0.5)
-  ON CONFLICT DO NOTHING;
-
-  RETURN new;
-EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'handle_new_user skipped: % (state: %)', SQLERRM, SQLSTATE;
-  RETURN new;
+  IF NEW.women_only_verified IS DISTINCT FROM OLD.women_only_verified
+     AND current_setting('app.woz_bypass', true) IS DISTINCT FROM 'on' THEN
+    RAISE EXCEPTION 'women_only_verified darf nur über die Freigabe-RPCs geändert werden';
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
 
+ALTER FUNCTION "public"."guard_women_only_verified"() OWNER TO "postgres";
+
 --
--- Name: has_admin_console_access(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.has_admin_console_access() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_base text;
+  v_try  int;
+BEGIN
+  v_base := btrim(COALESCE(NULLIF(NEW.raw_user_meta_data->>'username', ''),
+                           split_part(NEW.email, '@', 1)));
+  IF v_base IS NULL OR v_base = '' THEN
+    v_base := 'nutzer';
+  END IF;
+
+  FOR v_try IN 0..20 LOOP
+    BEGIN
+      INSERT INTO public.profiles (id, username)
+      VALUES (NEW.id, CASE WHEN v_try = 0 THEN v_base ELSE v_base || v_try::text END);
+      RETURN NEW;
+    EXCEPTION WHEN unique_violation THEN
+      -- Kollidierte die Kennung, ist das Profil schon da und wir sind fertig.
+      IF EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.id) THEN
+        RETURN NEW;
+      END IF;
+      -- Sonst war es der Name — nächster Versuch.
+    END;
+  END LOOP;
+
+  -- Letzter Ausweg, garantiert eindeutig.
+  INSERT INTO public.profiles (id, username)
+  VALUES (NEW.id, v_base || '-' || left(NEW.id::text, 8))
+  ON CONFLICT (id) DO NOTHING;
+
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "handle_new_user"(); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."handle_new_user"() IS 'Legt bei jeder Registrierung ein Profil an — für alle Wege: E-Mail, Google, Dashboard, Admin-API. Blockiert nie an einem belegten Namen.';
+
+
+--
+-- Name: has_admin_console_access(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."has_admin_console_access"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT COALESCE(
     (
@@ -5453,13 +7262,15 @@ CREATE FUNCTION public.has_admin_console_access() RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."has_admin_console_access"() OWNER TO "postgres";
+
 --
--- Name: heartbeat_live_session(uuid, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: heartbeat_live_session("uuid", integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.heartbeat_live_session(p_session_id uuid, p_viewer_count integer DEFAULT NULL::integer, p_peak_viewers integer DEFAULT NULL::integer) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'auth'
+CREATE OR REPLACE FUNCTION "public"."heartbeat_live_session"("p_session_id" "uuid", "p_viewer_count" integer DEFAULT NULL::integer, "p_peak_viewers" integer DEFAULT NULL::integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -5478,12 +7289,33 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."heartbeat_live_session"("p_session_id" "uuid", "p_viewer_count" integer, "p_peak_viewers" integer) OWNER TO "postgres";
+
 --
--- Name: incr_live_comment_count(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: incr_giveaway_entries(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.incr_live_comment_count() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."incr_giveaway_entries"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  UPDATE public.live_giveaways
+     SET entry_count = entry_count + 1
+   WHERE id = NEW.giveaway_id;
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."incr_giveaway_entries"() OWNER TO "postgres";
+
+--
+-- Name: incr_live_comment_count(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."incr_live_comment_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   UPDATE live_sessions
@@ -5495,12 +7327,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."incr_live_comment_count"() OWNER TO "postgres";
+
 --
--- Name: increment_live_likes(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: increment_live_likes("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.increment_live_likes(p_session_id uuid) RETURNS void
-    LANGUAGE sql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."increment_live_likes"("p_session_id" "uuid") RETURNS "void"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
   UPDATE live_sessions
   SET like_count = COALESCE(like_count, 0) + 1
@@ -5509,13 +7344,15 @@ CREATE FUNCTION public.increment_live_likes(p_session_id uuid) RETURNS void
 $$;
 
 
+ALTER FUNCTION "public"."increment_live_likes"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: increment_live_recording_views(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: increment_live_recording_views("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.increment_live_recording_views(p_recording_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."increment_live_recording_views"("p_recording_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   UPDATE public.live_recordings
@@ -5527,13 +7364,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."increment_live_recording_views"("p_recording_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: increment_post_view(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: increment_post_view("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.increment_post_view(p_post_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."increment_post_view"("p_post_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_user_id    uuid   := auth.uid();
@@ -5561,13 +7400,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."increment_post_view"("p_post_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.is_admin() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT COALESCE(
     (SELECT is_admin FROM public.profiles WHERE id = auth.uid()),
@@ -5576,13 +7417,15 @@ CREATE FUNCTION public.is_admin() RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."is_admin"() OWNER TO "postgres";
+
 --
--- Name: is_cohost_blocked(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: is_cohost_blocked("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.is_cohost_blocked(p_host_id uuid, p_user_id uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."is_cohost_blocked"("p_host_id" "uuid", "p_user_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.live_cohost_blocks
@@ -5593,13 +7436,15 @@ CREATE FUNCTION public.is_cohost_blocked(p_host_id uuid, p_user_id uuid) RETURNS
 $$;
 
 
+ALTER FUNCTION "public"."is_cohost_blocked"("p_host_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: is_feature_enabled(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: is_feature_enabled("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.is_feature_enabled(p_flag_key text) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."is_feature_enabled"("p_flag_key" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
   SELECT COALESCE(
     (SELECT enabled FROM public.feature_flags WHERE flag_key = p_flag_key),
@@ -5608,12 +7453,15 @@ CREATE FUNCTION public.is_feature_enabled(p_flag_key text) RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."is_feature_enabled"("p_flag_key" "text") OWNER TO "postgres";
+
 --
--- Name: is_following_host(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: is_following_host("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.is_following_host(p_session_id uuid) RETURNS boolean
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."is_following_host"("p_session_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_host_id UUID;
@@ -5640,13 +7488,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."is_following_host"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: is_live_session_moderator(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: is_live_session_moderator("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.is_live_session_moderator(p_session_id uuid, p_user_id uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."is_live_session_moderator"("p_session_id" "uuid", "p_user_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   SELECT
     -- (a) Expliziter Session-Moderator (vom Host ernannt)
@@ -5669,19 +7519,22 @@ CREATE FUNCTION public.is_live_session_moderator(p_session_id uuid, p_user_id uu
 $$;
 
 
---
--- Name: FUNCTION is_live_session_moderator(p_session_id uuid, p_user_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.is_live_session_moderator(p_session_id uuid, p_user_id uuid) IS 'Prüft, ob ein User Moderations-Autorität in einer live_sessions-Zeile hat. TRUE für: explizite live_moderators-Einträge ODER aktive live_cohosts (revoked_at IS NULL). v1.27.2';
-
+ALTER FUNCTION "public"."is_live_session_moderator"("p_session_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
 
 --
--- Name: is_product_saved(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: FUNCTION "is_live_session_moderator"("p_session_id" "uuid", "p_user_id" "uuid"); Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.is_product_saved(p_product_id uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
+COMMENT ON FUNCTION "public"."is_live_session_moderator"("p_session_id" "uuid", "p_user_id" "uuid") IS 'Prüft, ob ein User Moderations-Autorität in einer live_sessions-Zeile hat. TRUE für: explizite live_moderators-Einträge ODER aktive live_cohosts (revoked_at IS NULL). v1.27.2';
+
+
+--
+-- Name: is_product_saved("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."is_product_saved"("p_product_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.saved_products
@@ -5690,12 +7543,15 @@ CREATE FUNCTION public.is_product_saved(p_product_id uuid) RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."is_product_saved"("p_product_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: is_women_only_verified(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: is_women_only_verified(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.is_women_only_verified() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."is_women_only_verified"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
   SELECT EXISTS (
     SELECT 1 FROM profiles
@@ -5706,13 +7562,15 @@ CREATE FUNCTION public.is_women_only_verified() RETURNS boolean
 $$;
 
 
+ALTER FUNCTION "public"."is_women_only_verified"() OWNER TO "postgres";
+
 --
--- Name: join_live_session(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: join_live_session("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.join_live_session(p_session_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'auth'
+CREATE OR REPLACE FUNCTION "public"."join_live_session"("p_session_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
   v_user_id  UUID := auth.uid();
@@ -5748,13 +7606,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."join_live_session"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: leave_live_session(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: leave_live_session("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.leave_live_session(p_session_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'auth'
+CREATE OR REPLACE FUNCTION "public"."leave_live_session"("p_session_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
   v_user_id UUID := auth.uid();
@@ -5777,13 +7637,45 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."leave_live_session"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: link_live_session_to_scheduled(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: leave_women_only(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.link_live_session_to_scheduled(p_scheduled_live_id uuid, p_session_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."leave_women_only"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
+  END IF;
+
+  PERFORM set_config('app.woz_bypass', 'on', true);
+  UPDATE profiles
+     SET women_only_verified = false, verification_level = 0
+   WHERE id = v_uid;
+
+  -- Antrag entfernen → sauberer Neustart, falls die Nutzerin später neu beitritt.
+  DELETE FROM women_only_requests WHERE user_id = v_uid;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."leave_women_only"() OWNER TO "postgres";
+
+--
+-- Name: link_live_session_to_scheduled("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."link_live_session_to_scheduled"("p_scheduled_live_id" "uuid", "p_session_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -5808,13 +7700,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."link_live_session_to_scheduled"("p_scheduled_live_id" "uuid", "p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: list_ai_image_storage_paths_for_user(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: list_ai_image_storage_paths_for_user("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.list_ai_image_storage_paths_for_user(p_user_id uuid) RETURNS SETOF text
-    LANGUAGE sql SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."list_ai_image_storage_paths_for_user"("p_user_id" "uuid") RETURNS SETOF "text"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
   SELECT storage_path
     FROM public.ai_image_generations
@@ -5823,13 +7717,15 @@ CREATE FUNCTION public.list_ai_image_storage_paths_for_user(p_user_id uuid) RETU
 $$;
 
 
+ALTER FUNCTION "public"."list_ai_image_storage_paths_for_user"("p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: list_ai_image_unconsumed_paths(interval, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: list_ai_image_unconsumed_paths(interval, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.list_ai_image_unconsumed_paths(p_older_than interval DEFAULT '7 days'::interval, p_limit integer DEFAULT 500) RETURNS TABLE(id uuid, storage_path text)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."list_ai_image_unconsumed_paths"("p_older_than" interval DEFAULT '7 days'::interval, "p_limit" integer DEFAULT 500) RETURNS TABLE("id" "uuid", "storage_path" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
   SELECT id, storage_path
     FROM public.ai_image_generations
@@ -5841,13 +7737,15 @@ CREATE FUNCTION public.list_ai_image_unconsumed_paths(p_older_than interval DEFA
 $$;
 
 
+ALTER FUNCTION "public"."list_ai_image_unconsumed_paths"("p_older_than" interval, "p_limit" integer) OWNER TO "postgres";
+
 --
--- Name: live_notification_backlog_recovery(integer, integer, boolean); Type: FUNCTION; Schema: public; Owner: -
+-- Name: live_notification_backlog_recovery(integer, integer, boolean); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.live_notification_backlog_recovery(p_older_than_days integer DEFAULT 30, p_limit integer DEFAULT 500, p_execute boolean DEFAULT false) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."live_notification_backlog_recovery"("p_older_than_days" integer DEFAULT 30, "p_limit" integer DEFAULT 500, "p_execute" boolean DEFAULT false) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_days INT := GREATEST(1, LEAST(COALESCE(p_older_than_days, 30), 365));
@@ -5903,13 +7801,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."live_notification_backlog_recovery"("p_older_than_days" integer, "p_limit" integer, "p_execute" boolean) OWNER TO "postgres";
+
 --
--- Name: mark_ai_image_consumed(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: mark_ai_image_consumed("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.mark_ai_image_consumed(p_generation_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."mark_ai_image_consumed"("p_generation_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
   UPDATE public.ai_image_generations
@@ -5926,13 +7826,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."mark_ai_image_consumed"("p_generation_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: mark_due_scheduled_lives_reminded(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: mark_due_scheduled_lives_reminded(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.mark_due_scheduled_lives_reminded(p_batch_size integer DEFAULT 50) RETURNS TABLE(scheduled_live_id uuid, host_id uuid, notified_count integer, success boolean, error text)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."mark_due_scheduled_lives_reminded"("p_batch_size" integer DEFAULT 50) RETURNS TABLE("scheduled_live_id" "uuid", "host_id" "uuid", "notified_count" integer, "success" boolean, "error" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_row       public.scheduled_lives%ROWTYPE;
@@ -6018,13 +7920,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."mark_due_scheduled_lives_reminded"("p_batch_size" integer) OWNER TO "postgres";
+
 --
--- Name: mark_messages_read(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: mark_messages_read("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.mark_messages_read(p_conversation_id uuid) RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."mark_messages_read"("p_conversation_id" "uuid") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_user_id uuid := auth.uid();
@@ -6051,13 +7955,131 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."mark_messages_read"("p_conversation_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: moderation_health_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: mark_order_shipped("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.moderation_health_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
+CREATE OR REPLACE FUNCTION "public"."mark_order_shipped"("p_order_id" "uuid", "p_carrier" "text" DEFAULT NULL::"text", "p_tracking" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  o     public.product_orders;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO o FROM public.product_orders WHERE id = p_order_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'order_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF o.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  -- Nur bezahlte Bestellungen. Etwas als versendet zu melden, das nicht
+  -- bezahlt ist, wäre der schnellste Weg zu einem Streitfall.
+  IF o.status <> 'paid' THEN
+    RAISE EXCEPTION 'order_not_paid' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.product_orders
+     SET status           = 'shipped',
+         shipped_at       = now(),
+         tracking_carrier = NULLIF(btrim(COALESCE(p_carrier, '')), ''),
+         tracking_number  = NULLIF(btrim(COALESCE(p_tracking, '')), ''),
+         updated_at       = now()
+   WHERE id = p_order_id;
+
+  RETURN jsonb_build_object('order_id', p_order_id, 'status', 'shipped');
+END $$;
+
+
+ALTER FUNCTION "public"."mark_order_shipped"("p_order_id" "uuid", "p_carrier" "text", "p_tracking" "text") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "mark_order_shipped"("p_order_id" "uuid", "p_carrier" "text", "p_tracking" "text"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."mark_order_shipped"("p_order_id" "uuid", "p_carrier" "text", "p_tracking" "text") IS 'Berkat: Verkäufer meldet eine bezahlte Bestellung als versendet, mit Sendungsnummer.';
+
+
+--
+-- Name: mark_preorders_payable("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."mark_preorders_payable"("p_product_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller   uuid := auth.uid();
+  v_product  public.products%ROWTYPE;
+  v_unit     numeric(10,2);
+  v_created  int := 0;
+  v_skipped  int := 0;
+  r          record;
+BEGIN
+  SELECT * INTO v_product FROM public.products WHERE id = p_product_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','product_not_found'); END IF;
+
+  IF v_product.seller_id <> v_caller AND NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('error','not_authorized');
+  END IF;
+
+  v_unit := v_product.price_eur;
+  IF v_unit IS NULL OR v_unit <= 0 THEN
+    RETURN jsonb_build_object('error','no_eur_price');
+  END IF;
+
+  FOR r IN
+    SELECT pp.* FROM public.product_preorders pp
+     WHERE pp.product_id = p_product_id
+       AND pp.status IN ('interested','notified')
+  LOOP
+    IF EXISTS (
+      SELECT 1 FROM public.product_orders po
+       WHERE po.preorder_id = r.id
+         AND po.status IN ('payment_requested','paid','shipped')
+    ) THEN
+      v_skipped := v_skipped + 1;
+      CONTINUE;
+    END IF;
+
+    INSERT INTO public.product_orders
+      (buyer_id, seller_id, product_id, preorder_id, quantity,
+       unit_price_eur, amount_eur, platform_fee_eur, status, payment_requested_at)
+    VALUES
+      (r.user_id, v_product.seller_id, p_product_id, r.id, r.quantity,
+       v_unit, v_unit * r.quantity, 0, 'payment_requested', now());
+
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text, product_name)
+    VALUES (r.user_id, v_caller, 'order_payment_requested',
+            'Deine Vorbestellung ist da! 🌸 Jetzt '
+              || replace((v_unit * r.quantity)::text, '.', ',')
+              || ' € zahlen — danach geht sie direkt an dich raus.',
+            v_product.title);
+
+    v_created := v_created + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object('success', true, 'created', v_created, 'skipped', v_skipped);
+END $$;
+
+
+ALTER FUNCTION "public"."mark_preorders_payable"("p_product_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: moderation_health_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."moderation_health_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $_$
 DECLARE
   v_generated_at TIMESTAMPTZ := NOW();
@@ -6221,13 +8243,15 @@ END;
 $_$;
 
 
+ALTER FUNCTION "public"."moderation_health_snapshot"() OWNER TO "postgres";
+
 --
--- Name: notify_followers_on_go_live(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_followers_on_go_live(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_followers_on_go_live() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."notify_followers_on_go_live"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_recent_count int;
@@ -6298,12 +8322,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_followers_on_go_live"() OWNER TO "postgres";
+
 --
--- Name: notify_followers_on_live(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_followers_on_live(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_followers_on_live() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_followers_on_live"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   -- Nur beim Statuswechsel zu 'active' feuern
@@ -6323,12 +8350,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_followers_on_live"() OWNER TO "postgres";
+
 --
--- Name: notify_on_comment(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_comment(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_comment() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_comment"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_post_author_id UUID;
@@ -6357,12 +8387,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_comment"() OWNER TO "postgres";
+
 --
--- Name: notify_on_comment_to_table(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_comment_to_table(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_comment_to_table() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_comment_to_table"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   post_author UUID;
@@ -6377,64 +8410,73 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_comment_to_table"() OWNER TO "postgres";
+
 --
--- Name: notify_on_dm(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_dm(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_dm() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."notify_on_dm"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_sender_id      UUID;
-  v_recipient_id   UUID;
-  v_sender_name    TEXT;
-  v_recipient_token TEXT;
+  v_sender_id    UUID;
+  v_recipient_id UUID;
+  v_sender_name  TEXT;
 BEGIN
-  -- Sender ist der Autor der Nachricht
   v_sender_id := NEW.sender_id;
 
-  -- Empfänger: der andere Teilnehmer in der Conversation
-  -- FIX: participant_1/participant_2 statt p1_id/p2_id
-  SELECT
-    CASE
-      WHEN participant_1 = v_sender_id THEN participant_2
-      ELSE participant_1
-    END INTO v_recipient_id
-  FROM public.conversations
-  WHERE id = NEW.conversation_id;
+  -- Empfänger = der andere Teilnehmer der Konversation
+  SELECT CASE
+           WHEN participant_1 = v_sender_id THEN participant_2
+           ELSE participant_1
+         END
+    INTO v_recipient_id
+    FROM public.conversations
+   WHERE id = NEW.conversation_id;
 
-  IF v_recipient_id IS NULL THEN RETURN NEW; END IF;
+  IF v_recipient_id IS NULL           THEN RETURN NEW; END IF;
+  IF v_recipient_id = v_sender_id     THEN RETURN NEW; END IF;
 
-  -- Keine Selbst-Notification
-  IF v_recipient_id = v_sender_id THEN RETURN NEW; END IF;
+  SELECT COALESCE(username, 'Jemand')
+    INTO v_sender_name
+    FROM public.profiles
+   WHERE id = v_sender_id;
 
-  -- Sender-Name holen
-  SELECT username INTO v_sender_name
-  FROM public.profiles
-  WHERE id = v_sender_id;
-
-  -- Push-Token des Empfängers
-  SELECT push_token INTO v_recipient_token
-  FROM public.profiles
-  WHERE id = v_recipient_id;
-
-  -- Notification in Tabelle eintragen
+  -- In-App Notification (unverändert)
   INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
   VALUES (v_recipient_id, v_sender_id, 'dm', LEFT(NEW.content, 200))
   ON CONFLICT DO NOTHING;
+
+  -- Push über den kanonischen Direkt-Helper (identisch zu notify_on_like).
+  PERFORM public.send_push_to_user(
+    p_user_id := v_recipient_id,
+    p_title   := '✉️ Neue Nachricht',
+    p_body    := COALESCE(NULLIF(LEFT(NEW.content, 140), ''),
+                          '@' || v_sender_name || ' schreibt dir'),
+    p_data    := jsonb_build_object(
+      'type',           'dm',
+      'conversationId', NEW.conversation_id::text,
+      'senderId',       v_sender_id::text,
+      'senderUsername', v_sender_name
+    )
+  );
 
   RETURN NEW;
 END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_dm"() OWNER TO "postgres";
+
 --
--- Name: notify_on_follow(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_follow(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_follow() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_follow"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_follower_name TEXT;
@@ -6454,12 +8496,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_follow"() OWNER TO "postgres";
+
 --
--- Name: notify_on_follow_request(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_follow_request(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_follow_request() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_follow_request"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_sender_name  TEXT;
@@ -6504,12 +8549,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_follow_request"() OWNER TO "postgres";
+
 --
--- Name: notify_on_follow_to_table(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_follow_to_table(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_follow_to_table() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_follow_to_table"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   IF NEW.following_id <> NEW.follower_id THEN
@@ -6521,12 +8569,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_follow_to_table"() OWNER TO "postgres";
+
 --
--- Name: notify_on_gift(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_gift(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_gift() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_gift"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_gift_name  TEXT;
@@ -6551,12 +8602,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_gift"() OWNER TO "postgres";
+
 --
--- Name: notify_on_like(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_like(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_like() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_like"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_post_author_id UUID;
@@ -6584,12 +8638,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_like"() OWNER TO "postgres";
+
 --
--- Name: notify_on_like_to_table(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_on_like_to_table(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_on_like_to_table() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."notify_on_like_to_table"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   post_author UUID;
@@ -6606,13 +8663,88 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_on_like_to_table"() OWNER TO "postgres";
+
 --
--- Name: notify_scheduled_post_failure(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_preorder_buyers("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_scheduled_post_failure() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."notify_preorder_buyers"("p_product_id" "uuid", "p_message" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid     uuid := auth.uid();
+  v_seller  uuid;
+  v_msg     text := NULLIF(btrim(p_message), '');
+  v_count   int  := 0;
+  v_conv    uuid;
+  v_p1      uuid;
+  v_p2      uuid;
+  r         record;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
+  END IF;
+  IF v_msg IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'empty_message');
+  END IF;
+  IF length(v_msg) > 500 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'message_too_long');
+  END IF;
+
+  SELECT seller_id INTO v_seller FROM public.products WHERE id = p_product_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'product_not_found');
+  END IF;
+  IF v_seller <> v_uid AND NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_owner');
+  END IF;
+
+  FOR r IN
+    SELECT user_id
+    FROM public.product_preorders
+    WHERE product_id = p_product_id AND status = 'interested'
+  LOOP
+    CONTINUE WHEN r.user_id = v_seller;  -- nie sich selbst anschreiben
+
+    -- Konversation normalisiert (participant_1 < participant_2, wie in der App).
+    IF v_seller < r.user_id THEN v_p1 := v_seller; v_p2 := r.user_id;
+    ELSE                         v_p1 := r.user_id; v_p2 := v_seller; END IF;
+
+    SELECT id INTO v_conv
+      FROM public.conversations
+     WHERE participant_1 = v_p1 AND participant_2 = v_p2;
+    IF v_conv IS NULL THEN
+      INSERT INTO public.conversations (participant_1, participant_2)
+        VALUES (v_p1, v_p2)
+        RETURNING id INTO v_conv;
+    END IF;
+
+    INSERT INTO public.messages (conversation_id, sender_id, content)
+      VALUES (v_conv, v_seller, v_msg);
+
+    UPDATE public.product_preorders
+       SET status = 'notified', updated_at = now()
+     WHERE product_id = p_product_id AND user_id = r.user_id;
+
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object('success', true, 'notified', v_count);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."notify_preorder_buyers"("p_product_id" "uuid", "p_message" "text") OWNER TO "postgres";
+
+--
+-- Name: notify_scheduled_post_failure(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."notify_scheduled_post_failure"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_project_url      TEXT := current_setting('app.settings.project_url',      TRUE);
@@ -6665,13 +8797,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."notify_scheduled_post_failure"() OWNER TO "postgres";
+
 --
--- Name: notify_web_push_on_dm(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: notify_web_push_on_dm(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.notify_web_push_on_dm() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."notify_web_push_on_dm"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_recipient_id UUID;
@@ -6751,20 +8885,22 @@ END;
 $$;
 
 
---
--- Name: FUNCTION notify_web_push_on_dm(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_web_push_on_dm() IS 'Fire-and-forget Web-Push-Dispatch via Edge-Function send-web-push. Additiv zur existierenden Expo-Push-Pipeline in notify_on_dm().';
-
+ALTER FUNCTION "public"."notify_web_push_on_dm"() OWNER TO "postgres";
 
 --
--- Name: pin_live_comment(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: FUNCTION "notify_web_push_on_dm"(); Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.pin_live_comment(p_session_id uuid, p_comment jsonb) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+COMMENT ON FUNCTION "public"."notify_web_push_on_dm"() IS 'Fire-and-forget Web-Push-Dispatch via Edge-Function send-web-push. Additiv zur existierenden Expo-Push-Pipeline in notify_on_dm().';
+
+
+--
+-- Name: pin_live_comment("uuid", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."pin_live_comment"("p_session_id" "uuid", "p_comment" "jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller     uuid := auth.uid();
@@ -6811,12 +8947,106 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."pin_live_comment"("p_session_id" "uuid", "p_comment" "jsonb") OWNER TO "postgres";
+
 --
--- Name: post_drafts_touch(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: place_live_bid("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.post_drafts_touch() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."place_live_bid"("p_auction_id" "uuid", "p_amount_cents" integer) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a            public.live_auctions;
+  v_uid        uuid := auth.uid();
+  v_next_min   int;
+  v_new_ends   timestamptz;
+  v_extended   boolean;
+  c_snipe_window constant interval := interval '10 seconds';
+  c_extend       constant interval := interval '10 seconds';
+  c_max_cents    constant int := 1000000;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF a.status <> 'running' THEN
+    RAISE EXCEPTION 'auction_not_running' USING ERRCODE = '22023';
+  END IF;
+  IF a.ends_at IS NULL OR a.ends_at <= now() THEN
+    RAISE EXCEPTION 'auction_ended' USING ERRCODE = '22023';
+  END IF;
+  IF a.seller_id = v_uid THEN
+    RAISE EXCEPTION 'seller_cannot_bid' USING ERRCODE = '42501';
+  END IF;
+  IF a.current_bidder_id = v_uid THEN
+    RAISE EXCEPTION 'already_leading' USING ERRCODE = '22023';
+  END IF;
+
+  v_next_min := CASE
+    WHEN a.current_bid_cents IS NULL THEN a.start_price_cents
+    ELSE a.current_bid_cents + a.min_increment_cents
+  END;
+
+  IF p_amount_cents < v_next_min THEN
+    RAISE EXCEPTION 'bid_too_low' USING ERRCODE = '22023',
+      DETAIL = format('Mindestens %s Cent', v_next_min);
+  END IF;
+  IF p_amount_cents > c_max_cents THEN
+    RAISE EXCEPTION 'bid_too_high' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.live_bids (auction_id, bidder_id, amount_cents)
+  VALUES (a.id, v_uid, p_amount_cents);
+
+  v_extended := (a.ends_at - now()) < c_snipe_window;
+  v_new_ends := CASE WHEN v_extended THEN now() + c_extend ELSE a.ends_at END;
+
+  UPDATE public.live_auctions
+     SET current_bid_cents = p_amount_cents,
+         current_bidder_id = v_uid,
+         bid_count         = a.bid_count + 1,
+         ends_at           = v_new_ends
+   WHERE id = a.id;
+
+  -- Erst jetzt die Maxima anderer greifen lassen. Die Verlängerung oben zählt
+  -- bewusst nur für das Handgebot: ein automatischer Konter im selben Moment
+  -- soll die Uhr nicht ein zweites Mal hochsetzen.
+  PERFORM public.resolve_auto_bids(a.id);
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id;
+
+  RETURN jsonb_build_object(
+    'auction_id',        a.id,
+    'current_bid_cents', a.current_bid_cents,
+    'next_min_cents',    a.current_bid_cents + a.min_increment_cents,
+    'ends_at',           a.ends_at,
+    'extended',          v_extended,
+    'leading',           a.current_bidder_id = v_uid
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."place_live_bid"("p_auction_id" "uuid", "p_amount_cents" integer) OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "place_live_bid"("p_auction_id" "uuid", "p_amount_cents" integer); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."place_live_bid"("p_auction_id" "uuid", "p_amount_cents" integer) IS 'Einziger Weg zu einem Gebot. Zeilen-Lock, Mindestschritt, Anti-Snipe, kein Selbstüberbieten.';
+
+
+--
+-- Name: post_drafts_touch(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."post_drafts_touch"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -6825,13 +9055,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."post_drafts_touch"() OWNER TO "postgres";
+
 --
--- Name: product_health_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: product_health_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.product_health_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."product_health_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_snapshot JSONB;
@@ -7038,13 +9270,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."product_health_snapshot"() OWNER TO "postgres";
+
 --
--- Name: production_integrity_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: production_integrity_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.production_integrity_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."production_integrity_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $_$
 DECLARE
   v_pending_count INTEGER := 0;
@@ -7144,26 +9378,30 @@ END;
 $_$;
 
 
+ALTER FUNCTION "public"."production_integrity_snapshot"() OWNER TO "postgres";
+
 --
--- Name: prune_web_push_subscription(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: prune_web_push_subscription("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.prune_web_push_subscription(p_endpoint text) RETURNS void
-    LANGUAGE sql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."prune_web_push_subscription"("p_endpoint" "text") RETURNS "void"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   DELETE FROM public.web_push_subscriptions
    WHERE endpoint = p_endpoint;
 $$;
 
 
+ALTER FUNCTION "public"."prune_web_push_subscription"("p_endpoint" "text") OWNER TO "postgres";
+
 --
--- Name: publish_due_scheduled_posts(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: publish_due_scheduled_posts(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.publish_due_scheduled_posts() RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."publish_due_scheduled_posts"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_row   public.scheduled_posts%ROWTYPE;
@@ -7211,13 +9449,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."publish_due_scheduled_posts"() OWNER TO "postgres";
+
 --
--- Name: publish_due_scheduled_posts(integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: publish_due_scheduled_posts(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.publish_due_scheduled_posts(p_batch_size integer DEFAULT 50) RETURNS TABLE(scheduled_id uuid, post_id uuid, success boolean, error text)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."publish_due_scheduled_posts"("p_batch_size" integer DEFAULT 50) RETURNS TABLE("scheduled_id" "uuid", "post_id" "uuid", "success" boolean, "error" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_row     public.scheduled_posts%ROWTYPE;
@@ -7278,13 +9518,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."publish_due_scheduled_posts"("p_batch_size" integer) OWNER TO "postgres";
+
 --
--- Name: push_feed_health_snapshot(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: push_feed_health_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.push_feed_health_snapshot() RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."push_feed_health_snapshot"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $_$
 DECLARE
   v_generated_at TIMESTAMPTZ := NOW();
@@ -7461,13 +9703,15 @@ END;
 $_$;
 
 
+ALTER FUNCTION "public"."push_feed_health_snapshot"() OWNER TO "postgres";
+
 --
--- Name: record_share_learn(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: record_share_learn("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.record_share_learn(p_post_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."record_share_learn"("p_post_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_user_id UUID;
@@ -7482,73 +9726,49 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."record_share_learn"("p_post_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: record_skip(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: record_skip("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.record_skip(p_post_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."record_skip"("p_post_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_user_id UUID;
-  v_explore FLOAT;
-  v_brain   FLOAT;
-  v_alpha   FLOAT := 0.02;
-  v_rows    INT;
+  v_user_id uuid := auth.uid();
+  v_rows    int;
 BEGIN
-  v_user_id := auth.uid();
   IF v_user_id IS NULL THEN RETURN; END IF;
 
-  SELECT
-    COALESCE(score_explore, 0.5),
-    COALESCE(score_brain,   0.5)
-  INTO v_explore, v_brain
-  FROM public.posts
-  WHERE id = p_post_id;
-
-  IF NOT FOUND THEN RETURN; END IF;
-
-  -- Guard: nur wenn Post klassifiziert ist
-  IF ABS(v_explore - 0.5) < 0.05 AND ABS(v_brain - 0.5) < 0.05 THEN RETURN; END IF;
-
-  -- Als "gesehen" markieren — NUR erster Skip zählt für view_count
+  -- Als gesehen markieren — nur der erste Kontakt zählt (Dedup wie gehabt)
   INSERT INTO public.post_dwell_log (user_id, post_id, last_seen, view_count)
   VALUES (v_user_id, p_post_id, NOW(), 0)
   ON CONFLICT (user_id, post_id) DO NOTHING;
 
-  -- ROW_COUNT: 1 = neue Zeile (erster Skip) → view_count erhöhen
-  --            0 = bereits gesehen           → kein doppeltes Counting
   GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+  -- Negativ-Signal: erster Skip senkt den Dwell-Score leicht (−3 %).
+  -- Bewusst mild — ein Skip ist schwaches Signal, viele Skips summieren sich.
   IF v_rows > 0 THEN
     UPDATE public.posts
-    SET view_count = view_count + 1
-    WHERE id = p_post_id;
+       SET dwell_time_score = GREATEST(0, COALESCE(dwell_time_score, 0) * 0.97)
+     WHERE id = p_post_id;
   END IF;
-
-  -- Lernprofil: Repulsion (Profil weg vom Skip-Content)
-  INSERT INTO public.user_vibe_profile (user_id, learned_explore, learned_brain, interaction_count, updated_at)
-  VALUES (
-    v_user_id,
-    ROUND((1.0 - v_explore)::NUMERIC, 4),
-    ROUND((1.0 - v_brain)::NUMERIC,   4),
-    1, NOW()
-  )
-  ON CONFLICT (user_id) DO UPDATE SET
-    learned_explore = ROUND((user_vibe_profile.learned_explore * (1.0 - v_alpha) + (1.0 - v_explore) * v_alpha)::NUMERIC, 4),
-    learned_brain   = ROUND((user_vibe_profile.learned_brain   * (1.0 - v_alpha) + (1.0 - v_brain)   * v_alpha)::NUMERIC, 4),
-    updated_at      = NOW();
 END;
 $$;
 
 
+ALTER FUNCTION "public"."record_skip"("p_post_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: refresh_admin_region_metrics_from_profiles(date); Type: FUNCTION; Schema: public; Owner: -
+-- Name: refresh_admin_region_metrics_from_profiles("date"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.refresh_admin_region_metrics_from_profiles(p_metric_date date DEFAULT CURRENT_DATE) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."refresh_admin_region_metrics_from_profiles"("p_metric_date" "date" DEFAULT CURRENT_DATE) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_upserted BIGINT := 0;
@@ -7626,13 +9846,191 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."refresh_admin_region_metrics_from_profiles"("p_metric_date" "date") OWNER TO "postgres";
+
 --
--- Name: reschedule_live(uuid, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+-- Name: refresh_user_tag_affinity(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.reschedule_live(p_id uuid, p_new_time timestamp with time zone) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."refresh_user_tag_affinity"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  DELETE FROM public.user_tag_affinity;
+
+  INSERT INTO public.user_tag_affinity (user_id, tag, affinity, updated_at)
+  SELECT user_id, tag, affinity, now()
+  FROM (
+    SELECT
+      s.user_id,
+      s.tag,
+      (s.weight / MAX(s.weight) OVER (PARTITION BY s.user_id))::float AS affinity,
+      ROW_NUMBER() OVER (PARTITION BY s.user_id ORDER BY s.weight DESC) AS rn
+    FROM (
+      SELECT eng.user_id, t.tag, SUM(eng.w) AS weight
+      FROM (
+        -- Likes (stärkstes explizites Signal)
+        SELECT l.user_id, l.post_id, 1.0::float AS w
+        FROM public.likes l
+        WHERE l.created_at > now() - INTERVAL '90 days'
+        UNION ALL
+        -- Echte Dwells ≥ 2s (Skips haben last_dwell_ms NULL → fallen raus)
+        SELECT d.user_id, d.post_id, 0.5::float AS w
+        FROM public.post_dwell_log d
+        WHERE d.last_dwell_ms >= 2000
+          AND COALESCE(d.observed_at, d.last_seen) > now() - INTERVAL '90 days'
+      ) eng
+      JOIN public.posts p ON p.id = eng.post_id
+      CROSS JOIN LATERAL unnest(COALESCE(p.tags, '{}')) AS t(tag)
+      GROUP BY eng.user_id, t.tag
+    ) s
+  ) ranked
+  WHERE ranked.rn <= 20;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."refresh_user_tag_affinity"() OWNER TO "postgres";
+
+--
+-- Name: reject_women_only("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."reject_women_only"("p_user" "uuid", "p_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL OR NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_admin');
+  END IF;
+
+  UPDATE women_only_requests
+     SET status = 'rejected', reviewed_at = now(), reviewed_by = v_uid, note = p_note
+   WHERE user_id = p_user;
+
+  INSERT INTO admin_audit_log (actor_id, action, target_type, target_id, metadata)
+       VALUES (v_uid, 'woz_reject', 'profile', p_user,
+               jsonb_build_object('note', p_note));
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."reject_women_only"("p_user" "uuid", "p_note" "text") OWNER TO "postgres";
+
+--
+-- Name: report_order_dispute("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller  uuid := auth.uid();
+  v_order   public.product_orders%rowtype;
+  v_role    text;
+  v_against uuid;
+  v_detail  text := nullif(btrim(p_detail), '');
+  r_admin   record;
+BEGIN
+  IF v_caller IS NULL THEN RETURN jsonb_build_object('error','not_authenticated'); END IF;
+  IF p_reason NOT IN ('not_received','damaged','not_as_described','not_paid','fraud','other') THEN
+    RETURN jsonb_build_object('error','invalid_reason');
+  END IF;
+  IF v_detail IS NOT NULL AND length(v_detail) > 2000 THEN v_detail := left(v_detail, 2000); END IF;
+
+  SELECT * INTO v_order FROM public.product_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','order_not_found'); END IF;
+
+  IF v_caller = v_order.buyer_id THEN v_role := 'buyer'; v_against := v_order.seller_id;
+  ELSIF v_caller = v_order.seller_id THEN v_role := 'seller'; v_against := v_order.buyer_id;
+  ELSE RETURN jsonb_build_object('error','not_authorized'); END IF;
+
+  -- Erst ab Zahlung sinnvoll (vorher gibt's „Doch nicht"/Stornieren).
+  IF v_order.status NOT IN ('paid','shipped','delivered') THEN
+    RETURN jsonb_build_object('error','not_reportable');
+  END IF;
+
+  INSERT INTO public.order_disputes (order_id, reporter_id, against_id, reporter_role, reason, detail)
+  VALUES (p_order_id, v_caller, v_against, v_role, p_reason, v_detail)
+  ON CONFLICT (order_id, reporter_id) DO UPDATE
+    SET reason = excluded.reason, detail = excluded.detail, status = 'open', resolved_at = NULL;
+
+  -- Gegenseite informieren.
+  BEGIN
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+    VALUES (v_against, v_caller, 'order_dispute', 'Ein Problem mit einer Bestellung wurde gemeldet ⚠️');
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  -- Admins informieren (außer wenn schon als Gegenseite/Melder benachrichtigt).
+  FOR r_admin IN SELECT id FROM public.profiles WHERE is_admin = true LOOP
+    IF r_admin.id <> v_caller AND r_admin.id <> v_against THEN
+      BEGIN
+        INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+        VALUES (r_admin.id, v_caller, 'order_dispute', 'Neue Streit-Meldung zu einer Bestellung ⚠️');
+      EXCEPTION WHEN OTHERS THEN NULL; END;
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object('success', true);
+END $$;
+
+
+ALTER FUNCTION "public"."report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text") OWNER TO "postgres";
+
+--
+-- Name: request_women_only(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."request_women_only"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_existing text;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
+  END IF;
+
+  SELECT status INTO v_existing FROM women_only_requests WHERE user_id = v_uid;
+  IF v_existing = 'approved' THEN
+    RETURN jsonb_build_object('success', true, 'status', 'approved');
+  END IF;
+
+  -- Selbstdeklaration: Geschlecht + Level 1 (Antrag gestellt), ABER KEIN Zugang.
+  -- women_only_verified bleibt false bis zur Admin-Freigabe.
+  UPDATE profiles
+     SET gender = 'female', verification_level = 1
+   WHERE id = v_uid;
+
+  INSERT INTO women_only_requests (user_id, status, method, requested_at)
+       VALUES (v_uid, 'pending', 'self', now())
+  ON CONFLICT (user_id) DO UPDATE
+       SET status = 'pending', method = 'self', requested_at = now(),
+           reviewed_at = NULL, reviewed_by = NULL, note = NULL;
+
+  RETURN jsonb_build_object('success', true, 'status', 'pending');
+END;
+$$;
+
+
+ALTER FUNCTION "public"."request_women_only"() OWNER TO "postgres";
+
+--
+-- Name: reschedule_live("uuid", timestamp with time zone); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."reschedule_live"("p_id" "uuid", "p_new_time" timestamp with time zone) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -7666,13 +10064,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."reschedule_live"("p_id" "uuid", "p_new_time" timestamp with time zone) OWNER TO "postgres";
+
 --
--- Name: reschedule_post(uuid, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+-- Name: reschedule_post("uuid", timestamp with time zone); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.reschedule_post(p_id uuid, p_new_time timestamp with time zone) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."reschedule_post"("p_id" "uuid", "p_new_time" timestamp with time zone) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -7696,13 +10096,167 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."reschedule_post"("p_id" "uuid", "p_new_time" timestamp with time zone) OWNER TO "postgres";
+
 --
--- Name: respond_duet_invite(uuid, boolean, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: reschedule_preorder_round("uuid", timestamp with time zone); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.respond_duet_invite(p_invite_id uuid, p_accept boolean, p_reason text DEFAULT NULL::text) RETURNS TABLE(status text, session_id uuid, host_id uuid, guest_id uuid, layout text)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."reschedule_preorder_round"("p_round_id" "uuid", "p_closes_at" timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid   uuid := auth.uid();
+  v_round public.preorder_rounds%ROWTYPE;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
+  END IF;
+  IF p_closes_at IS NULL OR p_closes_at <= now() THEN
+    RETURN jsonb_build_object('success', false, 'error', 'bad_date');
+  END IF;
+
+  SELECT * INTO v_round FROM preorder_rounds WHERE id = p_round_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'round_not_found');
+  END IF;
+  IF v_round.status <> 'open' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'round_not_open');
+  END IF;
+  IF v_round.seller_id <> v_uid AND NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_seller');
+  END IF;
+
+  UPDATE preorder_rounds
+    SET closes_at = p_closes_at
+    WHERE id = p_round_id;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."reschedule_preorder_round"("p_round_id" "uuid", "p_closes_at" timestamp with time zone) OWNER TO "postgres";
+
+--
+-- Name: resolve_auto_bids("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."resolve_auto_bids"("p_auction_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a          public.live_auctions;
+  r          record;
+  v_win_id   uuid;
+  v_win_max  int;
+  v_run_max  int;
+  v_price    int;
+  v_rank     int := 0;
+BEGIN
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id;
+  IF NOT FOUND OR a.status <> 'running' THEN RETURN; END IF;
+
+  -- Zwei Beste ermitteln. Der aktuell Führende zählt mit seinem abgegebenen
+  -- Gebot mit, falls er kein (höheres) Maximum hinterlegt hat.
+  FOR r IN
+    SELECT bidder_id, MAX(m) AS m, MIN(t) AS t
+      FROM (
+        SELECT ab.bidder_id, ab.max_cents AS m, ab.created_at AS t
+          FROM public.live_auto_bids ab
+         WHERE ab.auction_id = p_auction_id
+        UNION ALL
+        SELECT a.current_bidder_id, a.current_bid_cents, '-infinity'::timestamptz
+         WHERE a.current_bidder_id IS NOT NULL AND a.current_bid_cents IS NOT NULL
+      ) AS entries
+     GROUP BY bidder_id
+     ORDER BY 2 DESC, 3 ASC
+     LIMIT 2
+  LOOP
+    v_rank := v_rank + 1;
+    IF v_rank = 1 THEN
+      v_win_id  := r.bidder_id;
+      v_win_max := r.m;
+    ELSE
+      v_run_max := r.m;
+    END IF;
+  END LOOP;
+
+  IF v_win_id IS NULL THEN RETURN; END IF;
+
+  -- Preis: gerade so viel, dass der Zweitbeste überboten ist — nie mehr.
+  v_price := CASE
+    WHEN v_run_max IS NULL THEN GREATEST(COALESCE(a.current_bid_cents, 0), a.start_price_cents)
+    ELSE LEAST(v_win_max, v_run_max + a.min_increment_cents)
+  END;
+  v_price := GREATEST(v_price, a.start_price_cents);
+
+  -- Nichts zu tun, wenn derselbe schon zu diesem Preis führt.
+  IF a.current_bidder_id = v_win_id AND a.current_bid_cents = v_price THEN RETURN; END IF;
+  IF v_price > v_win_max THEN RETURN; END IF;
+
+  INSERT INTO public.live_bids (auction_id, bidder_id, amount_cents)
+  VALUES (p_auction_id, v_win_id, v_price)
+  ON CONFLICT (auction_id, amount_cents) DO NOTHING;
+
+  UPDATE public.live_auctions
+     SET current_bid_cents = v_price,
+         current_bidder_id = v_win_id,
+         bid_count         = bid_count + 1
+   WHERE id = p_auction_id;
+END $$;
+
+
+ALTER FUNCTION "public"."resolve_auto_bids"("p_auction_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: resolve_order_dispute("uuid", "text", boolean); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."resolve_order_dispute"("p_dispute_id" "uuid", "p_resolution" "text" DEFAULT NULL::"text", "p_dismiss" boolean DEFAULT false) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller  uuid := auth.uid();
+  v_dispute public.order_disputes%rowtype;
+  v_res     text := nullif(btrim(p_resolution), '');
+BEGIN
+  IF v_caller IS NULL THEN RETURN jsonb_build_object('error','not_authenticated'); END IF;
+  IF NOT COALESCE(public.is_admin(), false) THEN RETURN jsonb_build_object('error','not_authorized'); END IF;
+
+  SELECT * INTO v_dispute FROM public.order_disputes WHERE id = p_dispute_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','dispute_not_found'); END IF;
+
+  UPDATE public.order_disputes
+     SET status = CASE WHEN p_dismiss THEN 'dismissed' ELSE 'resolved' END,
+         resolution = v_res,
+         resolved_at = now()
+   WHERE id = p_dispute_id;
+
+  -- Beide Parteien informieren.
+  BEGIN
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+    VALUES
+      (v_dispute.reporter_id, v_caller, 'order_dispute', 'Deine Streit-Meldung wurde geklärt ✓'),
+      (v_dispute.against_id,  v_caller, 'order_dispute', 'Eine Streit-Meldung zu deiner Bestellung wurde geklärt ✓');
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  RETURN jsonb_build_object('success', true);
+END $$;
+
+
+ALTER FUNCTION "public"."resolve_order_dispute"("p_dispute_id" "uuid", "p_resolution" "text", "p_dismiss" boolean) OWNER TO "postgres";
+
+--
+-- Name: respond_duet_invite("uuid", boolean, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."respond_duet_invite"("p_invite_id" "uuid", "p_accept" boolean, "p_reason" "text" DEFAULT NULL::"text") RETURNS TABLE("status" "text", "session_id" "uuid", "host_id" "uuid", "guest_id" "uuid", "layout" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller     UUID := auth.uid();
@@ -7837,13 +10391,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."respond_duet_invite"("p_invite_id" "uuid", "p_accept" boolean, "p_reason" "text") OWNER TO "postgres";
+
 --
--- Name: revoke_cohost(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: revoke_cohost("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.revoke_cohost(p_session_id uuid, p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."revoke_cohost"("p_session_id" "uuid", "p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_host uuid := auth.uid();
@@ -7870,13 +10426,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."revoke_cohost"("p_session_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: revoke_moderator(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: revoke_moderator("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.revoke_moderator(p_session_id uuid, p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."revoke_moderator"("p_session_id" "uuid", "p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE v_host UUID;
 BEGIN
@@ -7898,13 +10456,50 @@ BEGIN
 END $$;
 
 
+ALTER FUNCTION "public"."revoke_moderator"("p_session_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: schedule_live(timestamp with time zone, text, text, boolean, boolean, boolean); Type: FUNCTION; Schema: public; Owner: -
+-- Name: revoke_women_only("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.schedule_live(p_scheduled_at timestamp with time zone, p_title text, p_description text DEFAULT NULL::text, p_allow_comments boolean DEFAULT true, p_allow_gifts boolean DEFAULT true, p_women_only boolean DEFAULT false) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."revoke_women_only"("p_user" "uuid", "p_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL OR NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_admin');
+  END IF;
+
+  PERFORM set_config('app.woz_bypass', 'on', true);
+  UPDATE profiles
+     SET women_only_verified = false, verification_level = 0
+   WHERE id = p_user;
+
+  UPDATE women_only_requests
+     SET status = 'revoked', reviewed_at = now(), reviewed_by = v_uid, note = p_note
+   WHERE user_id = p_user;
+
+  INSERT INTO admin_audit_log (actor_id, action, target_type, target_id, metadata)
+       VALUES (v_uid, 'woz_revoke', 'profile', p_user,
+               jsonb_build_object('note', p_note));
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."revoke_women_only"("p_user" "uuid", "p_note" "text") OWNER TO "postgres";
+
+--
+-- Name: schedule_live(timestamp with time zone, "text", "text", boolean, boolean, boolean); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."schedule_live"("p_scheduled_at" timestamp with time zone, "p_title" "text", "p_description" "text" DEFAULT NULL::"text", "p_allow_comments" boolean DEFAULT true, "p_allow_gifts" boolean DEFAULT true, "p_women_only" boolean DEFAULT false) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -7939,13 +10534,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."schedule_live"("p_scheduled_at" timestamp with time zone, "p_title" "text", "p_description" "text", "p_allow_comments" boolean, "p_allow_gifts" boolean, "p_women_only" boolean) OWNER TO "postgres";
+
 --
--- Name: schedule_post(timestamp with time zone, text, text, text, text, text[], boolean, uuid, text, numeric, text, boolean, boolean, boolean, boolean, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: schedule_post(timestamp with time zone, "text", "text", "text", "text", "text"[], boolean, "uuid", "text", numeric, "text", boolean, boolean, boolean, boolean, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.schedule_post(p_publish_at timestamp with time zone, p_caption text DEFAULT NULL::text, p_media_url text DEFAULT NULL::text, p_media_type text DEFAULT NULL::text, p_thumbnail_url text DEFAULT NULL::text, p_tags text[] DEFAULT '{}'::text[], p_is_guild_post boolean DEFAULT false, p_guild_id uuid DEFAULT NULL::uuid, p_audio_url text DEFAULT NULL::text, p_audio_volume numeric DEFAULT NULL::numeric, p_privacy text DEFAULT 'public'::text, p_allow_comments boolean DEFAULT true, p_allow_download boolean DEFAULT false, p_allow_duet boolean DEFAULT true, p_women_only boolean DEFAULT false, p_cover_time_ms integer DEFAULT NULL::integer) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."schedule_post"("p_publish_at" timestamp with time zone, "p_caption" "text" DEFAULT NULL::"text", "p_media_url" "text" DEFAULT NULL::"text", "p_media_type" "text" DEFAULT NULL::"text", "p_thumbnail_url" "text" DEFAULT NULL::"text", "p_tags" "text"[] DEFAULT '{}'::"text"[], "p_is_guild_post" boolean DEFAULT false, "p_guild_id" "uuid" DEFAULT NULL::"uuid", "p_audio_url" "text" DEFAULT NULL::"text", "p_audio_volume" numeric DEFAULT NULL::numeric, "p_privacy" "text" DEFAULT 'public'::"text", "p_allow_comments" boolean DEFAULT true, "p_allow_download" boolean DEFAULT false, "p_allow_duet" boolean DEFAULT true, "p_women_only" boolean DEFAULT false, "p_cover_time_ms" integer DEFAULT NULL::integer) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -7984,13 +10581,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."schedule_post"("p_publish_at" timestamp with time zone, "p_caption" "text", "p_media_url" "text", "p_media_type" "text", "p_thumbnail_url" "text", "p_tags" "text"[], "p_is_guild_post" boolean, "p_guild_id" "uuid", "p_audio_url" "text", "p_audio_volume" numeric, "p_privacy" "text", "p_allow_comments" boolean, "p_allow_download" boolean, "p_allow_duet" boolean, "p_women_only" boolean, "p_cover_time_ms" integer) OWNER TO "postgres";
+
 --
--- Name: schedule_post(timestamp with time zone, text, text, text, text, text[], boolean, uuid, text, numeric, text, boolean, boolean, boolean, boolean, integer, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: schedule_post(timestamp with time zone, "text", "text", "text", "text", "text"[], boolean, "uuid", "text", numeric, "text", boolean, boolean, boolean, boolean, integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.schedule_post(p_publish_at timestamp with time zone, p_caption text DEFAULT NULL::text, p_media_url text DEFAULT NULL::text, p_media_type text DEFAULT NULL::text, p_thumbnail_url text DEFAULT NULL::text, p_tags text[] DEFAULT '{}'::text[], p_is_guild_post boolean DEFAULT false, p_guild_id uuid DEFAULT NULL::uuid, p_audio_url text DEFAULT NULL::text, p_audio_volume numeric DEFAULT NULL::numeric, p_privacy text DEFAULT 'public'::text, p_allow_comments boolean DEFAULT true, p_allow_download boolean DEFAULT false, p_allow_duet boolean DEFAULT true, p_women_only boolean DEFAULT false, p_cover_time_ms integer DEFAULT NULL::integer, p_aspect_ratio text DEFAULT 'portrait'::text) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."schedule_post"("p_publish_at" timestamp with time zone, "p_caption" "text" DEFAULT NULL::"text", "p_media_url" "text" DEFAULT NULL::"text", "p_media_type" "text" DEFAULT NULL::"text", "p_thumbnail_url" "text" DEFAULT NULL::"text", "p_tags" "text"[] DEFAULT '{}'::"text"[], "p_is_guild_post" boolean DEFAULT false, "p_guild_id" "uuid" DEFAULT NULL::"uuid", "p_audio_url" "text" DEFAULT NULL::"text", "p_audio_volume" numeric DEFAULT NULL::numeric, "p_privacy" "text" DEFAULT 'public'::"text", "p_allow_comments" boolean DEFAULT true, "p_allow_download" boolean DEFAULT false, "p_allow_duet" boolean DEFAULT true, "p_women_only" boolean DEFAULT false, "p_cover_time_ms" integer DEFAULT NULL::integer, "p_aspect_ratio" "text" DEFAULT 'portrait'::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -8032,12 +10631,14 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."schedule_post"("p_publish_at" timestamp with time zone, "p_caption" "text", "p_media_url" "text", "p_media_type" "text", "p_thumbnail_url" "text", "p_tags" "text"[], "p_is_guild_post" boolean, "p_guild_id" "uuid", "p_audio_url" "text", "p_audio_volume" numeric, "p_privacy" "text", "p_allow_comments" boolean, "p_allow_download" boolean, "p_allow_duet" boolean, "p_women_only" boolean, "p_cover_time_ms" integer, "p_aspect_ratio" "text") OWNER TO "postgres";
+
 --
--- Name: scheduled_lives_touch(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: scheduled_lives_touch(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.scheduled_lives_touch() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."scheduled_lives_touch"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -8046,12 +10647,14 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."scheduled_lives_touch"() OWNER TO "postgres";
+
 --
--- Name: scheduled_posts_touch(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: scheduled_posts_touch(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.scheduled_posts_touch() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."scheduled_posts_touch"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -8060,13 +10663,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."scheduled_posts_touch"() OWNER TO "postgres";
+
 --
--- Name: search_public_profiles_web(text, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: search_public_profiles_web("text", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.search_public_profiles_web(search_query text, result_limit integer DEFAULT 5) RETURNS TABLE(id uuid, username text, display_name text, avatar_url text, verified boolean)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."search_public_profiles_web"("search_query" "text", "result_limit" integer DEFAULT 5) RETURNS TABLE("id" "uuid", "username" "text", "display_name" "text", "avatar_url" "text", "verified" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
   WITH input AS (
     SELECT NULLIF(regexp_replace(trim(COALESCE(search_query, '')), '[%_]', '', 'g'), '') AS q
@@ -8094,12 +10699,15 @@ CREATE FUNCTION public.search_public_profiles_web(search_query text, result_limi
 $$;
 
 
+ALTER FUNCTION "public"."search_public_profiles_web"("search_query" "text", "result_limit" integer) OWNER TO "postgres";
+
 --
--- Name: send_creator_tip(uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: send_creator_tip("uuid", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.send_creator_tip(p_recipient_id uuid, p_coin_amount integer, p_message text DEFAULT NULL::text) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."send_creator_tip"("p_recipient_id" "uuid", "p_coin_amount" integer, "p_message" "text" DEFAULT NULL::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 declare
   v_sender_id    uuid := auth.uid();
@@ -8151,12 +10759,15 @@ begin
 end $$;
 
 
+ALTER FUNCTION "public"."send_creator_tip"("p_recipient_id" "uuid", "p_coin_amount" integer, "p_message" "text") OWNER TO "postgres";
+
 --
--- Name: send_expo_push(text, text, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: send_expo_push("text", "text", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.send_expo_push(token text, title text, body text, data jsonb DEFAULT '{}'::jsonb) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."send_expo_push"("token" "text", "title" "text", "body" "text", "data" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   IF token IS NULL OR token = '' THEN RETURN; END IF;
@@ -8171,12 +10782,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."send_expo_push"("token" "text", "title" "text", "body" "text", "data" "jsonb") OWNER TO "postgres";
+
 --
--- Name: send_gift(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: send_gift("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.send_gift(p_recipient_id uuid, p_live_session_id text, p_gift_id text) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."send_gift"("p_recipient_id" "uuid", "p_live_session_id" "text", "p_gift_id" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_sender_id     uuid := auth.uid();
@@ -8244,12 +10858,54 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."send_gift"("p_recipient_id" "uuid", "p_live_session_id" "text", "p_gift_id" "text") OWNER TO "postgres";
+
 --
--- Name: send_push_to_user(uuid, text, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: send_payment_reminders(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.send_push_to_user(p_user_id uuid, p_title text, p_body text, p_data jsonb DEFAULT '{}'::jsonb) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."send_payment_reminders"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_count int := 0;
+  r       record;
+BEGIN
+  FOR r IN
+    SELECT po.id, po.buyer_id, po.seller_id, po.amount_eur, p.title
+      FROM public.product_orders po
+      JOIN public.products p ON p.id = po.product_id
+     WHERE po.status = 'payment_requested'
+       AND po.reminded_at IS NULL
+       AND po.payment_requested_at < now() - interval '24 hours'
+  LOOP
+    -- comment_text trägt den fertigen, warmen Text (alle Surfaces nutzen ihn).
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text, product_name)
+    VALUES (
+      r.buyer_id, r.seller_id, 'order_payment_reminder',
+      'Dein Parfüm wartet noch auf dich 🌸 — kurz '
+        || replace(r.amount_eur::text, '.', ',')
+        || ' € bezahlen, dann geht es direkt raus.',
+      r.title
+    );
+    UPDATE public.product_orders SET reminded_at = now() WHERE id = r.id;
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN v_count;
+END $$;
+
+
+ALTER FUNCTION "public"."send_payment_reminders"() OWNER TO "postgres";
+
+--
+-- Name: send_push_to_user("uuid", "text", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."send_push_to_user"("p_user_id" "uuid", "p_title" "text", "p_body" "text", "p_data" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_token TEXT;
@@ -8274,13 +10930,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."send_push_to_user"("p_user_id" "uuid", "p_title" "text", "p_body" "text", "p_data" "jsonb") OWNER TO "postgres";
+
 --
--- Name: set_admin_campaign_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_admin_campaign_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_admin_campaign_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."set_admin_campaign_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -8289,13 +10947,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."set_admin_campaign_updated_at"() OWNER TO "postgres";
+
 --
--- Name: set_admin_region_metric_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_admin_region_metric_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_admin_region_metric_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."set_admin_region_metric_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   NEW.country_code = UPPER(NEW.country_code);
@@ -8305,13 +10965,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."set_admin_region_metric_updated_at"() OWNER TO "postgres";
+
 --
--- Name: set_admin_support_thread_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_admin_support_thread_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_admin_support_thread_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."set_admin_support_thread_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -8320,13 +10982,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."set_admin_support_thread_updated_at"() OWNER TO "postgres";
+
 --
--- Name: set_live_shop_mode(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_live_shop_mode("uuid", boolean); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_live_shop_mode(p_session_id uuid, p_enabled boolean) RETURNS boolean
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."set_live_shop_mode"("p_session_id" "uuid", "p_enabled" boolean) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_host_id UUID;
@@ -8352,13 +11016,15 @@ BEGIN
 END $$;
 
 
+ALTER FUNCTION "public"."set_live_shop_mode"("p_session_id" "uuid", "p_enabled" boolean) OWNER TO "postgres";
+
 --
--- Name: set_live_slow_mode(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_live_slow_mode("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_live_slow_mode(p_session_id uuid, p_seconds integer) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."set_live_slow_mode"("p_session_id" "uuid", "p_seconds" integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller uuid := auth.uid();
@@ -8397,22 +11063,176 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."set_live_slow_mode"("p_session_id" "uuid", "p_seconds" integer) OWNER TO "postgres";
+
 --
--- Name: set_products_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_max_bid("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_products_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."set_max_bid"("p_auction_id" "uuid", "p_max_cents" integer) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a           public.live_auctions;
+  v_uid       uuid := auth.uid();
+  v_next_min  int;
+  c_max_cents constant int := 1000000;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  -- Derselbe Lock wie beim normalen Gebot: Maximum setzen und Auflösung
+  -- müssen zusammen atomar sein.
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF a.status <> 'running' THEN
+    RAISE EXCEPTION 'auction_not_running' USING ERRCODE = '22023';
+  END IF;
+  IF a.ends_at IS NULL OR a.ends_at <= now() THEN
+    RAISE EXCEPTION 'auction_ended' USING ERRCODE = '22023';
+  END IF;
+  IF a.seller_id = v_uid THEN
+    RAISE EXCEPTION 'seller_cannot_bid' USING ERRCODE = '42501';
+  END IF;
+  IF p_max_cents > c_max_cents THEN
+    RAISE EXCEPTION 'bid_too_high' USING ERRCODE = '22023';
+  END IF;
+
+  v_next_min := CASE
+    WHEN a.current_bid_cents IS NULL THEN a.start_price_cents
+    ELSE a.current_bid_cents + a.min_increment_cents
+  END;
+
+  IF p_max_cents < v_next_min THEN
+    RAISE EXCEPTION 'bid_too_low' USING ERRCODE = '22023',
+      DETAIL = format('Mindestens %s Cent', v_next_min);
+  END IF;
+
+  INSERT INTO public.live_auto_bids (auction_id, bidder_id, max_cents)
+  VALUES (p_auction_id, v_uid, p_max_cents)
+  ON CONFLICT (auction_id, bidder_id) DO UPDATE
+    -- Nur nach oben: ein gesenktes Maximum könnte einen bereits erteilten
+    -- Zuschlag rückwirkend entwerten.
+    SET max_cents = GREATEST(public.live_auto_bids.max_cents, EXCLUDED.max_cents);
+
+  PERFORM public.resolve_auto_bids(p_auction_id);
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id;
+
+  RETURN jsonb_build_object(
+    'auction_id',        a.id,
+    'current_bid_cents', a.current_bid_cents,
+    'leading',           a.current_bidder_id = v_uid,
+    'my_max_cents',      p_max_cents,
+    'ends_at',           a.ends_at
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."set_max_bid"("p_auction_id" "uuid", "p_max_cents" integer) OWNER TO "postgres";
+
+--
+-- Name: set_order_reviews_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_order_reviews_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$ begin new.updated_at := now(); return new; end $$;
+
+
+ALTER FUNCTION "public"."set_order_reviews_updated_at"() OWNER TO "postgres";
+
+--
+-- Name: set_order_shipped("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_order_shipped"("p_order_id" "uuid", "p_carrier" "text" DEFAULT NULL::"text", "p_tracking" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller uuid := auth.uid();
+  v_order  public.product_orders%ROWTYPE;
+BEGIN
+  SELECT * INTO v_order FROM public.product_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','order_not_found'); END IF;
+
+  IF v_order.seller_id <> v_caller AND NOT COALESCE(public.is_admin(), false) THEN
+    RETURN jsonb_build_object('error','not_authorized');
+  END IF;
+
+  IF v_order.status <> 'paid' THEN
+    RETURN jsonb_build_object('error','not_paid');
+  END IF;
+
+  UPDATE public.product_orders
+     SET status           = 'shipped',
+         shipped_at       = now(),
+         tracking_carrier = COALESCE(p_carrier,  tracking_carrier),
+         tracking_number  = COALESCE(p_tracking, tracking_number)
+   WHERE id = p_order_id;
+
+  IF v_order.preorder_id IS NOT NULL THEN
+    UPDATE public.product_preorders SET status = 'shipped', updated_at = now()
+     WHERE id = v_order.preorder_id;
+  END IF;
+
+  INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+  VALUES (v_order.buyer_id, v_caller, 'order_shipped', 'Dein Parfüm ist unterwegs 📦');
+
+  RETURN jsonb_build_object('success', true);
+END $$;
+
+
+ALTER FUNCTION "public"."set_order_shipped"("p_order_id" "uuid", "p_carrier" "text", "p_tracking" "text") OWNER TO "postgres";
+
+--
+-- Name: set_product_orders_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_product_orders_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+begin new.updated_at := now(); return new; end $$;
+
+
+ALTER FUNCTION "public"."set_product_orders_updated_at"() OWNER TO "postgres";
+
+--
+-- Name: set_product_preorders_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_product_preorders_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN NEW.updated_at := now(); RETURN NEW; END;
+$$;
+
+
+ALTER FUNCTION "public"."set_product_preorders_updated_at"() OWNER TO "postgres";
+
+--
+-- Name: set_products_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_products_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
 
+ALTER FUNCTION "public"."set_products_updated_at"() OWNER TO "postgres";
+
 --
--- Name: set_web_coin_orders_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: set_web_coin_orders_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_web_coin_orders_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."set_web_coin_orders_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 begin
   new.updated_at := now();
@@ -8420,13 +11240,98 @@ begin
 end $$;
 
 
+ALTER FUNCTION "public"."set_web_coin_orders_updated_at"() OWNER TO "postgres";
+
 --
--- Name: stale_notification_backlog_recovery(integer, integer, boolean, text[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: settle_due_live_auctions(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.stale_notification_backlog_recovery(p_older_than_days integer DEFAULT 60, p_limit integer DEFAULT 500, p_execute boolean DEFAULT false, p_types text[] DEFAULT ARRAY['follow'::text, 'like'::text, 'comment'::text, 'live'::text, 'scheduled_live_reminder'::text]) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."settle_due_live_auctions"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  r     record;
+  v_num int := 0;
+BEGIN
+  FOR r IN
+    SELECT id FROM public.live_auctions
+     WHERE status = 'running' AND ends_at IS NOT NULL AND ends_at <= now()
+     ORDER BY ends_at
+     LIMIT 500
+  LOOP
+    PERFORM public.settle_live_auction(r.id);
+    v_num := v_num + 1;
+  END LOOP;
+  RETURN v_num;
+END $$;
+
+
+ALTER FUNCTION "public"."settle_due_live_auctions"() OWNER TO "postgres";
+
+--
+-- Name: settle_live_auction("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."settle_live_auction"("p_auction_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a      public.live_auctions;
+  v_cart uuid;
+BEGIN
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  IF a.status <> 'running' THEN
+    RETURN jsonb_build_object('auction_id', a.id, 'status', a.status,
+                              'winner_id', a.winner_id, 'settled', false);
+  END IF;
+
+  IF a.ends_at IS NULL OR a.ends_at > now() THEN
+    RETURN jsonb_build_object('auction_id', a.id, 'status', a.status,
+                              'ends_at', a.ends_at, 'settled', false);
+  END IF;
+
+  IF a.current_bidder_id IS NULL THEN
+    UPDATE public.live_auctions
+       SET status = 'unsold', settled_at = now()
+     WHERE id = a.id;
+    RETURN jsonb_build_object('auction_id', a.id, 'status', 'unsold', 'settled', true);
+  END IF;
+
+  v_cart := public.ensure_auction_cart(a.current_bidder_id, a.seller_id);
+
+  UPDATE public.live_auctions
+     SET status     = 'sold',
+         winner_id  = a.current_bidder_id,
+         settled_at = now(),
+         cart_id    = v_cart
+   WHERE id = a.id;
+
+  RETURN jsonb_build_object(
+    'auction_id', a.id,
+    'status',     'sold',
+    'winner_id',  a.current_bidder_id,
+    'cart_id',    v_cart,
+    'paid_cents', a.current_bid_cents,
+    'settled',    true
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."settle_live_auction"("p_auction_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: stale_notification_backlog_recovery(integer, integer, boolean, "text"[]); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."stale_notification_backlog_recovery"("p_older_than_days" integer DEFAULT 60, "p_limit" integer DEFAULT 500, "p_execute" boolean DEFAULT false, "p_types" "text"[] DEFAULT ARRAY['follow'::"text", 'like'::"text", 'comment'::"text", 'live'::"text", 'scheduled_live_reminder'::"text"]) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_days INT := GREATEST(1, LEAST(COALESCE(p_older_than_days, 60), 365));
@@ -8522,13 +11427,129 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."stale_notification_backlog_recovery"("p_older_than_days" integer, "p_limit" integer, "p_execute" boolean, "p_types" "text"[]) OWNER TO "postgres";
+
 --
--- Name: timeout_chat_user(uuid, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: start_live_auction("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.timeout_chat_user(p_session_id uuid, p_user_id uuid, p_seconds integer, p_reason text DEFAULT NULL::text) RETURNS timestamp with time zone
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."start_live_auction"("p_auction_id" "uuid", "p_duration_seconds" integer DEFAULT 30) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a       public.live_auctions;
+  v_host  uuid;
+  v_uid   uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+  IF p_duration_seconds < 5 OR p_duration_seconds > 600 THEN
+    RAISE EXCEPTION 'invalid_duration' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT host_id INTO v_host FROM public.live_sessions WHERE id = a.session_id;
+
+  -- Host oder Moderator. Der Helper schließt seit v1.27.2 aktive CoHosts ein,
+  -- damit gilt hier dieselbe Autoritätsgrenze wie bei der Chat-Moderation.
+  IF v_host IS DISTINCT FROM v_uid
+     AND NOT public.is_live_session_moderator(a.session_id, v_uid) THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  IF a.status <> 'scheduled' THEN
+    RAISE EXCEPTION 'auction_not_scheduled' USING ERRCODE = '22023';
+  END IF;
+
+  -- Nur eine laufende Auktion pro Stream. Sonst konkurrieren zwei Countdowns
+  -- um denselben Daumen.
+  IF EXISTS (
+    SELECT 1 FROM public.live_auctions
+     WHERE session_id = a.session_id AND status = 'running'
+  ) THEN
+    RAISE EXCEPTION 'another_auction_running' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.live_auctions
+     SET status     = 'running',
+         started_at = now(),
+         ends_at    = now() + make_interval(secs => p_duration_seconds)
+   WHERE id = a.id;
+
+  RETURN jsonb_build_object(
+    'auction_id',    a.id,
+    'status',        'running',
+    'ends_at',       now() + make_interval(secs => p_duration_seconds),
+    'next_min_cents', a.start_price_cents
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."start_live_auction"("p_auction_id" "uuid", "p_duration_seconds" integer) OWNER TO "postgres";
+
+--
+-- Name: submit_order_review("uuid", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."submit_order_review"("p_order_id" "uuid", "p_rating" integer, "p_comment" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller   uuid := auth.uid();
+  v_order    public.product_orders%rowtype;
+  v_role     text;
+  v_reviewee uuid;
+  v_comment  text := nullif(btrim(p_comment), '');
+  v_existing boolean;
+BEGIN
+  IF v_caller IS NULL THEN RETURN jsonb_build_object('error','not_authenticated'); END IF;
+  IF p_rating IS NULL OR p_rating < 1 OR p_rating > 5 THEN RETURN jsonb_build_object('error','invalid_rating'); END IF;
+  IF v_comment IS NOT NULL AND length(v_comment) > 1000 THEN v_comment := left(v_comment, 1000); END IF;
+
+  SELECT * INTO v_order FROM public.product_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','order_not_found'); END IF;
+
+  IF v_caller = v_order.buyer_id THEN v_role := 'buyer'; v_reviewee := v_order.seller_id;
+  ELSIF v_caller = v_order.seller_id THEN v_role := 'seller'; v_reviewee := v_order.buyer_id;
+  ELSE RETURN jsonb_build_object('error','not_authorized'); END IF;
+
+  IF v_order.status <> 'delivered' THEN RETURN jsonb_build_object('error','not_delivered'); END IF;
+
+  SELECT EXISTS(SELECT 1 FROM public.order_reviews WHERE order_id = p_order_id AND reviewer_id = v_caller)
+    INTO v_existing;
+
+  INSERT INTO public.order_reviews (order_id, reviewer_id, reviewee_id, reviewer_role, rating, comment)
+  VALUES (p_order_id, v_caller, v_reviewee, v_role, p_rating, v_comment)
+  ON CONFLICT (order_id, reviewer_id) DO UPDATE
+    SET rating = excluded.rating, comment = excluded.comment, updated_at = now();
+
+  IF NOT v_existing THEN
+    BEGIN
+      INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+      VALUES (v_reviewee, v_caller, 'order_review', 'Du wurdest mit ' || p_rating || '★ bewertet ⭐');
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+
+  RETURN jsonb_build_object('success', true);
+END $$;
+
+
+ALTER FUNCTION "public"."submit_order_review"("p_order_id" "uuid", "p_rating" integer, "p_comment" "text") OWNER TO "postgres";
+
+--
+-- Name: timeout_chat_user("uuid", "uuid", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."timeout_chat_user"("p_session_id" "uuid", "p_user_id" "uuid", "p_seconds" integer, "p_reason" "text" DEFAULT NULL::"text") RETURNS timestamp with time zone
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller  uuid        := auth.uid();
@@ -8596,12 +11617,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."timeout_chat_user"("p_session_id" "uuid", "p_user_id" "uuid", "p_seconds" integer, "p_reason" "text") OWNER TO "postgres";
+
 --
--- Name: toggle_followers_only_chat(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
+-- Name: toggle_followers_only_chat("uuid", boolean); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.toggle_followers_only_chat(p_session_id uuid, p_enabled boolean) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."toggle_followers_only_chat"("p_session_id" "uuid", "p_enabled" boolean) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   UPDATE public.live_sessions
@@ -8612,12 +11636,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."toggle_followers_only_chat"("p_session_id" "uuid", "p_enabled" boolean) OWNER TO "postgres";
+
 --
--- Name: toggle_pin_post(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: toggle_pin_post("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.toggle_pin_post(p_post_id uuid, p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."toggle_pin_post"("p_post_id" "uuid", "p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_currently_pinned boolean;
@@ -8646,12 +11673,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."toggle_pin_post"("p_post_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: toggle_save_product(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: toggle_save_product("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.toggle_save_product(p_product_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."toggle_save_product"("p_product_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_user_id UUID := auth.uid();
@@ -8678,12 +11708,29 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."toggle_save_product"("p_product_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: touch_live_sessions_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: touch_live_auction(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.touch_live_sessions_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."touch_live_auction"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."touch_live_auction"() OWNER TO "postgres";
+
+--
+-- Name: touch_live_sessions_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."touch_live_sessions_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   NEW.updated_at := NOW();
@@ -8691,13 +11738,15 @@ BEGIN
 END $$;
 
 
+ALTER FUNCTION "public"."touch_live_sessions_updated_at"() OWNER TO "postgres";
+
 --
--- Name: touch_web_push_subscription(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: touch_web_push_subscription("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.touch_web_push_subscription(p_endpoint text) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."touch_web_push_subscription"("p_endpoint" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -8712,13 +11761,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."touch_web_push_subscription"("p_endpoint" "text") OWNER TO "postgres";
+
 --
--- Name: trigger_nsfw_moderation(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: trigger_nsfw_moderation(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.trigger_nsfw_moderation() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."trigger_nsfw_moderation"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   _url      text;
@@ -8764,37 +11815,15 @@ END;
 $$;
 
 
---
--- Name: trigger_push_notification(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.trigger_push_notification() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  PERFORM net.http_post(
-    url := current_setting('app.settings.supabase_url') || '/functions/v1/send-push-notification',
-    body := to_jsonb(NEW),
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
-    )
-  );
-  RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
-  -- Fehler beim HTTP-Call darf keinen INSERT blockieren
-  RETURN NEW;
-END;
-$$;
-
+ALTER FUNCTION "public"."trigger_nsfw_moderation"() OWNER TO "postgres";
 
 --
--- Name: try_welcome_viewer(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: try_welcome_viewer("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.try_welcome_viewer(p_session_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."try_welcome_viewer"("p_session_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller      uuid := auth.uid();
@@ -8880,20 +11909,22 @@ END;
 $$;
 
 
---
--- Name: FUNCTION try_welcome_viewer(p_session_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.try_welcome_viewer(p_session_id uuid) IS 'Idempotenter Welcome-Check: liefert {tier,username,avatar_url} nur bei qualifiziertem Erst-Join (v1.24). Client broadcastet dann selbst.';
-
+ALTER FUNCTION "public"."try_welcome_viewer"("p_session_id" "uuid") OWNER TO "postgres";
 
 --
--- Name: unblock_cohost(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: FUNCTION "try_welcome_viewer"("p_session_id" "uuid"); Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.unblock_cohost(p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+COMMENT ON FUNCTION "public"."try_welcome_viewer"("p_session_id" "uuid") IS 'Idempotenter Welcome-Check: liefert {tier,username,avatar_url} nur bei qualifiziertem Erst-Join (v1.24). Client broadcastet dann selbst.';
+
+
+--
+-- Name: unblock_cohost("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."unblock_cohost"("p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_host uuid := auth.uid();
@@ -8909,13 +11940,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."unblock_cohost"("p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: unblock_user(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: unblock_user("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.unblock_user(p_blocked_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."unblock_user"("p_blocked_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   DELETE FROM user_blocks
@@ -8924,13 +11957,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."unblock_user"("p_blocked_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: unpin_live_comment(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: unpin_live_comment("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.unpin_live_comment(p_session_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."unpin_live_comment"("p_session_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller uuid := auth.uid();
@@ -8967,13 +12002,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."unpin_live_comment"("p_session_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: untimeout_chat_user(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: untimeout_chat_user("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.untimeout_chat_user(p_session_id uuid, p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."untimeout_chat_user"("p_session_id" "uuid", "p_user_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller uuid := auth.uid();
@@ -9005,12 +12042,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."untimeout_chat_user"("p_session_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
 --
--- Name: update_conversation_timestamp(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: update_conversation_timestamp(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.update_conversation_timestamp() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."update_conversation_timestamp"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 BEGIN
   UPDATE public.conversations
@@ -9021,13 +12061,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."update_conversation_timestamp"() OWNER TO "postgres";
+
 --
--- Name: update_dwell_time(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: update_dwell_time("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.update_dwell_time(post_id uuid, dwell_ms integer) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."update_dwell_time"("post_id" "uuid", "dwell_ms" integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_user_id   uuid    := auth.uid();
@@ -9067,12 +12109,174 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."update_dwell_time"("post_id" "uuid", "dwell_ms" integer) OWNER TO "postgres";
+
 --
--- Name: update_post(uuid, text, text[], text, boolean, boolean, boolean, boolean, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: update_dwell_times_batch("jsonb", "uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.update_post(p_post_id uuid, p_caption text DEFAULT NULL::text, p_tags text[] DEFAULT '{}'::text[], p_privacy text DEFAULT NULL::text, p_allow_comments boolean DEFAULT NULL::boolean, p_allow_download boolean DEFAULT NULL::boolean, p_allow_duet boolean DEFAULT NULL::boolean, p_women_only boolean DEFAULT NULL::boolean, p_aspect_ratio text DEFAULT NULL::text) RETURNS void
-    LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION "public"."update_dwell_times_batch"("p_dwells" "jsonb" DEFAULT '[]'::"jsonb", "p_skips" "uuid"[] DEFAULT '{}'::"uuid"[]) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  r jsonb;
+  s uuid;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  -- Dwell-Messungen: exakt update_dwell_time pro Eintrag (gleiche EMA-Logik).
+  FOR r IN SELECT jsonb_array_elements(COALESCE(p_dwells, '[]'::jsonb))
+  LOOP
+    IF (r ? 'post_id') AND (r ? 'dwell_ms') THEN
+      PERFORM public.update_dwell_time((r->>'post_id')::uuid, (r->>'dwell_ms')::int);
+    END IF;
+  END LOOP;
+
+  -- Skips: exakt record_skip pro Eintrag.
+  IF p_skips IS NOT NULL THEN
+    FOREACH s IN ARRAY p_skips
+    LOOP
+      PERFORM public.record_skip(s);
+    END LOOP;
+  END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_dwell_times_batch"("p_dwells" "jsonb", "p_skips" "uuid"[]) OWNER TO "postgres";
+
+--
+-- Name: update_live_auction("uuid", "text", integer, integer, integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."update_live_auction"("p_auction_id" "uuid", "p_title" "text", "p_start_price_cents" integer, "p_min_increment_cents" integer, "p_buy_now_cents" integer DEFAULT NULL::integer, "p_image_url" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  a     public.live_auctions;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  -- Zeilen-Lock wie beim Abbrechen: zwischen Prüfung und Schreiben darf der
+  -- Artikel nicht losstarten.
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  IF a.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  IF a.status <> 'scheduled' THEN
+    RAISE EXCEPTION 'auction_not_editable' USING ERRCODE = '22023';
+  END IF;
+
+  -- Kann bei 'scheduled' nicht vorkommen. Steht trotzdem hier, weil die
+  -- Annahme sonst nur im Kopf existiert und beim nächsten Statuswechsel
+  -- unbemerkt fällt.
+  IF a.bid_count > 0 THEN
+    RAISE EXCEPTION 'has_bids' USING ERRCODE = '22023';
+  END IF;
+
+  IF char_length(btrim(COALESCE(p_title, ''))) NOT BETWEEN 2 AND 140 THEN
+    RAISE EXCEPTION 'invalid_title' USING ERRCODE = '22023';
+  END IF;
+  IF p_start_price_cents <= 0 OR p_min_increment_cents <= 0 THEN
+    RAISE EXCEPTION 'invalid_price' USING ERRCODE = '22023';
+  END IF;
+  IF p_buy_now_cents IS NOT NULL AND p_buy_now_cents <= p_start_price_cents THEN
+    RAISE EXCEPTION 'buy_now_below_start' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.live_auctions
+     SET title               = btrim(p_title),
+         start_price_cents   = p_start_price_cents,
+         min_increment_cents = p_min_increment_cents,
+         buy_now_cents       = p_buy_now_cents,
+         image_url           = p_image_url
+   WHERE id = a.id;
+
+  RETURN jsonb_build_object('auction_id', a.id, 'status', 'updated');
+END $$;
+
+
+ALTER FUNCTION "public"."update_live_auction"("p_auction_id" "uuid", "p_title" "text", "p_start_price_cents" integer, "p_min_increment_cents" integer, "p_buy_now_cents" integer, "p_image_url" "text") OWNER TO "postgres";
+
+--
+-- Name: update_order_shipping_address("uuid", "text", "text", "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."update_order_shipping_address"("p_order_id" "uuid", "p_name" "text", "p_street" "text", "p_zip" "text", "p_city" "text", "p_country" "text" DEFAULT 'DE'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caller  uuid := auth.uid();
+  v_order   public.product_orders%ROWTYPE;
+  v_name    text := nullif(btrim(p_name), '');
+  v_street  text := nullif(btrim(p_street), '');
+  v_zip     text := nullif(btrim(p_zip), '');
+  v_city    text := nullif(btrim(p_city), '');
+  v_country text := upper(coalesce(nullif(btrim(p_country), ''), 'DE'));
+BEGIN
+  IF v_caller IS NULL THEN
+    RETURN jsonb_build_object('error','not_authenticated');
+  END IF;
+
+  SELECT * INTO v_order FROM public.product_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('error','order_not_found'); END IF;
+
+  IF v_order.buyer_id <> v_caller THEN
+    RETURN jsonb_build_object('error','not_authorized');
+  END IF;
+
+  IF v_order.status <> 'paid' THEN
+    RETURN jsonb_build_object('error','not_editable');
+  END IF;
+
+  IF v_name IS NULL OR v_street IS NULL OR v_zip IS NULL OR v_city IS NULL THEN
+    RETURN jsonb_build_object('error','incomplete_address');
+  END IF;
+  IF v_country NOT IN ('DE','AT','CH') THEN
+    RETURN jsonb_build_object('error','country_not_supported');
+  END IF;
+
+  UPDATE public.product_orders
+     SET ship_name    = v_name,
+         ship_street  = v_street,
+         ship_zip     = v_zip,
+         ship_city    = v_city,
+         ship_country = v_country,
+         updated_at   = now()
+   WHERE id = p_order_id;
+
+  BEGIN
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+    VALUES (v_order.seller_id, v_caller, 'order_address_updated', 'Eine Lieferadresse wurde aktualisiert.');
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  RETURN jsonb_build_object('success', true);
+END $$;
+
+
+ALTER FUNCTION "public"."update_order_shipping_address"("p_order_id" "uuid", "p_name" "text", "p_street" "text", "p_zip" "text", "p_city" "text", "p_country" "text") OWNER TO "postgres";
+
+--
+-- Name: update_post("uuid", "text", "text"[], "text", boolean, boolean, boolean, boolean, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."update_post"("p_post_id" "uuid", "p_caption" "text" DEFAULT NULL::"text", "p_tags" "text"[] DEFAULT '{}'::"text"[], "p_privacy" "text" DEFAULT NULL::"text", "p_allow_comments" boolean DEFAULT NULL::boolean, "p_allow_download" boolean DEFAULT NULL::boolean, "p_allow_duet" boolean DEFAULT NULL::boolean, "p_women_only" boolean DEFAULT NULL::boolean, "p_aspect_ratio" "text" DEFAULT NULL::"text") RETURNS "void"
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -9098,12 +12302,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."update_post"("p_post_id" "uuid", "p_caption" "text", "p_tags" "text"[], "p_privacy" "text", "p_allow_comments" boolean, "p_allow_download" boolean, "p_allow_duet" boolean, "p_women_only" boolean, "p_aspect_ratio" "text") OWNER TO "postgres";
+
 --
--- Name: update_product_rating(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: update_product_rating(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.update_product_rating() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."update_product_rating"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_product_id UUID;
@@ -9122,13 +12329,15 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."update_product_rating"() OWNER TO "postgres";
+
 --
--- Name: upsert_post_draft(uuid, text, text[], text, text, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: upsert_post_draft("uuid", "text", "text"[], "text", "text", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.upsert_post_draft(p_id uuid DEFAULT NULL::uuid, p_caption text DEFAULT NULL::text, p_tags text[] DEFAULT '{}'::text[], p_media_type text DEFAULT NULL::text, p_media_url text DEFAULT NULL::text, p_thumbnail_url text DEFAULT NULL::text, p_settings jsonb DEFAULT '{}'::jsonb) RETURNS uuid
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."upsert_post_draft"("p_id" "uuid" DEFAULT NULL::"uuid", "p_caption" "text" DEFAULT NULL::"text", "p_tags" "text"[] DEFAULT '{}'::"text"[], "p_media_type" "text" DEFAULT NULL::"text", "p_media_url" "text" DEFAULT NULL::"text", "p_thumbnail_url" "text" DEFAULT NULL::"text", "p_settings" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -9168,13 +12377,33 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."upsert_post_draft"("p_id" "uuid", "p_caption" "text", "p_tags" "text"[], "p_media_type" "text", "p_media_url" "text", "p_thumbnail_url" "text", "p_settings" "jsonb") OWNER TO "postgres";
+
 --
--- Name: vote_on_poll(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: users_blocked("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.vote_on_poll(p_poll_id uuid, p_option_index integer) RETURNS void
-    LANGUAGE plpgsql
-    SET search_path TO 'public'
+CREATE OR REPLACE FUNCTION "public"."users_blocked"("a" "uuid", "b" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM user_blocks
+     WHERE (blocker_id = a AND blocked_id = b)
+        OR (blocker_id = b AND blocked_id = a)
+  );
+$$;
+
+
+ALTER FUNCTION "public"."users_blocked"("a" "uuid", "b" "uuid") OWNER TO "postgres";
+
+--
+-- Name: vote_on_poll("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."vote_on_poll"("p_poll_id" "uuid", "p_option_index" integer) RETURNS "void"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_options JSONB;
@@ -9207,7299 +12436,8822 @@ END;
 $$;
 
 
+ALTER FUNCTION "public"."vote_on_poll"("p_poll_id" "uuid", "p_option_index" integer) OWNER TO "postgres";
+
 --
--- Name: admin_audit_log; Type: TABLE; Schema: public; Owner: -
+-- Name: admin_audit_log; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.admin_audit_log (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    actor_id uuid,
-    action text NOT NULL,
-    target_type text NOT NULL,
-    target_id uuid,
-    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."admin_audit_log" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "actor_id" "uuid",
+    "action" "text" NOT NULL,
+    "target_type" "text" NOT NULL,
+    "target_id" "uuid",
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."admin_audit_log" OWNER TO "postgres";
+
 --
--- Name: admin_campaign_daily_metrics; Type: TABLE; Schema: public; Owner: -
+-- Name: admin_campaign_daily_metrics; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.admin_campaign_daily_metrics (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    campaign_id uuid NOT NULL,
-    metric_date date DEFAULT CURRENT_DATE NOT NULL,
-    impressions bigint DEFAULT 0 NOT NULL,
-    clicks bigint DEFAULT 0 NOT NULL,
-    conversions bigint DEFAULT 0 NOT NULL,
-    revenue_cents bigint DEFAULT 0 NOT NULL,
-    spend_cents bigint DEFAULT 0 NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT admin_campaign_daily_metrics_clicks_check CHECK ((clicks >= 0)),
-    CONSTRAINT admin_campaign_daily_metrics_conversions_check CHECK ((conversions >= 0)),
-    CONSTRAINT admin_campaign_daily_metrics_impressions_check CHECK ((impressions >= 0)),
-    CONSTRAINT admin_campaign_daily_metrics_revenue_cents_check CHECK ((revenue_cents >= 0)),
-    CONSTRAINT admin_campaign_daily_metrics_spend_cents_check CHECK ((spend_cents >= 0))
+CREATE TABLE IF NOT EXISTS "public"."admin_campaign_daily_metrics" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "campaign_id" "uuid" NOT NULL,
+    "metric_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "impressions" bigint DEFAULT 0 NOT NULL,
+    "clicks" bigint DEFAULT 0 NOT NULL,
+    "conversions" bigint DEFAULT 0 NOT NULL,
+    "revenue_cents" bigint DEFAULT 0 NOT NULL,
+    "spend_cents" bigint DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "admin_campaign_daily_metrics_clicks_check" CHECK (("clicks" >= 0)),
+    CONSTRAINT "admin_campaign_daily_metrics_conversions_check" CHECK (("conversions" >= 0)),
+    CONSTRAINT "admin_campaign_daily_metrics_impressions_check" CHECK (("impressions" >= 0)),
+    CONSTRAINT "admin_campaign_daily_metrics_revenue_cents_check" CHECK (("revenue_cents" >= 0)),
+    CONSTRAINT "admin_campaign_daily_metrics_spend_cents_check" CHECK (("spend_cents" >= 0))
 );
 
 
+ALTER TABLE "public"."admin_campaign_daily_metrics" OWNER TO "postgres";
+
 --
--- Name: admin_campaigns; Type: TABLE; Schema: public; Owner: -
+-- Name: admin_campaigns; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.admin_campaigns (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    title text NOT NULL,
-    channel text DEFAULT 'manual'::text NOT NULL,
-    status text DEFAULT 'draft'::text NOT NULL,
-    target_metric text,
-    budget_cents bigint DEFAULT 0 NOT NULL,
-    spend_cents bigint DEFAULT 0 NOT NULL,
-    starts_at timestamp with time zone,
-    ends_at timestamp with time zone,
-    created_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT admin_campaigns_budget_cents_check CHECK ((budget_cents >= 0)),
-    CONSTRAINT admin_campaigns_spend_cents_check CHECK ((spend_cents >= 0)),
-    CONSTRAINT admin_campaigns_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'paused'::text, 'completed'::text, 'failed'::text, 'archived'::text]))),
-    CONSTRAINT admin_campaigns_title_check CHECK ((char_length(TRIM(BOTH FROM title)) > 0))
+CREATE TABLE IF NOT EXISTS "public"."admin_campaigns" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "title" "text" NOT NULL,
+    "channel" "text" DEFAULT 'manual'::"text" NOT NULL,
+    "status" "text" DEFAULT 'draft'::"text" NOT NULL,
+    "target_metric" "text",
+    "budget_cents" bigint DEFAULT 0 NOT NULL,
+    "spend_cents" bigint DEFAULT 0 NOT NULL,
+    "starts_at" timestamp with time zone,
+    "ends_at" timestamp with time zone,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "admin_campaigns_budget_cents_check" CHECK (("budget_cents" >= 0)),
+    CONSTRAINT "admin_campaigns_spend_cents_check" CHECK (("spend_cents" >= 0)),
+    CONSTRAINT "admin_campaigns_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'active'::"text", 'paused'::"text", 'completed'::"text", 'failed'::"text", 'archived'::"text"]))),
+    CONSTRAINT "admin_campaigns_title_check" CHECK (("char_length"(TRIM(BOTH FROM "title")) > 0))
 );
 
 
+ALTER TABLE "public"."admin_campaigns" OWNER TO "postgres";
+
 --
--- Name: admin_region_daily_metrics; Type: TABLE; Schema: public; Owner: -
+-- Name: admin_region_daily_metrics; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.admin_region_daily_metrics (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    country_code text NOT NULL,
-    country_name text NOT NULL,
-    metric_date date DEFAULT CURRENT_DATE NOT NULL,
-    active_users bigint DEFAULT 0 NOT NULL,
-    new_registrations bigint DEFAULT 0 NOT NULL,
-    posts bigint DEFAULT 0 NOT NULL,
-    views bigint DEFAULT 0 NOT NULL,
-    reports bigint DEFAULT 0 NOT NULL,
-    source text DEFAULT 'manual'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    total_profiles bigint DEFAULT 0 NOT NULL,
-    CONSTRAINT admin_region_daily_metrics_active_users_check CHECK ((active_users >= 0)),
-    CONSTRAINT admin_region_daily_metrics_country_code_check CHECK ((country_code ~ '^[A-Z]{2}$'::text)),
-    CONSTRAINT admin_region_daily_metrics_country_name_check CHECK ((char_length(TRIM(BOTH FROM country_name)) > 0)),
-    CONSTRAINT admin_region_daily_metrics_new_registrations_check CHECK ((new_registrations >= 0)),
-    CONSTRAINT admin_region_daily_metrics_posts_check CHECK ((posts >= 0)),
-    CONSTRAINT admin_region_daily_metrics_reports_check CHECK ((reports >= 0)),
-    CONSTRAINT admin_region_daily_metrics_total_profiles_check CHECK ((total_profiles >= 0)),
-    CONSTRAINT admin_region_daily_metrics_views_check CHECK ((views >= 0))
+CREATE TABLE IF NOT EXISTS "public"."admin_region_daily_metrics" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "country_code" "text" NOT NULL,
+    "country_name" "text" NOT NULL,
+    "metric_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "active_users" bigint DEFAULT 0 NOT NULL,
+    "new_registrations" bigint DEFAULT 0 NOT NULL,
+    "posts" bigint DEFAULT 0 NOT NULL,
+    "views" bigint DEFAULT 0 NOT NULL,
+    "reports" bigint DEFAULT 0 NOT NULL,
+    "source" "text" DEFAULT 'manual'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "total_profiles" bigint DEFAULT 0 NOT NULL,
+    CONSTRAINT "admin_region_daily_metrics_active_users_check" CHECK (("active_users" >= 0)),
+    CONSTRAINT "admin_region_daily_metrics_country_code_check" CHECK (("country_code" ~ '^[A-Z]{2}$'::"text")),
+    CONSTRAINT "admin_region_daily_metrics_country_name_check" CHECK (("char_length"(TRIM(BOTH FROM "country_name")) > 0)),
+    CONSTRAINT "admin_region_daily_metrics_new_registrations_check" CHECK (("new_registrations" >= 0)),
+    CONSTRAINT "admin_region_daily_metrics_posts_check" CHECK (("posts" >= 0)),
+    CONSTRAINT "admin_region_daily_metrics_reports_check" CHECK (("reports" >= 0)),
+    CONSTRAINT "admin_region_daily_metrics_total_profiles_check" CHECK (("total_profiles" >= 0)),
+    CONSTRAINT "admin_region_daily_metrics_views_check" CHECK (("views" >= 0))
 );
 
 
+ALTER TABLE "public"."admin_region_daily_metrics" OWNER TO "postgres";
+
 --
--- Name: admin_support_messages; Type: TABLE; Schema: public; Owner: -
+-- Name: admin_support_messages; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.admin_support_messages (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    thread_id uuid NOT NULL,
-    sender_type text NOT NULL,
-    sender_id uuid,
-    body text NOT NULL,
-    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
-    read_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT admin_support_messages_body_check CHECK (((length(TRIM(BOTH FROM body)) > 0) AND (length(body) <= 4000))),
-    CONSTRAINT admin_support_messages_sender_type_check CHECK ((sender_type = ANY (ARRAY['user'::text, 'admin'::text, 'system'::text])))
+CREATE TABLE IF NOT EXISTS "public"."admin_support_messages" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "thread_id" "uuid" NOT NULL,
+    "sender_type" "text" NOT NULL,
+    "sender_id" "uuid",
+    "body" "text" NOT NULL,
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "read_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "admin_support_messages_body_check" CHECK ((("length"(TRIM(BOTH FROM "body")) > 0) AND ("length"("body") <= 4000))),
+    CONSTRAINT "admin_support_messages_sender_type_check" CHECK (("sender_type" = ANY (ARRAY['user'::"text", 'admin'::"text", 'system'::"text"])))
 );
 
 
+ALTER TABLE "public"."admin_support_messages" OWNER TO "postgres";
+
 --
--- Name: admin_support_threads; Type: TABLE; Schema: public; Owner: -
+-- Name: admin_support_threads; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.admin_support_threads (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    source text DEFAULT 'manual'::text NOT NULL,
-    user_id uuid,
-    subject text NOT NULL,
-    status text DEFAULT 'open'::text NOT NULL,
-    priority text DEFAULT 'medium'::text NOT NULL,
-    assigned_admin_id uuid,
-    last_message_at timestamp with time zone DEFAULT now() NOT NULL,
-    resolved_at timestamp with time zone,
-    resolved_by uuid,
-    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT admin_support_threads_priority_check CHECK ((priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text]))),
-    CONSTRAINT admin_support_threads_source_check CHECK ((source = ANY (ARRAY['dm'::text, 'report'::text, 'payment'::text, 'system'::text, 'manual'::text, 'activation'::text]))),
-    CONSTRAINT admin_support_threads_status_check CHECK ((status = ANY (ARRAY['open'::text, 'pending'::text, 'resolved'::text, 'closed'::text])))
+CREATE TABLE IF NOT EXISTS "public"."admin_support_threads" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "source" "text" DEFAULT 'manual'::"text" NOT NULL,
+    "user_id" "uuid",
+    "subject" "text" NOT NULL,
+    "status" "text" DEFAULT 'open'::"text" NOT NULL,
+    "priority" "text" DEFAULT 'medium'::"text" NOT NULL,
+    "assigned_admin_id" "uuid",
+    "last_message_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "resolved_at" timestamp with time zone,
+    "resolved_by" "uuid",
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "admin_support_threads_priority_check" CHECK (("priority" = ANY (ARRAY['low'::"text", 'medium'::"text", 'high'::"text"]))),
+    CONSTRAINT "admin_support_threads_source_check" CHECK (("source" = ANY (ARRAY['dm'::"text", 'report'::"text", 'payment'::"text", 'system'::"text", 'manual'::"text", 'activation'::"text"]))),
+    CONSTRAINT "admin_support_threads_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'pending'::"text", 'resolved'::"text", 'closed'::"text"])))
 );
 
 
+ALTER TABLE "public"."admin_support_threads" OWNER TO "postgres";
+
 --
--- Name: ai_image_generations; Type: TABLE; Schema: public; Owner: -
+-- Name: ai_image_generations; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.ai_image_generations (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    purpose public.ai_image_purpose NOT NULL,
-    prompt text NOT NULL,
-    model text DEFAULT 'gpt-image-1'::text NOT NULL,
-    image_url text,
-    storage_path text,
-    size text DEFAULT '1024x1024'::text NOT NULL,
-    cost_cents integer DEFAULT 4 NOT NULL,
-    error text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    consumed_at timestamp with time zone,
-    CONSTRAINT ai_image_generations_cost_cents_check CHECK ((cost_cents >= 0)),
-    CONSTRAINT ai_image_generations_prompt_check CHECK (((char_length(prompt) >= 3) AND (char_length(prompt) <= 2000))),
-    CONSTRAINT ai_image_generations_size_check CHECK ((size = ANY (ARRAY['1024x1024'::text, '1024x1536'::text, '1536x1024'::text, '512x512'::text])))
+CREATE TABLE IF NOT EXISTS "public"."ai_image_generations" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "purpose" "public"."ai_image_purpose" NOT NULL,
+    "prompt" "text" NOT NULL,
+    "model" "text" DEFAULT 'gpt-image-1'::"text" NOT NULL,
+    "image_url" "text",
+    "storage_path" "text",
+    "size" "text" DEFAULT '1024x1024'::"text" NOT NULL,
+    "cost_cents" integer DEFAULT 4 NOT NULL,
+    "error" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "consumed_at" timestamp with time zone,
+    CONSTRAINT "ai_image_generations_cost_cents_check" CHECK (("cost_cents" >= 0)),
+    CONSTRAINT "ai_image_generations_prompt_check" CHECK ((("char_length"("prompt") >= 3) AND ("char_length"("prompt") <= 2000))),
+    CONSTRAINT "ai_image_generations_size_check" CHECK (("size" = ANY (ARRAY['1024x1024'::"text", '1024x1536'::"text", '1536x1024'::"text", '512x512'::"text"])))
 );
 
 
+ALTER TABLE "public"."ai_image_generations" OWNER TO "postgres";
+
 --
--- Name: algo_experiments; Type: TABLE; Schema: public; Owner: -
+-- Name: algo_experiments; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.algo_experiments (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    description text,
-    is_active boolean DEFAULT false,
-    control_params jsonb DEFAULT '{}'::jsonb NOT NULL,
-    treatment_params jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    ended_at timestamp with time zone
+CREATE TABLE IF NOT EXISTS "public"."algo_experiments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "is_active" boolean DEFAULT false,
+    "control_params" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "treatment_params" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "ended_at" timestamp with time zone
 );
 
 
+ALTER TABLE "public"."algo_experiments" OWNER TO "postgres";
+
 --
--- Name: algo_user_variants; Type: TABLE; Schema: public; Owner: -
+-- Name: algo_user_variants; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.algo_user_variants (
-    user_id uuid NOT NULL,
-    experiment_name text NOT NULL,
-    variant text NOT NULL,
-    assigned_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."algo_user_variants" (
+    "user_id" "uuid" NOT NULL,
+    "experiment_name" "text" NOT NULL,
+    "variant" "text" NOT NULL,
+    "assigned_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."algo_user_variants" OWNER TO "postgres";
+
 --
--- Name: bookmarks; Type: TABLE; Schema: public; Owner: -
+-- Name: auction_carts; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.bookmarks (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    post_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."auction_carts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "buyer_id" "uuid" NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "status" "text" DEFAULT 'open'::"text" NOT NULL,
+    "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "closes_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval) NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "auction_carts_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'checkout_pending'::"text", 'checked_out'::"text", 'expired'::"text", 'cancelled'::"text"])))
 );
 
 
+ALTER TABLE "public"."auction_carts" OWNER TO "postgres";
+
 --
--- Name: coin_pricing_tiers; Type: TABLE; Schema: public; Owner: -
+-- Name: bookmarks; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.coin_pricing_tiers (
-    id text NOT NULL,
-    coins integer NOT NULL,
-    bonus_coins integer DEFAULT 0 NOT NULL,
-    price_cents integer NOT NULL,
-    currency text DEFAULT 'eur'::text NOT NULL,
-    stripe_price_id text,
-    badge_label text,
-    sort_order integer DEFAULT 0 NOT NULL,
-    active boolean DEFAULT true NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT coin_pricing_tiers_bonus_coins_check CHECK ((bonus_coins >= 0)),
-    CONSTRAINT coin_pricing_tiers_coins_check CHECK ((coins > 0)),
-    CONSTRAINT coin_pricing_tiers_price_cents_check CHECK ((price_cents > 0))
+CREATE TABLE IF NOT EXISTS "public"."bookmarks" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."bookmarks" OWNER TO "postgres";
+
 --
--- Name: coin_purchases; Type: TABLE; Schema: public; Owner: -
+-- Name: coin_pricing_tiers; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.coin_purchases (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    product_id text NOT NULL,
-    coins_credited integer NOT NULL,
-    transaction_id text,
-    event_type text NOT NULL,
-    raw_event jsonb,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."coin_pricing_tiers" (
+    "id" "text" NOT NULL,
+    "coins" integer NOT NULL,
+    "bonus_coins" integer DEFAULT 0 NOT NULL,
+    "price_cents" integer NOT NULL,
+    "currency" "text" DEFAULT 'eur'::"text" NOT NULL,
+    "stripe_price_id" "text",
+    "badge_label" "text",
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "coin_pricing_tiers_bonus_coins_check" CHECK (("bonus_coins" >= 0)),
+    CONSTRAINT "coin_pricing_tiers_coins_check" CHECK (("coins" > 0)),
+    CONSTRAINT "coin_pricing_tiers_price_cents_check" CHECK (("price_cents" > 0))
 );
 
 
+ALTER TABLE "public"."coin_pricing_tiers" OWNER TO "postgres";
+
 --
--- Name: coins_wallets; Type: TABLE; Schema: public; Owner: -
+-- Name: coin_purchases; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.coins_wallets (
-    user_id uuid NOT NULL,
-    coins integer DEFAULT 0 NOT NULL,
-    diamonds integer DEFAULT 0 NOT NULL,
-    total_gifted integer DEFAULT 0 NOT NULL,
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT coins_wallets_coins_check CHECK ((coins >= 0)),
-    CONSTRAINT coins_wallets_diamonds_check CHECK ((diamonds >= 0))
+CREATE TABLE IF NOT EXISTS "public"."coin_purchases" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "product_id" "text" NOT NULL,
+    "coins_credited" integer NOT NULL,
+    "transaction_id" "text",
+    "event_type" "text" NOT NULL,
+    "raw_event" "jsonb",
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."coin_purchases" OWNER TO "postgres";
+
 --
--- Name: comment_likes; Type: TABLE; Schema: public; Owner: -
+-- Name: coins_wallets; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.comment_likes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    comment_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."coins_wallets" (
+    "user_id" "uuid" NOT NULL,
+    "coins" integer DEFAULT 0 NOT NULL,
+    "diamonds" integer DEFAULT 0 NOT NULL,
+    "total_gifted" integer DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "coins_wallets_coins_check" CHECK (("coins" >= 0)),
+    CONSTRAINT "coins_wallets_diamonds_check" CHECK (("diamonds" >= 0))
 );
 
 
+ALTER TABLE "public"."coins_wallets" OWNER TO "postgres";
+
 --
--- Name: comments; Type: TABLE; Schema: public; Owner: -
+-- Name: comment_likes; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.comments (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    post_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    text text NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    parent_id uuid,
-    CONSTRAINT comments_text_check CHECK (((char_length(text) > 0) AND (char_length(text) <= 500)))
+CREATE TABLE IF NOT EXISTS "public"."comment_likes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "comment_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
---
--- Name: COLUMN comments.parent_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.comments.parent_id IS 'If set, this comment is a reply to the comment with this id. Max one level deep.';
-
+ALTER TABLE "public"."comment_likes" OWNER TO "postgres";
 
 --
--- Name: content_reports; Type: TABLE; Schema: public; Owner: -
+-- Name: comments; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.content_reports (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    reporter_id uuid,
-    target_type text NOT NULL,
-    target_id uuid NOT NULL,
-    reason text NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
-    admin_note text,
-    reviewed_by uuid,
-    reviewed_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT content_reports_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'reviewed'::text, 'actioned'::text, 'dismissed'::text]))),
-    CONSTRAINT content_reports_target_type_check CHECK ((target_type = ANY (ARRAY['post'::text, 'profile'::text, 'comment'::text, 'live'::text, 'product'::text])))
+CREATE TABLE IF NOT EXISTS "public"."comments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "text" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "parent_id" "uuid",
+    CONSTRAINT "comments_text_check" CHECK ((("char_length"("text") > 0) AND ("char_length"("text") <= 500)))
 );
 
 
+ALTER TABLE "public"."comments" OWNER TO "postgres";
+
 --
--- Name: conversations; Type: TABLE; Schema: public; Owner: -
+-- Name: COLUMN "comments"."parent_id"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.conversations (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    participant_1 uuid NOT NULL,
-    participant_2 uuid NOT NULL,
-    last_message_at timestamp with time zone DEFAULT now(),
-    created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT participants_ordered CHECK ((participant_1 < participant_2))
+COMMENT ON COLUMN "public"."comments"."parent_id" IS 'If set, this comment is a reply to the comment with this id. Max one level deep.';
+
+
+--
+-- Name: content_reports; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."content_reports" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "reporter_id" "uuid",
+    "target_type" "text" NOT NULL,
+    "target_id" "uuid" NOT NULL,
+    "reason" "text" NOT NULL,
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "admin_note" "text",
+    "reviewed_by" "uuid",
+    "reviewed_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "content_reports_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'reviewed'::"text", 'actioned'::"text", 'dismissed'::"text"]))),
+    CONSTRAINT "content_reports_target_type_check" CHECK (("target_type" = ANY (ARRAY['post'::"text", 'profile'::"text", 'comment'::"text", 'live'::"text", 'product'::"text"])))
 );
 
 
+ALTER TABLE "public"."content_reports" OWNER TO "postgres";
+
 --
--- Name: gift_transactions; Type: TABLE; Schema: public; Owner: -
+-- Name: conversations; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.gift_transactions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    sender_id uuid NOT NULL,
-    recipient_id uuid NOT NULL,
-    live_session_id text NOT NULL,
-    gift_id text NOT NULL,
-    coin_cost integer NOT NULL,
-    diamond_value integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."conversations" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "participant_1" "uuid" NOT NULL,
+    "participant_2" "uuid" NOT NULL,
+    "last_message_at" timestamp with time zone DEFAULT "now"(),
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "participants_ordered" CHECK (("participant_1" < "participant_2"))
 );
 
 
+ALTER TABLE "public"."conversations" OWNER TO "postgres";
+
 --
--- Name: live_battle_history; Type: TABLE; Schema: public; Owner: -
+-- Name: gift_transactions; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_battle_history (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    guest_id uuid NOT NULL,
-    host_score integer DEFAULT 0 NOT NULL,
-    guest_score integer DEFAULT 0 NOT NULL,
-    winner text NOT NULL,
-    duration_secs integer DEFAULT 0 NOT NULL,
-    ended_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT live_battle_history_duration_secs_check CHECK ((duration_secs >= 0)),
-    CONSTRAINT live_battle_history_guest_score_check CHECK ((guest_score >= 0)),
-    CONSTRAINT live_battle_history_host_score_check CHECK ((host_score >= 0)),
-    CONSTRAINT live_battle_history_winner_check CHECK ((winner = ANY (ARRAY['host'::text, 'guest'::text, 'draw'::text]))),
-    CONSTRAINT no_self_battle CHECK ((host_id <> guest_id))
+CREATE TABLE IF NOT EXISTS "public"."gift_transactions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "sender_id" "uuid" NOT NULL,
+    "recipient_id" "uuid" NOT NULL,
+    "live_session_id" "text" NOT NULL,
+    "gift_id" "text" NOT NULL,
+    "coin_cost" integer NOT NULL,
+    "diamond_value" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."gift_transactions" OWNER TO "postgres";
+
 --
--- Name: live_comments; Type: TABLE; Schema: public; Owner: -
+-- Name: live_battle_history; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_comments (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    text text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    pinned boolean DEFAULT false NOT NULL,
-    CONSTRAINT live_comments_text_check CHECK ((char_length(text) <= 300))
+CREATE TABLE IF NOT EXISTS "public"."live_battle_history" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "guest_id" "uuid" NOT NULL,
+    "host_score" integer DEFAULT 0 NOT NULL,
+    "guest_score" integer DEFAULT 0 NOT NULL,
+    "winner" "text" NOT NULL,
+    "duration_secs" integer DEFAULT 0 NOT NULL,
+    "ended_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_battle_history_duration_secs_check" CHECK (("duration_secs" >= 0)),
+    CONSTRAINT "live_battle_history_guest_score_check" CHECK (("guest_score" >= 0)),
+    CONSTRAINT "live_battle_history_host_score_check" CHECK (("host_score" >= 0)),
+    CONSTRAINT "live_battle_history_winner_check" CHECK (("winner" = ANY (ARRAY['host'::"text", 'guest'::"text", 'draw'::"text"]))),
+    CONSTRAINT "no_self_battle" CHECK (("host_id" <> "guest_id"))
 );
 
 
+ALTER TABLE "public"."live_battle_history" OWNER TO "postgres";
+
 --
--- Name: live_sessions; Type: TABLE; Schema: public; Owner: -
+-- Name: live_comments; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_sessions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    host_id uuid NOT NULL,
-    title text,
-    status text DEFAULT 'active'::text NOT NULL,
-    viewer_count integer DEFAULT 0 NOT NULL,
-    peak_viewers integer DEFAULT 0 NOT NULL,
-    room_name text,
-    started_at timestamp with time zone DEFAULT now() NOT NULL,
-    ended_at timestamp with time zone,
-    like_count integer DEFAULT 0,
-    comment_count integer DEFAULT 0,
-    pinned_comment jsonb,
-    replay_url text,
-    is_replayable boolean DEFAULT false NOT NULL,
-    replay_views integer DEFAULT 0 NOT NULL,
-    thumbnail_url text,
-    category text DEFAULT 'talk'::text,
-    moderation_enabled boolean DEFAULT false NOT NULL,
-    moderation_words text[] DEFAULT ARRAY[]::text[] NOT NULL,
-    goal_type text,
-    goal_target integer,
-    goal_current integer DEFAULT 0 NOT NULL,
-    goal_title text,
-    goal_reached boolean DEFAULT false NOT NULL,
-    allow_comments boolean DEFAULT true NOT NULL,
-    allow_gifts boolean DEFAULT true NOT NULL,
-    women_only boolean DEFAULT false NOT NULL,
-    followers_only_chat boolean DEFAULT false NOT NULL,
-    slow_mode_seconds integer DEFAULT 0 NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    recording_enabled boolean DEFAULT false NOT NULL,
-    recording_id uuid,
-    shop_enabled boolean DEFAULT false NOT NULL,
-    ingress_id text,
-    ingress_url text,
-    ingress_stream_key text,
-    ingress_type text,
-    CONSTRAINT live_sessions_goal_type_check CHECK ((goal_type = ANY (ARRAY['gift_value'::text, 'likes'::text]))),
-    CONSTRAINT live_sessions_ingress_type_check CHECK (((ingress_type IS NULL) OR (ingress_type = ANY (ARRAY['whip'::text, 'rtmp'::text])))),
-    CONSTRAINT live_sessions_slow_mode_seconds_check CHECK (((slow_mode_seconds >= 0) AND (slow_mode_seconds <= 300))),
-    CONSTRAINT live_sessions_status_check CHECK ((status = ANY (ARRAY['active'::text, 'ended'::text])))
+CREATE TABLE IF NOT EXISTS "public"."live_comments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "text" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "pinned" boolean DEFAULT false NOT NULL,
+    CONSTRAINT "live_comments_text_check" CHECK (("char_length"("text") <= 300))
 );
 
 
---
--- Name: COLUMN live_sessions.allow_comments; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.live_sessions.allow_comments IS 'Host-Einstellung: ob Zuschauer während des Livestreams kommentieren dürfen';
-
+ALTER TABLE "public"."live_comments" OWNER TO "postgres";
 
 --
--- Name: COLUMN live_sessions.allow_gifts; Type: COMMENT; Schema: public; Owner: -
+-- Name: live_sessions; Type: TABLE; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.live_sessions.allow_gifts IS 'Host-Einstellung: ob Zuschauer virtuelle Geschenke (Coins) senden dürfen';
-
-
---
--- Name: COLUMN live_sessions.women_only; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.live_sessions.women_only IS 'Wenn true: nur für verifizierte Frauen beitretbar';
-
-
---
--- Name: COLUMN live_sessions.slow_mode_seconds; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.live_sessions.slow_mode_seconds IS 'Sekunden Cool-Down zwischen Messages pro User. 0 = deaktiviert.';
-
-
---
--- Name: profiles; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.profiles (
-    id uuid NOT NULL,
-    username text NOT NULL,
-    bio text,
-    avatar_url text,
-    guild_id uuid,
-    explore_vibe double precision DEFAULT 0.5,
-    brain_vibe double precision DEFAULT 0.5,
-    created_at timestamp with time zone DEFAULT now(),
-    expo_push_token text,
-    onboarding_complete boolean DEFAULT false,
-    push_token text,
-    preferred_tags text[],
-    is_private boolean DEFAULT false NOT NULL,
-    consistency_score double precision DEFAULT 0.5 NOT NULL,
-    website text,
-    voice_sample_url text,
-    is_verified boolean DEFAULT false NOT NULL,
-    teip text,
-    gender text,
-    women_only_verified boolean DEFAULT false NOT NULL,
-    verification_level integer DEFAULT 0 NOT NULL,
-    is_admin boolean DEFAULT false NOT NULL,
-    is_creator boolean DEFAULT false NOT NULL,
-    display_name text,
-    notif_prefs jsonb DEFAULT '{"live": true, "gifts": true, "likes": true, "orders": true, "follows": true, "comments": true, "messages": true}'::jsonb NOT NULL,
-    is_banned boolean DEFAULT false NOT NULL,
-    is_restricted boolean DEFAULT false NOT NULL,
-    restricted_until timestamp with time zone,
-    is_shadow_banned boolean DEFAULT false NOT NULL,
-    is_moderator boolean DEFAULT false NOT NULL,
-    is_operator boolean DEFAULT false NOT NULL,
-    is_creator_ops boolean DEFAULT false NOT NULL,
-    country_code text,
-    country_name text,
-    city text,
-    region_name text,
-    location_consent_at timestamp with time zone,
-    CONSTRAINT profiles_country_code_check CHECK (((country_code IS NULL) OR (country_code ~ '^[A-Z]{2}$'::text))),
-    CONSTRAINT profiles_gender_check CHECK ((gender = ANY (ARRAY['female'::text, 'male'::text, 'other'::text])))
+CREATE TABLE IF NOT EXISTS "public"."live_sessions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "title" "text",
+    "status" "text" DEFAULT 'active'::"text" NOT NULL,
+    "viewer_count" integer DEFAULT 0 NOT NULL,
+    "peak_viewers" integer DEFAULT 0 NOT NULL,
+    "room_name" "text",
+    "started_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "ended_at" timestamp with time zone,
+    "like_count" integer DEFAULT 0,
+    "comment_count" integer DEFAULT 0,
+    "pinned_comment" "jsonb",
+    "replay_url" "text",
+    "is_replayable" boolean DEFAULT false NOT NULL,
+    "replay_views" integer DEFAULT 0 NOT NULL,
+    "thumbnail_url" "text",
+    "category" "text" DEFAULT 'talk'::"text",
+    "moderation_enabled" boolean DEFAULT false NOT NULL,
+    "moderation_words" "text"[] DEFAULT ARRAY[]::"text"[] NOT NULL,
+    "goal_type" "text",
+    "goal_target" integer,
+    "goal_current" integer DEFAULT 0 NOT NULL,
+    "goal_title" "text",
+    "goal_reached" boolean DEFAULT false NOT NULL,
+    "allow_comments" boolean DEFAULT true NOT NULL,
+    "allow_gifts" boolean DEFAULT true NOT NULL,
+    "women_only" boolean DEFAULT false NOT NULL,
+    "followers_only_chat" boolean DEFAULT false NOT NULL,
+    "slow_mode_seconds" integer DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "recording_enabled" boolean DEFAULT false NOT NULL,
+    "recording_id" "uuid",
+    "shop_enabled" boolean DEFAULT false NOT NULL,
+    "ingress_id" "text",
+    "ingress_url" "text",
+    "ingress_stream_key" "text",
+    "ingress_type" "text",
+    "followers_only" boolean DEFAULT false NOT NULL,
+    CONSTRAINT "live_sessions_goal_type_check" CHECK (("goal_type" = ANY (ARRAY['gift_value'::"text", 'likes'::"text"]))),
+    CONSTRAINT "live_sessions_ingress_type_check" CHECK ((("ingress_type" IS NULL) OR ("ingress_type" = ANY (ARRAY['whip'::"text", 'rtmp'::"text"])))),
+    CONSTRAINT "live_sessions_slow_mode_seconds_check" CHECK ((("slow_mode_seconds" >= 0) AND ("slow_mode_seconds" <= 300))),
+    CONSTRAINT "live_sessions_status_check" CHECK (("status" = ANY (ARRAY['active'::"text", 'ended'::"text"])))
 );
 
 
---
--- Name: COLUMN profiles.voice_sample_url; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.profiles.voice_sample_url IS 'Öffentliche URL des Chatterbox-Voice-Samples (Cloudflare R2). Wird als audio_prompt an die generate-voice Edge Function übergeben.';
-
+ALTER TABLE "public"."live_sessions" OWNER TO "postgres";
 
 --
--- Name: COLUMN profiles.gender; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN "live_sessions"."allow_comments"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.profiles.gender IS 'Geschlecht der Nutzerin (optional, für Women-Only Zone)';
+COMMENT ON COLUMN "public"."live_sessions"."allow_comments" IS 'Host-Einstellung: ob Zuschauer während des Livestreams kommentieren dürfen';
 
 
 --
--- Name: COLUMN profiles.women_only_verified; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN "live_sessions"."allow_gifts"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.profiles.women_only_verified IS 'Hat die Zugang zur Women-Only Zone? true wenn gender=female + Level>=1';
-
-
---
--- Name: COLUMN profiles.verification_level; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.profiles.verification_level IS '0=keine, 1=Selbstdeklaration, 2=Selfie-geprüft';
+COMMENT ON COLUMN "public"."live_sessions"."allow_gifts" IS 'Host-Einstellung: ob Zuschauer virtuelle Geschenke (Coins) senden dürfen';
 
 
 --
--- Name: COLUMN profiles.is_admin; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN "live_sessions"."women_only"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.profiles.is_admin IS 'Serlo-interne Admin-Rolle. Gibt Zugang zum Admin-Panel in der App.';
-
-
---
--- Name: COLUMN profiles.is_creator; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.profiles.is_creator IS 'Creator-Status: true = Creator-Dashboard und Monetarisierungs-Features aktiv';
+COMMENT ON COLUMN "public"."live_sessions"."women_only" IS 'Wenn true: nur für verifizierte Frauen beitretbar';
 
 
 --
--- Name: COLUMN profiles.display_name; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN "live_sessions"."slow_mode_seconds"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.profiles.display_name IS 'Öffentlicher Anzeigename (optional, sonst username)';
-
-
---
--- Name: COLUMN profiles.notif_prefs; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.profiles.notif_prefs IS 'Per-channel push preference flags. Keys: likes | comments | follows | messages | live | gifts | orders. Default: all true.';
+COMMENT ON COLUMN "public"."live_sessions"."slow_mode_seconds" IS 'Sekunden Cool-Down zwischen Messages pro User. 0 = deaktiviert.';
 
 
 --
--- Name: COLUMN profiles.is_moderator; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN "live_sessions"."followers_only"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.profiles.is_moderator IS 'Can review and enforce content reports without full admin privileges.';
-
-
---
--- Name: COLUMN profiles.is_operator; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.profiles.is_operator IS 'Can view production health, release, queue, cost, and product command-center signals.';
+COMMENT ON COLUMN "public"."live_sessions"."followers_only" IS 'Wenn true: nur Follower des Hosts bekommen ein LiveKit-Token (Zuschauen). Durchsetzung in Edge Function livekit-token. Unterscheidet sich von followers_only_chat (steuert nur das Schreibrecht im Chat).';
 
 
 --
--- Name: COLUMN profiles.is_creator_ops; Type: COMMENT; Schema: public; Owner: -
+-- Name: profiles; Type: TABLE; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.profiles.is_creator_ops IS 'Can view creator/shop payout operations without full admin privileges.';
+CREATE TABLE IF NOT EXISTS "public"."profiles" (
+    "id" "uuid" NOT NULL,
+    "username" "text" NOT NULL,
+    "bio" "text",
+    "avatar_url" "text",
+    "guild_id" "uuid",
+    "explore_vibe" double precision DEFAULT 0.5,
+    "brain_vibe" double precision DEFAULT 0.5,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "expo_push_token" "text",
+    "onboarding_complete" boolean DEFAULT false,
+    "push_token" "text",
+    "preferred_tags" "text"[],
+    "is_private" boolean DEFAULT false NOT NULL,
+    "consistency_score" double precision DEFAULT 0.5 NOT NULL,
+    "website" "text",
+    "voice_sample_url" "text",
+    "is_verified" boolean DEFAULT false NOT NULL,
+    "teip" "text",
+    "gender" "text",
+    "women_only_verified" boolean DEFAULT false NOT NULL,
+    "verification_level" integer DEFAULT 0 NOT NULL,
+    "is_admin" boolean DEFAULT false NOT NULL,
+    "is_creator" boolean DEFAULT false NOT NULL,
+    "display_name" "text",
+    "notif_prefs" "jsonb" DEFAULT '{"live": true, "gifts": true, "likes": true, "orders": true, "follows": true, "comments": true, "messages": true}'::"jsonb" NOT NULL,
+    "is_banned" boolean DEFAULT false NOT NULL,
+    "is_restricted" boolean DEFAULT false NOT NULL,
+    "restricted_until" timestamp with time zone,
+    "is_shadow_banned" boolean DEFAULT false NOT NULL,
+    "is_moderator" boolean DEFAULT false NOT NULL,
+    "is_operator" boolean DEFAULT false NOT NULL,
+    "is_creator_ops" boolean DEFAULT false NOT NULL,
+    "country_code" "text",
+    "country_name" "text",
+    "city" "text",
+    "region_name" "text",
+    "location_consent_at" timestamp with time zone,
+    "nav_slot_2" "text",
+    "nav_slot_4" "text",
+    "referred_by" "uuid",
+    "locale" "text" DEFAULT 'de'::"text" NOT NULL,
+    CONSTRAINT "profiles_country_code_check" CHECK ((("country_code" IS NULL) OR ("country_code" ~ '^[A-Z]{2}$'::"text"))),
+    CONSTRAINT "profiles_gender_check" CHECK (("gender" = ANY (ARRAY['female'::"text", 'male'::"text", 'other'::"text"]))),
+    CONSTRAINT "profiles_locale_check" CHECK (("locale" = ANY (ARRAY['de'::"text", 'ru'::"text", 'en'::"text", 'ce'::"text"]))),
+    CONSTRAINT "profiles_nav_slot_2_check" CHECK ((("nav_slot_2" IS NULL) OR ("nav_slot_2" = ANY (ARRAY['guild'::"text", 'messages'::"text", 'shop'::"text", 'explore'::"text", 'notifications'::"text", 'live'::"text", 'women_only'::"text"])))),
+    CONSTRAINT "profiles_nav_slot_4_check" CHECK ((("nav_slot_4" IS NULL) OR ("nav_slot_4" = ANY (ARRAY['guild'::"text", 'messages'::"text", 'shop'::"text", 'explore'::"text", 'notifications'::"text", 'live'::"text", 'women_only'::"text"]))))
+);
+
+
+ALTER TABLE "public"."profiles" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "profiles"."voice_sample_url"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."voice_sample_url" IS 'Öffentliche URL des Chatterbox-Voice-Samples (Cloudflare R2). Wird als audio_prompt an die generate-voice Edge Function übergeben.';
 
 
 --
--- Name: creator_live_history; Type: VIEW; Schema: public; Owner: -
+-- Name: COLUMN "profiles"."gender"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE VIEW public.creator_live_history AS
- SELECT s.id AS session_id,
-    s.host_id,
-    s.title,
-    s.started_at,
-    s.ended_at,
-    GREATEST(0, (EXTRACT(epoch FROM (COALESCE(s.ended_at, now()) - s.started_at)))::integer) AS duration_secs,
-    s.peak_viewers,
-    s.status,
-    COALESCE(g.total_gift_coins, (0)::bigint) AS total_gift_coins,
-    COALESCE(g.total_gift_diamonds, (0)::bigint) AS total_gift_diamonds,
-    COALESCE(g.gift_count, (0)::bigint) AS gift_count,
-    COALESCE(c.comment_count, (0)::bigint) AS comment_count,
-    b.winner AS battle_winner,
-    b.host_score AS battle_host_score,
-    b.guest_score AS battle_guest_score,
-    b.guest_id AS battle_opponent_id,
-    p.username AS battle_opponent_name,
-    p.avatar_url AS battle_opponent_avatar,
+COMMENT ON COLUMN "public"."profiles"."gender" IS 'Geschlecht der Nutzerin (optional, für Women-Only Zone)';
+
+
+--
+-- Name: COLUMN "profiles"."women_only_verified"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."women_only_verified" IS 'Hat die Zugang zur Women-Only Zone? true wenn gender=female + Level>=1';
+
+
+--
+-- Name: COLUMN "profiles"."verification_level"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."verification_level" IS '0=keine, 1=Selbstdeklaration, 2=Selfie-geprüft';
+
+
+--
+-- Name: COLUMN "profiles"."is_admin"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."is_admin" IS 'Serlo-interne Admin-Rolle. Gibt Zugang zum Admin-Panel in der App.';
+
+
+--
+-- Name: COLUMN "profiles"."is_creator"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."is_creator" IS 'Creator-Status: true = Creator-Dashboard und Monetarisierungs-Features aktiv';
+
+
+--
+-- Name: COLUMN "profiles"."display_name"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."display_name" IS 'Öffentlicher Anzeigename (optional, sonst username)';
+
+
+--
+-- Name: COLUMN "profiles"."notif_prefs"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."notif_prefs" IS 'Per-channel push preference flags. Keys: likes | comments | follows | messages | live | gifts | orders. Default: all true.';
+
+
+--
+-- Name: COLUMN "profiles"."is_moderator"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."is_moderator" IS 'Can review and enforce content reports without full admin privileges.';
+
+
+--
+-- Name: COLUMN "profiles"."is_operator"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."is_operator" IS 'Can view production health, release, queue, cost, and product command-center signals.';
+
+
+--
+-- Name: COLUMN "profiles"."is_creator_ops"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."is_creator_ops" IS 'Can view creator/shop payout operations without full admin privileges.';
+
+
+--
+-- Name: COLUMN "profiles"."nav_slot_2"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."nav_slot_2" IS 'Bottom-Nav Slot 2 (links vom Create-Button). TabFeature-Key. NULL = Default guild.';
+
+
+--
+-- Name: COLUMN "profiles"."nav_slot_4"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."nav_slot_4" IS 'Bottom-Nav Slot 4 (rechts vom Create-Button). TabFeature-Key. NULL = Default shop.';
+
+
+--
+-- Name: COLUMN "profiles"."locale"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."locale" IS 'App-Sprache des Users (von der App gesynct); Push-Texte werden danach lokalisiert.';
+
+
+--
+-- Name: creator_live_history; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE VIEW "public"."creator_live_history" AS
+ SELECT "s"."id" AS "session_id",
+    "s"."host_id",
+    "s"."title",
+    "s"."started_at",
+    "s"."ended_at",
+    GREATEST(0, (EXTRACT(epoch FROM (COALESCE("s"."ended_at", "now"()) - "s"."started_at")))::integer) AS "duration_secs",
+    "s"."peak_viewers",
+    "s"."status",
+    COALESCE("g"."total_gift_coins", (0)::bigint) AS "total_gift_coins",
+    COALESCE("g"."total_gift_diamonds", (0)::bigint) AS "total_gift_diamonds",
+    COALESCE("g"."gift_count", (0)::bigint) AS "gift_count",
+    COALESCE("c"."comment_count", (0)::bigint) AS "comment_count",
+    "b"."winner" AS "battle_winner",
+    "b"."host_score" AS "battle_host_score",
+    "b"."guest_score" AS "battle_guest_score",
+    "b"."guest_id" AS "battle_opponent_id",
+    "p"."username" AS "battle_opponent_name",
+    "p"."avatar_url" AS "battle_opponent_avatar",
         CASE
-            WHEN (b.winner IS NULL) THEN NULL::text
-            WHEN (b.winner = 'host'::text) THEN 'win'::text
-            WHEN (b.winner = 'guest'::text) THEN 'loss'::text
-            WHEN (b.winner = 'draw'::text) THEN 'draw'::text
-            ELSE NULL::text
-        END AS battle_result
-   FROM ((((public.live_sessions s
-     LEFT JOIN ( SELECT gt.live_session_id,
-            sum(gt.coin_cost) AS total_gift_coins,
-            sum(gt.diamond_value) AS total_gift_diamonds,
-            count(*) AS gift_count
-           FROM public.gift_transactions gt
-          GROUP BY gt.live_session_id) g ON ((g.live_session_id = s.room_name)))
-     LEFT JOIN ( SELECT lc.session_id,
-            count(*) AS comment_count
-           FROM public.live_comments lc
-          GROUP BY lc.session_id) c ON ((c.session_id = s.id)))
-     LEFT JOIN public.live_battle_history b ON (((b.session_id = s.id) AND (b.host_id = s.host_id))))
-     LEFT JOIN public.profiles p ON ((p.id = b.guest_id)));
+            WHEN ("b"."winner" IS NULL) THEN NULL::"text"
+            WHEN ("b"."winner" = 'host'::"text") THEN 'win'::"text"
+            WHEN ("b"."winner" = 'guest'::"text") THEN 'loss'::"text"
+            WHEN ("b"."winner" = 'draw'::"text") THEN 'draw'::"text"
+            ELSE NULL::"text"
+        END AS "battle_result"
+   FROM (((("public"."live_sessions" "s"
+     LEFT JOIN ( SELECT "gt"."live_session_id",
+            "sum"("gt"."coin_cost") AS "total_gift_coins",
+            "sum"("gt"."diamond_value") AS "total_gift_diamonds",
+            "count"(*) AS "gift_count"
+           FROM "public"."gift_transactions" "gt"
+          GROUP BY "gt"."live_session_id") "g" ON (("g"."live_session_id" = "s"."room_name")))
+     LEFT JOIN ( SELECT "lc"."session_id",
+            "count"(*) AS "comment_count"
+           FROM "public"."live_comments" "lc"
+          GROUP BY "lc"."session_id") "c" ON (("c"."session_id" = "s"."id")))
+     LEFT JOIN "public"."live_battle_history" "b" ON ((("b"."session_id" = "s"."id") AND ("b"."host_id" = "s"."host_id"))))
+     LEFT JOIN "public"."profiles" "p" ON (("p"."id" = "b"."guest_id")));
 
+
+ALTER VIEW "public"."creator_live_history" OWNER TO "postgres";
 
 --
--- Name: creator_tips; Type: TABLE; Schema: public; Owner: -
+-- Name: creator_tips; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.creator_tips (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    sender_id uuid NOT NULL,
-    recipient_id uuid NOT NULL,
-    coin_amount integer NOT NULL,
-    message text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT creator_tips_check CHECK ((sender_id <> recipient_id)),
-    CONSTRAINT creator_tips_coin_amount_check CHECK (((coin_amount > 0) AND (coin_amount <= 100000))),
-    CONSTRAINT creator_tips_message_check CHECK ((char_length(message) <= 140))
+CREATE TABLE IF NOT EXISTS "public"."creator_tips" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "sender_id" "uuid" NOT NULL,
+    "recipient_id" "uuid" NOT NULL,
+    "coin_amount" integer NOT NULL,
+    "message" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "creator_tips_check" CHECK (("sender_id" <> "recipient_id")),
+    CONSTRAINT "creator_tips_coin_amount_check" CHECK ((("coin_amount" > 0) AND ("coin_amount" <= 100000))),
+    CONSTRAINT "creator_tips_message_check" CHECK (("char_length"("message") <= 140))
 );
 
 
+ALTER TABLE "public"."creator_tips" OWNER TO "postgres";
+
 --
--- Name: feature_flags; Type: TABLE; Schema: public; Owner: -
+-- Name: feature_flags; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.feature_flags (
-    flag_key text NOT NULL,
-    enabled boolean DEFAULT true NOT NULL,
-    description text,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_by uuid
+CREATE TABLE IF NOT EXISTS "public"."feature_flags" (
+    "flag_key" "text" NOT NULL,
+    "enabled" boolean DEFAULT true NOT NULL,
+    "description" "text",
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_by" "uuid"
 );
 
 
+ALTER TABLE "public"."feature_flags" OWNER TO "postgres";
+
 --
--- Name: follow_requests; Type: TABLE; Schema: public; Owner: -
+-- Name: follow_requests; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.follow_requests (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    sender_id uuid NOT NULL,
-    receiver_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."follow_requests" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "sender_id" "uuid" NOT NULL,
+    "receiver_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."follow_requests" OWNER TO "postgres";
+
 --
--- Name: follows; Type: TABLE; Schema: public; Owner: -
+-- Name: follows; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.follows (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    follower_id uuid NOT NULL,
-    following_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."follows" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "follower_id" "uuid" NOT NULL,
+    "following_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."follows" OWNER TO "postgres";
+
 --
--- Name: guilds; Type: TABLE; Schema: public; Owner: -
+-- Name: guilds; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.guilds (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    description text,
-    member_count integer DEFAULT 0,
-    vibe_tags text[] DEFAULT '{}'::text[],
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."guilds" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "member_count" integer DEFAULT 0,
+    "vibe_tags" "text"[] DEFAULT '{}'::"text"[],
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."guilds" OWNER TO "postgres";
+
 --
--- Name: likes; Type: TABLE; Schema: public; Owner: -
+-- Name: likes; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.likes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    post_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."likes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."likes" OWNER TO "postgres";
+
 --
--- Name: live_chat_timeouts; Type: TABLE; Schema: public; Owner: -
+-- Name: live_auctions; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_chat_timeouts (
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    until_at timestamp with time zone NOT NULL,
-    reason text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."live_auctions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "product_id" "uuid",
+    "title" "text" NOT NULL,
+    "image_url" "text",
+    "start_price_cents" integer DEFAULT 100 NOT NULL,
+    "min_increment_cents" integer DEFAULT 100 NOT NULL,
+    "buy_now_cents" integer,
+    "currency" "text" DEFAULT 'eur'::"text" NOT NULL,
+    "status" "text" DEFAULT 'scheduled'::"text" NOT NULL,
+    "sort_index" integer DEFAULT 0 NOT NULL,
+    "current_bid_cents" integer,
+    "current_bidder_id" "uuid",
+    "bid_count" integer DEFAULT 0 NOT NULL,
+    "ends_at" timestamp with time zone,
+    "started_at" timestamp with time zone,
+    "settled_at" timestamp with time zone,
+    "winner_id" "uuid",
+    "cart_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_auctions_check" CHECK ((("buy_now_cents" IS NULL) OR ("buy_now_cents" > "start_price_cents"))),
+    CONSTRAINT "live_auctions_min_increment_cents_check" CHECK (("min_increment_cents" > 0)),
+    CONSTRAINT "live_auctions_start_price_cents_check" CHECK (("start_price_cents" > 0)),
+    CONSTRAINT "live_auctions_status_check" CHECK (("status" = ANY (ARRAY['scheduled'::"text", 'running'::"text", 'sold'::"text", 'unsold'::"text", 'cancelled'::"text"]))),
+    CONSTRAINT "live_auctions_title_check" CHECK ((("char_length"("btrim"("title")) >= 2) AND ("char_length"("btrim"("title")) <= 140)))
+);
+
+ALTER TABLE ONLY "public"."live_auctions" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."live_auctions" OWNER TO "postgres";
+
+--
+-- Name: TABLE "live_auctions"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."live_auctions" IS 'Berkat: eine Auktion = ein Artikel in einem Live-Stream. ends_at ist die Serveruhr.';
+
+
+--
+-- Name: live_auto_bids; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."live_auto_bids" (
+    "auction_id" "uuid" NOT NULL,
+    "bidder_id" "uuid" NOT NULL,
+    "max_cents" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_auto_bids_max_cents_check" CHECK (("max_cents" > 0))
 );
 
 
+ALTER TABLE "public"."live_auto_bids" OWNER TO "postgres";
+
 --
--- Name: live_clip_markers; Type: TABLE; Schema: public; Owner: -
+-- Name: TABLE "live_auto_bids"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_clip_markers (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    ts_secs integer NOT NULL,
-    note text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT live_clip_markers_note_check CHECK (((note IS NULL) OR (char_length(note) <= 140))),
-    CONSTRAINT live_clip_markers_ts_secs_check CHECK (((ts_secs >= 0) AND (ts_secs <= 86400)))
+COMMENT ON TABLE "public"."live_auto_bids" IS 'Berkat: hinterlegte Maxima. Nur der Besitzer darf sein eigenes lesen.';
+
+
+--
+-- Name: live_bids; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."live_bids" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "auction_id" "uuid" NOT NULL,
+    "bidder_id" "uuid" NOT NULL,
+    "amount_cents" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_bids_amount_cents_check" CHECK (("amount_cents" > 0))
 );
 
 
---
--- Name: live_clip_markers_hot; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.live_clip_markers_hot AS
- SELECT session_id,
-    (ts_secs / 15) AS bucket_15s,
-    min(ts_secs) AS window_start,
-    max(ts_secs) AS window_end,
-    (count(*))::integer AS marker_count,
-    array_agg(DISTINCT user_id) AS user_ids
-   FROM public.live_clip_markers m
-  GROUP BY session_id, (ts_secs / 15);
-
+ALTER TABLE "public"."live_bids" OWNER TO "postgres";
 
 --
--- Name: live_cohost_blocks; Type: TABLE; Schema: public; Owner: -
+-- Name: live_chat_timeouts; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_cohost_blocks (
-    host_id uuid NOT NULL,
-    blocked_user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    expires_at timestamp with time zone,
-    reason text,
-    CONSTRAINT no_self_block CHECK ((host_id <> blocked_user_id))
+CREATE TABLE IF NOT EXISTS "public"."live_chat_timeouts" (
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "until_at" timestamp with time zone NOT NULL,
+    "reason" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."live_chat_timeouts" OWNER TO "postgres";
+
 --
--- Name: live_cohosts; Type: TABLE; Schema: public; Owner: -
+-- Name: live_clip_markers; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_cohosts (
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    invited_by uuid NOT NULL,
-    approved_at timestamp with time zone DEFAULT now() NOT NULL,
-    revoked_at timestamp with time zone,
-    slot_index integer DEFAULT 0 NOT NULL,
-    CONSTRAINT live_cohosts_slot_index_check CHECK (((slot_index >= 0) AND (slot_index <= 7)))
+CREATE TABLE IF NOT EXISTS "public"."live_clip_markers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "ts_secs" integer NOT NULL,
+    "note" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_clip_markers_note_check" CHECK ((("note" IS NULL) OR ("char_length"("note") <= 140))),
+    CONSTRAINT "live_clip_markers_ts_secs_check" CHECK ((("ts_secs" >= 0) AND ("ts_secs" <= 86400)))
 );
 
 
+ALTER TABLE "public"."live_clip_markers" OWNER TO "postgres";
+
 --
--- Name: COLUMN live_cohosts.slot_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: live_clip_markers_hot; Type: VIEW; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.live_cohosts.slot_index IS 'Grid-Position in der Multi-Guest-UI (0..7). Beim Approve vergibt
+CREATE OR REPLACE VIEW "public"."live_clip_markers_hot" AS
+ SELECT "session_id",
+    ("ts_secs" / 15) AS "bucket_15s",
+    "min"("ts_secs") AS "window_start",
+    "max"("ts_secs") AS "window_end",
+    ("count"(*))::integer AS "marker_count",
+    "array_agg"(DISTINCT "user_id") AS "user_ids"
+   FROM "public"."live_clip_markers" "m"
+  GROUP BY "session_id", ("ts_secs" / 15);
+
+
+ALTER VIEW "public"."live_clip_markers_hot" OWNER TO "postgres";
+
+--
+-- Name: live_cohost_blocks; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."live_cohost_blocks" (
+    "host_id" "uuid" NOT NULL,
+    "blocked_user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "expires_at" timestamp with time zone,
+    "reason" "text",
+    CONSTRAINT "no_self_block" CHECK (("host_id" <> "blocked_user_id"))
+);
+
+
+ALTER TABLE "public"."live_cohost_blocks" OWNER TO "postgres";
+
+--
+-- Name: live_cohosts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."live_cohosts" (
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "invited_by" "uuid" NOT NULL,
+    "approved_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "revoked_at" timestamp with time zone,
+    "slot_index" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "live_cohosts_slot_index_check" CHECK ((("slot_index" >= 0) AND ("slot_index" <= 7)))
+);
+
+
+ALTER TABLE "public"."live_cohosts" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "live_cohosts"."slot_index"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_cohosts"."slot_index" IS 'Grid-Position in der Multi-Guest-UI (0..7). Beim Approve vergibt
    approve_cohost den kleinsten freien Slot automatisch.';
 
 
 --
--- Name: live_duet_history; Type: TABLE; Schema: public; Owner: -
+-- Name: live_duet_history; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_duet_history (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    guest_id uuid NOT NULL,
-    initiated_by text NOT NULL,
-    layout text NOT NULL,
-    started_at timestamp with time zone DEFAULT now() NOT NULL,
-    ended_at timestamp with time zone,
-    duration_secs integer,
-    gift_coins_total integer DEFAULT 0 NOT NULL,
-    end_reason text,
-    CONSTRAINT live_duet_history_end_reason_check CHECK (((end_reason IS NULL) OR (end_reason = ANY (ARRAY['host-ended'::text, 'guest-left'::text, 'kicked'::text, 'session-ended'::text, 'disconnect'::text])))),
-    CONSTRAINT live_duet_history_initiated_by_check CHECK ((initiated_by = ANY (ARRAY['host'::text, 'guest'::text]))),
-    CONSTRAINT live_duet_history_layout_check CHECK ((layout = ANY (ARRAY['top-bottom'::text, 'side-by-side'::text, 'pip'::text, 'battle'::text, 'grid-2x2'::text, 'grid-3x3'::text])))
+CREATE TABLE IF NOT EXISTS "public"."live_duet_history" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "guest_id" "uuid" NOT NULL,
+    "initiated_by" "text" NOT NULL,
+    "layout" "text" NOT NULL,
+    "started_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "ended_at" timestamp with time zone,
+    "duration_secs" integer,
+    "gift_coins_total" integer DEFAULT 0 NOT NULL,
+    "end_reason" "text",
+    CONSTRAINT "live_duet_history_end_reason_check" CHECK ((("end_reason" IS NULL) OR ("end_reason" = ANY (ARRAY['host-ended'::"text", 'guest-left'::"text", 'kicked'::"text", 'session-ended'::"text", 'disconnect'::"text"])))),
+    CONSTRAINT "live_duet_history_initiated_by_check" CHECK (("initiated_by" = ANY (ARRAY['host'::"text", 'guest'::"text"]))),
+    CONSTRAINT "live_duet_history_layout_check" CHECK (("layout" = ANY (ARRAY['top-bottom'::"text", 'side-by-side'::"text", 'pip'::"text", 'battle'::"text", 'grid-2x2'::"text", 'grid-3x3'::"text"])))
 );
 
 
+ALTER TABLE "public"."live_duet_history" OWNER TO "postgres";
+
 --
--- Name: live_duet_invites; Type: TABLE; Schema: public; Owner: -
+-- Name: live_duet_invites; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_duet_invites (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    invitee_id uuid NOT NULL,
-    direction text NOT NULL,
-    layout text DEFAULT 'side-by-side'::text NOT NULL,
-    battle_duration integer,
-    message text,
-    status text DEFAULT 'pending'::text NOT NULL,
-    decline_reason text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    expires_at timestamp with time zone DEFAULT (now() + '00:00:30'::interval) NOT NULL,
-    responded_at timestamp with time zone,
-    CONSTRAINT live_duet_invites_battle_duration_check CHECK (((battle_duration IS NULL) OR ((battle_duration >= 30) AND (battle_duration <= 600)))),
-    CONSTRAINT live_duet_invites_direction_check CHECK ((direction = ANY (ARRAY['host-to-viewer'::text, 'viewer-to-host'::text]))),
-    CONSTRAINT live_duet_invites_layout_check CHECK ((layout = ANY (ARRAY['top-bottom'::text, 'side-by-side'::text, 'pip'::text, 'battle'::text]))),
-    CONSTRAINT live_duet_invites_message_check CHECK (((message IS NULL) OR (char_length(message) <= 200))),
-    CONSTRAINT live_duet_invites_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'expired'::text, 'cancelled'::text])))
+CREATE TABLE IF NOT EXISTS "public"."live_duet_invites" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "invitee_id" "uuid" NOT NULL,
+    "direction" "text" NOT NULL,
+    "layout" "text" DEFAULT 'side-by-side'::"text" NOT NULL,
+    "battle_duration" integer,
+    "message" "text",
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "decline_reason" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "expires_at" timestamp with time zone DEFAULT ("now"() + '00:00:30'::interval) NOT NULL,
+    "responded_at" timestamp with time zone,
+    CONSTRAINT "live_duet_invites_battle_duration_check" CHECK ((("battle_duration" IS NULL) OR (("battle_duration" >= 30) AND ("battle_duration" <= 600)))),
+    CONSTRAINT "live_duet_invites_direction_check" CHECK (("direction" = ANY (ARRAY['host-to-viewer'::"text", 'viewer-to-host'::"text"]))),
+    CONSTRAINT "live_duet_invites_layout_check" CHECK (("layout" = ANY (ARRAY['top-bottom'::"text", 'side-by-side'::"text", 'pip'::"text", 'battle'::"text"]))),
+    CONSTRAINT "live_duet_invites_message_check" CHECK ((("message" IS NULL) OR ("char_length"("message") <= 200))),
+    CONSTRAINT "live_duet_invites_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'accepted'::"text", 'declined'::"text", 'expired'::"text", 'cancelled'::"text"])))
 );
 
 
+ALTER TABLE "public"."live_duet_invites" OWNER TO "postgres";
+
 --
--- Name: live_moderators; Type: TABLE; Schema: public; Owner: -
+-- Name: live_giveaway_entries; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_moderators (
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    granted_by uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."live_giveaway_entries" (
+    "giveaway_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."live_giveaway_entries" OWNER TO "postgres";
+
 --
--- Name: live_placed_products; Type: TABLE; Schema: public; Owner: -
+-- Name: live_giveaways; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_placed_products (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    product_id uuid NOT NULL,
-    position_x real DEFAULT 40 NOT NULL,
-    position_y real DEFAULT 260 NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    removed_at timestamp with time zone
+CREATE TABLE IF NOT EXISTS "public"."live_giveaways" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "title" "text" NOT NULL,
+    "image_url" "text",
+    "requires_follow" boolean DEFAULT true NOT NULL,
+    "status" "text" DEFAULT 'open'::"text" NOT NULL,
+    "entry_count" integer DEFAULT 0 NOT NULL,
+    "winner_id" "uuid",
+    "drawn_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_giveaways_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'drawn'::"text", 'cancelled'::"text"]))),
+    CONSTRAINT "live_giveaways_title_check" CHECK ((("char_length"("btrim"("title")) >= 2) AND ("char_length"("btrim"("title")) <= 120)))
+);
+
+ALTER TABLE ONLY "public"."live_giveaways" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."live_giveaways" OWNER TO "postgres";
+
+--
+-- Name: TABLE "live_giveaways"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."live_giveaways" IS 'Berkat: Gewinnspiel im Stream. Teilnahme immer kostenlos — sonst wäre es Glücksspiel.';
+
+
+--
+-- Name: live_moderators; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."live_moderators" (
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "granted_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."live_moderators" OWNER TO "postgres";
+
 --
--- Name: live_poll_votes; Type: TABLE; Schema: public; Owner: -
+-- Name: live_placed_products; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_poll_votes (
-    poll_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    option_index integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT live_poll_votes_option_index_check CHECK (((option_index >= 0) AND (option_index <= 3)))
+CREATE TABLE IF NOT EXISTS "public"."live_placed_products" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "product_id" "uuid" NOT NULL,
+    "position_x" real DEFAULT 40 NOT NULL,
+    "position_y" real DEFAULT 260 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "removed_at" timestamp with time zone
 );
 
 
---
--- Name: live_poll_tallies; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.live_poll_tallies AS
- SELECT poll_id,
-    option_index,
-    (count(*))::integer AS vote_count
-   FROM public.live_poll_votes v
-  GROUP BY poll_id, option_index;
-
+ALTER TABLE "public"."live_placed_products" OWNER TO "postgres";
 
 --
--- Name: live_polls; Type: TABLE; Schema: public; Owner: -
+-- Name: live_poll_votes; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_polls (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    question text NOT NULL,
-    options jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    closed_at timestamp with time zone,
-    CONSTRAINT live_polls_options_check CHECK (((jsonb_typeof(options) = 'array'::text) AND ((jsonb_array_length(options) >= 2) AND (jsonb_array_length(options) <= 4)))),
-    CONSTRAINT live_polls_question_check CHECK (((char_length(question) >= 3) AND (char_length(question) <= 140)))
+CREATE TABLE IF NOT EXISTS "public"."live_poll_votes" (
+    "poll_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "option_index" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_poll_votes_option_index_check" CHECK ((("option_index" >= 0) AND ("option_index" <= 3)))
 );
 
 
+ALTER TABLE "public"."live_poll_votes" OWNER TO "postgres";
+
 --
--- Name: live_reactions; Type: TABLE; Schema: public; Owner: -
+-- Name: live_poll_tallies; Type: VIEW; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_reactions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    emoji text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT live_reactions_emoji_check CHECK ((emoji = ANY (ARRAY['❤️'::text, '🔥'::text, '👏'::text, '😱'::text, '💜'::text])))
+CREATE OR REPLACE VIEW "public"."live_poll_tallies" AS
+ SELECT "poll_id",
+    "option_index",
+    ("count"(*))::integer AS "vote_count"
+   FROM "public"."live_poll_votes" "v"
+  GROUP BY "poll_id", "option_index";
+
+
+ALTER VIEW "public"."live_poll_tallies" OWNER TO "postgres";
+
+--
+-- Name: live_polls; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."live_polls" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "question" "text" NOT NULL,
+    "options" "jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "closed_at" timestamp with time zone,
+    CONSTRAINT "live_polls_options_check" CHECK ((("jsonb_typeof"("options") = 'array'::"text") AND (("jsonb_array_length"("options") >= 2) AND ("jsonb_array_length"("options") <= 4)))),
+    CONSTRAINT "live_polls_question_check" CHECK ((("char_length"("question") >= 3) AND ("char_length"("question") <= 140)))
 );
 
 
+ALTER TABLE "public"."live_polls" OWNER TO "postgres";
+
 --
--- Name: live_recordings; Type: TABLE; Schema: public; Owner: -
+-- Name: live_reactions; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_recordings (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    egress_id text,
-    status text DEFAULT 'pending'::text NOT NULL,
-    error_message text,
-    file_url text,
-    file_path text,
-    file_size_bytes bigint,
-    duration_secs integer,
-    thumbnail_url text,
-    is_public boolean DEFAULT true NOT NULL,
-    view_count integer DEFAULT 0 NOT NULL,
-    started_at timestamp with time zone DEFAULT now() NOT NULL,
-    finished_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT live_recordings_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'recording'::text, 'processing'::text, 'ready'::text, 'failed'::text])))
+CREATE TABLE IF NOT EXISTS "public"."live_reactions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "emoji" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_reactions_emoji_check" CHECK (("emoji" = ANY (ARRAY['❤️'::"text", '🔥'::"text", '👏'::"text", '😱'::"text", '💜'::"text"])))
 );
 
 
+ALTER TABLE "public"."live_reactions" OWNER TO "postgres";
+
 --
--- Name: live_reports; Type: TABLE; Schema: public; Owner: -
+-- Name: live_recordings; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_reports (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    reporter_id uuid NOT NULL,
-    reason text NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."live_recordings" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "egress_id" "text",
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "error_message" "text",
+    "file_url" "text",
+    "file_path" "text",
+    "file_size_bytes" bigint,
+    "duration_secs" integer,
+    "thumbnail_url" "text",
+    "is_public" boolean DEFAULT true NOT NULL,
+    "view_count" integer DEFAULT 0 NOT NULL,
+    "started_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "finished_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_recordings_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'recording'::"text", 'processing'::"text", 'ready'::"text", 'failed'::"text"])))
 );
 
 
+ALTER TABLE "public"."live_recordings" OWNER TO "postgres";
+
 --
--- Name: live_session_viewers; Type: TABLE; Schema: public; Owner: -
+-- Name: live_reports; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_session_viewers (
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    joined_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."live_reports" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "reporter_id" "uuid" NOT NULL,
+    "reason" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
---
--- Name: live_session_viewer_counts; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.live_session_viewer_counts AS
- SELECT session_id,
-    count(*) AS active_viewers,
-    max(joined_at) AS last_join
-   FROM public.live_session_viewers
-  GROUP BY session_id;
-
+ALTER TABLE "public"."live_reports" OWNER TO "postgres";
 
 --
--- Name: live_stickers; Type: TABLE; Schema: public; Owner: -
+-- Name: live_session_viewers; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_stickers (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    emoji text NOT NULL,
-    position_x real DEFAULT 40 NOT NULL,
-    position_y real DEFAULT 180 NOT NULL,
-    scale real DEFAULT 1.0 NOT NULL,
-    rotation real DEFAULT 0.0 NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    removed_at timestamp with time zone,
-    CONSTRAINT live_stickers_emoji_check CHECK (((char_length(emoji) >= 1) AND (char_length(emoji) <= 32))),
-    CONSTRAINT live_stickers_scale_check CHECK (((scale >= (0.3)::double precision) AND (scale <= (3.0)::double precision)))
+CREATE TABLE IF NOT EXISTS "public"."live_session_viewers" (
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "joined_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."live_session_viewers" OWNER TO "postgres";
+
 --
--- Name: live_viewer_welcomes; Type: TABLE; Schema: public; Owner: -
+-- Name: live_session_viewer_counts; Type: VIEW; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.live_viewer_welcomes (
-    session_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    tier text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT live_viewer_welcomes_tier_check CHECK ((tier = ANY (ARRAY['follower'::text, 'top_fan'::text])))
+CREATE OR REPLACE VIEW "public"."live_session_viewer_counts" AS
+ SELECT "session_id",
+    "count"(*) AS "active_viewers",
+    "max"("joined_at") AS "last_join"
+   FROM "public"."live_session_viewers"
+  GROUP BY "session_id";
+
+
+ALTER VIEW "public"."live_session_viewer_counts" OWNER TO "postgres";
+
+--
+-- Name: live_stickers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."live_stickers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "emoji" "text" NOT NULL,
+    "position_x" real DEFAULT 40 NOT NULL,
+    "position_y" real DEFAULT 180 NOT NULL,
+    "scale" real DEFAULT 1.0 NOT NULL,
+    "rotation" real DEFAULT 0.0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "removed_at" timestamp with time zone,
+    CONSTRAINT "live_stickers_emoji_check" CHECK ((("char_length"("emoji") >= 1) AND ("char_length"("emoji") <= 32))),
+    CONSTRAINT "live_stickers_scale_check" CHECK ((("scale" >= (0.3)::double precision) AND ("scale" <= (3.0)::double precision)))
 );
 
 
---
--- Name: TABLE live_viewer_welcomes; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.live_viewer_welcomes IS 'Dedup-Tracker für TikTok-Style Welcome-Toasts beim Join in eine Live-Session (v1.24).';
-
+ALTER TABLE "public"."live_stickers" OWNER TO "postgres";
 
 --
--- Name: COLUMN live_viewer_welcomes.tier; Type: COMMENT; Schema: public; Owner: -
+-- Name: live_viewer_welcomes; Type: TABLE; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.live_viewer_welcomes.tier IS 'Qualifizierendes Tier beim Erst-Join: follower | top_fan. Viewer ohne Tier erzeugen KEINE Zeile.';
-
-
---
--- Name: message_reactions; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.message_reactions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    message_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    emoji text NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."live_viewer_welcomes" (
+    "session_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "tier" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "live_viewer_welcomes_tier_check" CHECK (("tier" = ANY (ARRAY['follower'::"text", 'top_fan'::"text"])))
 );
 
 
+ALTER TABLE "public"."live_viewer_welcomes" OWNER TO "postgres";
+
 --
--- Name: messages; Type: TABLE; Schema: public; Owner: -
+-- Name: TABLE "live_viewer_welcomes"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.messages (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    conversation_id uuid NOT NULL,
-    sender_id uuid NOT NULL,
-    content text NOT NULL,
-    read boolean DEFAULT false,
-    created_at timestamp with time zone DEFAULT now(),
-    post_id uuid,
-    reply_to_id uuid,
-    image_url text,
-    story_media_url text,
-    story_author text
+COMMENT ON TABLE "public"."live_viewer_welcomes" IS 'Dedup-Tracker für TikTok-Style Welcome-Toasts beim Join in eine Live-Session (v1.24).';
+
+
+--
+-- Name: COLUMN "live_viewer_welcomes"."tier"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_viewer_welcomes"."tier" IS 'Qualifizierendes Tier beim Erst-Join: follower | top_fan. Viewer ohne Tier erzeugen KEINE Zeile.';
+
+
+--
+-- Name: message_reactions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."message_reactions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "message_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "emoji" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
+ALTER TABLE "public"."message_reactions" OWNER TO "postgres";
+
 --
--- Name: moderation_auto_flags; Type: TABLE; Schema: public; Owner: -
+-- Name: messages; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.moderation_auto_flags (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    target_type text NOT NULL,
-    target_id uuid NOT NULL,
-    reason text NOT NULL,
-    confidence numeric DEFAULT 0 NOT NULL,
-    signals jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT moderation_auto_flags_confidence_check CHECK (((confidence >= (0)::numeric) AND (confidence <= (1)::numeric))),
-    CONSTRAINT moderation_auto_flags_reason_check CHECK ((reason = ANY (ARRAY['auto_spam'::text, 'auto_nsfw'::text, 'auto_scam'::text]))),
-    CONSTRAINT moderation_auto_flags_target_type_check CHECK ((target_type = 'post'::text))
+CREATE TABLE IF NOT EXISTS "public"."messages" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "conversation_id" "uuid" NOT NULL,
+    "sender_id" "uuid" NOT NULL,
+    "content" "text" NOT NULL,
+    "read" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "post_id" "uuid",
+    "reply_to_id" "uuid",
+    "image_url" "text",
+    "story_media_url" "text",
+    "story_author" "text"
 );
 
 
+ALTER TABLE "public"."messages" OWNER TO "postgres";
+
 --
--- Name: muted_live_hosts; Type: TABLE; Schema: public; Owner: -
+-- Name: moderation_auto_flags; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.muted_live_hosts (
-    user_id uuid NOT NULL,
-    host_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT muted_live_hosts_check CHECK ((user_id <> host_id))
+CREATE TABLE IF NOT EXISTS "public"."moderation_auto_flags" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "target_type" "text" NOT NULL,
+    "target_id" "uuid" NOT NULL,
+    "reason" "text" NOT NULL,
+    "confidence" numeric DEFAULT 0 NOT NULL,
+    "signals" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "moderation_auto_flags_confidence_check" CHECK ((("confidence" >= (0)::numeric) AND ("confidence" <= (1)::numeric))),
+    CONSTRAINT "moderation_auto_flags_reason_check" CHECK (("reason" = ANY (ARRAY['auto_spam'::"text", 'auto_nsfw'::"text", 'auto_scam'::"text"]))),
+    CONSTRAINT "moderation_auto_flags_target_type_check" CHECK (("target_type" = 'post'::"text"))
 );
 
 
+ALTER TABLE "public"."moderation_auto_flags" OWNER TO "postgres";
+
 --
--- Name: notifications; Type: TABLE; Schema: public; Owner: -
+-- Name: muted_live_hosts; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.notifications (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    recipient_id uuid NOT NULL,
-    sender_id uuid,
-    type text NOT NULL,
-    post_id uuid,
-    comment_text text,
-    read boolean DEFAULT false,
-    created_at timestamp with time zone DEFAULT now(),
-    session_id uuid,
-    comment_id uuid,
-    conversation_id uuid,
-    gift_name text,
-    gift_emoji text,
-    product_name text,
-    CONSTRAINT notifications_type_check CHECK ((type = ANY (ARRAY['like'::text, 'comment'::text, 'follow'::text, 'dm'::text, 'live'::text, 'live_invite'::text, 'gift'::text, 'scheduled_live_reminder'::text])))
+CREATE TABLE IF NOT EXISTS "public"."muted_live_hosts" (
+    "user_id" "uuid" NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "muted_live_hosts_check" CHECK (("user_id" <> "host_id"))
 );
 
 
---
--- Name: orders; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.orders (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    buyer_id uuid NOT NULL,
-    seller_id uuid NOT NULL,
-    product_id uuid NOT NULL,
-    quantity integer DEFAULT 1 NOT NULL,
-    total_coins integer NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
-    delivery_notes text,
-    download_url text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT orders_quantity_check CHECK ((quantity > 0)),
-    CONSTRAINT orders_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'completed'::text, 'cancelled'::text, 'refunded'::text]))),
-    CONSTRAINT orders_total_coins_check CHECK ((total_coins > 0))
-);
-
-ALTER TABLE ONLY public.orders REPLICA IDENTITY FULL;
-
+ALTER TABLE "public"."muted_live_hosts" OWNER TO "postgres";
 
 --
--- Name: payout_requests; Type: TABLE; Schema: public; Owner: -
+-- Name: notifications; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.payout_requests (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    creator_id uuid NOT NULL,
-    diamonds_amount bigint NOT NULL,
-    euro_amount numeric(10,2) NOT NULL,
-    iban text,
-    paypal_email text,
-    note text,
-    status text DEFAULT 'pending'::text NOT NULL,
-    admin_note text,
-    created_at timestamp with time zone DEFAULT now(),
-    processed_at timestamp with time zone,
-    CONSTRAINT payout_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'paid'::text, 'rejected'::text])))
+CREATE TABLE IF NOT EXISTS "public"."notifications" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "recipient_id" "uuid" NOT NULL,
+    "sender_id" "uuid",
+    "type" "text" NOT NULL,
+    "post_id" "uuid",
+    "comment_text" "text",
+    "read" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "session_id" "uuid",
+    "comment_id" "uuid",
+    "conversation_id" "uuid",
+    "gift_name" "text",
+    "gift_emoji" "text",
+    "product_name" "text",
+    "product_id" "uuid",
+    CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['order_payment_reminder'::"text", 'scheduled_live_reminder'::"text", 'preorder_interest'::"text", 'support_new'::"text", 'order_review'::"text", 'order_address_updated'::"text", 'order_dispute'::"text", 'new_order'::"text", 'live_invite'::"text", 'order_payment_requested'::"text", 'like'::"text", 'comment'::"text", 'preorder_round_open'::"text", 'guild'::"text", 'order_paid'::"text", 'support_reply'::"text", 'follow_request'::"text", 'follow_request_accepted'::"text", 'gift'::"text", 'repost'::"text", 'dm'::"text", 'order_shipped'::"text", 'order_cancelled'::"text", 'story_reaction'::"text", 'product_saved'::"text", 'follow'::"text", 'mention'::"text", 'comment_like'::"text", 'live'::"text"])))
 );
 
 
---
--- Name: TABLE payout_requests; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.payout_requests IS 'Creator-Auszahlungsanfragen (manuell bearbeitet in Phase 1)';
-
+ALTER TABLE "public"."notifications" OWNER TO "postgres";
 
 --
--- Name: post_drafts; Type: TABLE; Schema: public; Owner: -
+-- Name: order_disputes; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.post_drafts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    author_id uuid NOT NULL,
-    caption text,
-    tags text[] DEFAULT '{}'::text[] NOT NULL,
-    media_type text,
-    media_url text,
-    thumbnail_url text,
-    settings jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT post_drafts_caption_len CHECK (((caption IS NULL) OR (char_length(caption) <= 2200))),
-    CONSTRAINT post_drafts_media_type_check CHECK (((media_type IS NULL) OR (media_type = ANY (ARRAY['image'::text, 'video'::text]))))
+CREATE TABLE IF NOT EXISTS "public"."order_disputes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "order_id" "uuid" NOT NULL,
+    "reporter_id" "uuid" NOT NULL,
+    "against_id" "uuid" NOT NULL,
+    "reporter_role" "text" NOT NULL,
+    "reason" "text" NOT NULL,
+    "detail" "text",
+    "status" "text" DEFAULT 'open'::"text" NOT NULL,
+    "resolution" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "resolved_at" timestamp with time zone,
+    CONSTRAINT "order_disputes_reason_check" CHECK (("reason" = ANY (ARRAY['not_received'::"text", 'damaged'::"text", 'not_as_described'::"text", 'not_paid'::"text", 'fraud'::"text", 'other'::"text"]))),
+    CONSTRAINT "order_disputes_reporter_role_check" CHECK (("reporter_role" = ANY (ARRAY['buyer'::"text", 'seller'::"text"]))),
+    CONSTRAINT "order_disputes_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'resolved'::"text", 'dismissed'::"text"])))
 );
 
 
+ALTER TABLE "public"."order_disputes" OWNER TO "postgres";
+
 --
--- Name: post_dwell_log; Type: TABLE; Schema: public; Owner: -
+-- Name: order_reviews; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.post_dwell_log (
-    user_id uuid NOT NULL,
-    post_id uuid NOT NULL,
-    last_seen timestamp with time zone DEFAULT now() NOT NULL,
-    view_count integer DEFAULT 1 NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."order_reviews" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "order_id" "uuid" NOT NULL,
+    "reviewer_id" "uuid" NOT NULL,
+    "reviewee_id" "uuid" NOT NULL,
+    "reviewer_role" "text" NOT NULL,
+    "rating" integer NOT NULL,
+    "comment" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "order_reviews_rating_check" CHECK ((("rating" >= 1) AND ("rating" <= 5))),
+    CONSTRAINT "order_reviews_reviewer_role_check" CHECK (("reviewer_role" = ANY (ARRAY['buyer'::"text", 'seller'::"text"])))
 );
 
 
+ALTER TABLE "public"."order_reviews" OWNER TO "postgres";
+
 --
--- Name: post_reports; Type: TABLE; Schema: public; Owner: -
+-- Name: orders; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.post_reports (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    reporter_id uuid NOT NULL,
-    post_id uuid NOT NULL,
-    reason text NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT post_reports_reason_check CHECK ((reason = ANY (ARRAY['report'::text, 'not_interested'::text])))
+CREATE TABLE IF NOT EXISTS "public"."orders" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "buyer_id" "uuid" NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "product_id" "uuid",
+    "quantity" integer DEFAULT 1 NOT NULL,
+    "total_coins" integer NOT NULL,
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "delivery_notes" "text",
+    "download_url" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "orders_quantity_check" CHECK (("quantity" > 0)),
+    CONSTRAINT "orders_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'completed'::"text", 'cancelled'::"text", 'refunded'::"text"]))),
+    CONSTRAINT "orders_total_coins_check" CHECK (("total_coins" > 0))
+);
+
+ALTER TABLE ONLY "public"."orders" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."orders" OWNER TO "postgres";
+
+--
+-- Name: payout_requests; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."payout_requests" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "creator_id" "uuid" NOT NULL,
+    "diamonds_amount" bigint NOT NULL,
+    "euro_amount" numeric(10,2) NOT NULL,
+    "iban" "text",
+    "paypal_email" "text",
+    "note" "text",
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "admin_note" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "processed_at" timestamp with time zone,
+    CONSTRAINT "payout_requests_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'processing'::"text", 'paid'::"text", 'rejected'::"text"])))
 );
 
 
+ALTER TABLE "public"."payout_requests" OWNER TO "postgres";
+
 --
--- Name: post_views; Type: TABLE; Schema: public; Owner: -
+-- Name: TABLE "payout_requests"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.post_views (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    post_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    viewed_at timestamp with time zone DEFAULT now()
+COMMENT ON TABLE "public"."payout_requests" IS 'Creator-Auszahlungsanfragen (manuell bearbeitet in Phase 1)';
+
+
+--
+-- Name: post_drafts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."post_drafts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "author_id" "uuid" NOT NULL,
+    "caption" "text",
+    "tags" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "media_type" "text",
+    "media_url" "text",
+    "thumbnail_url" "text",
+    "settings" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "post_drafts_caption_len" CHECK ((("caption" IS NULL) OR ("char_length"("caption") <= 2200))),
+    CONSTRAINT "post_drafts_media_type_check" CHECK ((("media_type" IS NULL) OR ("media_type" = ANY (ARRAY['image'::"text", 'video'::"text"]))))
 );
 
 
+ALTER TABLE "public"."post_drafts" OWNER TO "postgres";
+
 --
--- Name: post_views_log; Type: TABLE; Schema: public; Owner: -
+-- Name: post_dwell_log; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.post_views_log (
-    post_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    viewed_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."post_dwell_log" (
+    "user_id" "uuid" NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "last_seen" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "view_count" integer DEFAULT 1 NOT NULL,
+    "last_dwell_ms" integer,
+    "observed_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."post_dwell_log" OWNER TO "postgres";
+
 --
--- Name: posts; Type: TABLE; Schema: public; Owner: -
+-- Name: post_reports; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.posts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    author_id uuid NOT NULL,
-    caption text,
-    media_url text,
-    media_type text DEFAULT 'image'::text,
-    dwell_time_score double precision DEFAULT 0,
-    tags text[] DEFAULT '{}'::text[],
-    guild_id uuid,
-    is_guild_post boolean DEFAULT false,
-    created_at timestamp with time zone DEFAULT now(),
-    score_explore double precision DEFAULT 0.5,
-    score_brain double precision DEFAULT 0.5,
-    view_count integer DEFAULT 0 NOT NULL,
-    is_pinned boolean DEFAULT false NOT NULL,
-    comment_count integer DEFAULT 0 NOT NULL,
-    like_count integer DEFAULT 0 NOT NULL,
-    bookmark_count integer DEFAULT 0 NOT NULL,
-    thumbnail_url text,
-    privacy text DEFAULT 'public'::text NOT NULL,
-    allow_comments boolean DEFAULT true NOT NULL,
-    allow_download boolean DEFAULT true NOT NULL,
-    allow_duet boolean DEFAULT true NOT NULL,
-    cover_time_ms integer DEFAULT 0,
-    audio_url text,
-    audio_volume real DEFAULT 0.8,
-    is_flagged boolean DEFAULT false NOT NULL,
-    flag_reason text,
-    is_visible boolean DEFAULT true NOT NULL,
-    women_only boolean DEFAULT false NOT NULL,
-    aspect_ratio text DEFAULT 'portrait'::text NOT NULL,
-    CONSTRAINT posts_aspect_ratio_check CHECK ((aspect_ratio = ANY (ARRAY['portrait'::text, 'landscape'::text, 'square'::text]))),
-    CONSTRAINT posts_media_type_check CHECK ((media_type = ANY (ARRAY['image'::text, 'video'::text]))),
-    CONSTRAINT posts_privacy_check CHECK ((privacy = ANY (ARRAY['public'::text, 'friends'::text, 'private'::text]))),
-    CONSTRAINT posts_score_brain_check CHECK (((score_brain >= (0)::double precision) AND (score_brain <= (1)::double precision))),
-    CONSTRAINT posts_score_explore_check CHECK (((score_explore >= (0)::double precision) AND (score_explore <= (1)::double precision)))
+CREATE TABLE IF NOT EXISTS "public"."post_reports" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "reporter_id" "uuid" NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "reason" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "post_reports_reason_check" CHECK (("reason" = ANY (ARRAY['report'::"text", 'not_interested'::"text"])))
 );
 
 
---
--- Name: COLUMN posts.women_only; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.posts.women_only IS 'Wenn true: nur für verifizierte Frauen sichtbar (RLS)';
-
+ALTER TABLE "public"."post_reports" OWNER TO "postgres";
 
 --
--- Name: product_reviews; Type: TABLE; Schema: public; Owner: -
+-- Name: post_views; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.product_reviews (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    product_id uuid NOT NULL,
-    reviewer_id uuid NOT NULL,
-    order_id uuid NOT NULL,
-    rating smallint NOT NULL,
-    comment text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT product_reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5)))
+CREATE TABLE IF NOT EXISTS "public"."post_views" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "viewed_at" timestamp with time zone DEFAULT "now"()
 );
 
 
---
--- Name: products; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.products (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    seller_id uuid NOT NULL,
-    title text NOT NULL,
-    description text,
-    price_coins integer NOT NULL,
-    category text NOT NULL,
-    cover_url text,
-    file_url text,
-    is_active boolean DEFAULT true NOT NULL,
-    stock integer DEFAULT '-1'::integer NOT NULL,
-    women_only boolean DEFAULT false NOT NULL,
-    sold_count integer DEFAULT 0 NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    image_urls text[] DEFAULT '{}'::text[] NOT NULL,
-    avg_rating numeric(3,2) DEFAULT NULL::numeric,
-    review_count integer DEFAULT 0 NOT NULL,
-    sale_price_coins integer,
-    free_shipping boolean DEFAULT false NOT NULL,
-    location text,
-    CONSTRAINT products_category_check CHECK ((category = ANY (ARRAY['digital'::text, 'physical'::text, 'service'::text]))),
-    CONSTRAINT products_price_coins_check CHECK ((price_coins > 0)),
-    CONSTRAINT products_sale_lower_than_price CHECK (((sale_price_coins IS NULL) OR ((sale_price_coins > 0) AND (sale_price_coins < price_coins))))
-);
-
-ALTER TABLE ONLY public.products REPLICA IDENTITY FULL;
-
+ALTER TABLE "public"."post_views" OWNER TO "postgres";
 
 --
--- Name: push_tokens; Type: TABLE; Schema: public; Owner: -
+-- Name: post_views_log; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.push_tokens (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    token text NOT NULL,
-    platform text DEFAULT 'other'::text,
-    last_seen_at timestamp with time zone DEFAULT now() NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT push_tokens_platform_check CHECK ((platform = ANY (ARRAY['ios'::text, 'android'::text, 'other'::text])))
+CREATE TABLE IF NOT EXISTS "public"."post_views_log" (
+    "post_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "viewed_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."post_views_log" OWNER TO "postgres";
+
 --
--- Name: r2_delete_queue; Type: TABLE; Schema: public; Owner: -
+-- Name: posts; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.r2_delete_queue (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    post_id uuid,
-    author_id uuid,
-    media_url text,
-    thumbnail_url text,
-    status text DEFAULT 'pending'::text NOT NULL,
-    attempts integer DEFAULT 0 NOT NULL,
-    last_error text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    processed_at timestamp with time zone,
-    CONSTRAINT r2_delete_queue_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'deleted'::text, 'error'::text])))
+CREATE TABLE IF NOT EXISTS "public"."posts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "author_id" "uuid" NOT NULL,
+    "caption" "text",
+    "media_url" "text",
+    "media_type" "text" DEFAULT 'image'::"text",
+    "dwell_time_score" double precision DEFAULT 0,
+    "tags" "text"[] DEFAULT '{}'::"text"[],
+    "guild_id" "uuid",
+    "is_guild_post" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "score_explore" double precision DEFAULT 0.5,
+    "score_brain" double precision DEFAULT 0.5,
+    "view_count" integer DEFAULT 0 NOT NULL,
+    "is_pinned" boolean DEFAULT false NOT NULL,
+    "comment_count" integer DEFAULT 0 NOT NULL,
+    "like_count" integer DEFAULT 0 NOT NULL,
+    "bookmark_count" integer DEFAULT 0 NOT NULL,
+    "thumbnail_url" "text",
+    "privacy" "text" DEFAULT 'public'::"text" NOT NULL,
+    "allow_comments" boolean DEFAULT true NOT NULL,
+    "allow_download" boolean DEFAULT true NOT NULL,
+    "allow_duet" boolean DEFAULT true NOT NULL,
+    "cover_time_ms" integer DEFAULT 0,
+    "audio_url" "text",
+    "audio_volume" real DEFAULT 0.8,
+    "is_flagged" boolean DEFAULT false NOT NULL,
+    "flag_reason" "text",
+    "is_visible" boolean DEFAULT true NOT NULL,
+    "women_only" boolean DEFAULT false NOT NULL,
+    "aspect_ratio" "text" DEFAULT 'portrait'::"text" NOT NULL,
+    "bunny_video_id" "text",
+    "bunny_status" "text",
+    "product_id" "uuid",
+    CONSTRAINT "posts_aspect_ratio_check" CHECK (("aspect_ratio" = ANY (ARRAY['portrait'::"text", 'landscape'::"text", 'square'::"text"]))),
+    CONSTRAINT "posts_media_type_check" CHECK (("media_type" = ANY (ARRAY['image'::"text", 'video'::"text"]))),
+    CONSTRAINT "posts_privacy_check" CHECK (("privacy" = ANY (ARRAY['public'::"text", 'friends'::"text", 'private'::"text"]))),
+    CONSTRAINT "posts_score_brain_check" CHECK ((("score_brain" >= (0)::double precision) AND ("score_brain" <= (1)::double precision))),
+    CONSTRAINT "posts_score_explore_check" CHECK ((("score_explore" >= (0)::double precision) AND ("score_explore" <= (1)::double precision)))
 );
 
 
+ALTER TABLE "public"."posts" OWNER TO "postgres";
+
 --
--- Name: reposts; Type: TABLE; Schema: public; Owner: -
+-- Name: COLUMN "posts"."women_only"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.reposts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    post_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
-);
-
-ALTER TABLE ONLY public.reposts REPLICA IDENTITY FULL;
+COMMENT ON COLUMN "public"."posts"."women_only" IS 'Wenn true: nur für verifizierte Frauen sichtbar (RLS)';
 
 
 --
--- Name: saved_products; Type: TABLE; Schema: public; Owner: -
+-- Name: preorder_rounds; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.saved_products (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    product_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: scheduled_lives; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.scheduled_lives (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    host_id uuid NOT NULL,
-    title text NOT NULL,
-    description text,
-    scheduled_at timestamp with time zone NOT NULL,
-    status text DEFAULT 'scheduled'::text NOT NULL,
-    allow_comments boolean DEFAULT true NOT NULL,
-    allow_gifts boolean DEFAULT true NOT NULL,
-    women_only boolean DEFAULT false NOT NULL,
-    session_id uuid,
-    reminded_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT scheduled_lives_desc_len CHECK (((description IS NULL) OR (char_length(description) <= 500))),
-    CONSTRAINT scheduled_lives_future CHECK ((scheduled_at > (created_at - '00:01:00'::interval))),
-    CONSTRAINT scheduled_lives_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'reminded'::text, 'live'::text, 'expired'::text, 'cancelled'::text]))),
-    CONSTRAINT scheduled_lives_title_len CHECK (((char_length(title) >= 1) AND (char_length(title) <= 120)))
+CREATE TABLE IF NOT EXISTS "public"."preorder_rounds" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_id" "uuid" NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "guild_id" "uuid",
+    "title" "text" NOT NULL,
+    "target_qty" integer NOT NULL,
+    "closes_at" timestamp with time zone NOT NULL,
+    "status" "text" DEFAULT 'open'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "closed_at" timestamp with time zone,
+    CONSTRAINT "preorder_rounds_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'closed'::"text", 'arrived'::"text"]))),
+    CONSTRAINT "preorder_rounds_target_qty_check" CHECK ((("target_qty" >= 1) AND ("target_qty" <= 9999))),
+    CONSTRAINT "preorder_rounds_title_check" CHECK ((("char_length"("title") >= 3) AND ("char_length"("title") <= 80)))
 );
 
 
+ALTER TABLE "public"."preorder_rounds" OWNER TO "postgres";
+
 --
--- Name: scheduled_posts; Type: TABLE; Schema: public; Owner: -
+-- Name: product_orders; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.scheduled_posts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    author_id uuid NOT NULL,
-    caption text,
-    media_url text,
-    media_type text,
-    thumbnail_url text,
-    tags text[] DEFAULT '{}'::text[] NOT NULL,
-    is_guild_post boolean DEFAULT false NOT NULL,
-    guild_id uuid,
-    audio_url text,
-    audio_volume numeric,
-    privacy text DEFAULT 'public'::text NOT NULL,
-    allow_comments boolean DEFAULT true NOT NULL,
-    allow_download boolean DEFAULT false NOT NULL,
-    allow_duet boolean DEFAULT true NOT NULL,
-    women_only boolean DEFAULT false NOT NULL,
-    cover_time_ms integer,
-    publish_at timestamp with time zone NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
-    retries integer DEFAULT 0 NOT NULL,
-    last_error text,
-    published_post_id uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    aspect_ratio text DEFAULT 'portrait'::text NOT NULL,
-    CONSTRAINT scheduled_posts_aspect_ratio_check CHECK ((aspect_ratio = ANY (ARRAY['portrait'::text, 'landscape'::text, 'square'::text]))),
-    CONSTRAINT scheduled_posts_caption_len CHECK (((caption IS NULL) OR (char_length(caption) <= 2200))),
-    CONSTRAINT scheduled_posts_future CHECK ((publish_at > (created_at - '00:01:00'::interval))),
-    CONSTRAINT scheduled_posts_media_type_check CHECK (((media_type IS NULL) OR (media_type = ANY (ARRAY['image'::text, 'video'::text])))),
-    CONSTRAINT scheduled_posts_privacy_check CHECK ((privacy = ANY (ARRAY['public'::text, 'friends'::text, 'private'::text]))),
-    CONSTRAINT scheduled_posts_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text])))
+CREATE TABLE IF NOT EXISTS "public"."product_orders" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "buyer_id" "uuid" NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "product_id" "uuid",
+    "preorder_id" "uuid",
+    "quantity" integer DEFAULT 1 NOT NULL,
+    "unit_price_eur" numeric(10,2) NOT NULL,
+    "amount_eur" numeric(10,2) NOT NULL,
+    "platform_fee_eur" numeric(10,2) DEFAULT 0 NOT NULL,
+    "currency" "text" DEFAULT 'eur'::"text" NOT NULL,
+    "status" "text" DEFAULT 'reserved'::"text" NOT NULL,
+    "ship_name" "text",
+    "ship_street" "text",
+    "ship_zip" "text",
+    "ship_city" "text",
+    "ship_country" "text" DEFAULT 'DE'::"text",
+    "tracking_carrier" "text",
+    "tracking_number" "text",
+    "stripe_session_id" "text",
+    "stripe_payment_intent" "text",
+    "payment_requested_at" timestamp with time zone,
+    "paid_at" timestamp with time zone,
+    "shipped_at" timestamp with time zone,
+    "delivered_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "reminded_at" timestamp with time zone,
+    "cart_id" "uuid",
+    "title" "text",
+    CONSTRAINT "product_orders_amount_eur_check" CHECK (("amount_eur" >= (0)::numeric)),
+    CONSTRAINT "product_orders_platform_fee_eur_check" CHECK (("platform_fee_eur" >= (0)::numeric)),
+    CONSTRAINT "product_orders_quantity_check" CHECK (("quantity" > 0)),
+    CONSTRAINT "product_orders_status_check" CHECK (("status" = ANY (ARRAY['reserved'::"text", 'payment_requested'::"text", 'paid'::"text", 'shipped'::"text", 'delivered'::"text", 'cancelled'::"text", 'refunded'::"text", 'disputed'::"text"]))),
+    CONSTRAINT "product_orders_unit_price_eur_check" CHECK (("unit_price_eur" >= (0)::numeric))
 );
 
 
+ALTER TABLE "public"."product_orders" OWNER TO "postgres";
+
 --
--- Name: stories; Type: TABLE; Schema: public; Owner: -
+-- Name: product_preorders; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.stories (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    media_url text NOT NULL,
-    media_type text DEFAULT 'image'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    interactive jsonb,
-    archived boolean DEFAULT false NOT NULL,
-    thumbnail_url text
+CREATE TABLE IF NOT EXISTS "public"."product_preorders" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "quantity" integer DEFAULT 1 NOT NULL,
+    "note" "text",
+    "status" "text" DEFAULT 'interested'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "round_id" "uuid",
+    CONSTRAINT "product_preorders_quantity_check" CHECK ((("quantity" >= 1) AND ("quantity" <= 999))),
+    CONSTRAINT "product_preorders_status_check" CHECK (("status" = ANY (ARRAY['interested'::"text", 'notified'::"text", 'paid'::"text", 'shipped'::"text", 'cancelled'::"text"])))
 );
 
 
---
--- Name: COLUMN stories.thumbnail_url; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.stories.thumbnail_url IS 'Explicit preview image used by feeds/admin dashboards. Image stories may reuse media_url; video stories require generated JPEG thumbnails.';
-
+ALTER TABLE "public"."product_preorders" OWNER TO "postgres";
 
 --
--- Name: story_comments; Type: TABLE; Schema: public; Owner: -
+-- Name: product_reviews; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.story_comments (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    story_id uuid NOT NULL,
-    author_id uuid NOT NULL,
-    content text NOT NULL,
-    is_emoji boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT story_comments_content_check CHECK (((char_length(content) >= 1) AND (char_length(content) <= 300)))
+CREATE TABLE IF NOT EXISTS "public"."product_reviews" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_id" "uuid" NOT NULL,
+    "reviewer_id" "uuid" NOT NULL,
+    "order_id" "uuid" NOT NULL,
+    "rating" smallint NOT NULL,
+    "comment" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "product_reviews_rating_check" CHECK ((("rating" >= 1) AND ("rating" <= 5)))
 );
 
 
+ALTER TABLE "public"."product_reviews" OWNER TO "postgres";
+
 --
--- Name: story_highlights; Type: TABLE; Schema: public; Owner: -
+-- Name: products; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.story_highlights (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    story_id uuid,
-    title text DEFAULT 'Highlight'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    media_url text,
-    media_type text DEFAULT 'image'::text NOT NULL,
-    post_id uuid,
-    thumbnail_url text,
-    items jsonb DEFAULT '[]'::jsonb NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."products" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "title" "text" NOT NULL,
+    "description" "text",
+    "price_coins" integer NOT NULL,
+    "category" "text" NOT NULL,
+    "cover_url" "text",
+    "file_url" "text",
+    "is_active" boolean DEFAULT true NOT NULL,
+    "stock" integer DEFAULT '-1'::integer NOT NULL,
+    "women_only" boolean DEFAULT false NOT NULL,
+    "sold_count" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "image_urls" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "avg_rating" numeric(3,2) DEFAULT NULL::numeric,
+    "review_count" integer DEFAULT 0 NOT NULL,
+    "sale_price_coins" integer,
+    "free_shipping" boolean DEFAULT false NOT NULL,
+    "location" "text",
+    "sale_mode" "text" DEFAULT 'coins'::"text" NOT NULL,
+    "price_eur" numeric(10,2),
+    CONSTRAINT "products_category_check" CHECK (("category" = ANY (ARRAY['digital'::"text", 'physical'::"text", 'service'::"text", 'collectible'::"text"]))),
+    CONSTRAINT "products_price_coins_check" CHECK (("price_coins" > 0)),
+    CONSTRAINT "products_price_eur_check" CHECK ((("price_eur" IS NULL) OR ("price_eur" > (0)::numeric))),
+    CONSTRAINT "products_sale_lower_than_price" CHECK ((("sale_price_coins" IS NULL) OR (("sale_price_coins" > 0) AND ("sale_price_coins" < "price_coins")))),
+    CONSTRAINT "products_sale_mode_check" CHECK (("sale_mode" = ANY (ARRAY['coins'::"text", 'preorder'::"text", 'cash'::"text"])))
+);
+
+ALTER TABLE ONLY "public"."products" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."products" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "products"."sale_mode"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."products"."sale_mode" IS 'Verkaufsart: coins (Standard, Coin-Kauf) | preorder (Sammelbestellung ohne Geld, Phase 0) | cash (echtes Geld/Stripe, Phase 1). Nur Admin darf <> coins setzen (Trigger).';
+
+
+--
+-- Name: COLUMN "products"."price_eur"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."products"."price_eur" IS 'Echter Euro-Preis (numeric, optional). Relevant für sale_mode <> coins (preorder/cash). Coin-Produkte ignorieren es. UI zeigt es statt "Preis siehe Beschreibung".';
+
+
+--
+-- Name: push_tokens; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."push_tokens" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "token" "text" NOT NULL,
+    "platform" "text" DEFAULT 'other'::"text",
+    "last_seen_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "push_tokens_platform_check" CHECK (("platform" = ANY (ARRAY['ios'::"text", 'android'::"text", 'other'::"text"])))
 );
 
 
+ALTER TABLE "public"."push_tokens" OWNER TO "postgres";
+
 --
--- Name: story_likes; Type: TABLE; Schema: public; Owner: -
+-- Name: r2_delete_queue; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.story_likes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    story_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."r2_delete_queue" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "post_id" "uuid",
+    "author_id" "uuid",
+    "media_url" "text",
+    "thumbnail_url" "text",
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "attempts" integer DEFAULT 0 NOT NULL,
+    "last_error" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "processed_at" timestamp with time zone,
+    CONSTRAINT "r2_delete_queue_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'deleted'::"text", 'error'::"text"])))
 );
 
 
+ALTER TABLE "public"."r2_delete_queue" OWNER TO "postgres";
+
 --
--- Name: story_views; Type: TABLE; Schema: public; Owner: -
+-- Name: reposts; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.story_views (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    story_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    viewed_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS "public"."reposts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+ALTER TABLE ONLY "public"."reposts" REPLICA IDENTITY FULL;
+
+
+ALTER TABLE "public"."reposts" OWNER TO "postgres";
+
+--
+-- Name: saved_products; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."saved_products" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "product_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."saved_products" OWNER TO "postgres";
+
 --
--- Name: story_votes; Type: TABLE; Schema: public; Owner: -
+-- Name: scheduled_lives; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.story_votes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    story_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    option_idx integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."scheduled_lives" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "host_id" "uuid" NOT NULL,
+    "title" "text" NOT NULL,
+    "description" "text",
+    "scheduled_at" timestamp with time zone NOT NULL,
+    "status" "text" DEFAULT 'scheduled'::"text" NOT NULL,
+    "allow_comments" boolean DEFAULT true NOT NULL,
+    "allow_gifts" boolean DEFAULT true NOT NULL,
+    "women_only" boolean DEFAULT false NOT NULL,
+    "session_id" "uuid",
+    "reminded_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "scheduled_lives_desc_len" CHECK ((("description" IS NULL) OR ("char_length"("description") <= 500))),
+    CONSTRAINT "scheduled_lives_future" CHECK (("scheduled_at" > ("created_at" - '00:01:00'::interval))),
+    CONSTRAINT "scheduled_lives_status_check" CHECK (("status" = ANY (ARRAY['scheduled'::"text", 'reminded'::"text", 'live'::"text", 'expired'::"text", 'cancelled'::"text"]))),
+    CONSTRAINT "scheduled_lives_title_len" CHECK ((("char_length"("title") >= 1) AND ("char_length"("title") <= 120)))
 );
 
 
+ALTER TABLE "public"."scheduled_lives" OWNER TO "postgres";
+
 --
--- Name: user_battle_stats; Type: VIEW; Schema: public; Owner: -
+-- Name: scheduled_posts; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE VIEW public.user_battle_stats AS
- SELECT user_id,
-    count(*) FILTER (WHERE (result = 'win'::text)) AS wins,
-    count(*) FILTER (WHERE (result = 'loss'::text)) AS losses,
-    count(*) FILTER (WHERE (result = 'draw'::text)) AS draws,
-    count(*) AS total_battles
-   FROM ( SELECT live_battle_history.host_id AS user_id,
+CREATE TABLE IF NOT EXISTS "public"."scheduled_posts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "author_id" "uuid" NOT NULL,
+    "caption" "text",
+    "media_url" "text",
+    "media_type" "text",
+    "thumbnail_url" "text",
+    "tags" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "is_guild_post" boolean DEFAULT false NOT NULL,
+    "guild_id" "uuid",
+    "audio_url" "text",
+    "audio_volume" numeric,
+    "privacy" "text" DEFAULT 'public'::"text" NOT NULL,
+    "allow_comments" boolean DEFAULT true NOT NULL,
+    "allow_download" boolean DEFAULT false NOT NULL,
+    "allow_duet" boolean DEFAULT true NOT NULL,
+    "women_only" boolean DEFAULT false NOT NULL,
+    "cover_time_ms" integer,
+    "publish_at" timestamp with time zone NOT NULL,
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "retries" integer DEFAULT 0 NOT NULL,
+    "last_error" "text",
+    "published_post_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "aspect_ratio" "text" DEFAULT 'portrait'::"text" NOT NULL,
+    CONSTRAINT "scheduled_posts_aspect_ratio_check" CHECK (("aspect_ratio" = ANY (ARRAY['portrait'::"text", 'landscape'::"text", 'square'::"text"]))),
+    CONSTRAINT "scheduled_posts_caption_len" CHECK ((("caption" IS NULL) OR ("char_length"("caption") <= 2200))),
+    CONSTRAINT "scheduled_posts_future" CHECK (("publish_at" > ("created_at" - '00:01:00'::interval))),
+    CONSTRAINT "scheduled_posts_media_type_check" CHECK ((("media_type" IS NULL) OR ("media_type" = ANY (ARRAY['image'::"text", 'video'::"text"])))),
+    CONSTRAINT "scheduled_posts_privacy_check" CHECK (("privacy" = ANY (ARRAY['public'::"text", 'friends'::"text", 'private'::"text"]))),
+    CONSTRAINT "scheduled_posts_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'publishing'::"text", 'published'::"text", 'failed'::"text", 'cancelled'::"text"])))
+);
+
+
+ALTER TABLE "public"."scheduled_posts" OWNER TO "postgres";
+
+--
+-- Name: seller_accounts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."seller_accounts" (
+    "user_id" "uuid" NOT NULL,
+    "display_name" "text",
+    "stripe_connect_id" "text",
+    "kyc_status" "text" DEFAULT 'none'::"text" NOT NULL,
+    "payout_enabled" boolean DEFAULT false NOT NULL,
+    "platform_fee_bps" integer DEFAULT 1000 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."seller_accounts" OWNER TO "postgres";
+
+--
+-- Name: stories; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."stories" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "media_url" "text" NOT NULL,
+    "media_type" "text" DEFAULT 'image'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "interactive" "jsonb",
+    "archived" boolean DEFAULT false NOT NULL,
+    "thumbnail_url" "text"
+);
+
+
+ALTER TABLE "public"."stories" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "stories"."thumbnail_url"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."stories"."thumbnail_url" IS 'Explicit preview image used by feeds/admin dashboards. Image stories may reuse media_url; video stories require generated JPEG thumbnails.';
+
+
+--
+-- Name: story_comments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."story_comments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "story_id" "uuid" NOT NULL,
+    "author_id" "uuid" NOT NULL,
+    "content" "text" NOT NULL,
+    "is_emoji" boolean DEFAULT false NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "story_comments_content_check" CHECK ((("char_length"("content") >= 1) AND ("char_length"("content") <= 300)))
+);
+
+
+ALTER TABLE "public"."story_comments" OWNER TO "postgres";
+
+--
+-- Name: story_highlights; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."story_highlights" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "story_id" "uuid",
+    "title" "text" DEFAULT 'Highlight'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "media_url" "text",
+    "media_type" "text" DEFAULT 'image'::"text" NOT NULL,
+    "post_id" "uuid",
+    "thumbnail_url" "text",
+    "items" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL
+);
+
+
+ALTER TABLE "public"."story_highlights" OWNER TO "postgres";
+
+--
+-- Name: story_likes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."story_likes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "story_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."story_likes" OWNER TO "postgres";
+
+--
+-- Name: story_views; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."story_views" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "story_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "viewed_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."story_views" OWNER TO "postgres";
+
+--
+-- Name: story_votes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."story_votes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "story_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "option_idx" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."story_votes" OWNER TO "postgres";
+
+--
+-- Name: user_battle_stats; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE VIEW "public"."user_battle_stats" AS
+ SELECT "user_id",
+    "count"(*) FILTER (WHERE ("result" = 'win'::"text")) AS "wins",
+    "count"(*) FILTER (WHERE ("result" = 'loss'::"text")) AS "losses",
+    "count"(*) FILTER (WHERE ("result" = 'draw'::"text")) AS "draws",
+    "count"(*) AS "total_battles"
+   FROM ( SELECT "live_battle_history"."host_id" AS "user_id",
                 CASE
-                    WHEN (live_battle_history.winner = 'host'::text) THEN 'win'::text
-                    WHEN (live_battle_history.winner = 'draw'::text) THEN 'draw'::text
-                    ELSE 'loss'::text
-                END AS result
-           FROM public.live_battle_history
+                    WHEN ("live_battle_history"."winner" = 'host'::"text") THEN 'win'::"text"
+                    WHEN ("live_battle_history"."winner" = 'draw'::"text") THEN 'draw'::"text"
+                    ELSE 'loss'::"text"
+                END AS "result"
+           FROM "public"."live_battle_history"
         UNION ALL
-         SELECT live_battle_history.guest_id AS user_id,
+         SELECT "live_battle_history"."guest_id" AS "user_id",
                 CASE
-                    WHEN (live_battle_history.winner = 'guest'::text) THEN 'win'::text
-                    WHEN (live_battle_history.winner = 'draw'::text) THEN 'draw'::text
-                    ELSE 'loss'::text
-                END AS result
-           FROM public.live_battle_history) x
-  GROUP BY user_id;
+                    WHEN ("live_battle_history"."winner" = 'guest'::"text") THEN 'win'::"text"
+                    WHEN ("live_battle_history"."winner" = 'draw'::"text") THEN 'draw'::"text"
+                    ELSE 'loss'::"text"
+                END AS "result"
+           FROM "public"."live_battle_history") "x"
+  GROUP BY "user_id";
 
+
+ALTER VIEW "public"."user_battle_stats" OWNER TO "postgres";
 
 --
--- Name: user_blocks; Type: TABLE; Schema: public; Owner: -
+-- Name: user_blocks; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.user_blocks (
-    blocker_id uuid NOT NULL,
-    blocked_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."user_blocks" (
+    "blocker_id" "uuid" NOT NULL,
+    "blocked_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."user_blocks" OWNER TO "postgres";
+
 --
--- Name: user_reports; Type: TABLE; Schema: public; Owner: -
+-- Name: user_reports; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.user_reports (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    reporter_id uuid NOT NULL,
-    reported_id uuid NOT NULL,
-    reason text NOT NULL,
-    note text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT user_reports_reason_check CHECK ((reason = ANY (ARRAY['spam'::text, 'harassment'::text, 'inappropriate'::text, 'fake_account'::text, 'other'::text])))
+CREATE TABLE IF NOT EXISTS "public"."user_reports" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "reporter_id" "uuid" NOT NULL,
+    "reported_id" "uuid" NOT NULL,
+    "reason" "text" NOT NULL,
+    "note" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "user_reports_reason_check" CHECK (("reason" = ANY (ARRAY['spam'::"text", 'harassment'::"text", 'inappropriate'::"text", 'fake_account'::"text", 'other'::"text"])))
 );
 
 
+ALTER TABLE "public"."user_reports" OWNER TO "postgres";
+
 --
--- Name: user_vibe_profile; Type: TABLE; Schema: public; Owner: -
+-- Name: user_tag_affinity; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.user_vibe_profile (
-    user_id uuid NOT NULL,
-    learned_explore double precision DEFAULT 0.5 NOT NULL,
-    learned_brain double precision DEFAULT 0.5 NOT NULL,
-    interaction_count integer DEFAULT 0 NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."user_tag_affinity" (
+    "user_id" "uuid" NOT NULL,
+    "tag" "text" NOT NULL,
+    "affinity" double precision DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."user_tag_affinity" OWNER TO "postgres";
+
 --
--- Name: user_whip_ingresses; Type: TABLE; Schema: public; Owner: -
+-- Name: user_vibe_profile; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.user_whip_ingresses (
-    user_id uuid NOT NULL,
-    ingress_id text NOT NULL,
-    ingress_url text NOT NULL,
-    stream_key text NOT NULL,
-    room_name text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."user_vibe_profile" (
+    "user_id" "uuid" NOT NULL,
+    "learned_explore" double precision DEFAULT 0.5 NOT NULL,
+    "learned_brain" double precision DEFAULT 0.5 NOT NULL,
+    "interaction_count" integer DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."user_vibe_profile" OWNER TO "postgres";
+
 --
--- Name: web_coin_orders; Type: TABLE; Schema: public; Owner: -
+-- Name: user_whip_ingresses; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.web_coin_orders (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    tier_id text NOT NULL,
-    coins integer NOT NULL,
-    bonus_coins integer DEFAULT 0 NOT NULL,
-    price_cents integer NOT NULL,
-    currency text DEFAULT 'eur'::text NOT NULL,
-    status public.coin_order_status DEFAULT 'pending'::public.coin_order_status NOT NULL,
-    stripe_session_id text,
-    stripe_payment_intent text,
-    invoice_url text,
-    receipt_url text,
-    paid_at timestamp with time zone,
-    failed_reason text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT web_coin_orders_coins_check CHECK ((coins > 0))
+CREATE TABLE IF NOT EXISTS "public"."user_whip_ingresses" (
+    "user_id" "uuid" NOT NULL,
+    "ingress_id" "text" NOT NULL,
+    "ingress_url" "text" NOT NULL,
+    "stream_key" "text" NOT NULL,
+    "room_name" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
+ALTER TABLE "public"."user_whip_ingresses" OWNER TO "postgres";
+
 --
--- Name: web_push_subscriptions; Type: TABLE; Schema: public; Owner: -
+-- Name: web_coin_orders; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.web_push_subscriptions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    endpoint text NOT NULL,
-    p256dh text NOT NULL,
-    auth text NOT NULL,
-    user_agent text,
-    device_label text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    last_seen_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS "public"."web_coin_orders" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "tier_id" "text" NOT NULL,
+    "coins" integer NOT NULL,
+    "bonus_coins" integer DEFAULT 0 NOT NULL,
+    "price_cents" integer NOT NULL,
+    "currency" "text" DEFAULT 'eur'::"text" NOT NULL,
+    "status" "public"."coin_order_status" DEFAULT 'pending'::"public"."coin_order_status" NOT NULL,
+    "stripe_session_id" "text",
+    "stripe_payment_intent" "text",
+    "invoice_url" "text",
+    "receipt_url" "text",
+    "paid_at" timestamp with time zone,
+    "failed_reason" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "web_coin_orders_coins_check" CHECK (("coins" > 0))
 );
 
 
+ALTER TABLE "public"."web_coin_orders" OWNER TO "postgres";
+
+--
+-- Name: web_push_subscriptions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."web_push_subscriptions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "endpoint" "text" NOT NULL,
+    "p256dh" "text" NOT NULL,
+    "auth" "text" NOT NULL,
+    "user_agent" "text",
+    "device_label" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "last_seen_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."web_push_subscriptions" OWNER TO "postgres";
+
+--
+-- Name: TABLE "web_push_subscriptions"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."web_push_subscriptions" IS 'W3C Web-Push-Subscriptions (VAPID). Getrennt von push_tokens (Expo) weil Shape + Dispatch-Pfad fundamental anders.';
+
+
+--
+-- Name: women_only_requests; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."women_only_requests" (
+    "user_id" "uuid" NOT NULL,
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "method" "text" DEFAULT 'self'::"text" NOT NULL,
+    "requested_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "reviewed_at" timestamp with time zone,
+    "reviewed_by" "uuid",
+    "note" "text",
+    CONSTRAINT "women_only_requests_method_check" CHECK (("method" = ANY (ARRAY['self'::"text", 'admin'::"text", 'grandfather'::"text"]))),
+    CONSTRAINT "women_only_requests_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'approved'::"text", 'rejected'::"text", 'revoked'::"text"])))
+);
+
+
+ALTER TABLE "public"."women_only_requests" OWNER TO "postgres";
+
+--
+-- Name: admin_audit_log admin_audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_audit_log"
+    ADD CONSTRAINT "admin_audit_log_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: admin_campaign_daily_metrics admin_campaign_daily_metrics_campaign_id_metric_date_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_campaign_daily_metrics"
+    ADD CONSTRAINT "admin_campaign_daily_metrics_campaign_id_metric_date_key" UNIQUE ("campaign_id", "metric_date");
+
+
+--
+-- Name: admin_campaign_daily_metrics admin_campaign_daily_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_campaign_daily_metrics"
+    ADD CONSTRAINT "admin_campaign_daily_metrics_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: admin_campaigns admin_campaigns_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_campaigns"
+    ADD CONSTRAINT "admin_campaigns_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: admin_region_daily_metrics admin_region_daily_metrics_country_code_metric_date_source_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_region_daily_metrics"
+    ADD CONSTRAINT "admin_region_daily_metrics_country_code_metric_date_source_key" UNIQUE ("country_code", "metric_date", "source");
+
+
+--
+-- Name: admin_region_daily_metrics admin_region_daily_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_region_daily_metrics"
+    ADD CONSTRAINT "admin_region_daily_metrics_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: admin_support_messages admin_support_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_support_messages"
+    ADD CONSTRAINT "admin_support_messages_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: admin_support_threads admin_support_threads_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."admin_support_threads"
+    ADD CONSTRAINT "admin_support_threads_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: ai_image_generations ai_image_generations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."ai_image_generations"
+    ADD CONSTRAINT "ai_image_generations_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: algo_experiments algo_experiments_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."algo_experiments"
+    ADD CONSTRAINT "algo_experiments_name_key" UNIQUE ("name");
+
+
+--
+-- Name: algo_experiments algo_experiments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."algo_experiments"
+    ADD CONSTRAINT "algo_experiments_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: algo_user_variants algo_user_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."algo_user_variants"
+    ADD CONSTRAINT "algo_user_variants_pkey" PRIMARY KEY ("user_id", "experiment_name");
+
+
+--
+-- Name: auction_carts auction_carts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."auction_carts"
+    ADD CONSTRAINT "auction_carts_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: bookmarks bookmarks_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."bookmarks"
+    ADD CONSTRAINT "bookmarks_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: bookmarks bookmarks_user_id_post_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."bookmarks"
+    ADD CONSTRAINT "bookmarks_user_id_post_id_key" UNIQUE ("user_id", "post_id");
+
+
+--
+-- Name: coin_pricing_tiers coin_pricing_tiers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."coin_pricing_tiers"
+    ADD CONSTRAINT "coin_pricing_tiers_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: coin_purchases coin_purchases_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."coin_purchases"
+    ADD CONSTRAINT "coin_purchases_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: coin_purchases coin_purchases_transaction_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."coin_purchases"
+    ADD CONSTRAINT "coin_purchases_transaction_id_key" UNIQUE ("transaction_id");
+
+
+--
+-- Name: coins_wallets coins_wallets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."coins_wallets"
+    ADD CONSTRAINT "coins_wallets_pkey" PRIMARY KEY ("user_id");
+
+
+--
+-- Name: comment_likes comment_likes_comment_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."comment_likes"
+    ADD CONSTRAINT "comment_likes_comment_id_user_id_key" UNIQUE ("comment_id", "user_id");
+
+
+--
+-- Name: comment_likes comment_likes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."comment_likes"
+    ADD CONSTRAINT "comment_likes_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: comments comments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."comments"
+    ADD CONSTRAINT "comments_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: content_reports content_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."content_reports"
+    ADD CONSTRAINT "content_reports_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: conversations conversations_participant_1_participant_2_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."conversations"
+    ADD CONSTRAINT "conversations_participant_1_participant_2_key" UNIQUE ("participant_1", "participant_2");
+
+
+--
+-- Name: conversations conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."conversations"
+    ADD CONSTRAINT "conversations_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: creator_tips creator_tips_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."creator_tips"
+    ADD CONSTRAINT "creator_tips_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: feature_flags feature_flags_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."feature_flags"
+    ADD CONSTRAINT "feature_flags_pkey" PRIMARY KEY ("flag_key");
+
+
+--
+-- Name: follow_requests follow_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."follow_requests"
+    ADD CONSTRAINT "follow_requests_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: follow_requests follow_requests_sender_id_receiver_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."follow_requests"
+    ADD CONSTRAINT "follow_requests_sender_id_receiver_id_key" UNIQUE ("sender_id", "receiver_id");
+
+
+--
+-- Name: follows follows_follower_id_following_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."follows"
+    ADD CONSTRAINT "follows_follower_id_following_id_key" UNIQUE ("follower_id", "following_id");
+
+
+--
+-- Name: follows follows_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."follows"
+    ADD CONSTRAINT "follows_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: gift_catalog gift_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."gift_catalog"
+    ADD CONSTRAINT "gift_catalog_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: gift_transactions gift_transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."gift_transactions"
+    ADD CONSTRAINT "gift_transactions_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: guilds guilds_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."guilds"
+    ADD CONSTRAINT "guilds_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: likes likes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."likes"
+    ADD CONSTRAINT "likes_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: likes likes_post_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."likes"
+    ADD CONSTRAINT "likes_post_id_user_id_key" UNIQUE ("post_id", "user_id");
+
+
+--
+-- Name: live_auctions live_auctions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_auto_bids live_auto_bids_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_auto_bids"
+    ADD CONSTRAINT "live_auto_bids_pkey" PRIMARY KEY ("auction_id", "bidder_id");
+
+
+--
+-- Name: live_battle_history live_battle_history_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_battle_history"
+    ADD CONSTRAINT "live_battle_history_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_bids live_bids_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_bids"
+    ADD CONSTRAINT "live_bids_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_chat_timeouts live_chat_timeouts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_chat_timeouts"
+    ADD CONSTRAINT "live_chat_timeouts_pkey" PRIMARY KEY ("session_id", "user_id");
+
+
+--
+-- Name: live_clip_markers live_clip_markers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_clip_markers"
+    ADD CONSTRAINT "live_clip_markers_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_cohost_blocks live_cohost_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_cohost_blocks"
+    ADD CONSTRAINT "live_cohost_blocks_pkey" PRIMARY KEY ("host_id", "blocked_user_id");
+
+
+--
+-- Name: live_cohosts live_cohosts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_cohosts"
+    ADD CONSTRAINT "live_cohosts_pkey" PRIMARY KEY ("session_id", "user_id");
+
+
+--
+-- Name: live_comments live_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_comments"
+    ADD CONSTRAINT "live_comments_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_duet_history live_duet_history_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_duet_history"
+    ADD CONSTRAINT "live_duet_history_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_duet_invites live_duet_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_duet_invites"
+    ADD CONSTRAINT "live_duet_invites_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_giveaway_entries live_giveaway_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_giveaway_entries"
+    ADD CONSTRAINT "live_giveaway_entries_pkey" PRIMARY KEY ("giveaway_id", "user_id");
+
+
+--
+-- Name: live_giveaways live_giveaways_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_giveaways"
+    ADD CONSTRAINT "live_giveaways_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_moderators live_moderators_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_moderators"
+    ADD CONSTRAINT "live_moderators_pkey" PRIMARY KEY ("session_id", "user_id");
+
+
+--
+-- Name: live_placed_products live_placed_products_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_placed_products"
+    ADD CONSTRAINT "live_placed_products_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_poll_votes live_poll_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_poll_votes"
+    ADD CONSTRAINT "live_poll_votes_pkey" PRIMARY KEY ("poll_id", "user_id");
+
+
+--
+-- Name: live_polls live_polls_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_polls"
+    ADD CONSTRAINT "live_polls_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_reactions live_reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_reactions"
+    ADD CONSTRAINT "live_reactions_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_recordings live_recordings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_recordings"
+    ADD CONSTRAINT "live_recordings_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_reports live_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_reports"
+    ADD CONSTRAINT "live_reports_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_session_viewers live_session_viewers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_session_viewers"
+    ADD CONSTRAINT "live_session_viewers_pkey" PRIMARY KEY ("session_id", "user_id");
+
+
+--
+-- Name: live_sessions live_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_sessions"
+    ADD CONSTRAINT "live_sessions_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_stickers live_stickers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_stickers"
+    ADD CONSTRAINT "live_stickers_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: live_viewer_welcomes live_viewer_welcomes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_viewer_welcomes"
+    ADD CONSTRAINT "live_viewer_welcomes_pkey" PRIMARY KEY ("session_id", "user_id");
+
+
+--
+-- Name: message_reactions message_reactions_message_id_user_id_emoji_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."message_reactions"
+    ADD CONSTRAINT "message_reactions_message_id_user_id_emoji_key" UNIQUE ("message_id", "user_id", "emoji");
+
+
+--
+-- Name: message_reactions message_reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."message_reactions"
+    ADD CONSTRAINT "message_reactions_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: messages messages_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: moderation_auto_flags moderation_auto_flags_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."moderation_auto_flags"
+    ADD CONSTRAINT "moderation_auto_flags_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: muted_live_hosts muted_live_hosts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."muted_live_hosts"
+    ADD CONSTRAINT "muted_live_hosts_pkey" PRIMARY KEY ("user_id", "host_id");
+
+
+--
+-- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: order_disputes order_disputes_order_id_reporter_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."order_disputes"
+    ADD CONSTRAINT "order_disputes_order_id_reporter_id_key" UNIQUE ("order_id", "reporter_id");
+
+
+--
+-- Name: order_disputes order_disputes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."order_disputes"
+    ADD CONSTRAINT "order_disputes_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: order_reviews order_reviews_order_id_reviewer_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."order_reviews"
+    ADD CONSTRAINT "order_reviews_order_id_reviewer_id_key" UNIQUE ("order_id", "reviewer_id");
+
+
+--
+-- Name: order_reviews order_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."order_reviews"
+    ADD CONSTRAINT "order_reviews_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."orders"
+    ADD CONSTRAINT "orders_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: payout_requests payout_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: post_drafts post_drafts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."post_drafts"
+    ADD CONSTRAINT "post_drafts_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: post_dwell_log post_dwell_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."post_dwell_log"
+    ADD CONSTRAINT "post_dwell_log_pkey" PRIMARY KEY ("user_id", "post_id");
+
+
+--
+-- Name: post_reports post_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."post_reports"
+    ADD CONSTRAINT "post_reports_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: post_reports post_reports_reporter_id_post_id_reason_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."post_reports"
+    ADD CONSTRAINT "post_reports_reporter_id_post_id_reason_key" UNIQUE ("reporter_id", "post_id", "reason");
+
+
+--
+-- Name: post_views_log post_views_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."post_views_log"
+    ADD CONSTRAINT "post_views_log_pkey" PRIMARY KEY ("post_id", "user_id");
+
+
+--
+-- Name: post_views post_views_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."post_views"
+    ADD CONSTRAINT "post_views_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: post_views post_views_post_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."post_views"
+    ADD CONSTRAINT "post_views_post_id_user_id_key" UNIQUE ("post_id", "user_id");
+
+
+--
+-- Name: posts posts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."posts"
+    ADD CONSTRAINT "posts_pkey" PRIMARY KEY ("id");
+
+
 --
--- Name: TABLE web_push_subscriptions; Type: COMMENT; Schema: public; Owner: -
+-- Name: preorder_rounds preorder_rounds_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-COMMENT ON TABLE public.web_push_subscriptions IS 'W3C Web-Push-Subscriptions (VAPID). Getrennt von push_tokens (Expo) weil Shape + Dispatch-Pfad fundamental anders.';
+ALTER TABLE ONLY "public"."preorder_rounds"
+    ADD CONSTRAINT "preorder_rounds_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: admin_audit_log admin_audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_orders product_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_audit_log
-    ADD CONSTRAINT admin_audit_log_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."product_orders"
+    ADD CONSTRAINT "product_orders_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: admin_campaign_daily_metrics admin_campaign_daily_metrics_campaign_id_metric_date_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_orders product_orders_stripe_session_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_campaign_daily_metrics
-    ADD CONSTRAINT admin_campaign_daily_metrics_campaign_id_metric_date_key UNIQUE (campaign_id, metric_date);
+ALTER TABLE ONLY "public"."product_orders"
+    ADD CONSTRAINT "product_orders_stripe_session_id_key" UNIQUE ("stripe_session_id");
 
 
 --
--- Name: admin_campaign_daily_metrics admin_campaign_daily_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_preorders product_preorders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_campaign_daily_metrics
-    ADD CONSTRAINT admin_campaign_daily_metrics_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."product_preorders"
+    ADD CONSTRAINT "product_preorders_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: admin_campaigns admin_campaigns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_preorders product_preorders_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_campaigns
-    ADD CONSTRAINT admin_campaigns_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."product_preorders"
+    ADD CONSTRAINT "product_preorders_unique" UNIQUE ("product_id", "user_id");
 
 
 --
--- Name: admin_region_daily_metrics admin_region_daily_metrics_country_code_metric_date_source_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_reviews product_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_region_daily_metrics
-    ADD CONSTRAINT admin_region_daily_metrics_country_code_metric_date_source_key UNIQUE (country_code, metric_date, source);
+ALTER TABLE ONLY "public"."product_reviews"
+    ADD CONSTRAINT "product_reviews_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: admin_region_daily_metrics admin_region_daily_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_reviews product_reviews_reviewer_id_product_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_region_daily_metrics
-    ADD CONSTRAINT admin_region_daily_metrics_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."product_reviews"
+    ADD CONSTRAINT "product_reviews_reviewer_id_product_id_key" UNIQUE ("reviewer_id", "product_id");
 
 
 --
--- Name: admin_support_messages admin_support_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: products products_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_support_messages
-    ADD CONSTRAINT admin_support_messages_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: admin_support_threads admin_support_threads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_support_threads
-    ADD CONSTRAINT admin_support_threads_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: ai_image_generations ai_image_generations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: profiles profiles_username_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.ai_image_generations
-    ADD CONSTRAINT ai_image_generations_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_username_key" UNIQUE ("username");
 
 
 --
--- Name: algo_experiments algo_experiments_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: push_tokens push_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.algo_experiments
-    ADD CONSTRAINT algo_experiments_name_key UNIQUE (name);
+ALTER TABLE ONLY "public"."push_tokens"
+    ADD CONSTRAINT "push_tokens_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: algo_experiments algo_experiments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: push_tokens push_tokens_user_token_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.algo_experiments
-    ADD CONSTRAINT algo_experiments_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."push_tokens"
+    ADD CONSTRAINT "push_tokens_user_token_unique" UNIQUE ("user_id", "token");
 
 
 --
--- Name: algo_user_variants algo_user_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: r2_delete_queue r2_delete_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.algo_user_variants
-    ADD CONSTRAINT algo_user_variants_pkey PRIMARY KEY (user_id, experiment_name);
+ALTER TABLE ONLY "public"."r2_delete_queue"
+    ADD CONSTRAINT "r2_delete_queue_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: bookmarks bookmarks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reposts reposts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.bookmarks
-    ADD CONSTRAINT bookmarks_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."reposts"
+    ADD CONSTRAINT "reposts_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: bookmarks bookmarks_user_id_post_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reposts reposts_user_id_post_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.bookmarks
-    ADD CONSTRAINT bookmarks_user_id_post_id_key UNIQUE (user_id, post_id);
+ALTER TABLE ONLY "public"."reposts"
+    ADD CONSTRAINT "reposts_user_id_post_id_key" UNIQUE ("user_id", "post_id");
 
 
 --
--- Name: coin_pricing_tiers coin_pricing_tiers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: saved_products saved_products_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.coin_pricing_tiers
-    ADD CONSTRAINT coin_pricing_tiers_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."saved_products"
+    ADD CONSTRAINT "saved_products_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: coin_purchases coin_purchases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: saved_products saved_products_user_id_product_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.coin_purchases
-    ADD CONSTRAINT coin_purchases_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."saved_products"
+    ADD CONSTRAINT "saved_products_user_id_product_id_key" UNIQUE ("user_id", "product_id");
 
 
 --
--- Name: coin_purchases coin_purchases_transaction_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.coin_purchases
-    ADD CONSTRAINT coin_purchases_transaction_id_key UNIQUE (transaction_id);
+ALTER TABLE ONLY "public"."scheduled_lives"
+    ADD CONSTRAINT "scheduled_lives_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: coins_wallets coins_wallets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: scheduled_posts scheduled_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.coins_wallets
-    ADD CONSTRAINT coins_wallets_pkey PRIMARY KEY (user_id);
+ALTER TABLE ONLY "public"."scheduled_posts"
+    ADD CONSTRAINT "scheduled_posts_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: comment_likes comment_likes_comment_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: seller_accounts seller_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comment_likes
-    ADD CONSTRAINT comment_likes_comment_id_user_id_key UNIQUE (comment_id, user_id);
+ALTER TABLE ONLY "public"."seller_accounts"
+    ADD CONSTRAINT "seller_accounts_pkey" PRIMARY KEY ("user_id");
 
 
 --
--- Name: comment_likes comment_likes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: shop_banners shop_banners_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comment_likes
-    ADD CONSTRAINT comment_likes_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."shop_banners"
+    ADD CONSTRAINT "shop_banners_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: comments comments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stories stories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comments
-    ADD CONSTRAINT comments_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."stories"
+    ADD CONSTRAINT "stories_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: content_reports content_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_comments story_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.content_reports
-    ADD CONSTRAINT content_reports_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."story_comments"
+    ADD CONSTRAINT "story_comments_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: conversations conversations_participant_1_participant_2_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_participant_1_participant_2_key UNIQUE (participant_1, participant_2);
+ALTER TABLE ONLY "public"."story_highlights"
+    ADD CONSTRAINT "story_highlights_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: conversations conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_user_id_story_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."story_highlights"
+    ADD CONSTRAINT "story_highlights_user_id_story_id_key" UNIQUE ("user_id", "story_id");
 
 
 --
--- Name: creator_tips creator_tips_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_likes story_likes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.creator_tips
-    ADD CONSTRAINT creator_tips_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."story_likes"
+    ADD CONSTRAINT "story_likes_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: feature_flags feature_flags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_likes story_likes_story_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.feature_flags
-    ADD CONSTRAINT feature_flags_pkey PRIMARY KEY (flag_key);
+ALTER TABLE ONLY "public"."story_likes"
+    ADD CONSTRAINT "story_likes_story_id_user_id_key" UNIQUE ("story_id", "user_id");
 
 
 --
--- Name: follow_requests follow_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_views story_views_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follow_requests
-    ADD CONSTRAINT follow_requests_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."story_views"
+    ADD CONSTRAINT "story_views_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: follow_requests follow_requests_sender_id_receiver_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_views story_views_story_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follow_requests
-    ADD CONSTRAINT follow_requests_sender_id_receiver_id_key UNIQUE (sender_id, receiver_id);
+ALTER TABLE ONLY "public"."story_views"
+    ADD CONSTRAINT "story_views_story_id_user_id_key" UNIQUE ("story_id", "user_id");
 
 
 --
--- Name: follows follows_follower_id_following_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_votes story_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_follower_id_following_id_key UNIQUE (follower_id, following_id);
+ALTER TABLE ONLY "public"."story_votes"
+    ADD CONSTRAINT "story_votes_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: follows follows_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: story_votes story_votes_story_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."story_votes"
+    ADD CONSTRAINT "story_votes_story_id_user_id_key" UNIQUE ("story_id", "user_id");
 
 
 --
--- Name: gift_catalog gift_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_blocks user_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.gift_catalog
-    ADD CONSTRAINT gift_catalog_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."user_blocks"
+    ADD CONSTRAINT "user_blocks_pkey" PRIMARY KEY ("blocker_id", "blocked_id");
 
 
 --
--- Name: gift_transactions gift_transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_reports user_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.gift_transactions
-    ADD CONSTRAINT gift_transactions_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."user_reports"
+    ADD CONSTRAINT "user_reports_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: guilds guilds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_reports user_reports_reporter_id_reported_id_reason_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.guilds
-    ADD CONSTRAINT guilds_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."user_reports"
+    ADD CONSTRAINT "user_reports_reporter_id_reported_id_reason_key" UNIQUE ("reporter_id", "reported_id", "reason");
 
 
 --
--- Name: likes likes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_tag_affinity user_tag_affinity_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.likes
-    ADD CONSTRAINT likes_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."user_tag_affinity"
+    ADD CONSTRAINT "user_tag_affinity_pkey" PRIMARY KEY ("user_id", "tag");
 
 
 --
--- Name: likes likes_post_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_vibe_profile user_vibe_profile_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.likes
-    ADD CONSTRAINT likes_post_id_user_id_key UNIQUE (post_id, user_id);
+ALTER TABLE ONLY "public"."user_vibe_profile"
+    ADD CONSTRAINT "user_vibe_profile_pkey" PRIMARY KEY ("user_id");
 
 
 --
--- Name: live_battle_history live_battle_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_whip_ingresses user_whip_ingresses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_battle_history
-    ADD CONSTRAINT live_battle_history_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."user_whip_ingresses"
+    ADD CONSTRAINT "user_whip_ingresses_pkey" PRIMARY KEY ("user_id");
 
 
 --
--- Name: live_chat_timeouts live_chat_timeouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: web_coin_orders web_coin_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_chat_timeouts
-    ADD CONSTRAINT live_chat_timeouts_pkey PRIMARY KEY (session_id, user_id);
+ALTER TABLE ONLY "public"."web_coin_orders"
+    ADD CONSTRAINT "web_coin_orders_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: live_clip_markers live_clip_markers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: web_coin_orders web_coin_orders_stripe_session_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_clip_markers
-    ADD CONSTRAINT live_clip_markers_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."web_coin_orders"
+    ADD CONSTRAINT "web_coin_orders_stripe_session_id_key" UNIQUE ("stripe_session_id");
 
 
 --
--- Name: live_cohost_blocks live_cohost_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: web_push_subscriptions web_push_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_cohost_blocks
-    ADD CONSTRAINT live_cohost_blocks_pkey PRIMARY KEY (host_id, blocked_user_id);
+ALTER TABLE ONLY "public"."web_push_subscriptions"
+    ADD CONSTRAINT "web_push_subscriptions_pkey" PRIMARY KEY ("id");
 
 
 --
--- Name: live_cohosts live_cohosts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: web_push_subscriptions web_push_user_endpoint_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_cohosts
-    ADD CONSTRAINT live_cohosts_pkey PRIMARY KEY (session_id, user_id);
+ALTER TABLE ONLY "public"."web_push_subscriptions"
+    ADD CONSTRAINT "web_push_user_endpoint_unique" UNIQUE ("user_id", "endpoint");
 
 
 --
--- Name: live_comments live_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: women_only_requests women_only_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_comments
-    ADD CONSTRAINT live_comments_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY "public"."women_only_requests"
+    ADD CONSTRAINT "women_only_requests_pkey" PRIMARY KEY ("user_id");
 
 
 --
--- Name: live_duet_history live_duet_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auction_carts_one_open; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_history
-    ADD CONSTRAINT live_duet_history_pkey PRIMARY KEY (id);
+CREATE UNIQUE INDEX "auction_carts_one_open" ON "public"."auction_carts" USING "btree" ("buyer_id", "seller_id") WHERE ("status" = 'open'::"text");
 
 
 --
--- Name: live_duet_invites live_duet_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: comment_likes_user_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_invites
-    ADD CONSTRAINT live_duet_invites_pkey PRIMARY KEY (id);
+CREATE INDEX "comment_likes_user_idx" ON "public"."comment_likes" USING "btree" ("user_id");
 
 
 --
--- Name: live_moderators live_moderators_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: conv_p1_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_moderators
-    ADD CONSTRAINT live_moderators_pkey PRIMARY KEY (session_id, user_id);
+CREATE INDEX "conv_p1_idx" ON "public"."conversations" USING "btree" ("participant_1", "last_message_at" DESC);
 
 
 --
--- Name: live_placed_products live_placed_products_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: conv_p2_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_placed_products
-    ADD CONSTRAINT live_placed_products_pkey PRIMARY KEY (id);
+CREATE INDEX "conv_p2_idx" ON "public"."conversations" USING "btree" ("participant_2", "last_message_at" DESC);
 
 
 --
--- Name: live_poll_votes live_poll_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: follow_requests_receiver_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_poll_votes
-    ADD CONSTRAINT live_poll_votes_pkey PRIMARY KEY (poll_id, user_id);
+CREATE INDEX "follow_requests_receiver_idx" ON "public"."follow_requests" USING "btree" ("receiver_id");
 
 
 --
--- Name: live_polls live_polls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: follow_requests_sender_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_polls
-    ADD CONSTRAINT live_polls_pkey PRIMARY KEY (id);
+CREATE INDEX "follow_requests_sender_idx" ON "public"."follow_requests" USING "btree" ("sender_id");
 
 
 --
--- Name: live_reactions live_reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_audit_log_actor; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_reactions
-    ADD CONSTRAINT live_reactions_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_admin_audit_log_actor" ON "public"."admin_audit_log" USING "btree" ("actor_id", "created_at" DESC);
 
 
 --
--- Name: live_recordings live_recordings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_audit_log_target; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_recordings
-    ADD CONSTRAINT live_recordings_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_admin_audit_log_target" ON "public"."admin_audit_log" USING "btree" ("target_type", "target_id", "created_at" DESC);
 
 
 --
--- Name: live_reports live_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_campaign_daily_metrics_campaign_date; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_reports
-    ADD CONSTRAINT live_reports_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_admin_campaign_daily_metrics_campaign_date" ON "public"."admin_campaign_daily_metrics" USING "btree" ("campaign_id", "metric_date" DESC);
 
 
 --
--- Name: live_session_viewers live_session_viewers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_campaigns_status_updated; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_session_viewers
-    ADD CONSTRAINT live_session_viewers_pkey PRIMARY KEY (session_id, user_id);
+CREATE INDEX "idx_admin_campaigns_status_updated" ON "public"."admin_campaigns" USING "btree" ("status", "updated_at" DESC);
 
 
 --
--- Name: live_sessions live_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_region_daily_metrics_country; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_sessions
-    ADD CONSTRAINT live_sessions_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_admin_region_daily_metrics_country" ON "public"."admin_region_daily_metrics" USING "btree" ("country_code", "metric_date" DESC);
 
 
 --
--- Name: live_stickers live_stickers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_region_daily_metrics_date; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_stickers
-    ADD CONSTRAINT live_stickers_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_admin_region_daily_metrics_date" ON "public"."admin_region_daily_metrics" USING "btree" ("metric_date" DESC, "active_users" DESC);
 
 
 --
--- Name: live_viewer_welcomes live_viewer_welcomes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_region_daily_metrics_total_profiles; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_viewer_welcomes
-    ADD CONSTRAINT live_viewer_welcomes_pkey PRIMARY KEY (session_id, user_id);
+CREATE INDEX "idx_admin_region_daily_metrics_total_profiles" ON "public"."admin_region_daily_metrics" USING "btree" ("metric_date" DESC, "total_profiles" DESC);
 
 
 --
--- Name: message_reactions message_reactions_message_id_user_id_emoji_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_support_messages_thread; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.message_reactions
-    ADD CONSTRAINT message_reactions_message_id_user_id_emoji_key UNIQUE (message_id, user_id, emoji);
+CREATE INDEX "idx_admin_support_messages_thread" ON "public"."admin_support_messages" USING "btree" ("thread_id", "created_at" DESC);
 
 
 --
--- Name: message_reactions message_reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_support_threads_status_priority; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.message_reactions
-    ADD CONSTRAINT message_reactions_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_admin_support_threads_status_priority" ON "public"."admin_support_threads" USING "btree" ("status", "priority", "last_message_at" DESC);
 
 
 --
--- Name: messages messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_admin_support_threads_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.messages
-    ADD CONSTRAINT messages_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_admin_support_threads_user" ON "public"."admin_support_threads" USING "btree" ("user_id", "created_at" DESC);
 
 
 --
--- Name: moderation_auto_flags moderation_auto_flags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_ai_image_gen_cost_month; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.moderation_auto_flags
-    ADD CONSTRAINT moderation_auto_flags_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_ai_image_gen_cost_month" ON "public"."ai_image_generations" USING "btree" ("user_id", "created_at") WHERE ("cost_cents" > 0);
 
 
 --
--- Name: muted_live_hosts muted_live_hosts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_ai_image_gen_unconsumed; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.muted_live_hosts
-    ADD CONSTRAINT muted_live_hosts_pkey PRIMARY KEY (user_id, host_id);
+CREATE INDEX "idx_ai_image_gen_unconsumed" ON "public"."ai_image_generations" USING "btree" ("created_at") WHERE ("consumed_at" IS NULL);
 
 
 --
--- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_ai_image_gen_user_time; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_ai_image_gen_user_time" ON "public"."ai_image_generations" USING "btree" ("user_id", "created_at" DESC);
 
 
 --
--- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_algo_experiments_active; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_algo_experiments_active" ON "public"."algo_experiments" USING "btree" ("is_active") WHERE ("is_active" = true);
 
 
 --
--- Name: payout_requests payout_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_algo_user_variants_lookup; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.payout_requests
-    ADD CONSTRAINT payout_requests_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_algo_user_variants_lookup" ON "public"."algo_user_variants" USING "btree" ("user_id", "experiment_name");
 
 
 --
--- Name: post_drafts post_drafts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_battle_history_guest; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_drafts
-    ADD CONSTRAINT post_drafts_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_battle_history_guest" ON "public"."live_battle_history" USING "btree" ("guest_id", "ended_at" DESC);
 
 
 --
--- Name: post_dwell_log post_dwell_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_battle_history_host; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_dwell_log
-    ADD CONSTRAINT post_dwell_log_pkey PRIMARY KEY (user_id, post_id);
+CREATE INDEX "idx_battle_history_host" ON "public"."live_battle_history" USING "btree" ("host_id", "ended_at" DESC);
 
 
 --
--- Name: post_reports post_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_bookmarks_user_post; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_reports
-    ADD CONSTRAINT post_reports_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_bookmarks_user_post" ON "public"."bookmarks" USING "btree" ("user_id", "post_id");
 
 
 --
--- Name: post_reports post_reports_reporter_id_post_id_reason_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_chat_timeouts_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_reports
-    ADD CONSTRAINT post_reports_reporter_id_post_id_reason_key UNIQUE (reporter_id, post_id, reason);
+CREATE INDEX "idx_chat_timeouts_session" ON "public"."live_chat_timeouts" USING "btree" ("session_id");
 
 
 --
--- Name: post_views_log post_views_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_clip_markers_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_views_log
-    ADD CONSTRAINT post_views_log_pkey PRIMARY KEY (post_id, user_id);
+CREATE INDEX "idx_clip_markers_session" ON "public"."live_clip_markers" USING "btree" ("session_id", "ts_secs");
 
 
 --
--- Name: post_views post_views_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_clip_markers_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_views
-    ADD CONSTRAINT post_views_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_clip_markers_user" ON "public"."live_clip_markers" USING "btree" ("user_id", "created_at" DESC);
 
 
 --
--- Name: post_views post_views_post_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_cohost_blocks_blocked; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_views
-    ADD CONSTRAINT post_views_post_id_user_id_key UNIQUE (post_id, user_id);
+CREATE INDEX "idx_cohost_blocks_blocked" ON "public"."live_cohost_blocks" USING "btree" ("blocked_user_id");
 
 
 --
--- Name: posts posts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_cohost_blocks_host; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.posts
-    ADD CONSTRAINT posts_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_cohost_blocks_host" ON "public"."live_cohost_blocks" USING "btree" ("host_id");
 
 
 --
--- Name: product_reviews product_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_coin_purchases_transaction_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.product_reviews
-    ADD CONSTRAINT product_reviews_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_coin_purchases_transaction_id" ON "public"."coin_purchases" USING "btree" ("transaction_id");
 
 
 --
--- Name: product_reviews product_reviews_reviewer_id_product_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_coin_purchases_user_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.product_reviews
-    ADD CONSTRAINT product_reviews_reviewer_id_product_id_key UNIQUE (reviewer_id, product_id);
+CREATE INDEX "idx_coin_purchases_user_id" ON "public"."coin_purchases" USING "btree" ("user_id", "created_at" DESC);
 
 
 --
--- Name: products products_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_comment_likes_comment; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.products
-    ADD CONSTRAINT products_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_comment_likes_comment" ON "public"."comment_likes" USING "btree" ("comment_id");
 
 
 --
--- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_comment_likes_user_comment; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.profiles
-    ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_comment_likes_user_comment" ON "public"."comment_likes" USING "btree" ("user_id", "comment_id");
 
 
 --
--- Name: profiles profiles_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_comments_parent_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.profiles
-    ADD CONSTRAINT profiles_username_key UNIQUE (username);
+CREATE INDEX "idx_comments_parent_created" ON "public"."comments" USING "btree" ("parent_id", "created_at") WHERE ("parent_id" IS NOT NULL);
 
 
 --
--- Name: push_tokens push_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_comments_parent_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.push_tokens
-    ADD CONSTRAINT push_tokens_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_comments_parent_id" ON "public"."comments" USING "btree" ("parent_id");
 
 
 --
--- Name: push_tokens push_tokens_user_token_unique; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_comments_post_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.push_tokens
-    ADD CONSTRAINT push_tokens_user_token_unique UNIQUE (user_id, token);
+CREATE INDEX "idx_comments_post_created" ON "public"."comments" USING "btree" ("post_id", "created_at" DESC);
 
 
 --
--- Name: r2_delete_queue r2_delete_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_comments_post_parent_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.r2_delete_queue
-    ADD CONSTRAINT r2_delete_queue_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_comments_post_parent_created_at_id" ON "public"."comments" USING "btree" ("post_id", "parent_id", "created_at", "id");
 
 
 --
--- Name: reposts reposts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_comments_post_root_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.reposts
-    ADD CONSTRAINT reposts_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_comments_post_root_created_at_id" ON "public"."comments" USING "btree" ("post_id", "created_at", "id") WHERE ("parent_id" IS NULL);
 
 
 --
--- Name: reposts reposts_user_id_post_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_content_reports_pending_sla; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.reposts
-    ADD CONSTRAINT reposts_user_id_post_id_key UNIQUE (user_id, post_id);
+CREATE INDEX "idx_content_reports_pending_sla" ON "public"."content_reports" USING "btree" ("status", "created_at") WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: saved_products saved_products_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_creator_tips_recipient; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.saved_products
-    ADD CONSTRAINT saved_products_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_creator_tips_recipient" ON "public"."creator_tips" USING "btree" ("recipient_id", "created_at" DESC);
 
 
 --
--- Name: saved_products saved_products_user_id_product_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_creator_tips_sender; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.saved_products
-    ADD CONSTRAINT saved_products_user_id_product_id_key UNIQUE (user_id, product_id);
+CREATE INDEX "idx_creator_tips_sender" ON "public"."creator_tips" USING "btree" ("sender_id", "created_at" DESC);
 
 
 --
--- Name: scheduled_lives scheduled_lives_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_duet_history_guest; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.scheduled_lives
-    ADD CONSTRAINT scheduled_lives_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_duet_history_guest" ON "public"."live_duet_history" USING "btree" ("guest_id", "started_at" DESC);
 
 
 --
--- Name: scheduled_posts scheduled_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_duet_history_host; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.scheduled_posts
-    ADD CONSTRAINT scheduled_posts_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_duet_history_host" ON "public"."live_duet_history" USING "btree" ("host_id", "started_at" DESC);
 
 
 --
--- Name: stories stories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_duet_history_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.stories
-    ADD CONSTRAINT stories_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_duet_history_session" ON "public"."live_duet_history" USING "btree" ("session_id");
 
 
 --
--- Name: story_comments story_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_duet_invites_expires; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_comments
-    ADD CONSTRAINT story_comments_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_duet_invites_expires" ON "public"."live_duet_invites" USING "btree" ("expires_at") WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: story_highlights story_highlights_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_duet_invites_host_pending; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_highlights
-    ADD CONSTRAINT story_highlights_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_duet_invites_host_pending" ON "public"."live_duet_invites" USING "btree" ("host_id", "created_at" DESC) WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: story_highlights story_highlights_user_id_story_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_duet_invites_invitee_pending; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_highlights
-    ADD CONSTRAINT story_highlights_user_id_story_id_key UNIQUE (user_id, story_id);
+CREATE INDEX "idx_duet_invites_invitee_pending" ON "public"."live_duet_invites" USING "btree" ("invitee_id", "created_at" DESC) WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: story_likes story_likes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_dwell_log_user_post; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_likes
-    ADD CONSTRAINT story_likes_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_dwell_log_user_post" ON "public"."post_dwell_log" USING "btree" ("user_id", "post_id");
 
 
 --
--- Name: story_likes story_likes_story_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_follows_follower_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_likes
-    ADD CONSTRAINT story_likes_story_id_user_id_key UNIQUE (story_id, user_id);
+CREATE INDEX "idx_follows_follower_id" ON "public"."follows" USING "btree" ("follower_id");
 
 
 --
--- Name: story_views story_views_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_follows_following_follower; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_views
-    ADD CONSTRAINT story_views_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_follows_following_follower" ON "public"."follows" USING "btree" ("following_id", "follower_id");
 
 
 --
--- Name: story_views story_views_story_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_follows_following_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_views
-    ADD CONSTRAINT story_views_story_id_user_id_key UNIQUE (story_id, user_id);
+CREATE INDEX "idx_follows_following_id" ON "public"."follows" USING "btree" ("following_id");
 
 
 --
--- Name: story_votes story_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_follows_pair; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_votes
-    ADD CONSTRAINT story_votes_pkey PRIMARY KEY (id);
+CREATE UNIQUE INDEX "idx_follows_pair" ON "public"."follows" USING "btree" ("follower_id", "following_id");
 
 
 --
--- Name: story_votes story_votes_story_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_gift_catalog_window; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_votes
-    ADD CONSTRAINT story_votes_story_id_user_id_key UNIQUE (story_id, user_id);
+CREATE INDEX "idx_gift_catalog_window" ON "public"."gift_catalog" USING "btree" ("available_from", "available_until");
 
 
 --
--- Name: user_blocks user_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_gift_tx_recipient; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_blocks
-    ADD CONSTRAINT user_blocks_pkey PRIMARY KEY (blocker_id, blocked_id);
+CREATE INDEX "idx_gift_tx_recipient" ON "public"."gift_transactions" USING "btree" ("recipient_id", "created_at" DESC);
 
 
 --
--- Name: user_reports user_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_gift_tx_sender; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_reports
-    ADD CONSTRAINT user_reports_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_gift_tx_sender" ON "public"."gift_transactions" USING "btree" ("sender_id", "created_at" DESC);
 
 
 --
--- Name: user_reports user_reports_reporter_id_reported_id_reason_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_gift_tx_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_reports
-    ADD CONSTRAINT user_reports_reporter_id_reported_id_reason_key UNIQUE (reporter_id, reported_id, reason);
+CREATE INDEX "idx_gift_tx_session" ON "public"."gift_transactions" USING "btree" ("live_session_id", "created_at" DESC);
 
 
 --
--- Name: user_vibe_profile user_vibe_profile_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_likes_user_post; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_vibe_profile
-    ADD CONSTRAINT user_vibe_profile_pkey PRIMARY KEY (user_id);
+CREATE INDEX "idx_likes_user_post" ON "public"."likes" USING "btree" ("user_id", "post_id");
 
 
 --
--- Name: user_whip_ingresses user_whip_ingresses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_live_cohosts_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_whip_ingresses
-    ADD CONSTRAINT user_whip_ingresses_pkey PRIMARY KEY (user_id);
+CREATE INDEX "idx_live_cohosts_session" ON "public"."live_cohosts" USING "btree" ("session_id") WHERE ("revoked_at" IS NULL);
 
 
 --
--- Name: web_coin_orders web_coin_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_live_cohosts_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.web_coin_orders
-    ADD CONSTRAINT web_coin_orders_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_live_cohosts_user" ON "public"."live_cohosts" USING "btree" ("user_id") WHERE ("revoked_at" IS NULL);
 
 
 --
--- Name: web_coin_orders web_coin_orders_stripe_session_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_live_comments_session_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.web_coin_orders
-    ADD CONSTRAINT web_coin_orders_stripe_session_id_key UNIQUE (stripe_session_id);
+CREATE INDEX "idx_live_comments_session_created" ON "public"."live_comments" USING "btree" ("session_id", "created_at" DESC);
 
 
 --
--- Name: web_push_subscriptions web_push_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_live_comments_session_pinned_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.web_push_subscriptions
-    ADD CONSTRAINT web_push_subscriptions_pkey PRIMARY KEY (id);
+CREATE INDEX "idx_live_comments_session_pinned_created" ON "public"."live_comments" USING "btree" ("session_id", "pinned" DESC, "created_at" DESC);
 
 
 --
--- Name: web_push_subscriptions web_push_user_endpoint_unique; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: idx_live_comments_user_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.web_push_subscriptions
-    ADD CONSTRAINT web_push_user_endpoint_unique UNIQUE (user_id, endpoint);
+CREATE INDEX "idx_live_comments_user_id" ON "public"."live_comments" USING "btree" ("user_id");
 
 
 --
--- Name: comment_likes_comment_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_moderators_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX comment_likes_comment_idx ON public.comment_likes USING btree (comment_id);
+CREATE INDEX "idx_live_moderators_session" ON "public"."live_moderators" USING "btree" ("session_id");
 
 
 --
--- Name: comment_likes_user_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_placed_products_session_active; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX comment_likes_user_idx ON public.comment_likes USING btree (user_id);
+CREATE INDEX "idx_live_placed_products_session_active" ON "public"."live_placed_products" USING "btree" ("session_id", "created_at" DESC) WHERE ("removed_at" IS NULL);
 
 
 --
--- Name: conv_p1_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_poll_votes_poll; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX conv_p1_idx ON public.conversations USING btree (participant_1, last_message_at DESC);
+CREATE INDEX "idx_live_poll_votes_poll" ON "public"."live_poll_votes" USING "btree" ("poll_id");
 
 
 --
--- Name: conv_p2_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_polls_session_active; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX conv_p2_idx ON public.conversations USING btree (participant_2, last_message_at DESC);
+CREATE INDEX "idx_live_polls_session_active" ON "public"."live_polls" USING "btree" ("session_id", "created_at" DESC) WHERE ("closed_at" IS NULL);
 
 
 --
--- Name: follow_requests_receiver_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_reactions_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX follow_requests_receiver_idx ON public.follow_requests USING btree (receiver_id);
+CREATE INDEX "idx_live_reactions_session" ON "public"."live_reactions" USING "btree" ("session_id", "created_at" DESC);
 
 
 --
--- Name: follow_requests_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_recordings_host; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX follow_requests_sender_idx ON public.follow_requests USING btree (sender_id);
+CREATE INDEX "idx_live_recordings_host" ON "public"."live_recordings" USING "btree" ("host_id", "started_at" DESC);
 
 
 --
--- Name: idx_admin_audit_log_actor; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_recordings_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_audit_log_actor ON public.admin_audit_log USING btree (actor_id, created_at DESC);
+CREATE INDEX "idx_live_recordings_status" ON "public"."live_recordings" USING "btree" ("status") WHERE ("status" = ANY (ARRAY['ready'::"text", 'recording'::"text"]));
 
 
 --
--- Name: idx_admin_audit_log_target; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_session_viewers_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_audit_log_target ON public.admin_audit_log USING btree (target_type, target_id, created_at DESC);
+CREATE INDEX "idx_live_session_viewers_session" ON "public"."live_session_viewers" USING "btree" ("session_id");
 
 
 --
--- Name: idx_admin_campaign_daily_metrics_campaign_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_session_viewers_user_joined; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_campaign_daily_metrics_campaign_date ON public.admin_campaign_daily_metrics USING btree (campaign_id, metric_date DESC);
+CREATE INDEX "idx_live_session_viewers_user_joined" ON "public"."live_session_viewers" USING "btree" ("user_id", "joined_at" DESC);
 
 
 --
--- Name: idx_admin_campaigns_status_updated; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_active_full; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_campaigns_status_updated ON public.admin_campaigns USING btree (status, updated_at DESC);
+CREATE INDEX "idx_live_sessions_active_full" ON "public"."live_sessions" USING "btree" ("status", "started_at" DESC, "viewer_count" DESC) WHERE ("status" = 'active'::"text");
 
 
 --
--- Name: idx_admin_region_daily_metrics_country; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_active_listing; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_region_daily_metrics_country ON public.admin_region_daily_metrics USING btree (country_code, metric_date DESC);
+CREATE INDEX "idx_live_sessions_active_listing" ON "public"."live_sessions" USING "btree" ("viewer_count" DESC, "started_at", "id") WHERE ("status" = 'active'::"text");
 
 
 --
--- Name: idx_admin_region_daily_metrics_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_active_updated; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_region_daily_metrics_date ON public.admin_region_daily_metrics USING btree (metric_date DESC, active_users DESC);
+CREATE INDEX "idx_live_sessions_active_updated" ON "public"."live_sessions" USING "btree" ("updated_at") WHERE ("status" = 'active'::"text");
 
 
 --
--- Name: idx_admin_region_daily_metrics_total_profiles; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_followers_only; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_region_daily_metrics_total_profiles ON public.admin_region_daily_metrics USING btree (metric_date DESC, total_profiles DESC);
+CREATE INDEX "idx_live_sessions_followers_only" ON "public"."live_sessions" USING "btree" ("followers_only") WHERE ("followers_only" = true);
 
 
 --
--- Name: idx_admin_support_messages_thread; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_host_active_started; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_support_messages_thread ON public.admin_support_messages USING btree (thread_id, created_at DESC);
+CREATE INDEX "idx_live_sessions_host_active_started" ON "public"."live_sessions" USING "btree" ("host_id", "started_at" DESC, "id") WHERE ("status" = 'active'::"text");
 
 
 --
--- Name: idx_admin_support_threads_status_priority; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_host_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_support_threads_status_priority ON public.admin_support_threads USING btree (status, priority, last_message_at DESC);
+CREATE INDEX "idx_live_sessions_host_id" ON "public"."live_sessions" USING "btree" ("host_id");
 
 
 --
--- Name: idx_admin_support_threads_user; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_host_public_active_started; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_admin_support_threads_user ON public.admin_support_threads USING btree (user_id, created_at DESC);
+CREATE INDEX "idx_live_sessions_host_public_active_started" ON "public"."live_sessions" USING "btree" ("host_id", "started_at" DESC, "id") WHERE (("status" = 'active'::"text") AND ("women_only" = false));
 
 
 --
--- Name: idx_ai_image_gen_cost_month; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_ingress; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_ai_image_gen_cost_month ON public.ai_image_generations USING btree (user_id, created_at) WHERE (cost_cents > 0);
+CREATE INDEX "idx_live_sessions_ingress" ON "public"."live_sessions" USING "btree" ("ingress_id") WHERE ("ingress_id" IS NOT NULL);
 
 
 --
--- Name: idx_ai_image_gen_unconsumed; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_ai_image_gen_unconsumed ON public.ai_image_generations USING btree (created_at) WHERE (consumed_at IS NULL);
+CREATE INDEX "idx_live_sessions_status" ON "public"."live_sessions" USING "btree" ("status");
 
 
 --
--- Name: idx_ai_image_gen_user_time; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_status_started; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_ai_image_gen_user_time ON public.ai_image_generations USING btree (user_id, created_at DESC);
+CREATE INDEX "idx_live_sessions_status_started" ON "public"."live_sessions" USING "btree" ("status", "started_at" DESC) WHERE ("status" = 'active'::"text");
 
 
 --
--- Name: idx_algo_experiments_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_sessions_women_only; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_algo_experiments_active ON public.algo_experiments USING btree (is_active) WHERE (is_active = true);
+CREATE INDEX "idx_live_sessions_women_only" ON "public"."live_sessions" USING "btree" ("women_only") WHERE ("women_only" = true);
 
 
 --
--- Name: idx_algo_user_variants_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_stickers_session_active; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_algo_user_variants_lookup ON public.algo_user_variants USING btree (user_id, experiment_name);
+CREATE INDEX "idx_live_stickers_session_active" ON "public"."live_stickers" USING "btree" ("session_id", "created_at" DESC) WHERE ("removed_at" IS NULL);
 
 
 --
--- Name: idx_battle_history_guest; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_live_viewer_welcomes_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_battle_history_guest ON public.live_battle_history USING btree (guest_id, ended_at DESC);
+CREATE INDEX "idx_live_viewer_welcomes_session" ON "public"."live_viewer_welcomes" USING "btree" ("session_id", "created_at" DESC);
 
 
 --
--- Name: idx_battle_history_host; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_messages_unread_by_conversation; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_battle_history_host ON public.live_battle_history USING btree (host_id, ended_at DESC);
+CREATE INDEX "idx_messages_unread_by_conversation" ON "public"."messages" USING "btree" ("conversation_id", "sender_id") WHERE ("read" = false);
 
 
 --
--- Name: idx_bookmarks_user_post; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_moderation_auto_flags_reason_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_bookmarks_user_post ON public.bookmarks USING btree (user_id, post_id);
+CREATE INDEX "idx_moderation_auto_flags_reason_created" ON "public"."moderation_auto_flags" USING "btree" ("reason", "created_at" DESC);
 
 
 --
--- Name: idx_chat_timeouts_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_moderation_auto_flags_target; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_chat_timeouts_session ON public.live_chat_timeouts USING btree (session_id);
+CREATE INDEX "idx_moderation_auto_flags_target" ON "public"."moderation_auto_flags" USING "btree" ("target_type", "target_id", "created_at" DESC);
 
 
 --
--- Name: idx_clip_markers_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_muted_live_hosts_host; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_clip_markers_session ON public.live_clip_markers USING btree (session_id, ts_secs);
+CREATE INDEX "idx_muted_live_hosts_host" ON "public"."muted_live_hosts" USING "btree" ("host_id", "user_id");
 
 
 --
--- Name: idx_clip_markers_user; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_notifications_live_unread_age; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_clip_markers_user ON public.live_clip_markers USING btree (user_id, created_at DESC);
+CREATE INDEX "idx_notifications_live_unread_age" ON "public"."notifications" USING "btree" ("created_at") WHERE (("read" = false) AND ("type" = ANY (ARRAY['live'::"text", 'scheduled_live_reminder'::"text"])));
 
 
 --
--- Name: idx_cohost_blocks_blocked; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_notifications_live_unread_recipient_sender; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_cohost_blocks_blocked ON public.live_cohost_blocks USING btree (blocked_user_id);
+CREATE INDEX "idx_notifications_live_unread_recipient_sender" ON "public"."notifications" USING "btree" ("recipient_id", "sender_id", "created_at" DESC) WHERE (("read" = false) AND ("type" = ANY (ARRAY['live'::"text", 'scheduled_live_reminder'::"text"])));
 
 
 --
--- Name: idx_cohost_blocks_host; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_notifications_recipient_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_cohost_blocks_host ON public.live_cohost_blocks USING btree (host_id);
+CREATE INDEX "idx_notifications_recipient_created" ON "public"."notifications" USING "btree" ("recipient_id", "created_at" DESC);
 
 
 --
--- Name: idx_coin_purchases_transaction_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_notifications_recipient_type; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_coin_purchases_transaction_id ON public.coin_purchases USING btree (transaction_id);
+CREATE INDEX "idx_notifications_recipient_type" ON "public"."notifications" USING "btree" ("recipient_id", "type", "created_at" DESC);
 
 
 --
--- Name: idx_coin_purchases_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_notifications_recipient_unread; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_coin_purchases_user_id ON public.coin_purchases USING btree (user_id, created_at DESC);
+CREATE INDEX "idx_notifications_recipient_unread" ON "public"."notifications" USING "btree" ("recipient_id", "read") WHERE ("read" = false);
 
 
 --
--- Name: idx_comment_likes_comment; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_notifications_unread_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_comment_likes_comment ON public.comment_likes USING btree (comment_id);
+CREATE INDEX "idx_notifications_unread_created" ON "public"."notifications" USING "btree" ("created_at") WHERE ("read" = false);
 
 
 --
--- Name: idx_comment_likes_user_comment; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_notifications_unread_type_age; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_comment_likes_user_comment ON public.comment_likes USING btree (user_id, comment_id);
+CREATE INDEX "idx_notifications_unread_type_age" ON "public"."notifications" USING "btree" ("type", "created_at") WHERE ("read" = false);
 
 
 --
--- Name: idx_comments_parent_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_order_disputes_order; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_comments_parent_created ON public.comments USING btree (parent_id, created_at) WHERE (parent_id IS NOT NULL);
+CREATE INDEX "idx_order_disputes_order" ON "public"."order_disputes" USING "btree" ("order_id");
 
 
 --
--- Name: idx_comments_parent_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_order_disputes_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_comments_parent_id ON public.comments USING btree (parent_id);
+CREATE INDEX "idx_order_disputes_status" ON "public"."order_disputes" USING "btree" ("status") WHERE ("status" = 'open'::"text");
 
 
 --
--- Name: idx_comments_post_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_order_reviews_order; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_comments_post_created ON public.comments USING btree (post_id, created_at DESC);
+CREATE INDEX "idx_order_reviews_order" ON "public"."order_reviews" USING "btree" ("order_id");
 
 
 --
--- Name: idx_comments_post_parent_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_order_reviews_reviewee; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_comments_post_parent_created_at_id ON public.comments USING btree (post_id, parent_id, created_at, id);
+CREATE INDEX "idx_order_reviews_reviewee" ON "public"."order_reviews" USING "btree" ("reviewee_id");
 
 
 --
--- Name: idx_comments_post_root_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_orders_buyer_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_comments_post_root_created_at_id ON public.comments USING btree (post_id, created_at, id) WHERE (parent_id IS NULL);
+CREATE INDEX "idx_orders_buyer_id" ON "public"."orders" USING "btree" ("buyer_id", "created_at" DESC);
 
 
 --
--- Name: idx_content_reports_pending_sla; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_orders_product_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_content_reports_pending_sla ON public.content_reports USING btree (status, created_at) WHERE (status = 'pending'::text);
+CREATE INDEX "idx_orders_product_id" ON "public"."orders" USING "btree" ("product_id");
 
 
 --
--- Name: idx_creator_tips_recipient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_orders_seller_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_creator_tips_recipient ON public.creator_tips USING btree (recipient_id, created_at DESC);
+CREATE INDEX "idx_orders_seller_id" ON "public"."orders" USING "btree" ("seller_id", "created_at" DESC);
 
 
 --
--- Name: idx_creator_tips_sender; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_orders_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_creator_tips_sender ON public.creator_tips USING btree (sender_id, created_at DESC);
+CREATE INDEX "idx_orders_status" ON "public"."orders" USING "btree" ("status");
 
 
 --
--- Name: idx_duet_history_guest; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_post_drafts_author_updated; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_duet_history_guest ON public.live_duet_history USING btree (guest_id, started_at DESC);
+CREATE INDEX "idx_post_drafts_author_updated" ON "public"."post_drafts" USING "btree" ("author_id", "updated_at" DESC);
 
 
 --
--- Name: idx_duet_history_host; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_post_dwell_log_user_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_duet_history_host ON public.live_duet_history USING btree (host_id, started_at DESC);
+CREATE INDEX "idx_post_dwell_log_user_id" ON "public"."post_dwell_log" USING "btree" ("user_id");
 
 
 --
--- Name: idx_duet_history_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_post_dwell_log_user_post; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_duet_history_session ON public.live_duet_history USING btree (session_id);
+CREATE INDEX "idx_post_dwell_log_user_post" ON "public"."post_dwell_log" USING "btree" ("user_id", "post_id");
 
 
 --
--- Name: idx_duet_invites_expires; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_post_reports_post_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_duet_invites_expires ON public.live_duet_invites USING btree (expires_at) WHERE (status = 'pending'::text);
+CREATE INDEX "idx_post_reports_post_id" ON "public"."post_reports" USING "btree" ("post_id");
 
 
 --
--- Name: idx_duet_invites_host_pending; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_post_reports_reporter_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_duet_invites_host_pending ON public.live_duet_invites USING btree (host_id, created_at DESC) WHERE (status = 'pending'::text);
+CREATE INDEX "idx_post_reports_reporter_id" ON "public"."post_reports" USING "btree" ("reporter_id");
 
 
 --
--- Name: idx_duet_invites_invitee_pending; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_post_views_log_user_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_duet_invites_invitee_pending ON public.live_duet_invites USING btree (invitee_id, created_at DESC) WHERE (status = 'pending'::text);
+CREATE INDEX "idx_post_views_log_user_id" ON "public"."post_views_log" USING "btree" ("user_id");
 
 
 --
--- Name: idx_dwell_log_user_post; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_post_views_user_post; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_dwell_log_user_post ON public.post_dwell_log USING btree (user_id, post_id);
+CREATE INDEX "idx_post_views_user_post" ON "public"."post_views" USING "btree" ("user_id", "post_id");
 
 
 --
--- Name: idx_follows_follower_following; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_aspect_ratio; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_follows_follower_following ON public.follows USING btree (follower_id, following_id);
+CREATE INDEX "idx_posts_aspect_ratio" ON "public"."posts" USING "btree" ("aspect_ratio") WHERE ("aspect_ratio" <> 'portrait'::"text");
 
 
 --
--- Name: idx_follows_follower_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_audio_url; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_follows_follower_id ON public.follows USING btree (follower_id);
+CREATE INDEX "idx_posts_audio_url" ON "public"."posts" USING "btree" ("audio_url") WHERE ("audio_url" IS NOT NULL);
 
 
 --
--- Name: idx_follows_following_follower; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_follows_following_follower ON public.follows USING btree (following_id, follower_id);
+CREATE INDEX "idx_posts_author_created" ON "public"."posts" USING "btree" ("author_id", "created_at" DESC);
 
 
 --
--- Name: idx_follows_following_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_follows_following_id ON public.follows USING btree (following_id);
+CREATE INDEX "idx_posts_author_created_at_id" ON "public"."posts" USING "btree" ("author_id", "created_at" DESC, "id" DESC);
 
 
 --
--- Name: idx_follows_pair; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE UNIQUE INDEX idx_follows_pair ON public.follows USING btree (follower_id, following_id);
+CREATE INDEX "idx_posts_author_id" ON "public"."posts" USING "btree" ("author_id", "dwell_time_score" DESC NULLS LAST);
 
 
 --
--- Name: idx_gift_catalog_window; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_privacy_visible; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_gift_catalog_window ON public.gift_catalog USING btree (available_from, available_until);
+CREATE INDEX "idx_posts_author_privacy_visible" ON "public"."posts" USING "btree" ("author_id", "privacy", "created_at" DESC, "id" DESC) WHERE ("women_only" = false);
 
 
 --
--- Name: idx_gift_tx_recipient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_profile_likes; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_gift_tx_recipient ON public.gift_transactions USING btree (recipient_id, created_at DESC);
+CREATE INDEX "idx_posts_author_profile_likes" ON "public"."posts" USING "btree" ("author_id", COALESCE("is_pinned", false) DESC, COALESCE("like_count", 0) DESC, "created_at" DESC, "id" DESC);
 
 
 --
--- Name: idx_gift_tx_sender; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_profile_newest; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_gift_tx_sender ON public.gift_transactions USING btree (sender_id, created_at DESC);
+CREATE INDEX "idx_posts_author_profile_newest" ON "public"."posts" USING "btree" ("author_id", COALESCE("is_pinned", false) DESC, "created_at" DESC, "id" DESC);
 
 
 --
--- Name: idx_gift_tx_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_profile_views; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_gift_tx_session ON public.gift_transactions USING btree (live_session_id, created_at DESC);
+CREATE INDEX "idx_posts_author_profile_views" ON "public"."posts" USING "btree" ("author_id", COALESCE("is_pinned", false) DESC, COALESCE("view_count", 0) DESC, "created_at" DESC, "id" DESC);
 
 
 --
--- Name: idx_likes_user_post; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_author_public_profile_count; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_likes_user_post ON public.likes USING btree (user_id, post_id);
+CREATE INDEX "idx_posts_author_public_profile_count" ON "public"."posts" USING "btree" ("author_id") WHERE (("privacy" = 'public'::"text") AND ("women_only" = false));
 
 
 --
--- Name: idx_live_cohosts_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_bookmark_count; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_cohosts_session ON public.live_cohosts USING btree (session_id) WHERE (revoked_at IS NULL);
+CREATE INDEX "idx_posts_bookmark_count" ON "public"."posts" USING "btree" ("bookmark_count" DESC) WHERE ("bookmark_count" > 0);
 
 
 --
--- Name: idx_live_cohosts_user; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_bunny_pending; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_cohosts_user ON public.live_cohosts USING btree (user_id) WHERE (revoked_at IS NULL);
+CREATE INDEX "idx_posts_bunny_pending" ON "public"."posts" USING "btree" ("created_at" DESC) WHERE (("bunny_status" IS NULL) AND ("media_type" = 'video'::"text"));
 
 
 --
--- Name: idx_live_comments_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_bunny_video_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_comments_session ON public.live_comments USING btree (session_id, created_at DESC);
+CREATE INDEX "idx_posts_bunny_video_id" ON "public"."posts" USING "btree" ("bunny_video_id") WHERE ("bunny_video_id" IS NOT NULL);
 
 
 --
--- Name: idx_live_comments_session_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_comment_count; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_comments_session_created ON public.live_comments USING btree (session_id, created_at DESC);
+CREATE INDEX "idx_posts_comment_count" ON "public"."posts" USING "btree" ("comment_count" DESC) WHERE ("comment_count" > 0);
 
 
 --
--- Name: idx_live_comments_session_pinned_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_created_at; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_comments_session_pinned_created ON public.live_comments USING btree (session_id, pinned DESC, created_at DESC);
+CREATE INDEX "idx_posts_created_at" ON "public"."posts" USING "btree" ("created_at" DESC);
 
 
 --
--- Name: idx_live_comments_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_feed_score; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_comments_user_id ON public.live_comments USING btree (user_id);
+CREATE INDEX "idx_posts_feed_score" ON "public"."posts" USING "btree" ("dwell_time_score" DESC NULLS LAST, "created_at" DESC) WHERE ("is_guild_post" IS NOT TRUE);
 
 
 --
--- Name: idx_live_moderators_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_like_count; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_moderators_session ON public.live_moderators USING btree (session_id);
+CREATE INDEX "idx_posts_like_count" ON "public"."posts" USING "btree" ("like_count" DESC) WHERE ("like_count" > 0);
 
 
 --
--- Name: idx_live_placed_products_session_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_privacy; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_placed_products_session_active ON public.live_placed_products USING btree (session_id, created_at DESC) WHERE (removed_at IS NULL);
+CREATE INDEX "idx_posts_privacy" ON "public"."posts" USING "btree" ("privacy") WHERE (NOT "is_guild_post");
 
 
 --
--- Name: idx_live_poll_votes_poll; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_product_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_poll_votes_poll ON public.live_poll_votes USING btree (poll_id);
+CREATE INDEX "idx_posts_product_id" ON "public"."posts" USING "btree" ("product_id") WHERE ("product_id" IS NOT NULL);
 
 
 --
--- Name: idx_live_polls_session_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_public_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_polls_session_active ON public.live_polls USING btree (session_id, created_at DESC) WHERE (closed_at IS NULL);
+CREATE INDEX "idx_posts_public_created_at_id" ON "public"."posts" USING "btree" ("created_at" DESC, "id" DESC) WHERE ("privacy" = 'public'::"text");
 
 
 --
--- Name: idx_live_reactions_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_public_tags_gin; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_reactions_session ON public.live_reactions USING btree (session_id, created_at DESC);
+CREATE INDEX "idx_posts_public_tags_gin" ON "public"."posts" USING "gin" ("tags") WHERE ("privacy" = 'public'::"text");
 
 
 --
--- Name: idx_live_recordings_host; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_public_view_count_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_recordings_host ON public.live_recordings USING btree (host_id, started_at DESC);
+CREATE INDEX "idx_posts_public_view_count_id" ON "public"."posts" USING "btree" ("view_count" DESC NULLS LAST, "id" DESC) WHERE ("privacy" = 'public'::"text");
 
 
 --
--- Name: idx_live_recordings_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_public_visible_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_recordings_status ON public.live_recordings USING btree (status) WHERE (status = ANY (ARRAY['ready'::text, 'recording'::text]));
+CREATE INDEX "idx_posts_public_visible_created_at_id" ON "public"."posts" USING "btree" ("created_at" DESC, "id" DESC) WHERE (("privacy" = 'public'::"text") AND (COALESCE("women_only", false) = false));
 
 
 --
--- Name: idx_live_session_viewers_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_public_visible_recent_tags; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_session_viewers_session ON public.live_session_viewers USING btree (session_id);
+CREATE INDEX "idx_posts_public_visible_recent_tags" ON "public"."posts" USING "btree" ("created_at" DESC, "id" DESC) WHERE (("privacy" = 'public'::"text") AND (COALESCE("women_only", false) = false) AND ("tags" IS NOT NULL));
 
 
 --
--- Name: idx_live_session_viewers_user_joined; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_public_visible_trending; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_session_viewers_user_joined ON public.live_session_viewers USING btree (user_id, joined_at DESC);
+CREATE INDEX "idx_posts_public_visible_trending" ON "public"."posts" USING "btree" ("view_count" DESC, "created_at" DESC, "id" DESC) WHERE (("privacy" = 'public'::"text") AND (COALESCE("women_only", false) = false));
 
 
 --
--- Name: idx_live_sessions_active_full; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_tags_gin; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_active_full ON public.live_sessions USING btree (status, started_at DESC, viewer_count DESC) WHERE (status = 'active'::text);
+CREATE INDEX "idx_posts_tags_gin" ON "public"."posts" USING "gin" ("tags");
 
 
 --
--- Name: idx_live_sessions_active_listing; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_view_count; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_active_listing ON public.live_sessions USING btree (viewer_count DESC, started_at, id) WHERE (status = 'active'::text);
+CREATE INDEX "idx_posts_view_count" ON "public"."posts" USING "btree" ("view_count" DESC);
 
 
 --
--- Name: idx_live_sessions_active_updated; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_posts_women_only; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_active_updated ON public.live_sessions USING btree (updated_at) WHERE (status = 'active'::text);
+CREATE INDEX "idx_posts_women_only" ON "public"."posts" USING "btree" ("women_only") WHERE ("women_only" = true);
 
 
 --
--- Name: idx_live_sessions_host; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_preorder_rounds_one_open; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_host ON public.live_sessions USING btree (host_id);
+CREATE UNIQUE INDEX "idx_preorder_rounds_one_open" ON "public"."preorder_rounds" USING "btree" ("product_id") WHERE ("status" = 'open'::"text");
 
 
 --
--- Name: idx_live_sessions_host_active_started; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_preorder_rounds_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_host_active_started ON public.live_sessions USING btree (host_id, started_at DESC, id) WHERE (status = 'active'::text);
+CREATE INDEX "idx_preorder_rounds_status" ON "public"."preorder_rounds" USING "btree" ("status", "created_at" DESC);
 
 
 --
--- Name: idx_live_sessions_host_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_preorders_product; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_host_id ON public.live_sessions USING btree (host_id);
+CREATE INDEX "idx_preorders_product" ON "public"."product_preorders" USING "btree" ("product_id");
 
 
 --
--- Name: idx_live_sessions_host_public_active_started; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_preorders_round; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_host_public_active_started ON public.live_sessions USING btree (host_id, started_at DESC, id) WHERE ((status = 'active'::text) AND (women_only = false));
+CREATE INDEX "idx_preorders_round" ON "public"."product_preorders" USING "btree" ("round_id") WHERE ("round_id" IS NOT NULL);
 
 
 --
--- Name: idx_live_sessions_ingress; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_preorders_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_ingress ON public.live_sessions USING btree (ingress_id) WHERE (ingress_id IS NOT NULL);
+CREATE INDEX "idx_preorders_user" ON "public"."product_preorders" USING "btree" ("user_id");
 
 
 --
--- Name: idx_live_sessions_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_product_orders_buyer; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_status ON public.live_sessions USING btree (status);
+CREATE INDEX "idx_product_orders_buyer" ON "public"."product_orders" USING "btree" ("buyer_id", "created_at" DESC);
 
 
 --
--- Name: idx_live_sessions_status_started; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_product_orders_seller; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_status_started ON public.live_sessions USING btree (status, started_at DESC) WHERE (status = 'active'::text);
+CREATE INDEX "idx_product_orders_seller" ON "public"."product_orders" USING "btree" ("seller_id", "created_at" DESC);
 
 
 --
--- Name: idx_live_sessions_women_only; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_product_orders_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_sessions_women_only ON public.live_sessions USING btree (women_only) WHERE (women_only = true);
+CREATE INDEX "idx_product_orders_session" ON "public"."product_orders" USING "btree" ("stripe_session_id") WHERE ("stripe_session_id" IS NOT NULL);
 
 
 --
--- Name: idx_live_stickers_session_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_product_orders_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_stickers_session_active ON public.live_stickers USING btree (session_id, created_at DESC) WHERE (removed_at IS NULL);
+CREATE INDEX "idx_product_orders_status" ON "public"."product_orders" USING "btree" ("status", "created_at" DESC);
 
 
 --
--- Name: idx_live_viewer_welcomes_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_products_active; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_live_viewer_welcomes_session ON public.live_viewer_welcomes USING btree (session_id, created_at DESC);
+CREATE INDEX "idx_products_active" ON "public"."products" USING "btree" ("is_active", "created_at" DESC);
 
 
 --
--- Name: idx_messages_unread_by_conversation; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_products_active_public_popular; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_messages_unread_by_conversation ON public.messages USING btree (conversation_id, sender_id) WHERE (read = false);
+CREATE INDEX "idx_products_active_public_popular" ON "public"."products" USING "btree" ("sold_count" DESC, "created_at" DESC, "id") WHERE (("is_active" = true) AND ("women_only" = false));
 
 
 --
--- Name: idx_moderation_auto_flags_reason_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_products_category; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_moderation_auto_flags_reason_created ON public.moderation_auto_flags USING btree (reason, created_at DESC);
+CREATE INDEX "idx_products_category" ON "public"."products" USING "btree" ("category");
 
 
 --
--- Name: idx_moderation_auto_flags_target; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_products_sale_mode; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_moderation_auto_flags_target ON public.moderation_auto_flags USING btree (target_type, target_id, created_at DESC);
+CREATE INDEX "idx_products_sale_mode" ON "public"."products" USING "btree" ("sale_mode") WHERE ("sale_mode" <> 'coins'::"text");
 
 
 --
--- Name: idx_muted_live_hosts_host; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_products_sale_price; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_muted_live_hosts_host ON public.muted_live_hosts USING btree (host_id, user_id);
+CREATE INDEX "idx_products_sale_price" ON "public"."products" USING "btree" ("sale_price_coins") WHERE ("sale_price_coins" IS NOT NULL);
 
 
 --
--- Name: idx_notifications_live_unread_age; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_products_seller_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_live_unread_age ON public.notifications USING btree (created_at) WHERE ((read = false) AND (type = ANY (ARRAY['live'::text, 'scheduled_live_reminder'::text])));
+CREATE INDEX "idx_products_seller_id" ON "public"."products" USING "btree" ("seller_id");
 
 
 --
--- Name: idx_notifications_live_unread_recipient_sender; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_products_women_only; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_live_unread_recipient_sender ON public.notifications USING btree (recipient_id, sender_id, created_at DESC) WHERE ((read = false) AND (type = ANY (ARRAY['live'::text, 'scheduled_live_reminder'::text])));
+CREATE INDEX "idx_products_women_only" ON "public"."products" USING "btree" ("women_only") WHERE ("women_only" = true);
 
 
 --
--- Name: idx_notifications_recipient_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_country_code; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_recipient_created ON public.notifications USING btree (recipient_id, created_at DESC);
+CREATE INDEX "idx_profiles_country_code" ON "public"."profiles" USING "btree" ("country_code") WHERE ("country_code" IS NOT NULL);
 
 
 --
--- Name: idx_notifications_recipient_read; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_recipient_read ON public.notifications USING btree (recipient_id, read) WHERE (read = false);
+CREATE INDEX "idx_profiles_created_at_id" ON "public"."profiles" USING "btree" ("created_at" DESC, "id" DESC);
 
 
 --
--- Name: idx_notifications_recipient_type; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_guild; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_recipient_type ON public.notifications USING btree (recipient_id, type, created_at DESC);
+CREATE INDEX "idx_profiles_guild" ON "public"."profiles" USING "btree" ("guild_id") WHERE ("guild_id" IS NOT NULL);
 
 
 --
--- Name: idx_notifications_recipient_unread; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_guild_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_recipient_unread ON public.notifications USING btree (recipient_id, read) WHERE (read = false);
+CREATE INDEX "idx_profiles_guild_id" ON "public"."profiles" USING "btree" ("guild_id");
 
 
 --
--- Name: idx_notifications_unread_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_is_creator; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_unread_created ON public.notifications USING btree (created_at) WHERE (read = false);
+CREATE INDEX "idx_profiles_is_creator" ON "public"."profiles" USING "btree" ("is_creator") WHERE ("is_creator" = true);
 
 
 --
--- Name: idx_notifications_unread_type_age; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_is_verified; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_notifications_unread_type_age ON public.notifications USING btree (type, created_at) WHERE (read = false);
+CREATE INDEX "idx_profiles_is_verified" ON "public"."profiles" USING "btree" ("is_verified") WHERE ("is_verified" = true);
 
 
 --
--- Name: idx_orders_buyer_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_lower_username; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_orders_buyer_id ON public.orders USING btree (buyer_id, created_at DESC);
+CREATE INDEX "idx_profiles_lower_username" ON "public"."profiles" USING "btree" ("lower"("username"));
 
 
 --
--- Name: idx_orders_product_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_moderation_flags; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_orders_product_id ON public.orders USING btree (product_id);
+CREATE INDEX "idx_profiles_moderation_flags" ON "public"."profiles" USING "btree" ("is_banned", "is_restricted", "is_shadow_banned") WHERE (("is_banned" = true) OR ("is_restricted" = true) OR ("is_shadow_banned" = true));
 
 
 --
--- Name: idx_orders_seller_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_public_discover_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_orders_seller_id ON public.orders USING btree (seller_id, created_at DESC);
+CREATE INDEX "idx_profiles_public_discover_created_at_id" ON "public"."profiles" USING "btree" ("created_at" DESC, "id" DESC) WHERE (("username" IS NOT NULL) AND (COALESCE("is_private", false) = false));
 
 
 --
--- Name: idx_orders_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_public_discover_visible_created_at_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_orders_status ON public.orders USING btree (status);
+CREATE INDEX "idx_profiles_public_discover_visible_created_at_id" ON "public"."profiles" USING "btree" ("created_at" DESC, "id" DESC) WHERE (("username" IS NOT NULL) AND (COALESCE("is_private", false) = false) AND (COALESCE("is_banned", false) = false) AND (COALESCE("is_shadow_banned", false) = false));
 
 
 --
--- Name: idx_post_drafts_author_updated; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_public_display_name_trgm; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_post_drafts_author_updated ON public.post_drafts USING btree (author_id, updated_at DESC);
+CREATE INDEX "idx_profiles_public_display_name_trgm" ON "public"."profiles" USING "gin" ("lower"("display_name") "public"."gin_trgm_ops") WHERE (("display_name" IS NOT NULL) AND (COALESCE("is_private", false) = false));
 
 
 --
--- Name: idx_post_dwell_log_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_public_username_trgm; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_post_dwell_log_user_id ON public.post_dwell_log USING btree (user_id);
+CREATE INDEX "idx_profiles_public_username_trgm" ON "public"."profiles" USING "gin" ("lower"("username") "public"."gin_trgm_ops") WHERE (("username" IS NOT NULL) AND (COALESCE("is_private", false) = false));
 
 
 --
--- Name: idx_post_dwell_log_user_post; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_referred_by; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_post_dwell_log_user_post ON public.post_dwell_log USING btree (user_id, post_id);
+CREATE INDEX "idx_profiles_referred_by" ON "public"."profiles" USING "btree" ("referred_by") WHERE ("referred_by" IS NOT NULL);
 
 
 --
--- Name: idx_post_reports_post_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_username_gin; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_post_reports_post_id ON public.post_reports USING btree (post_id);
+CREATE INDEX "idx_profiles_username_gin" ON "public"."profiles" USING "gin" ("username" "public"."gin_trgm_ops");
 
 
 --
--- Name: idx_post_reports_reporter_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_profiles_women_only_verified; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_post_reports_reporter_id ON public.post_reports USING btree (reporter_id);
+CREATE INDEX "idx_profiles_women_only_verified" ON "public"."profiles" USING "btree" ("women_only_verified") WHERE ("women_only_verified" = true);
 
 
 --
--- Name: idx_post_views_log_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_push_tokens_user_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_post_views_log_user_id ON public.post_views_log USING btree (user_id);
+CREATE INDEX "idx_push_tokens_user_id" ON "public"."push_tokens" USING "btree" ("user_id");
 
 
 --
--- Name: idx_post_views_user_post; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_r2_delete_queue_pending; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_post_views_user_post ON public.post_views USING btree (user_id, post_id);
+CREATE INDEX "idx_r2_delete_queue_pending" ON "public"."r2_delete_queue" USING "btree" ("created_at") WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: idx_posts_aspect_ratio; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reports_reporter; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_aspect_ratio ON public.posts USING btree (aspect_ratio) WHERE (aspect_ratio <> 'portrait'::text);
+CREATE INDEX "idx_reports_reporter" ON "public"."content_reports" USING "btree" ("reporter_id");
 
 
 --
--- Name: idx_posts_audio_url; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reports_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_audio_url ON public.posts USING btree (audio_url) WHERE (audio_url IS NOT NULL);
+CREATE INDEX "idx_reports_status" ON "public"."content_reports" USING "btree" ("status", "created_at" DESC);
 
 
 --
--- Name: idx_posts_author_created; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reports_target; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_created ON public.posts USING btree (author_id, created_at DESC);
+CREATE INDEX "idx_reports_target" ON "public"."content_reports" USING "btree" ("target_type", "target_id");
 
 
 --
--- Name: idx_posts_author_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reposts_user_post; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_created_at_id ON public.posts USING btree (author_id, created_at DESC, id DESC);
+CREATE INDEX "idx_reposts_user_post" ON "public"."reposts" USING "btree" ("user_id", "post_id");
 
 
 --
--- Name: idx_posts_author_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reviews_product; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_id ON public.posts USING btree (author_id, dwell_time_score DESC NULLS LAST);
+CREATE INDEX "idx_reviews_product" ON "public"."product_reviews" USING "btree" ("product_id", "created_at" DESC);
 
 
 --
--- Name: idx_posts_author_privacy_visible; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reviews_reviewer; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_privacy_visible ON public.posts USING btree (author_id, privacy, created_at DESC, id DESC) WHERE (women_only = false);
+CREATE INDEX "idx_reviews_reviewer" ON "public"."product_reviews" USING "btree" ("reviewer_id");
 
 
 --
--- Name: idx_posts_author_profile_likes; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_saved_products_product; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_profile_likes ON public.posts USING btree (author_id, COALESCE(is_pinned, false) DESC, COALESCE(like_count, 0) DESC, created_at DESC, id DESC);
+CREATE INDEX "idx_saved_products_product" ON "public"."saved_products" USING "btree" ("product_id");
 
 
 --
--- Name: idx_posts_author_profile_newest; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_saved_products_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_profile_newest ON public.posts USING btree (author_id, COALESCE(is_pinned, false) DESC, created_at DESC, id DESC);
+CREATE INDEX "idx_saved_products_user" ON "public"."saved_products" USING "btree" ("user_id", "created_at" DESC);
 
 
 --
--- Name: idx_posts_author_profile_views; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_scheduled_lives_host_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_profile_views ON public.posts USING btree (author_id, COALESCE(is_pinned, false) DESC, COALESCE(view_count, 0) DESC, created_at DESC, id DESC);
+CREATE INDEX "idx_scheduled_lives_host_status" ON "public"."scheduled_lives" USING "btree" ("host_id", "status", "scheduled_at");
 
 
 --
--- Name: idx_posts_author_public_profile_count; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_scheduled_lives_ready; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_author_public_profile_count ON public.posts USING btree (author_id) WHERE ((privacy = 'public'::text) AND (women_only = false));
+CREATE INDEX "idx_scheduled_lives_ready" ON "public"."scheduled_lives" USING "btree" ("scheduled_at") WHERE ("status" = 'scheduled'::"text");
 
 
 --
--- Name: idx_posts_bookmark_count; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_scheduled_lives_upcoming; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_bookmark_count ON public.posts USING btree (bookmark_count DESC) WHERE (bookmark_count > 0);
+CREATE INDEX "idx_scheduled_lives_upcoming" ON "public"."scheduled_lives" USING "btree" ("scheduled_at") WHERE ("status" = ANY (ARRAY['scheduled'::"text", 'reminded'::"text"]));
 
 
 --
--- Name: idx_posts_comment_count; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_scheduled_posts_author_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_comment_count ON public.posts USING btree (comment_count DESC) WHERE (comment_count > 0);
+CREATE INDEX "idx_scheduled_posts_author_status" ON "public"."scheduled_posts" USING "btree" ("author_id", "status", "publish_at");
 
 
 --
--- Name: idx_posts_created_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_scheduled_posts_ready; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_created_at ON public.posts USING btree (created_at DESC);
+CREATE INDEX "idx_scheduled_posts_ready" ON "public"."scheduled_posts" USING "btree" ("publish_at") WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: idx_posts_feed_score; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_shop_banners_active; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_feed_score ON public.posts USING btree (dwell_time_score DESC NULLS LAST, created_at DESC) WHERE (is_guild_post IS NOT TRUE);
+CREATE INDEX "idx_shop_banners_active" ON "public"."shop_banners" USING "btree" ("sort_order") WHERE ("active" = true);
 
 
 --
--- Name: idx_posts_like_count; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_stories_user_archived; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_like_count ON public.posts USING btree (like_count DESC) WHERE (like_count > 0);
+CREATE INDEX "idx_stories_user_archived" ON "public"."stories" USING "btree" ("user_id", "archived", "created_at" DESC);
 
 
 --
--- Name: idx_posts_privacy; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_stories_user_created; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_privacy ON public.posts USING btree (privacy) WHERE (NOT is_guild_post);
+CREATE INDEX "idx_stories_user_created" ON "public"."stories" USING "btree" ("user_id", "created_at" DESC);
 
 
 --
--- Name: idx_posts_public_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_story_highlights_post_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_public_created_at_id ON public.posts USING btree (created_at DESC, id DESC) WHERE (privacy = 'public'::text);
+CREATE INDEX "idx_story_highlights_post_id" ON "public"."story_highlights" USING "btree" ("post_id");
 
 
 --
--- Name: idx_posts_public_tags_gin; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_story_highlights_story_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_public_tags_gin ON public.posts USING gin (tags) WHERE (privacy = 'public'::text);
+CREATE INDEX "idx_story_highlights_story_id" ON "public"."story_highlights" USING "btree" ("story_id");
 
 
 --
--- Name: idx_posts_public_view_count_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_story_highlights_user_created_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_public_view_count_id ON public.posts USING btree (view_count DESC NULLS LAST, id DESC) WHERE (privacy = 'public'::text);
+CREATE INDEX "idx_story_highlights_user_created_id" ON "public"."story_highlights" USING "btree" ("user_id", "created_at", "id");
 
 
 --
--- Name: idx_posts_public_visible_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_user_reports_reported; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_public_visible_created_at_id ON public.posts USING btree (created_at DESC, id DESC) WHERE ((privacy = 'public'::text) AND (COALESCE(women_only, false) = false));
+CREATE INDEX "idx_user_reports_reported" ON "public"."user_reports" USING "btree" ("reported_id");
 
 
 --
--- Name: idx_posts_public_visible_recent_tags; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_user_reports_reporter; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_public_visible_recent_tags ON public.posts USING btree (created_at DESC, id DESC) WHERE ((privacy = 'public'::text) AND (COALESCE(women_only, false) = false) AND (tags IS NOT NULL));
+CREATE INDEX "idx_user_reports_reporter" ON "public"."user_reports" USING "btree" ("reporter_id");
 
 
 --
--- Name: idx_posts_public_visible_trending; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_user_vibe_profile_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_public_visible_trending ON public.posts USING btree (view_count DESC, created_at DESC, id DESC) WHERE ((privacy = 'public'::text) AND (COALESCE(women_only, false) = false));
+CREATE INDEX "idx_user_vibe_profile_user" ON "public"."user_vibe_profile" USING "btree" ("user_id");
 
 
 --
--- Name: idx_posts_tags_gin; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_web_coin_orders_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_tags_gin ON public.posts USING gin (tags);
+CREATE INDEX "idx_web_coin_orders_session" ON "public"."web_coin_orders" USING "btree" ("stripe_session_id") WHERE ("stripe_session_id" IS NOT NULL);
 
 
 --
--- Name: idx_posts_view_count; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_web_coin_orders_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_view_count ON public.posts USING btree (view_count DESC);
+CREATE INDEX "idx_web_coin_orders_status" ON "public"."web_coin_orders" USING "btree" ("status", "created_at" DESC);
 
 
 --
--- Name: idx_posts_women_only; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_web_coin_orders_user_date; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_posts_women_only ON public.posts USING btree (women_only) WHERE (women_only = true);
+CREATE INDEX "idx_web_coin_orders_user_date" ON "public"."web_coin_orders" USING "btree" ("user_id", "created_at" DESC);
 
 
 --
--- Name: idx_products_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_web_push_subs_recent; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_products_active ON public.products USING btree (is_active, created_at DESC);
+CREATE INDEX "idx_web_push_subs_recent" ON "public"."web_push_subscriptions" USING "btree" ("user_id", "last_seen_at" DESC);
 
 
 --
--- Name: idx_products_active_public_popular; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_web_push_subs_user_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_products_active_public_popular ON public.products USING btree (sold_count DESC, created_at DESC, id) WHERE ((is_active = true) AND (women_only = false));
+CREATE INDEX "idx_web_push_subs_user_id" ON "public"."web_push_subscriptions" USING "btree" ("user_id");
 
 
 --
--- Name: idx_products_category; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_woz_requests_pending; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_products_category ON public.products USING btree (category);
+CREATE INDEX "idx_woz_requests_pending" ON "public"."women_only_requests" USING "btree" ("requested_at") WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: idx_products_sale_price; Type: INDEX; Schema: public; Owner: -
+-- Name: live_auctions_due; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_products_sale_price ON public.products USING btree (sale_price_coins) WHERE (sale_price_coins IS NOT NULL);
+CREATE INDEX "live_auctions_due" ON "public"."live_auctions" USING "btree" ("ends_at") WHERE ("status" = 'running'::"text");
 
 
 --
--- Name: idx_products_seller_id; Type: INDEX; Schema: public; Owner: -
+-- Name: live_auctions_session_order; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_products_seller_id ON public.products USING btree (seller_id);
+CREATE INDEX "live_auctions_session_order" ON "public"."live_auctions" USING "btree" ("session_id", "sort_index") WHERE ("status" = ANY (ARRAY['scheduled'::"text", 'running'::"text"]));
 
 
 --
--- Name: idx_products_women_only; Type: INDEX; Schema: public; Owner: -
+-- Name: live_auctions_winner; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_products_women_only ON public.products USING btree (women_only) WHERE (women_only = true);
+CREATE INDEX "live_auctions_winner" ON "public"."live_auctions" USING "btree" ("winner_id") WHERE ("status" = 'sold'::"text");
 
 
 --
--- Name: idx_profiles_country_code; Type: INDEX; Schema: public; Owner: -
+-- Name: live_auto_bids_ranking; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_country_code ON public.profiles USING btree (country_code) WHERE (country_code IS NOT NULL);
+CREATE INDEX "live_auto_bids_ranking" ON "public"."live_auto_bids" USING "btree" ("auction_id", "max_cents" DESC, "created_at");
 
 
 --
--- Name: idx_profiles_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: live_bids_auction_time; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_created_at_id ON public.profiles USING btree (created_at DESC, id DESC);
+CREATE INDEX "live_bids_auction_time" ON "public"."live_bids" USING "btree" ("auction_id", "created_at" DESC);
 
 
 --
--- Name: idx_profiles_guild; Type: INDEX; Schema: public; Owner: -
+-- Name: live_bids_unique_amount; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_guild ON public.profiles USING btree (guild_id) WHERE (guild_id IS NOT NULL);
+CREATE UNIQUE INDEX "live_bids_unique_amount" ON "public"."live_bids" USING "btree" ("auction_id", "amount_cents");
 
 
 --
--- Name: idx_profiles_guild_id; Type: INDEX; Schema: public; Owner: -
+-- Name: live_giveaways_one_open; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_guild_id ON public.profiles USING btree (guild_id);
+CREATE UNIQUE INDEX "live_giveaways_one_open" ON "public"."live_giveaways" USING "btree" ("session_id") WHERE ("status" = 'open'::"text");
 
 
 --
--- Name: idx_profiles_is_creator; Type: INDEX; Schema: public; Owner: -
+-- Name: live_giveaways_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_is_creator ON public.profiles USING btree (is_creator) WHERE (is_creator = true);
+CREATE INDEX "live_giveaways_session" ON "public"."live_giveaways" USING "btree" ("session_id", "created_at" DESC);
 
 
 --
--- Name: idx_profiles_is_verified; Type: INDEX; Schema: public; Owner: -
+-- Name: live_sessions_room_name_active_unique; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_is_verified ON public.profiles USING btree (is_verified) WHERE (is_verified = true);
+CREATE UNIQUE INDEX "live_sessions_room_name_active_unique" ON "public"."live_sessions" USING "btree" ("room_name") WHERE ("status" = 'active'::"text");
 
 
 --
--- Name: idx_profiles_lower_username; Type: INDEX; Schema: public; Owner: -
+-- Name: messages_reply_to_id_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_lower_username ON public.profiles USING btree (lower(username));
+CREATE INDEX "messages_reply_to_id_idx" ON "public"."messages" USING "btree" ("reply_to_id");
 
 
 --
--- Name: idx_profiles_moderation_flags; Type: INDEX; Schema: public; Owner: -
+-- Name: msg_conv_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_moderation_flags ON public.profiles USING btree (is_banned, is_restricted, is_shadow_banned) WHERE ((is_banned = true) OR (is_restricted = true) OR (is_shadow_banned = true));
+CREATE INDEX "msg_conv_idx" ON "public"."messages" USING "btree" ("conversation_id", "created_at");
 
 
 --
--- Name: idx_profiles_public_discover_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: msg_post_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_public_discover_created_at_id ON public.profiles USING btree (created_at DESC, id DESC) WHERE ((username IS NOT NULL) AND (COALESCE(is_private, false) = false));
+CREATE INDEX "msg_post_idx" ON "public"."messages" USING "btree" ("post_id") WHERE ("post_id" IS NOT NULL);
 
 
 --
--- Name: idx_profiles_public_discover_visible_created_at_id; Type: INDEX; Schema: public; Owner: -
+-- Name: notifications_session_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_public_discover_visible_created_at_id ON public.profiles USING btree (created_at DESC, id DESC) WHERE ((username IS NOT NULL) AND (COALESCE(is_private, false) = false) AND (COALESCE(is_banned, false) = false) AND (COALESCE(is_shadow_banned, false) = false));
+CREATE INDEX "notifications_session_idx" ON "public"."notifications" USING "btree" ("session_id") WHERE ("session_id" IS NOT NULL);
 
 
 --
--- Name: idx_profiles_public_display_name_trgm; Type: INDEX; Schema: public; Owner: -
+-- Name: posts_author_pinned_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_public_display_name_trgm ON public.profiles USING gin (lower(display_name) public.gin_trgm_ops) WHERE ((display_name IS NOT NULL) AND (COALESCE(is_private, false) = false));
+CREATE INDEX "posts_author_pinned_idx" ON "public"."posts" USING "btree" ("author_id", "is_pinned" DESC, "created_at" DESC);
 
 
 --
--- Name: idx_profiles_public_username_trgm; Type: INDEX; Schema: public; Owner: -
+-- Name: posts_feed_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_public_username_trgm ON public.profiles USING gin (lower(username) public.gin_trgm_ops) WHERE ((username IS NOT NULL) AND (COALESCE(is_private, false) = false));
+CREATE INDEX "posts_feed_idx" ON "public"."posts" USING "btree" ("created_at" DESC) WHERE ("is_visible" = true);
 
 
 --
--- Name: idx_profiles_username_gin; Type: INDEX; Schema: public; Owner: -
+-- Name: posts_is_visible_created_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_username_gin ON public.profiles USING gin (username public.gin_trgm_ops);
+CREATE INDEX "posts_is_visible_created_idx" ON "public"."posts" USING "btree" ("created_at" DESC) WHERE ("is_visible" = true);
 
 
 --
--- Name: idx_profiles_women_only_verified; Type: INDEX; Schema: public; Owner: -
+-- Name: product_orders_cart; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_profiles_women_only_verified ON public.profiles USING btree (women_only_verified) WHERE (women_only_verified = true);
+CREATE INDEX "product_orders_cart" ON "public"."product_orders" USING "btree" ("cart_id") WHERE ("cart_id" IS NOT NULL);
 
 
 --
--- Name: idx_push_tokens_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: profiles_teip_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_push_tokens_user_id ON public.push_tokens USING btree (user_id);
+CREATE INDEX "profiles_teip_idx" ON "public"."profiles" USING "btree" ("teip") WHERE ("teip" IS NOT NULL);
 
 
 --
--- Name: idx_r2_delete_queue_pending; Type: INDEX; Schema: public; Owner: -
+-- Name: reposts_post_id_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_r2_delete_queue_pending ON public.r2_delete_queue USING btree (created_at) WHERE (status = 'pending'::text);
+CREATE INDEX "reposts_post_id_idx" ON "public"."reposts" USING "btree" ("post_id");
 
 
 --
--- Name: idx_reports_reporter; Type: INDEX; Schema: public; Owner: -
+-- Name: reposts_user_id_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reports_reporter ON public.content_reports USING btree (reporter_id);
+CREATE INDEX "reposts_user_id_idx" ON "public"."reposts" USING "btree" ("user_id");
 
 
 --
--- Name: idx_reports_status; Type: INDEX; Schema: public; Owner: -
+-- Name: story_comments_story_id_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reports_status ON public.content_reports USING btree (status, created_at DESC);
+CREATE INDEX "story_comments_story_id_idx" ON "public"."story_comments" USING "btree" ("story_id", "created_at" DESC);
 
 
 --
--- Name: idx_reports_target; Type: INDEX; Schema: public; Owner: -
+-- Name: story_highlights_user_id_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reports_target ON public.content_reports USING btree (target_type, target_id);
+CREATE INDEX "story_highlights_user_id_idx" ON "public"."story_highlights" USING "btree" ("user_id");
 
 
 --
--- Name: idx_reposts_user_post; Type: INDEX; Schema: public; Owner: -
+-- Name: story_votes_story_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reposts_user_post ON public.reposts USING btree (user_id, post_id);
+CREATE INDEX "story_votes_story_idx" ON "public"."story_votes" USING "btree" ("story_id");
 
 
 --
--- Name: idx_reviews_product; Type: INDEX; Schema: public; Owner: -
+-- Name: uniq_live_placed_products_active; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reviews_product ON public.product_reviews USING btree (product_id, created_at DESC);
+CREATE UNIQUE INDEX "uniq_live_placed_products_active" ON "public"."live_placed_products" USING "btree" ("session_id", "product_id") WHERE ("removed_at" IS NULL);
 
 
 --
--- Name: idx_reviews_reviewer; Type: INDEX; Schema: public; Owner: -
+-- Name: uq_clip_marker_session_user_ts; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reviews_reviewer ON public.product_reviews USING btree (reviewer_id);
+CREATE UNIQUE INDEX "uq_clip_marker_session_user_ts" ON "public"."live_clip_markers" USING "btree" ("session_id", "user_id", "ts_secs");
 
 
 --
--- Name: idx_saved_products_product; Type: INDEX; Schema: public; Owner: -
+-- Name: uq_duet_invites_pending; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_saved_products_product ON public.saved_products USING btree (product_id);
+CREATE UNIQUE INDEX "uq_duet_invites_pending" ON "public"."live_duet_invites" USING "btree" ("session_id", "invitee_id") WHERE ("status" = 'pending'::"text");
 
 
 --
--- Name: idx_saved_products_user; Type: INDEX; Schema: public; Owner: -
+-- Name: uq_live_recordings_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_saved_products_user ON public.saved_products USING btree (user_id, created_at DESC);
+CREATE UNIQUE INDEX "uq_live_recordings_session" ON "public"."live_recordings" USING "btree" ("session_id");
 
 
 --
--- Name: idx_scheduled_lives_host_status; Type: INDEX; Schema: public; Owner: -
+-- Name: posts auto_vibe_scores; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_scheduled_lives_host_status ON public.scheduled_lives USING btree (host_id, status, scheduled_at);
+CREATE OR REPLACE TRIGGER "auto_vibe_scores" BEFORE INSERT OR UPDATE OF "tags", "caption" ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."calculate_vibe_scores"();
 
 
 --
--- Name: idx_scheduled_lives_ready; Type: INDEX; Schema: public; Owner: -
+-- Name: posts enqueue_r2_media_delete_on_post_delete; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_scheduled_lives_ready ON public.scheduled_lives USING btree (scheduled_at) WHERE (status = 'scheduled'::text);
+CREATE OR REPLACE TRIGGER "enqueue_r2_media_delete_on_post_delete" AFTER DELETE ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."enqueue_r2_media_delete"();
 
 
 --
--- Name: idx_scheduled_lives_upcoming; Type: INDEX; Schema: public; Owner: -
+-- Name: comments on_comment_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_scheduled_lives_upcoming ON public.scheduled_lives USING btree (scheduled_at) WHERE (status = ANY (ARRAY['scheduled'::text, 'reminded'::text]));
+CREATE OR REPLACE TRIGGER "on_comment_insert" AFTER INSERT ON "public"."comments" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_comment"();
 
 
 --
--- Name: idx_scheduled_posts_author_status; Type: INDEX; Schema: public; Owner: -
+-- Name: comments on_comment_notif; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_scheduled_posts_author_status ON public.scheduled_posts USING btree (author_id, status, publish_at);
+CREATE OR REPLACE TRIGGER "on_comment_notif" AFTER INSERT ON "public"."comments" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_comment_to_table"();
 
 
 --
--- Name: idx_scheduled_posts_ready; Type: INDEX; Schema: public; Owner: -
+-- Name: follows on_follow_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_scheduled_posts_ready ON public.scheduled_posts USING btree (publish_at) WHERE (status = 'pending'::text);
+CREATE OR REPLACE TRIGGER "on_follow_insert" AFTER INSERT ON "public"."follows" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_follow"();
 
 
 --
--- Name: idx_stories_user_archived; Type: INDEX; Schema: public; Owner: -
+-- Name: follows on_follow_notif; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_stories_user_archived ON public.stories USING btree (user_id, archived, created_at DESC);
+CREATE OR REPLACE TRIGGER "on_follow_notif" AFTER INSERT ON "public"."follows" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_follow_to_table"();
 
 
 --
--- Name: idx_stories_user_created; Type: INDEX; Schema: public; Owner: -
+-- Name: likes on_like_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_stories_user_created ON public.stories USING btree (user_id, created_at DESC);
+CREATE OR REPLACE TRIGGER "on_like_insert" AFTER INSERT ON "public"."likes" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_like"();
 
 
 --
--- Name: idx_story_highlights_post_id; Type: INDEX; Schema: public; Owner: -
+-- Name: likes on_like_notif; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_story_highlights_post_id ON public.story_highlights USING btree (post_id);
+CREATE OR REPLACE TRIGGER "on_like_notif" AFTER INSERT ON "public"."likes" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_like_to_table"();
 
 
 --
--- Name: idx_story_highlights_story_id; Type: INDEX; Schema: public; Owner: -
+-- Name: live_sessions on_live_session_active; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_story_highlights_story_id ON public.story_highlights USING btree (story_id);
+CREATE OR REPLACE TRIGGER "on_live_session_active" AFTER INSERT OR UPDATE OF "status" ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_followers_on_live"();
 
 
 --
--- Name: idx_story_highlights_user_created_id; Type: INDEX; Schema: public; Owner: -
+-- Name: messages on_message_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_story_highlights_user_created_id ON public.story_highlights USING btree (user_id, created_at, id);
+CREATE OR REPLACE TRIGGER "on_message_insert" AFTER INSERT ON "public"."messages" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_dm"();
 
 
 --
--- Name: idx_user_reports_reported; Type: INDEX; Schema: public; Owner: -
+-- Name: messages on_message_insert_web_push; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_user_reports_reported ON public.user_reports USING btree (reported_id);
+CREATE OR REPLACE TRIGGER "on_message_insert_web_push" AFTER INSERT ON "public"."messages" FOR EACH ROW EXECUTE FUNCTION "public"."notify_web_push_on_dm"();
 
 
 --
--- Name: idx_user_reports_reporter; Type: INDEX; Schema: public; Owner: -
+-- Name: messages on_new_message; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_user_reports_reporter ON public.user_reports USING btree (reporter_id);
+CREATE OR REPLACE TRIGGER "on_new_message" AFTER INSERT ON "public"."messages" FOR EACH ROW EXECUTE FUNCTION "public"."update_conversation_timestamp"();
 
 
 --
--- Name: idx_user_vibe_profile_user; Type: INDEX; Schema: public; Owner: -
+-- Name: posts on_post_insert_moderate; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_user_vibe_profile_user ON public.user_vibe_profile USING btree (user_id);
+CREATE OR REPLACE TRIGGER "on_post_insert_moderate" AFTER INSERT ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."trigger_nsfw_moderation"();
 
 
 --
--- Name: idx_web_coin_orders_session; Type: INDEX; Schema: public; Owner: -
+-- Name: profiles on_profile_created_create_wallet; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_web_coin_orders_session ON public.web_coin_orders USING btree (stripe_session_id) WHERE (stripe_session_id IS NOT NULL);
+CREATE OR REPLACE TRIGGER "on_profile_created_create_wallet" AFTER INSERT ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."create_user_wallet"();
 
 
 --
--- Name: idx_web_coin_orders_status; Type: INDEX; Schema: public; Owner: -
+-- Name: admin_campaign_daily_metrics set_admin_campaign_daily_metrics_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_web_coin_orders_status ON public.web_coin_orders USING btree (status, created_at DESC);
+CREATE OR REPLACE TRIGGER "set_admin_campaign_daily_metrics_updated_at" BEFORE UPDATE ON "public"."admin_campaign_daily_metrics" FOR EACH ROW EXECUTE FUNCTION "public"."set_admin_campaign_updated_at"();
 
 
 --
--- Name: idx_web_coin_orders_user_date; Type: INDEX; Schema: public; Owner: -
+-- Name: admin_campaigns set_admin_campaigns_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_web_coin_orders_user_date ON public.web_coin_orders USING btree (user_id, created_at DESC);
+CREATE OR REPLACE TRIGGER "set_admin_campaigns_updated_at" BEFORE UPDATE ON "public"."admin_campaigns" FOR EACH ROW EXECUTE FUNCTION "public"."set_admin_campaign_updated_at"();
 
 
 --
--- Name: idx_web_push_subs_recent; Type: INDEX; Schema: public; Owner: -
+-- Name: admin_region_daily_metrics set_admin_region_daily_metrics_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_web_push_subs_recent ON public.web_push_subscriptions USING btree (user_id, last_seen_at DESC);
+CREATE OR REPLACE TRIGGER "set_admin_region_daily_metrics_updated_at" BEFORE INSERT OR UPDATE ON "public"."admin_region_daily_metrics" FOR EACH ROW EXECUTE FUNCTION "public"."set_admin_region_metric_updated_at"();
 
 
 --
--- Name: idx_web_push_subs_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: admin_support_threads trg_admin_support_threads_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_web_push_subs_user_id ON public.web_push_subscriptions USING btree (user_id);
+CREATE OR REPLACE TRIGGER "trg_admin_support_threads_updated_at" BEFORE UPDATE ON "public"."admin_support_threads" FOR EACH ROW EXECUTE FUNCTION "public"."set_admin_support_thread_updated_at"();
 
 
 --
--- Name: live_sessions_room_name_active_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: product_preorders trg_assign_preorder_round; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE UNIQUE INDEX live_sessions_room_name_active_unique ON public.live_sessions USING btree (room_name) WHERE (status = 'active'::text);
+CREATE OR REPLACE TRIGGER "trg_assign_preorder_round" BEFORE INSERT OR UPDATE OF "status", "quantity" ON "public"."product_preorders" FOR EACH ROW EXECUTE FUNCTION "public"."assign_preorder_round"();
 
 
 --
--- Name: messages_reply_to_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: posts trg_auto_score_post; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX messages_reply_to_id_idx ON public.messages USING btree (reply_to_id);
+CREATE OR REPLACE TRIGGER "trg_auto_score_post" BEFORE INSERT OR UPDATE OF "tags" ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."auto_score_post"();
 
 
 --
--- Name: msg_conv_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: bookmarks trg_bookmark_learn; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX msg_conv_idx ON public.messages USING btree (conversation_id, created_at);
+CREATE OR REPLACE TRIGGER "trg_bookmark_learn" AFTER INSERT ON "public"."bookmarks" FOR EACH ROW EXECUTE FUNCTION "public"."_on_bookmark_learn"();
 
 
 --
--- Name: msg_post_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: live_recordings trg_clear_replay_on_recording_delete; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX msg_post_idx ON public.messages USING btree (post_id) WHERE (post_id IS NOT NULL);
+CREATE OR REPLACE TRIGGER "trg_clear_replay_on_recording_delete" AFTER DELETE ON "public"."live_recordings" FOR EACH ROW EXECUTE FUNCTION "public"."_clear_replay_on_recording_delete"();
 
 
 --
--- Name: notifications_recipient_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: product_orders trg_close_cart_on_order_paid; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX notifications_recipient_idx ON public.notifications USING btree (recipient_id, created_at DESC);
+CREATE OR REPLACE TRIGGER "trg_close_cart_on_order_paid" AFTER UPDATE ON "public"."product_orders" FOR EACH ROW EXECUTE FUNCTION "public"."close_cart_on_order_paid"();
 
 
 --
--- Name: notifications_session_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: live_cohosts trg_close_duet_history_on_revoke; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX notifications_session_idx ON public.notifications USING btree (session_id) WHERE (session_id IS NOT NULL);
+CREATE OR REPLACE TRIGGER "trg_close_duet_history_on_revoke" AFTER UPDATE ON "public"."live_cohosts" FOR EACH ROW EXECUTE FUNCTION "public"."_close_duet_history_on_revoke"();
 
 
 --
--- Name: posts_author_pinned_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: live_sessions trg_close_duet_history_on_session_end; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX posts_author_pinned_idx ON public.posts USING btree (author_id, is_pinned DESC, created_at DESC);
+CREATE OR REPLACE TRIGGER "trg_close_duet_history_on_session_end" AFTER UPDATE ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."_close_duet_history_on_session_end"();
 
 
 --
--- Name: posts_feed_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: comments trg_comment_learn; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX posts_feed_idx ON public.posts USING btree (created_at DESC) WHERE (is_visible = true);
+CREATE OR REPLACE TRIGGER "trg_comment_learn" AFTER INSERT ON "public"."comments" FOR EACH ROW EXECUTE FUNCTION "public"."_on_comment_learn"();
 
 
 --
--- Name: posts_is_visible_created_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: comments trg_comment_not_blocked; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX posts_is_visible_created_idx ON public.posts USING btree (created_at DESC) WHERE (is_visible = true);
+CREATE OR REPLACE TRIGGER "trg_comment_not_blocked" BEFORE INSERT ON "public"."comments" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_comment_not_blocked"();
 
 
 --
--- Name: profiles_teip_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: conversations trg_conversation_not_blocked; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX profiles_teip_idx ON public.profiles USING btree (teip) WHERE (teip IS NOT NULL);
+CREATE OR REPLACE TRIGGER "trg_conversation_not_blocked" BEFORE INSERT ON "public"."conversations" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_conversation_not_blocked"();
 
 
 --
--- Name: reposts_post_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: follows trg_follow_not_blocked; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX reposts_post_id_idx ON public.reposts USING btree (post_id);
+CREATE OR REPLACE TRIGGER "trg_follow_not_blocked" BEFORE INSERT ON "public"."follows" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_follow_not_blocked"();
 
 
 --
--- Name: reposts_user_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: profiles trg_guard_women_only_verified; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX reposts_user_id_idx ON public.reposts USING btree (user_id);
+CREATE OR REPLACE TRIGGER "trg_guard_women_only_verified" BEFORE UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."guard_women_only_verified"();
 
 
 --
--- Name: story_comments_story_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: live_giveaway_entries trg_incr_giveaway_entries; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX story_comments_story_id_idx ON public.story_comments USING btree (story_id, created_at DESC);
+CREATE OR REPLACE TRIGGER "trg_incr_giveaway_entries" AFTER INSERT ON "public"."live_giveaway_entries" FOR EACH ROW EXECUTE FUNCTION "public"."incr_giveaway_entries"();
 
 
 --
--- Name: story_highlights_user_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: likes trg_like_learn; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX story_highlights_user_id_idx ON public.story_highlights USING btree (user_id);
+CREATE OR REPLACE TRIGGER "trg_like_learn" AFTER INSERT ON "public"."likes" FOR EACH ROW EXECUTE FUNCTION "public"."_on_like_learn"();
 
 
 --
--- Name: story_votes_story_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: live_comments trg_live_comment_count; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE INDEX story_votes_story_idx ON public.story_votes USING btree (story_id);
+CREATE OR REPLACE TRIGGER "trg_live_comment_count" AFTER INSERT ON "public"."live_comments" FOR EACH ROW EXECUTE FUNCTION "public"."incr_live_comment_count"();
 
 
 --
--- Name: uniq_live_placed_products_active; Type: INDEX; Schema: public; Owner: -
+-- Name: live_placed_products trg_live_placed_products_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE UNIQUE INDEX uniq_live_placed_products_active ON public.live_placed_products USING btree (session_id, product_id) WHERE (removed_at IS NULL);
+CREATE OR REPLACE TRIGGER "trg_live_placed_products_updated_at" BEFORE UPDATE ON "public"."live_placed_products" FOR EACH ROW EXECUTE FUNCTION "public"."_set_live_placed_products_updated_at"();
 
 
 --
--- Name: uq_clip_marker_session_user_ts; Type: INDEX; Schema: public; Owner: -
+-- Name: live_sessions trg_live_sessions_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE UNIQUE INDEX uq_clip_marker_session_user_ts ON public.live_clip_markers USING btree (session_id, user_id, ts_secs);
+CREATE OR REPLACE TRIGGER "trg_live_sessions_updated_at" BEFORE UPDATE ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."_set_live_sessions_updated_at"();
 
 
 --
--- Name: uq_duet_invites_pending; Type: INDEX; Schema: public; Owner: -
+-- Name: live_stickers trg_live_stickers_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE UNIQUE INDEX uq_duet_invites_pending ON public.live_duet_invites USING btree (session_id, invitee_id) WHERE (status = 'pending'::text);
+CREATE OR REPLACE TRIGGER "trg_live_stickers_updated_at" BEFORE UPDATE ON "public"."live_stickers" FOR EACH ROW EXECUTE FUNCTION "public"."_set_live_stickers_updated_at"();
 
 
 --
--- Name: uq_live_recordings_session; Type: INDEX; Schema: public; Owner: -
+-- Name: messages trg_message_not_blocked; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE UNIQUE INDEX uq_live_recordings_session ON public.live_recordings USING btree (session_id);
+CREATE OR REPLACE TRIGGER "trg_message_not_blocked" BEFORE INSERT ON "public"."messages" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_message_not_blocked"();
 
 
 --
--- Name: posts auto_vibe_scores; Type: TRIGGER; Schema: public; Owner: -
+-- Name: live_sessions trg_notify_followers_on_go_live; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER auto_vibe_scores BEFORE INSERT OR UPDATE OF tags, caption ON public.posts FOR EACH ROW EXECUTE FUNCTION public.calculate_vibe_scores();
+CREATE OR REPLACE TRIGGER "trg_notify_followers_on_go_live" AFTER INSERT ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_followers_on_go_live"();
 
 
 --
--- Name: posts enqueue_r2_media_delete_on_post_delete; Type: TRIGGER; Schema: public; Owner: -
+-- Name: gift_transactions trg_notify_on_gift; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER enqueue_r2_media_delete_on_post_delete AFTER DELETE ON public.posts FOR EACH ROW EXECUTE FUNCTION public.enqueue_r2_media_delete();
+CREATE OR REPLACE TRIGGER "trg_notify_on_gift" AFTER INSERT ON "public"."gift_transactions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_gift"();
 
 
 --
--- Name: notifications on-notification-insert; Type: TRIGGER; Schema: public; Owner: -
+-- Name: saved_products trg_notify_seller_on_save; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER "on-notification-insert" AFTER INSERT ON public.notifications FOR EACH ROW EXECUTE FUNCTION supabase_functions.http_request('https://llymwqfgujwkoxzqxrlm.supabase.co/functions/v1/send-push-notification', 'POST', '{"Content-type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxseW13cWZndWp3a294enF4cmxtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzY5ODkyMywiZXhwIjoyMDg5Mjc0OTIzfQ.DRm29hxoHgeihf7HlXUtOpW_IAxdqa8Zels6KFB6Wro"}', '{}', '5000');
+CREATE OR REPLACE TRIGGER "trg_notify_seller_on_save" AFTER INSERT ON "public"."saved_products" FOR EACH ROW EXECUTE FUNCTION "public"."fn_notify_seller_on_save"();
 
 
 --
--- Name: comments on_comment_insert; Type: TRIGGER; Schema: public; Owner: -
+-- Name: order_reviews trg_order_reviews_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_comment_insert AFTER INSERT ON public.comments FOR EACH ROW EXECUTE FUNCTION public.notify_on_comment();
+CREATE OR REPLACE TRIGGER "trg_order_reviews_updated_at" BEFORE UPDATE ON "public"."order_reviews" FOR EACH ROW EXECUTE FUNCTION "public"."set_order_reviews_updated_at"();
 
 
 --
--- Name: comments on_comment_notif; Type: TRIGGER; Schema: public; Owner: -
+-- Name: posts trg_post_consistency; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_comment_notif AFTER INSERT ON public.comments FOR EACH ROW EXECUTE FUNCTION public.notify_on_comment_to_table();
+CREATE OR REPLACE TRIGGER "trg_post_consistency" AFTER INSERT ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."_on_post_update_consistency"();
 
 
 --
--- Name: follows on_follow_insert; Type: TRIGGER; Schema: public; Owner: -
+-- Name: post_drafts trg_post_drafts_touch; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_follow_insert AFTER INSERT ON public.follows FOR EACH ROW EXECUTE FUNCTION public.notify_on_follow();
+CREATE OR REPLACE TRIGGER "trg_post_drafts_touch" BEFORE UPDATE ON "public"."post_drafts" FOR EACH ROW EXECUTE FUNCTION "public"."post_drafts_touch"();
 
 
 --
--- Name: follows on_follow_notif; Type: TRIGGER; Schema: public; Owner: -
+-- Name: posts trg_posts_automated_moderation; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_follow_notif AFTER INSERT ON public.follows FOR EACH ROW EXECUTE FUNCTION public.notify_on_follow_to_table();
+CREATE OR REPLACE TRIGGER "trg_posts_automated_moderation" AFTER INSERT OR UPDATE OF "caption", "tags", "media_type", "media_url" ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."enqueue_automated_post_moderation"();
 
 
 --
--- Name: likes on_like_insert; Type: TRIGGER; Schema: public; Owner: -
+-- Name: product_preorders trg_preorders_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_like_insert AFTER INSERT ON public.likes FOR EACH ROW EXECUTE FUNCTION public.notify_on_like();
+CREATE OR REPLACE TRIGGER "trg_preorders_updated_at" BEFORE UPDATE ON "public"."product_preorders" FOR EACH ROW EXECUTE FUNCTION "public"."set_product_preorders_updated_at"();
 
 
 --
--- Name: likes on_like_notif; Type: TRIGGER; Schema: public; Owner: -
+-- Name: product_orders trg_product_orders_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_like_notif AFTER INSERT ON public.likes FOR EACH ROW EXECUTE FUNCTION public.notify_on_like_to_table();
+CREATE OR REPLACE TRIGGER "trg_product_orders_updated_at" BEFORE UPDATE ON "public"."product_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_product_orders_updated_at"();
 
 
 --
--- Name: live_sessions on_live_session_active; Type: TRIGGER; Schema: public; Owner: -
+-- Name: products trg_products_sale_mode_admin; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_live_session_active AFTER INSERT OR UPDATE OF status ON public.live_sessions FOR EACH ROW EXECUTE FUNCTION public.notify_followers_on_live();
+CREATE OR REPLACE TRIGGER "trg_products_sale_mode_admin" BEFORE INSERT OR UPDATE OF "sale_mode" ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_sale_mode_admin"();
 
 
 --
--- Name: messages on_message_insert; Type: TRIGGER; Schema: public; Owner: -
+-- Name: products trg_products_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_message_insert AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION public.notify_on_dm();
+CREATE OR REPLACE TRIGGER "trg_products_updated_at" BEFORE UPDATE ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."set_products_updated_at"();
 
 
 --
--- Name: messages on_message_insert_web_push; Type: TRIGGER; Schema: public; Owner: -
+-- Name: live_sessions trg_purge_live_session_viewers_on_end; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_message_insert_web_push AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION public.notify_web_push_on_dm();
+CREATE OR REPLACE TRIGGER "trg_purge_live_session_viewers_on_end" AFTER UPDATE OF "status" ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."_purge_live_session_viewers_on_end"();
 
 
 --
--- Name: messages on_new_message; Type: TRIGGER; Schema: public; Owner: -
+-- Name: notifications trg_push_notification; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_new_message AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION public.update_conversation_timestamp();
+CREATE OR REPLACE TRIGGER "trg_push_notification" AFTER INSERT ON "public"."notifications" FOR EACH ROW EXECUTE FUNCTION "public"."fn_send_push_on_notification"();
 
 
 --
--- Name: notifications on_notification_push; Type: TRIGGER; Schema: public; Owner: -
+-- Name: scheduled_lives trg_scheduled_lives_touch; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_notification_push AFTER INSERT ON public.notifications FOR EACH ROW EXECUTE FUNCTION public.trigger_push_notification();
+CREATE OR REPLACE TRIGGER "trg_scheduled_lives_touch" BEFORE UPDATE ON "public"."scheduled_lives" FOR EACH ROW EXECUTE FUNCTION "public"."scheduled_lives_touch"();
 
 
 --
--- Name: posts on_post_insert_moderate; Type: TRIGGER; Schema: public; Owner: -
+-- Name: scheduled_posts trg_scheduled_post_failure_alert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_post_insert_moderate AFTER INSERT ON public.posts FOR EACH ROW EXECUTE FUNCTION public.trigger_nsfw_moderation();
+CREATE OR REPLACE TRIGGER "trg_scheduled_post_failure_alert" AFTER UPDATE OF "status" ON "public"."scheduled_posts" FOR EACH ROW EXECUTE FUNCTION "public"."notify_scheduled_post_failure"();
 
 
 --
--- Name: profiles on_profile_created_create_wallet; Type: TRIGGER; Schema: public; Owner: -
+-- Name: TRIGGER "trg_scheduled_post_failure_alert" ON "scheduled_posts"; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER on_profile_created_create_wallet AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.create_user_wallet();
+COMMENT ON TRIGGER "trg_scheduled_post_failure_alert" ON "public"."scheduled_posts" IS 'Sendet Push-Notification an Autor wenn ein geplanter Post endgültig fehlschlägt (status → failed nach 3 Versuchen). Nutzt send-push-notification Edge Function via pg_net.';
 
 
 --
--- Name: admin_campaign_daily_metrics set_admin_campaign_daily_metrics_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: scheduled_posts trg_scheduled_posts_touch; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER set_admin_campaign_daily_metrics_updated_at BEFORE UPDATE ON public.admin_campaign_daily_metrics FOR EACH ROW EXECUTE FUNCTION public.set_admin_campaign_updated_at();
+CREATE OR REPLACE TRIGGER "trg_scheduled_posts_touch" BEFORE UPDATE ON "public"."scheduled_posts" FOR EACH ROW EXECUTE FUNCTION "public"."scheduled_posts_touch"();
 
 
 --
--- Name: admin_campaigns set_admin_campaigns_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: profiles trg_single_owner_push_token; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER set_admin_campaigns_updated_at BEFORE UPDATE ON public.admin_campaigns FOR EACH ROW EXECUTE FUNCTION public.set_admin_campaign_updated_at();
+CREATE OR REPLACE TRIGGER "trg_single_owner_push_token" AFTER UPDATE OF "push_token" ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_single_owner_push_token"();
 
 
 --
--- Name: admin_region_daily_metrics set_admin_region_daily_metrics_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: push_tokens trg_single_owner_push_tokens_row; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER set_admin_region_daily_metrics_updated_at BEFORE INSERT OR UPDATE ON public.admin_region_daily_metrics FOR EACH ROW EXECUTE FUNCTION public.set_admin_region_metric_updated_at();
+CREATE OR REPLACE TRIGGER "trg_single_owner_push_tokens_row" AFTER INSERT ON "public"."push_tokens" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_single_owner_push_tokens_row"();
 
 
 --
--- Name: admin_support_threads trg_admin_support_threads_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bookmarks trg_sync_bookmark_count; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_admin_support_threads_updated_at BEFORE UPDATE ON public.admin_support_threads FOR EACH ROW EXECUTE FUNCTION public.set_admin_support_thread_updated_at();
+CREATE OR REPLACE TRIGGER "trg_sync_bookmark_count" AFTER INSERT OR DELETE ON "public"."bookmarks" FOR EACH ROW EXECUTE FUNCTION "public"."_sync_bookmark_count"();
 
 
 --
--- Name: posts trg_auto_score_post; Type: TRIGGER; Schema: public; Owner: -
+-- Name: comments trg_sync_comment_count; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_auto_score_post BEFORE INSERT OR UPDATE OF tags ON public.posts FOR EACH ROW EXECUTE FUNCTION public.auto_score_post();
+CREATE OR REPLACE TRIGGER "trg_sync_comment_count" AFTER INSERT OR DELETE ON "public"."comments" FOR EACH ROW EXECUTE FUNCTION "public"."_sync_comment_count"();
 
 
 --
--- Name: bookmarks trg_bookmark_learn; Type: TRIGGER; Schema: public; Owner: -
+-- Name: likes trg_sync_like_count; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_bookmark_learn AFTER INSERT ON public.bookmarks FOR EACH ROW EXECUTE FUNCTION public._on_bookmark_learn();
+CREATE OR REPLACE TRIGGER "trg_sync_like_count" AFTER INSERT OR DELETE ON "public"."likes" FOR EACH ROW EXECUTE FUNCTION "public"."_sync_like_count"();
 
 
 --
--- Name: live_recordings trg_clear_replay_on_recording_delete; Type: TRIGGER; Schema: public; Owner: -
+-- Name: live_recordings trg_sync_recording_to_session; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_clear_replay_on_recording_delete AFTER DELETE ON public.live_recordings FOR EACH ROW EXECUTE FUNCTION public._clear_replay_on_recording_delete();
+CREATE OR REPLACE TRIGGER "trg_sync_recording_to_session" AFTER INSERT OR UPDATE ON "public"."live_recordings" FOR EACH ROW EXECUTE FUNCTION "public"."_sync_recording_to_session"();
 
 
 --
--- Name: live_cohosts trg_close_duet_history_on_revoke; Type: TRIGGER; Schema: public; Owner: -
+-- Name: live_auctions trg_touch_live_auction; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_close_duet_history_on_revoke AFTER UPDATE ON public.live_cohosts FOR EACH ROW EXECUTE FUNCTION public._close_duet_history_on_revoke();
+CREATE OR REPLACE TRIGGER "trg_touch_live_auction" BEFORE UPDATE ON "public"."live_auctions" FOR EACH ROW EXECUTE FUNCTION "public"."touch_live_auction"();
 
 
 --
--- Name: live_sessions trg_close_duet_history_on_session_end; Type: TRIGGER; Schema: public; Owner: -
+-- Name: live_sessions trg_touch_live_sessions_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_close_duet_history_on_session_end AFTER UPDATE ON public.live_sessions FOR EACH ROW EXECUTE FUNCTION public._close_duet_history_on_session_end();
+CREATE OR REPLACE TRIGGER "trg_touch_live_sessions_updated_at" BEFORE UPDATE ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."touch_live_sessions_updated_at"();
 
 
 --
--- Name: comments trg_comment_learn; Type: TRIGGER; Schema: public; Owner: -
+-- Name: product_reviews trg_update_product_rating; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_comment_learn AFTER INSERT ON public.comments FOR EACH ROW EXECUTE FUNCTION public._on_comment_learn();
+CREATE OR REPLACE TRIGGER "trg_update_product_rating" AFTER INSERT OR DELETE OR UPDATE ON "public"."product_reviews" FOR EACH ROW EXECUTE FUNCTION "public"."update_product_rating"();
 
 
 --
--- Name: likes trg_like_learn; Type: TRIGGER; Schema: public; Owner: -
+-- Name: user_whip_ingresses trg_user_whip_ingresses_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_like_learn AFTER INSERT ON public.likes FOR EACH ROW EXECUTE FUNCTION public._on_like_learn();
+CREATE OR REPLACE TRIGGER "trg_user_whip_ingresses_updated_at" BEFORE UPDATE ON "public"."user_whip_ingresses" FOR EACH ROW EXECUTE FUNCTION "public"."_update_user_whip_ingresses_updated_at"();
 
 
 --
--- Name: live_comments trg_live_comment_count; Type: TRIGGER; Schema: public; Owner: -
+-- Name: web_coin_orders trg_web_coin_orders_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_live_comment_count AFTER INSERT ON public.live_comments FOR EACH ROW EXECUTE FUNCTION public.incr_live_comment_count();
+CREATE OR REPLACE TRIGGER "trg_web_coin_orders_updated_at" BEFORE UPDATE ON "public"."web_coin_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_web_coin_orders_updated_at"();
 
 
 --
--- Name: live_placed_products trg_live_placed_products_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_audit_log admin_audit_log_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_live_placed_products_updated_at BEFORE UPDATE ON public.live_placed_products FOR EACH ROW EXECUTE FUNCTION public._set_live_placed_products_updated_at();
+ALTER TABLE ONLY "public"."admin_audit_log"
+    ADD CONSTRAINT "admin_audit_log_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: live_sessions trg_live_sessions_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_campaign_daily_metrics admin_campaign_daily_metrics_campaign_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_live_sessions_updated_at BEFORE UPDATE ON public.live_sessions FOR EACH ROW EXECUTE FUNCTION public._set_live_sessions_updated_at();
+ALTER TABLE ONLY "public"."admin_campaign_daily_metrics"
+    ADD CONSTRAINT "admin_campaign_daily_metrics_campaign_id_fkey" FOREIGN KEY ("campaign_id") REFERENCES "public"."admin_campaigns"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_stickers trg_live_stickers_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_campaigns admin_campaigns_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_live_stickers_updated_at BEFORE UPDATE ON public.live_stickers FOR EACH ROW EXECUTE FUNCTION public._set_live_stickers_updated_at();
+ALTER TABLE ONLY "public"."admin_campaigns"
+    ADD CONSTRAINT "admin_campaigns_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: live_sessions trg_notify_followers_on_go_live; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_support_messages admin_support_messages_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_notify_followers_on_go_live AFTER INSERT ON public.live_sessions FOR EACH ROW EXECUTE FUNCTION public.notify_followers_on_go_live();
+ALTER TABLE ONLY "public"."admin_support_messages"
+    ADD CONSTRAINT "admin_support_messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: gift_transactions trg_notify_on_gift; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_support_messages admin_support_messages_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_notify_on_gift AFTER INSERT ON public.gift_transactions FOR EACH ROW EXECUTE FUNCTION public.notify_on_gift();
+ALTER TABLE ONLY "public"."admin_support_messages"
+    ADD CONSTRAINT "admin_support_messages_thread_id_fkey" FOREIGN KEY ("thread_id") REFERENCES "public"."admin_support_threads"("id") ON DELETE CASCADE;
 
 
 --
--- Name: posts trg_post_consistency; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_support_threads admin_support_threads_assigned_admin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_post_consistency AFTER INSERT ON public.posts FOR EACH ROW EXECUTE FUNCTION public._on_post_update_consistency();
+ALTER TABLE ONLY "public"."admin_support_threads"
+    ADD CONSTRAINT "admin_support_threads_assigned_admin_id_fkey" FOREIGN KEY ("assigned_admin_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: post_drafts trg_post_drafts_touch; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_support_threads admin_support_threads_resolved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_post_drafts_touch BEFORE UPDATE ON public.post_drafts FOR EACH ROW EXECUTE FUNCTION public.post_drafts_touch();
+ALTER TABLE ONLY "public"."admin_support_threads"
+    ADD CONSTRAINT "admin_support_threads_resolved_by_fkey" FOREIGN KEY ("resolved_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: posts trg_posts_automated_moderation; Type: TRIGGER; Schema: public; Owner: -
+-- Name: admin_support_threads admin_support_threads_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_posts_automated_moderation AFTER INSERT OR UPDATE OF caption, tags, media_type, media_url ON public.posts FOR EACH ROW EXECUTE FUNCTION public.enqueue_automated_post_moderation();
+ALTER TABLE ONLY "public"."admin_support_threads"
+    ADD CONSTRAINT "admin_support_threads_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: products trg_products_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: ai_image_generations ai_image_generations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_products_updated_at BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.set_products_updated_at();
+ALTER TABLE ONLY "public"."ai_image_generations"
+    ADD CONSTRAINT "ai_image_generations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_sessions trg_purge_live_session_viewers_on_end; Type: TRIGGER; Schema: public; Owner: -
+-- Name: algo_user_variants algo_user_variants_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_purge_live_session_viewers_on_end AFTER UPDATE OF status ON public.live_sessions FOR EACH ROW EXECUTE FUNCTION public._purge_live_session_viewers_on_end();
+ALTER TABLE ONLY "public"."algo_user_variants"
+    ADD CONSTRAINT "algo_user_variants_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: notifications trg_push_notification; Type: TRIGGER; Schema: public; Owner: -
+-- Name: auction_carts auction_carts_buyer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_push_notification AFTER INSERT ON public.notifications FOR EACH ROW EXECUTE FUNCTION public.fn_send_push_on_notification();
+ALTER TABLE ONLY "public"."auction_carts"
+    ADD CONSTRAINT "auction_carts_buyer_id_fkey" FOREIGN KEY ("buyer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: scheduled_lives trg_scheduled_lives_touch; Type: TRIGGER; Schema: public; Owner: -
+-- Name: auction_carts auction_carts_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_scheduled_lives_touch BEFORE UPDATE ON public.scheduled_lives FOR EACH ROW EXECUTE FUNCTION public.scheduled_lives_touch();
+ALTER TABLE ONLY "public"."auction_carts"
+    ADD CONSTRAINT "auction_carts_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: scheduled_posts trg_scheduled_post_failure_alert; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bookmarks bookmarks_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_scheduled_post_failure_alert AFTER UPDATE OF status ON public.scheduled_posts FOR EACH ROW EXECUTE FUNCTION public.notify_scheduled_post_failure();
+ALTER TABLE ONLY "public"."bookmarks"
+    ADD CONSTRAINT "bookmarks_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: TRIGGER trg_scheduled_post_failure_alert ON scheduled_posts; Type: COMMENT; Schema: public; Owner: -
+-- Name: bookmarks bookmarks_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-COMMENT ON TRIGGER trg_scheduled_post_failure_alert ON public.scheduled_posts IS 'Sendet Push-Notification an Autor wenn ein geplanter Post endgültig fehlschlägt (status → failed nach 3 Versuchen). Nutzt send-push-notification Edge Function via pg_net.';
+ALTER TABLE ONLY "public"."bookmarks"
+    ADD CONSTRAINT "bookmarks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: scheduled_posts trg_scheduled_posts_touch; Type: TRIGGER; Schema: public; Owner: -
+-- Name: coin_purchases coin_purchases_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_scheduled_posts_touch BEFORE UPDATE ON public.scheduled_posts FOR EACH ROW EXECUTE FUNCTION public.scheduled_posts_touch();
+ALTER TABLE ONLY "public"."coin_purchases"
+    ADD CONSTRAINT "coin_purchases_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: bookmarks trg_sync_bookmark_count; Type: TRIGGER; Schema: public; Owner: -
+-- Name: coins_wallets coins_wallets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_sync_bookmark_count AFTER INSERT OR DELETE ON public.bookmarks FOR EACH ROW EXECUTE FUNCTION public._sync_bookmark_count();
+ALTER TABLE ONLY "public"."coins_wallets"
+    ADD CONSTRAINT "coins_wallets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: comments trg_sync_comment_count; Type: TRIGGER; Schema: public; Owner: -
+-- Name: comment_likes comment_likes_comment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_sync_comment_count AFTER INSERT OR DELETE ON public.comments FOR EACH ROW EXECUTE FUNCTION public._sync_comment_count();
+ALTER TABLE ONLY "public"."comment_likes"
+    ADD CONSTRAINT "comment_likes_comment_id_fkey" FOREIGN KEY ("comment_id") REFERENCES "public"."comments"("id") ON DELETE CASCADE;
 
 
 --
--- Name: likes trg_sync_like_count; Type: TRIGGER; Schema: public; Owner: -
+-- Name: comment_likes comment_likes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_sync_like_count AFTER INSERT OR DELETE ON public.likes FOR EACH ROW EXECUTE FUNCTION public._sync_like_count();
+ALTER TABLE ONLY "public"."comment_likes"
+    ADD CONSTRAINT "comment_likes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_recordings trg_sync_recording_to_session; Type: TRIGGER; Schema: public; Owner: -
+-- Name: comments comments_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_sync_recording_to_session AFTER INSERT OR UPDATE ON public.live_recordings FOR EACH ROW EXECUTE FUNCTION public._sync_recording_to_session();
+ALTER TABLE ONLY "public"."comments"
+    ADD CONSTRAINT "comments_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "public"."comments"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_sessions trg_touch_live_sessions_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: comments comments_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_touch_live_sessions_updated_at BEFORE UPDATE ON public.live_sessions FOR EACH ROW EXECUTE FUNCTION public.touch_live_sessions_updated_at();
+ALTER TABLE ONLY "public"."comments"
+    ADD CONSTRAINT "comments_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: product_reviews trg_update_product_rating; Type: TRIGGER; Schema: public; Owner: -
+-- Name: comments comments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_update_product_rating AFTER INSERT OR DELETE OR UPDATE ON public.product_reviews FOR EACH ROW EXECUTE FUNCTION public.update_product_rating();
+ALTER TABLE ONLY "public"."comments"
+    ADD CONSTRAINT "comments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: user_whip_ingresses trg_user_whip_ingresses_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: content_reports content_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_user_whip_ingresses_updated_at BEFORE UPDATE ON public.user_whip_ingresses FOR EACH ROW EXECUTE FUNCTION public._update_user_whip_ingresses_updated_at();
+ALTER TABLE ONLY "public"."content_reports"
+    ADD CONSTRAINT "content_reports_reporter_id_fkey" FOREIGN KEY ("reporter_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: web_coin_orders trg_web_coin_orders_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: content_reports content_reports_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_web_coin_orders_updated_at BEFORE UPDATE ON public.web_coin_orders FOR EACH ROW EXECUTE FUNCTION public.set_web_coin_orders_updated_at();
+ALTER TABLE ONLY "public"."content_reports"
+    ADD CONSTRAINT "content_reports_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: admin_audit_log admin_audit_log_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: conversations conversations_participant_1_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_audit_log
-    ADD CONSTRAINT admin_audit_log_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."conversations"
+    ADD CONSTRAINT "conversations_participant_1_fkey" FOREIGN KEY ("participant_1") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: admin_campaign_daily_metrics admin_campaign_daily_metrics_campaign_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: conversations conversations_participant_2_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_campaign_daily_metrics
-    ADD CONSTRAINT admin_campaign_daily_metrics_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES public.admin_campaigns(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."conversations"
+    ADD CONSTRAINT "conversations_participant_2_fkey" FOREIGN KEY ("participant_2") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: admin_campaigns admin_campaigns_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: creator_tips creator_tips_recipient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_campaigns
-    ADD CONSTRAINT admin_campaigns_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."creator_tips"
+    ADD CONSTRAINT "creator_tips_recipient_id_fkey" FOREIGN KEY ("recipient_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: admin_support_messages admin_support_messages_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: creator_tips creator_tips_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_support_messages
-    ADD CONSTRAINT admin_support_messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."creator_tips"
+    ADD CONSTRAINT "creator_tips_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: admin_support_messages admin_support_messages_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: feature_flags feature_flags_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_support_messages
-    ADD CONSTRAINT admin_support_messages_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.admin_support_threads(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."feature_flags"
+    ADD CONSTRAINT "feature_flags_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: admin_support_threads admin_support_threads_assigned_admin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: follow_requests follow_requests_receiver_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_support_threads
-    ADD CONSTRAINT admin_support_threads_assigned_admin_id_fkey FOREIGN KEY (assigned_admin_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."follow_requests"
+    ADD CONSTRAINT "follow_requests_receiver_id_fkey" FOREIGN KEY ("receiver_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: admin_support_threads admin_support_threads_resolved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: follow_requests follow_requests_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_support_threads
-    ADD CONSTRAINT admin_support_threads_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."follow_requests"
+    ADD CONSTRAINT "follow_requests_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: admin_support_threads admin_support_threads_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: follows follows_follower_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.admin_support_threads
-    ADD CONSTRAINT admin_support_threads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."follows"
+    ADD CONSTRAINT "follows_follower_id_fkey" FOREIGN KEY ("follower_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: ai_image_generations ai_image_generations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: follows follows_following_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.ai_image_generations
-    ADD CONSTRAINT ai_image_generations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."follows"
+    ADD CONSTRAINT "follows_following_id_fkey" FOREIGN KEY ("following_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: algo_user_variants algo_user_variants_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: gift_transactions gift_transactions_gift_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.algo_user_variants
-    ADD CONSTRAINT algo_user_variants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."gift_transactions"
+    ADD CONSTRAINT "gift_transactions_gift_id_fkey" FOREIGN KEY ("gift_id") REFERENCES "public"."gift_catalog"("id");
 
 
 --
--- Name: bookmarks bookmarks_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: gift_transactions gift_transactions_recipient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.bookmarks
-    ADD CONSTRAINT bookmarks_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."gift_transactions"
+    ADD CONSTRAINT "gift_transactions_recipient_id_fkey" FOREIGN KEY ("recipient_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: bookmarks bookmarks_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: gift_transactions gift_transactions_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.bookmarks
-    ADD CONSTRAINT bookmarks_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."gift_transactions"
+    ADD CONSTRAINT "gift_transactions_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: coin_purchases coin_purchases_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: likes likes_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.coin_purchases
-    ADD CONSTRAINT coin_purchases_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."likes"
+    ADD CONSTRAINT "likes_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: coins_wallets coins_wallets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: likes likes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.coins_wallets
-    ADD CONSTRAINT coins_wallets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."likes"
+    ADD CONSTRAINT "likes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: comment_likes comment_likes_comment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auctions live_auctions_cart_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comment_likes
-    ADD CONSTRAINT comment_likes_comment_id_fkey FOREIGN KEY (comment_id) REFERENCES public.comments(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_cart_id_fkey" FOREIGN KEY ("cart_id") REFERENCES "public"."auction_carts"("id") ON DELETE SET NULL;
 
 
 --
--- Name: comment_likes comment_likes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auctions live_auctions_current_bidder_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comment_likes
-    ADD CONSTRAINT comment_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_current_bidder_id_fkey" FOREIGN KEY ("current_bidder_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: comments comments_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auctions live_auctions_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comments
-    ADD CONSTRAINT comments_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.comments(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 
 --
--- Name: comments comments_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auctions live_auctions_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comments
-    ADD CONSTRAINT comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: comments comments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auctions live_auctions_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.comments
-    ADD CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: content_reports content_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auctions live_auctions_winner_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.content_reports
-    ADD CONSTRAINT content_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_winner_id_fkey" FOREIGN KEY ("winner_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: content_reports content_reports_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auto_bids live_auto_bids_auction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.content_reports
-    ADD CONSTRAINT content_reports_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."live_auto_bids"
+    ADD CONSTRAINT "live_auto_bids_auction_id_fkey" FOREIGN KEY ("auction_id") REFERENCES "public"."live_auctions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: conversations conversations_participant_1_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_auto_bids live_auto_bids_bidder_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_participant_1_fkey FOREIGN KEY (participant_1) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_auto_bids"
+    ADD CONSTRAINT "live_auto_bids_bidder_id_fkey" FOREIGN KEY ("bidder_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: conversations conversations_participant_2_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_battle_history live_battle_history_guest_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_participant_2_fkey FOREIGN KEY (participant_2) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_battle_history"
+    ADD CONSTRAINT "live_battle_history_guest_id_fkey" FOREIGN KEY ("guest_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: creator_tips creator_tips_recipient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_battle_history live_battle_history_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.creator_tips
-    ADD CONSTRAINT creator_tips_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_battle_history"
+    ADD CONSTRAINT "live_battle_history_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: creator_tips creator_tips_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_battle_history live_battle_history_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.creator_tips
-    ADD CONSTRAINT creator_tips_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_battle_history"
+    ADD CONSTRAINT "live_battle_history_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: feature_flags feature_flags_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_bids live_bids_auction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.feature_flags
-    ADD CONSTRAINT feature_flags_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."live_bids"
+    ADD CONSTRAINT "live_bids_auction_id_fkey" FOREIGN KEY ("auction_id") REFERENCES "public"."live_auctions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: follow_requests follow_requests_receiver_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_bids live_bids_bidder_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follow_requests
-    ADD CONSTRAINT follow_requests_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_bids"
+    ADD CONSTRAINT "live_bids_bidder_id_fkey" FOREIGN KEY ("bidder_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: follow_requests follow_requests_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_chat_timeouts live_chat_timeouts_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follow_requests
-    ADD CONSTRAINT follow_requests_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_chat_timeouts"
+    ADD CONSTRAINT "live_chat_timeouts_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: follows follows_follower_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_chat_timeouts live_chat_timeouts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_chat_timeouts"
+    ADD CONSTRAINT "live_chat_timeouts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: follows follows_following_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_clip_markers live_clip_markers_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.follows
-    ADD CONSTRAINT follows_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_clip_markers"
+    ADD CONSTRAINT "live_clip_markers_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: gift_transactions gift_transactions_gift_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_clip_markers live_clip_markers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.gift_transactions
-    ADD CONSTRAINT gift_transactions_gift_id_fkey FOREIGN KEY (gift_id) REFERENCES public.gift_catalog(id);
+ALTER TABLE ONLY "public"."live_clip_markers"
+    ADD CONSTRAINT "live_clip_markers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: gift_transactions gift_transactions_recipient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_cohost_blocks live_cohost_blocks_blocked_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.gift_transactions
-    ADD CONSTRAINT gift_transactions_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_cohost_blocks"
+    ADD CONSTRAINT "live_cohost_blocks_blocked_user_id_fkey" FOREIGN KEY ("blocked_user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: gift_transactions gift_transactions_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_cohost_blocks live_cohost_blocks_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.gift_transactions
-    ADD CONSTRAINT gift_transactions_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_cohost_blocks"
+    ADD CONSTRAINT "live_cohost_blocks_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: likes likes_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_cohosts live_cohosts_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.likes
-    ADD CONSTRAINT likes_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_cohosts"
+    ADD CONSTRAINT "live_cohosts_invited_by_fkey" FOREIGN KEY ("invited_by") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: likes likes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_cohosts live_cohosts_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.likes
-    ADD CONSTRAINT likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_cohosts"
+    ADD CONSTRAINT "live_cohosts_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_battle_history live_battle_history_guest_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_cohosts live_cohosts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_battle_history
-    ADD CONSTRAINT live_battle_history_guest_id_fkey FOREIGN KEY (guest_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_cohosts"
+    ADD CONSTRAINT "live_cohosts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_battle_history live_battle_history_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_comments live_comments_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_battle_history
-    ADD CONSTRAINT live_battle_history_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_comments"
+    ADD CONSTRAINT "live_comments_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_battle_history live_battle_history_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_comments live_comments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_battle_history
-    ADD CONSTRAINT live_battle_history_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_comments"
+    ADD CONSTRAINT "live_comments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_chat_timeouts live_chat_timeouts_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_duet_history live_duet_history_guest_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_chat_timeouts
-    ADD CONSTRAINT live_chat_timeouts_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_duet_history"
+    ADD CONSTRAINT "live_duet_history_guest_id_fkey" FOREIGN KEY ("guest_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_chat_timeouts live_chat_timeouts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_duet_history live_duet_history_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_chat_timeouts
-    ADD CONSTRAINT live_chat_timeouts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_duet_history"
+    ADD CONSTRAINT "live_duet_history_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_clip_markers live_clip_markers_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_duet_history live_duet_history_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_clip_markers
-    ADD CONSTRAINT live_clip_markers_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_duet_history"
+    ADD CONSTRAINT "live_duet_history_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_clip_markers live_clip_markers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_duet_invites live_duet_invites_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_clip_markers
-    ADD CONSTRAINT live_clip_markers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_duet_invites"
+    ADD CONSTRAINT "live_duet_invites_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_cohost_blocks live_cohost_blocks_blocked_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_duet_invites live_duet_invites_invitee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_cohost_blocks
-    ADD CONSTRAINT live_cohost_blocks_blocked_user_id_fkey FOREIGN KEY (blocked_user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_duet_invites"
+    ADD CONSTRAINT "live_duet_invites_invitee_id_fkey" FOREIGN KEY ("invitee_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_cohost_blocks live_cohost_blocks_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_duet_invites live_duet_invites_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_cohost_blocks
-    ADD CONSTRAINT live_cohost_blocks_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_duet_invites"
+    ADD CONSTRAINT "live_duet_invites_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_cohosts live_cohosts_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_giveaway_entries live_giveaway_entries_giveaway_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_cohosts
-    ADD CONSTRAINT live_cohosts_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_giveaway_entries"
+    ADD CONSTRAINT "live_giveaway_entries_giveaway_id_fkey" FOREIGN KEY ("giveaway_id") REFERENCES "public"."live_giveaways"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_cohosts live_cohosts_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_giveaway_entries live_giveaway_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_cohosts
-    ADD CONSTRAINT live_cohosts_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_giveaway_entries"
+    ADD CONSTRAINT "live_giveaway_entries_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_cohosts live_cohosts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_giveaways live_giveaways_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_cohosts
-    ADD CONSTRAINT live_cohosts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_giveaways"
+    ADD CONSTRAINT "live_giveaways_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_comments live_comments_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_giveaways live_giveaways_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_comments
-    ADD CONSTRAINT live_comments_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_giveaways"
+    ADD CONSTRAINT "live_giveaways_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_comments live_comments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_giveaways live_giveaways_winner_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_comments
-    ADD CONSTRAINT live_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_giveaways"
+    ADD CONSTRAINT "live_giveaways_winner_id_fkey" FOREIGN KEY ("winner_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: live_duet_history live_duet_history_guest_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_moderators live_moderators_granted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_history
-    ADD CONSTRAINT live_duet_history_guest_id_fkey FOREIGN KEY (guest_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_moderators"
+    ADD CONSTRAINT "live_moderators_granted_by_fkey" FOREIGN KEY ("granted_by") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_duet_history live_duet_history_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_moderators live_moderators_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_history
-    ADD CONSTRAINT live_duet_history_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_moderators"
+    ADD CONSTRAINT "live_moderators_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_duet_history live_duet_history_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_moderators live_moderators_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_history
-    ADD CONSTRAINT live_duet_history_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_moderators"
+    ADD CONSTRAINT "live_moderators_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_duet_invites live_duet_invites_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_placed_products live_placed_products_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_invites
-    ADD CONSTRAINT live_duet_invites_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_placed_products"
+    ADD CONSTRAINT "live_placed_products_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_duet_invites live_duet_invites_invitee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_placed_products live_placed_products_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_invites
-    ADD CONSTRAINT live_duet_invites_invitee_id_fkey FOREIGN KEY (invitee_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_placed_products"
+    ADD CONSTRAINT "live_placed_products_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_duet_invites live_duet_invites_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_placed_products live_placed_products_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_duet_invites
-    ADD CONSTRAINT live_duet_invites_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_placed_products"
+    ADD CONSTRAINT "live_placed_products_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_moderators live_moderators_granted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_poll_votes live_poll_votes_poll_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_moderators
-    ADD CONSTRAINT live_moderators_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.profiles(id);
+ALTER TABLE ONLY "public"."live_poll_votes"
+    ADD CONSTRAINT "live_poll_votes_poll_id_fkey" FOREIGN KEY ("poll_id") REFERENCES "public"."live_polls"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_moderators live_moderators_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_poll_votes live_poll_votes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_moderators
-    ADD CONSTRAINT live_moderators_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_poll_votes"
+    ADD CONSTRAINT "live_poll_votes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_moderators live_moderators_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_polls live_polls_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_moderators
-    ADD CONSTRAINT live_moderators_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id);
+ALTER TABLE ONLY "public"."live_polls"
+    ADD CONSTRAINT "live_polls_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_placed_products live_placed_products_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_polls live_polls_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_placed_products
-    ADD CONSTRAINT live_placed_products_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_polls"
+    ADD CONSTRAINT "live_polls_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_placed_products live_placed_products_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_reactions live_reactions_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_placed_products
-    ADD CONSTRAINT live_placed_products_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_reactions"
+    ADD CONSTRAINT "live_reactions_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_placed_products live_placed_products_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_reactions live_reactions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_placed_products
-    ADD CONSTRAINT live_placed_products_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_reactions"
+    ADD CONSTRAINT "live_reactions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_poll_votes live_poll_votes_poll_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_recordings live_recordings_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_poll_votes
-    ADD CONSTRAINT live_poll_votes_poll_id_fkey FOREIGN KEY (poll_id) REFERENCES public.live_polls(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_recordings"
+    ADD CONSTRAINT "live_recordings_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_poll_votes live_poll_votes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_recordings live_recordings_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_poll_votes
-    ADD CONSTRAINT live_poll_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_recordings"
+    ADD CONSTRAINT "live_recordings_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_polls live_polls_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_reports live_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_polls
-    ADD CONSTRAINT live_polls_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_reports"
+    ADD CONSTRAINT "live_reports_reporter_id_fkey" FOREIGN KEY ("reporter_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_polls live_polls_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_reports live_reports_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_polls
-    ADD CONSTRAINT live_polls_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_reports"
+    ADD CONSTRAINT "live_reports_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_reactions live_reactions_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_session_viewers live_session_viewers_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_reactions
-    ADD CONSTRAINT live_reactions_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_session_viewers"
+    ADD CONSTRAINT "live_session_viewers_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_reactions live_reactions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_session_viewers live_session_viewers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_reactions
-    ADD CONSTRAINT live_reactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_session_viewers"
+    ADD CONSTRAINT "live_session_viewers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_recordings live_recordings_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_sessions live_sessions_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_recordings
-    ADD CONSTRAINT live_recordings_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_sessions"
+    ADD CONSTRAINT "live_sessions_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_recordings live_recordings_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_sessions live_sessions_recording_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_recordings
-    ADD CONSTRAINT live_recordings_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_sessions"
+    ADD CONSTRAINT "live_sessions_recording_id_fkey" FOREIGN KEY ("recording_id") REFERENCES "public"."live_recordings"("id") ON DELETE SET NULL;
 
 
 --
--- Name: live_reports live_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_stickers live_stickers_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_reports
-    ADD CONSTRAINT live_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles(id);
+ALTER TABLE ONLY "public"."live_stickers"
+    ADD CONSTRAINT "live_stickers_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_reports live_reports_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_stickers live_stickers_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_reports
-    ADD CONSTRAINT live_reports_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_stickers"
+    ADD CONSTRAINT "live_stickers_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_session_viewers live_session_viewers_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_viewer_welcomes live_viewer_welcomes_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_session_viewers
-    ADD CONSTRAINT live_session_viewers_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_viewer_welcomes"
+    ADD CONSTRAINT "live_viewer_welcomes_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_session_viewers live_session_viewers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: live_viewer_welcomes live_viewer_welcomes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_session_viewers
-    ADD CONSTRAINT live_session_viewers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."live_viewer_welcomes"
+    ADD CONSTRAINT "live_viewer_welcomes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_sessions live_sessions_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: message_reactions message_reactions_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_sessions
-    ADD CONSTRAINT live_sessions_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."message_reactions"
+    ADD CONSTRAINT "message_reactions_message_id_fkey" FOREIGN KEY ("message_id") REFERENCES "public"."messages"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_sessions live_sessions_recording_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: message_reactions message_reactions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_sessions
-    ADD CONSTRAINT live_sessions_recording_id_fkey FOREIGN KEY (recording_id) REFERENCES public.live_recordings(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."message_reactions"
+    ADD CONSTRAINT "message_reactions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_stickers live_stickers_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: messages messages_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_stickers
-    ADD CONSTRAINT live_stickers_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_stickers live_stickers_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: messages messages_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_stickers
-    ADD CONSTRAINT live_stickers_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE SET NULL;
 
 
 --
--- Name: live_viewer_welcomes live_viewer_welcomes_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: messages messages_reply_to_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_viewer_welcomes
-    ADD CONSTRAINT live_viewer_welcomes_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_reply_to_id_fkey" FOREIGN KEY ("reply_to_id") REFERENCES "public"."messages"("id") ON DELETE SET NULL;
 
 
 --
--- Name: live_viewer_welcomes live_viewer_welcomes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: messages messages_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.live_viewer_welcomes
-    ADD CONSTRAINT live_viewer_welcomes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: message_reactions message_reactions_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: muted_live_hosts muted_live_hosts_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.message_reactions
-    ADD CONSTRAINT message_reactions_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.messages(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."muted_live_hosts"
+    ADD CONSTRAINT "muted_live_hosts_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: message_reactions message_reactions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: muted_live_hosts muted_live_hosts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.message_reactions
-    ADD CONSTRAINT message_reactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."muted_live_hosts"
+    ADD CONSTRAINT "muted_live_hosts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: messages messages_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: notifications notifications_comment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.messages
-    ADD CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_comment_id_fkey" FOREIGN KEY ("comment_id") REFERENCES "public"."comments"("id") ON DELETE SET NULL;
 
 
 --
--- Name: messages messages_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: notifications notifications_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.messages
-    ADD CONSTRAINT messages_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: messages messages_reply_to_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: notifications notifications_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.messages
-    ADD CONSTRAINT messages_reply_to_id_fkey FOREIGN KEY (reply_to_id) REFERENCES public.messages(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 
 --
--- Name: messages messages_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: notifications notifications_recipient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.messages
-    ADD CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_recipient_id_fkey" FOREIGN KEY ("recipient_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: muted_live_hosts muted_live_hosts_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: notifications notifications_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.muted_live_hosts
-    ADD CONSTRAINT muted_live_hosts_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: muted_live_hosts muted_live_hosts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: notifications notifications_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.muted_live_hosts
-    ADD CONSTRAINT muted_live_hosts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE CASCADE;
 
 
 --
--- Name: notifications notifications_comment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: order_disputes order_disputes_against_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_comment_id_fkey FOREIGN KEY (comment_id) REFERENCES public.comments(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."order_disputes"
+    ADD CONSTRAINT "order_disputes_against_id_fkey" FOREIGN KEY ("against_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: notifications notifications_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: order_disputes order_disputes_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."order_disputes"
+    ADD CONSTRAINT "order_disputes_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."product_orders"("id") ON DELETE CASCADE;
 
 
 --
--- Name: notifications notifications_recipient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: order_disputes order_disputes_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."order_disputes"
+    ADD CONSTRAINT "order_disputes_reporter_id_fkey" FOREIGN KEY ("reporter_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: notifications notifications_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: order_reviews order_reviews_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."order_reviews"
+    ADD CONSTRAINT "order_reviews_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."product_orders"("id") ON DELETE CASCADE;
 
 
 --
--- Name: notifications notifications_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: order_reviews order_reviews_reviewee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."order_reviews"
+    ADD CONSTRAINT "order_reviews_reviewee_id_fkey" FOREIGN KEY ("reviewee_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: orders orders_buyer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: order_reviews order_reviews_reviewer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."order_reviews"
+    ADD CONSTRAINT "order_reviews_reviewer_id_fkey" FOREIGN KEY ("reviewer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: orders orders_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: orders orders_buyer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."orders"
+    ADD CONSTRAINT "orders_buyer_id_fkey" FOREIGN KEY ("buyer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: orders orders_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: orders orders_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_seller_id_fkey FOREIGN KEY (seller_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."orders"
+    ADD CONSTRAINT "orders_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 
 --
--- Name: payout_requests payout_requests_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: orders orders_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.payout_requests
-    ADD CONSTRAINT payout_requests_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."orders"
+    ADD CONSTRAINT "orders_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_drafts post_drafts_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: payout_requests payout_requests_creator_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_drafts
-    ADD CONSTRAINT post_drafts_author_id_fkey FOREIGN KEY (author_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_dwell_log post_dwell_log_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_drafts post_drafts_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_dwell_log
-    ADD CONSTRAINT post_dwell_log_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_drafts"
+    ADD CONSTRAINT "post_drafts_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_dwell_log post_dwell_log_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_dwell_log post_dwell_log_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_dwell_log
-    ADD CONSTRAINT post_dwell_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_dwell_log"
+    ADD CONSTRAINT "post_dwell_log_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_reports post_reports_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_dwell_log post_dwell_log_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_reports
-    ADD CONSTRAINT post_reports_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_dwell_log"
+    ADD CONSTRAINT "post_dwell_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_reports post_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_reports post_reports_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_reports
-    ADD CONSTRAINT post_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_reports"
+    ADD CONSTRAINT "post_reports_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_views_log post_views_log_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_reports post_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_views_log
-    ADD CONSTRAINT post_views_log_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_reports"
+    ADD CONSTRAINT "post_reports_reporter_id_fkey" FOREIGN KEY ("reporter_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_views_log post_views_log_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_views_log post_views_log_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_views_log
-    ADD CONSTRAINT post_views_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_views_log"
+    ADD CONSTRAINT "post_views_log_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_views post_views_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_views_log post_views_log_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_views
-    ADD CONSTRAINT post_views_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_views_log"
+    ADD CONSTRAINT "post_views_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: post_views post_views_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_views post_views_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.post_views
-    ADD CONSTRAINT post_views_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_views"
+    ADD CONSTRAINT "post_views_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: posts posts_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: post_views post_views_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.posts
-    ADD CONSTRAINT posts_author_id_fkey FOREIGN KEY (author_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."post_views"
+    ADD CONSTRAINT "post_views_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: posts posts_guild_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: posts posts_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.posts
-    ADD CONSTRAINT posts_guild_id_fkey FOREIGN KEY (guild_id) REFERENCES public.guilds(id);
+ALTER TABLE ONLY "public"."posts"
+    ADD CONSTRAINT "posts_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: product_reviews product_reviews_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: posts posts_guild_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.product_reviews
-    ADD CONSTRAINT product_reviews_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."posts"
+    ADD CONSTRAINT "posts_guild_id_fkey" FOREIGN KEY ("guild_id") REFERENCES "public"."guilds"("id");
 
 
 --
--- Name: product_reviews product_reviews_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: posts posts_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.product_reviews
-    ADD CONSTRAINT product_reviews_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."posts"
+    ADD CONSTRAINT "posts_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 
 --
--- Name: product_reviews product_reviews_reviewer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: preorder_rounds preorder_rounds_guild_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.product_reviews
-    ADD CONSTRAINT product_reviews_reviewer_id_fkey FOREIGN KEY (reviewer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."preorder_rounds"
+    ADD CONSTRAINT "preorder_rounds_guild_id_fkey" FOREIGN KEY ("guild_id") REFERENCES "public"."guilds"("id") ON DELETE SET NULL;
 
 
 --
--- Name: products products_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: preorder_rounds preorder_rounds_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.products
-    ADD CONSTRAINT products_seller_id_fkey FOREIGN KEY (seller_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."preorder_rounds"
+    ADD CONSTRAINT "preorder_rounds_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
 --
--- Name: profiles profiles_guild_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: preorder_rounds preorder_rounds_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.profiles
-    ADD CONSTRAINT profiles_guild_id_fkey FOREIGN KEY (guild_id) REFERENCES public.guilds(id);
+ALTER TABLE ONLY "public"."preorder_rounds"
+    ADD CONSTRAINT "preorder_rounds_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_orders product_orders_buyer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.profiles
-    ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_orders"
+    ADD CONSTRAINT "product_orders_buyer_id_fkey" FOREIGN KEY ("buyer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: push_tokens push_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_orders product_orders_cart_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.push_tokens
-    ADD CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_orders"
+    ADD CONSTRAINT "product_orders_cart_id_fkey" FOREIGN KEY ("cart_id") REFERENCES "public"."auction_carts"("id") ON DELETE SET NULL;
 
 
 --
--- Name: reposts reposts_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_orders product_orders_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.reposts
-    ADD CONSTRAINT reposts_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_orders"
+    ADD CONSTRAINT "product_orders_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 
 --
--- Name: reposts reposts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_orders product_orders_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.reposts
-    ADD CONSTRAINT reposts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_orders"
+    ADD CONSTRAINT "product_orders_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: saved_products saved_products_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_preorders product_preorders_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.saved_products
-    ADD CONSTRAINT saved_products_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_preorders"
+    ADD CONSTRAINT "product_preorders_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
 --
--- Name: saved_products saved_products_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_preorders product_preorders_round_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.saved_products
-    ADD CONSTRAINT saved_products_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_preorders"
+    ADD CONSTRAINT "product_preorders_round_id_fkey" FOREIGN KEY ("round_id") REFERENCES "public"."preorder_rounds"("id") ON DELETE SET NULL;
 
 
 --
--- Name: scheduled_lives scheduled_lives_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_preorders product_preorders_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.scheduled_lives
-    ADD CONSTRAINT scheduled_lives_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_preorders"
+    ADD CONSTRAINT "product_preorders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: scheduled_lives scheduled_lives_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_reviews product_reviews_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.scheduled_lives
-    ADD CONSTRAINT scheduled_lives_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.live_sessions(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."product_reviews"
+    ADD CONSTRAINT "product_reviews_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE CASCADE;
 
 
 --
--- Name: scheduled_posts scheduled_posts_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_reviews product_reviews_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.scheduled_posts
-    ADD CONSTRAINT scheduled_posts_author_id_fkey FOREIGN KEY (author_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."product_reviews"
+    ADD CONSTRAINT "product_reviews_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
 --
--- Name: scheduled_posts scheduled_posts_guild_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_reviews product_reviews_reviewer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.scheduled_posts
-    ADD CONSTRAINT scheduled_posts_guild_id_fkey FOREIGN KEY (guild_id) REFERENCES public.guilds(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."product_reviews"
+    ADD CONSTRAINT "product_reviews_reviewer_id_fkey" FOREIGN KEY ("reviewer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: scheduled_posts scheduled_posts_published_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: products products_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.scheduled_posts
-    ADD CONSTRAINT scheduled_posts_published_post_id_fkey FOREIGN KEY (published_post_id) REFERENCES public.posts(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: stories stories_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: profiles profiles_guild_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.stories
-    ADD CONSTRAINT stories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_guild_id_fkey" FOREIGN KEY ("guild_id") REFERENCES "public"."guilds"("id");
 
 
 --
--- Name: story_comments story_comments_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_comments
-    ADD CONSTRAINT story_comments_author_id_fkey FOREIGN KEY (author_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_comments story_comments_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: profiles profiles_referred_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_comments
-    ADD CONSTRAINT story_comments_story_id_fkey FOREIGN KEY (story_id) REFERENCES public.stories(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_referred_by_fkey" FOREIGN KEY ("referred_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: story_highlights story_highlights_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: push_tokens push_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_highlights
-    ADD CONSTRAINT story_highlights_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."push_tokens"
+    ADD CONSTRAINT "push_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_highlights story_highlights_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reposts reposts_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_highlights
-    ADD CONSTRAINT story_highlights_story_id_fkey FOREIGN KEY (story_id) REFERENCES public.stories(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."reposts"
+    ADD CONSTRAINT "reposts_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_highlights story_highlights_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reposts reposts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_highlights
-    ADD CONSTRAINT story_highlights_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."reposts"
+    ADD CONSTRAINT "reposts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_likes story_likes_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: saved_products saved_products_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_likes
-    ADD CONSTRAINT story_likes_story_id_fkey FOREIGN KEY (story_id) REFERENCES public.stories(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."saved_products"
+    ADD CONSTRAINT "saved_products_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_likes story_likes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: saved_products saved_products_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_likes
-    ADD CONSTRAINT story_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."saved_products"
+    ADD CONSTRAINT "saved_products_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_views story_views_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_views
-    ADD CONSTRAINT story_views_story_id_fkey FOREIGN KEY (story_id) REFERENCES public.stories(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."scheduled_lives"
+    ADD CONSTRAINT "scheduled_lives_host_id_fkey" FOREIGN KEY ("host_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_views story_views_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_views
-    ADD CONSTRAINT story_views_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."scheduled_lives"
+    ADD CONSTRAINT "scheduled_lives_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE SET NULL;
 
 
 --
--- Name: story_votes story_votes_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: scheduled_posts scheduled_posts_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_votes
-    ADD CONSTRAINT story_votes_story_id_fkey FOREIGN KEY (story_id) REFERENCES public.stories(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."scheduled_posts"
+    ADD CONSTRAINT "scheduled_posts_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: story_votes story_votes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: scheduled_posts scheduled_posts_guild_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.story_votes
-    ADD CONSTRAINT story_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."scheduled_posts"
+    ADD CONSTRAINT "scheduled_posts_guild_id_fkey" FOREIGN KEY ("guild_id") REFERENCES "public"."guilds"("id") ON DELETE SET NULL;
 
 
 --
--- Name: user_blocks user_blocks_blocked_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: scheduled_posts scheduled_posts_published_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_blocks
-    ADD CONSTRAINT user_blocks_blocked_id_fkey FOREIGN KEY (blocked_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."scheduled_posts"
+    ADD CONSTRAINT "scheduled_posts_published_post_id_fkey" FOREIGN KEY ("published_post_id") REFERENCES "public"."posts"("id") ON DELETE SET NULL;
 
 
 --
--- Name: user_blocks user_blocks_blocker_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: seller_accounts seller_accounts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_blocks
-    ADD CONSTRAINT user_blocks_blocker_id_fkey FOREIGN KEY (blocker_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."seller_accounts"
+    ADD CONSTRAINT "seller_accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: user_reports user_reports_reported_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stories stories_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_reports
-    ADD CONSTRAINT user_reports_reported_id_fkey FOREIGN KEY (reported_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."stories"
+    ADD CONSTRAINT "stories_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: user_reports user_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: story_comments story_comments_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_reports
-    ADD CONSTRAINT user_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."story_comments"
+    ADD CONSTRAINT "story_comments_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: user_vibe_profile user_vibe_profile_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: story_comments story_comments_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_vibe_profile
-    ADD CONSTRAINT user_vibe_profile_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."story_comments"
+    ADD CONSTRAINT "story_comments_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "public"."stories"("id") ON DELETE CASCADE;
 
 
 --
--- Name: user_whip_ingresses user_whip_ingresses_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.user_whip_ingresses
-    ADD CONSTRAINT user_whip_ingresses_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."story_highlights"
+    ADD CONSTRAINT "story_highlights_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE SET NULL;
 
 
 --
--- Name: web_coin_orders web_coin_orders_tier_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.web_coin_orders
-    ADD CONSTRAINT web_coin_orders_tier_id_fkey FOREIGN KEY (tier_id) REFERENCES public.coin_pricing_tiers(id);
+ALTER TABLE ONLY "public"."story_highlights"
+    ADD CONSTRAINT "story_highlights_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "public"."stories"("id") ON DELETE CASCADE;
 
 
 --
--- Name: web_coin_orders web_coin_orders_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.web_coin_orders
-    ADD CONSTRAINT web_coin_orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."story_highlights"
+    ADD CONSTRAINT "story_highlights_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: web_push_subscriptions web_push_subscriptions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: story_likes story_likes_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.web_push_subscriptions
-    ADD CONSTRAINT web_push_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."story_likes"
+    ADD CONSTRAINT "story_likes_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "public"."stories"("id") ON DELETE CASCADE;
 
 
 --
--- Name: posts Autor kann eigene Posts bearbeiten; Type: POLICY; Schema: public; Owner: -
+-- Name: story_likes story_likes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Autor kann eigene Posts bearbeiten" ON public.posts FOR UPDATE USING ((auth.uid() = author_id)) WITH CHECK ((auth.uid() = author_id));
+ALTER TABLE ONLY "public"."story_likes"
+    ADD CONSTRAINT "story_likes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: posts Autor kann eigene Posts löschen; Type: POLICY; Schema: public; Owner: -
+-- Name: story_views story_views_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Autor kann eigene Posts löschen" ON public.posts FOR DELETE USING ((auth.uid() = author_id));
+ALTER TABLE ONLY "public"."story_views"
+    ADD CONSTRAINT "story_views_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "public"."stories"("id") ON DELETE CASCADE;
 
 
 --
--- Name: reposts Eigene Reposts anlegen; Type: POLICY; Schema: public; Owner: -
+-- Name: story_views story_views_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Eigene Reposts anlegen" ON public.reposts FOR INSERT WITH CHECK ((auth.uid() = user_id));
+ALTER TABLE ONLY "public"."story_views"
+    ADD CONSTRAINT "story_views_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: reposts Eigene Reposts löschen; Type: POLICY; Schema: public; Owner: -
+-- Name: story_votes story_votes_story_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Eigene Reposts löschen" ON public.reposts FOR DELETE USING ((auth.uid() = user_id));
+ALTER TABLE ONLY "public"."story_votes"
+    ADD CONSTRAINT "story_votes_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "public"."stories"("id") ON DELETE CASCADE;
 
 
 --
--- Name: likes Eingeloggte User können liken; Type: POLICY; Schema: public; Owner: -
+-- Name: story_votes story_votes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Eingeloggte User können liken" ON public.likes FOR INSERT WITH CHECK ((auth.uid() = user_id));
+ALTER TABLE ONLY "public"."story_votes"
+    ADD CONSTRAINT "story_votes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: posts Eingeloggte User können posten; Type: POLICY; Schema: public; Owner: -
+-- Name: user_blocks user_blocks_blocked_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Eingeloggte User können posten" ON public.posts FOR INSERT WITH CHECK ((auth.uid() = author_id));
+ALTER TABLE ONLY "public"."user_blocks"
+    ADD CONSTRAINT "user_blocks_blocked_id_fkey" FOREIGN KEY ("blocked_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: guilds Guilds sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: -
+-- Name: user_blocks user_blocks_blocker_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Guilds sind öffentlich lesbar" ON public.guilds FOR SELECT USING (true);
+ALTER TABLE ONLY "public"."user_blocks"
+    ADD CONSTRAINT "user_blocks_blocker_id_fkey" FOREIGN KEY ("blocker_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_sessions Host kann replay_url setzen; Type: POLICY; Schema: public; Owner: -
+-- Name: user_reports user_reports_reported_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Host kann replay_url setzen" ON public.live_sessions FOR UPDATE TO authenticated USING ((host_id = auth.uid())) WITH CHECK ((host_id = auth.uid()));
+ALTER TABLE ONLY "public"."user_reports"
+    ADD CONSTRAINT "user_reports_reported_id_fkey" FOREIGN KEY ("reported_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: comments Kommentare sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: -
+-- Name: user_reports user_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Kommentare sind öffentlich lesbar" ON public.comments FOR SELECT USING (true);
+ALTER TABLE ONLY "public"."user_reports"
+    ADD CONSTRAINT "user_reports_reporter_id_fkey" FOREIGN KEY ("reporter_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: likes Likes sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: -
+-- Name: user_tag_affinity user_tag_affinity_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Likes sind öffentlich lesbar" ON public.likes FOR SELECT USING (true);
+ALTER TABLE ONLY "public"."user_tag_affinity"
+    ADD CONSTRAINT "user_tag_affinity_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: profiles Profiles sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: -
+-- Name: user_vibe_profile user_vibe_profile_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Profiles sind öffentlich lesbar" ON public.profiles FOR SELECT USING (true);
+ALTER TABLE ONLY "public"."user_vibe_profile"
+    ADD CONSTRAINT "user_vibe_profile_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: reposts Reposts sehen; Type: POLICY; Schema: public; Owner: -
+-- Name: user_whip_ingresses user_whip_ingresses_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Reposts sehen" ON public.reposts FOR SELECT USING (true);
+ALTER TABLE ONLY "public"."user_whip_ingresses"
+    ADD CONSTRAINT "user_whip_ingresses_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 --
--- Name: live_reports User kann eigene Reports einfügen; Type: POLICY; Schema: public; Owner: -
+-- Name: web_coin_orders web_coin_orders_tier_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "User kann eigene Reports einfügen" ON public.live_reports FOR INSERT TO authenticated WITH CHECK ((reporter_id = auth.uid()));
+ALTER TABLE ONLY "public"."web_coin_orders"
+    ADD CONSTRAINT "web_coin_orders_tier_id_fkey" FOREIGN KEY ("tier_id") REFERENCES "public"."coin_pricing_tiers"("id");
 
 
 --
--- Name: profiles User kann eigenes Profil bearbeiten; Type: POLICY; Schema: public; Owner: -
+-- Name: web_coin_orders web_coin_orders_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "User kann eigenes Profil bearbeiten" ON public.profiles FOR UPDATE USING ((auth.uid() = id));
+ALTER TABLE ONLY "public"."web_coin_orders"
+    ADD CONSTRAINT "web_coin_orders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: profiles User kann eigenes Profil erstellen; Type: POLICY; Schema: public; Owner: -
+-- Name: web_push_subscriptions web_push_subscriptions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "User kann eigenes Profil erstellen" ON public.profiles FOR INSERT WITH CHECK ((auth.uid() = id));
+ALTER TABLE ONLY "public"."web_push_subscriptions"
+    ADD CONSTRAINT "web_push_subscriptions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: comments User können eigene Kommentare löschen; Type: POLICY; Schema: public; Owner: -
+-- Name: women_only_requests women_only_requests_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "User können eigene Kommentare löschen" ON public.comments FOR DELETE USING ((auth.uid() = user_id));
+ALTER TABLE ONLY "public"."women_only_requests"
+    ADD CONSTRAINT "women_only_requests_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 --
--- Name: likes User können eigene Likes entfernen; Type: POLICY; Schema: public; Owner: -
+-- Name: women_only_requests women_only_requests_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "User können eigene Likes entfernen" ON public.likes FOR DELETE USING ((auth.uid() = user_id));
+ALTER TABLE ONLY "public"."women_only_requests"
+    ADD CONSTRAINT "women_only_requests_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
--- Name: push_tokens User manages own tokens; Type: POLICY; Schema: public; Owner: -
+-- Name: posts Autor kann eigene Posts bearbeiten; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "User manages own tokens" ON public.push_tokens TO authenticated USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "Autor kann eigene Posts bearbeiten" ON "public"."posts" FOR UPDATE USING (("auth"."uid"() = "author_id")) WITH CHECK (("auth"."uid"() = "author_id"));
 
 
 --
--- Name: post_views Users can insert own views; Type: POLICY; Schema: public; Owner: -
+-- Name: posts Autor kann eigene Posts löschen; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Users can insert own views" ON public.post_views FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "Autor kann eigene Posts löschen" ON "public"."posts" FOR DELETE USING (("auth"."uid"() = "author_id"));
 
 
 --
--- Name: post_drafts Users can manage own drafts; Type: POLICY; Schema: public; Owner: -
+-- Name: reposts Eigene Reposts anlegen; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Users can manage own drafts" ON public.post_drafts USING ((auth.uid() = author_id)) WITH CHECK ((auth.uid() = author_id));
+CREATE POLICY "Eigene Reposts anlegen" ON "public"."reposts" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: scheduled_posts Users can manage own scheduled_posts; Type: POLICY; Schema: public; Owner: -
+-- Name: reposts Eigene Reposts löschen; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Users can manage own scheduled_posts" ON public.scheduled_posts USING ((auth.uid() = author_id)) WITH CHECK ((auth.uid() = author_id));
+CREATE POLICY "Eigene Reposts löschen" ON "public"."reposts" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: post_views Users can read own views; Type: POLICY; Schema: public; Owner: -
+-- Name: likes Eingeloggte User können liken; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Users can read own views" ON public.post_views FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "Eingeloggte User können liken" ON "public"."likes" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: post_dwell_log Users manage own dwell log; Type: POLICY; Schema: public; Owner: -
+-- Name: posts Eingeloggte User können posten; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Users manage own dwell log" ON public.post_dwell_log USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "Eingeloggte User können posten" ON "public"."posts" FOR INSERT WITH CHECK (("auth"."uid"() = "author_id"));
 
 
 --
--- Name: user_vibe_profile Users manage own vibe profile; Type: POLICY; Schema: public; Owner: -
+-- Name: guilds Guilds sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "Users manage own vibe profile" ON public.user_vibe_profile USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "Guilds sind öffentlich lesbar" ON "public"."guilds" FOR SELECT USING (true);
 
 
 --
--- Name: admin_audit_log; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_sessions Host kann replay_url setzen; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "Host kann replay_url setzen" ON "public"."live_sessions" FOR UPDATE TO "authenticated" USING (("host_id" = "auth"."uid"())) WITH CHECK (("host_id" = "auth"."uid"()));
 
-ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: admin_audit_log admin_audit_log_admin_select; Type: POLICY; Schema: public; Owner: -
+-- Name: comments Kommentare sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_audit_log_admin_select ON public.admin_audit_log FOR SELECT USING ((public.is_admin() OR public.can_moderate() OR public.can_operate() OR public.can_creator_ops()));
+CREATE POLICY "Kommentare sind öffentlich lesbar" ON "public"."comments" FOR SELECT USING (true);
 
 
 --
--- Name: admin_campaign_daily_metrics; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: likes Likes sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.admin_campaign_daily_metrics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Likes sind öffentlich lesbar" ON "public"."likes" FOR SELECT USING (true);
 
+
 --
--- Name: admin_campaign_daily_metrics admin_campaign_metrics_admin_mutate; Type: POLICY; Schema: public; Owner: -
+-- Name: profiles Profiles sind öffentlich lesbar; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_campaign_metrics_admin_mutate ON public.admin_campaign_daily_metrics USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Profiles sind öffentlich lesbar" ON "public"."profiles" FOR SELECT USING (true);
 
 
 --
--- Name: admin_campaign_daily_metrics admin_campaign_metrics_console_select; Type: POLICY; Schema: public; Owner: -
+-- Name: reposts Reposts sehen; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_campaign_metrics_console_select ON public.admin_campaign_daily_metrics FOR SELECT USING (public.can_operate());
+CREATE POLICY "Reposts sehen" ON "public"."reposts" FOR SELECT USING (true);
 
 
 --
--- Name: admin_campaigns; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_reports User kann eigene Reports einfügen; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "User kann eigene Reports einfügen" ON "public"."live_reports" FOR INSERT TO "authenticated" WITH CHECK (("reporter_id" = "auth"."uid"()));
 
-ALTER TABLE public.admin_campaigns ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: admin_campaigns admin_campaigns_admin_mutate; Type: POLICY; Schema: public; Owner: -
+-- Name: profiles User kann eigenes Profil bearbeiten; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_campaigns_admin_mutate ON public.admin_campaigns USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "User kann eigenes Profil bearbeiten" ON "public"."profiles" FOR UPDATE USING (("auth"."uid"() = "id"));
 
 
 --
--- Name: admin_campaigns admin_campaigns_console_select; Type: POLICY; Schema: public; Owner: -
+-- Name: profiles User kann eigenes Profil erstellen; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_campaigns_console_select ON public.admin_campaigns FOR SELECT USING (public.can_operate());
+CREATE POLICY "User kann eigenes Profil erstellen" ON "public"."profiles" FOR INSERT WITH CHECK (("auth"."uid"() = "id"));
 
 
 --
--- Name: live_reports admin_read_live_reports; Type: POLICY; Schema: public; Owner: -
+-- Name: comments User können eigene Kommentare löschen; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_read_live_reports ON public.live_reports FOR SELECT TO authenticated USING ((reporter_id = auth.uid()));
+CREATE POLICY "User können eigene Kommentare löschen" ON "public"."comments" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: admin_region_daily_metrics; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: likes User können eigene Likes entfernen; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.admin_region_daily_metrics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "User können eigene Likes entfernen" ON "public"."likes" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
+
 --
--- Name: admin_region_daily_metrics admin_region_metrics_admin_mutate; Type: POLICY; Schema: public; Owner: -
+-- Name: push_tokens User manages own tokens; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_region_metrics_admin_mutate ON public.admin_region_daily_metrics USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "User manages own tokens" ON "public"."push_tokens" TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: admin_region_daily_metrics admin_region_metrics_console_select; Type: POLICY; Schema: public; Owner: -
+-- Name: post_views Users can insert own views; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_region_metrics_console_select ON public.admin_region_daily_metrics FOR SELECT USING (public.can_operate());
+CREATE POLICY "Users can insert own views" ON "public"."post_views" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: admin_support_messages; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: post_drafts Users can manage own drafts; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "Users can manage own drafts" ON "public"."post_drafts" USING (("auth"."uid"() = "author_id")) WITH CHECK (("auth"."uid"() = "author_id"));
 
-ALTER TABLE public.admin_support_messages ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: admin_support_messages admin_support_messages_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: scheduled_posts Users can manage own scheduled_posts; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_support_messages_insert ON public.admin_support_messages FOR INSERT WITH CHECK ((public.has_admin_console_access() OR (EXISTS ( SELECT 1
-   FROM public.admin_support_threads t
-  WHERE ((t.id = admin_support_messages.thread_id) AND (t.user_id = auth.uid()))))));
+CREATE POLICY "Users can manage own scheduled_posts" ON "public"."scheduled_posts" USING (("auth"."uid"() = "author_id")) WITH CHECK (("auth"."uid"() = "author_id"));
 
 
 --
--- Name: admin_support_messages admin_support_messages_select; Type: POLICY; Schema: public; Owner: -
+-- Name: post_views Users can read own views; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_support_messages_select ON public.admin_support_messages FOR SELECT USING ((public.has_admin_console_access() OR (EXISTS ( SELECT 1
-   FROM public.admin_support_threads t
-  WHERE ((t.id = admin_support_messages.thread_id) AND (t.user_id = auth.uid()))))));
+CREATE POLICY "Users can read own views" ON "public"."post_views" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: admin_support_threads; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: post_dwell_log Users manage own dwell log; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.admin_support_threads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own dwell log" ON "public"."post_dwell_log" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
 
+
 --
--- Name: admin_support_threads admin_support_threads_admin_update; Type: POLICY; Schema: public; Owner: -
+-- Name: user_vibe_profile Users manage own vibe profile; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "Users manage own vibe profile" ON "public"."user_vibe_profile" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
 
-CREATE POLICY admin_support_threads_admin_update ON public.admin_support_threads FOR UPDATE USING ((public.can_moderate() OR public.can_operate()));
+
+--
+-- Name: admin_audit_log; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."admin_audit_log" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: admin_support_threads admin_support_threads_user_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_audit_log admin_audit_log_admin_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "admin_audit_log_admin_select" ON "public"."admin_audit_log" FOR SELECT USING (("public"."is_admin"() OR "public"."can_moderate"() OR "public"."can_operate"() OR "public"."can_creator_ops"()));
 
-CREATE POLICY admin_support_threads_user_insert ON public.admin_support_threads FOR INSERT WITH CHECK (((user_id = auth.uid()) OR public.has_admin_console_access()));
+
+--
+-- Name: admin_campaign_daily_metrics; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."admin_campaign_daily_metrics" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: admin_support_threads admin_support_threads_user_select; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_campaign_daily_metrics admin_campaign_metrics_admin_mutate; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY admin_support_threads_user_select ON public.admin_support_threads FOR SELECT USING (((user_id = auth.uid()) OR public.has_admin_console_access()));
+CREATE POLICY "admin_campaign_metrics_admin_mutate" ON "public"."admin_campaign_daily_metrics" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 --
--- Name: ai_image_generations ai_image_gen_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_campaign_daily_metrics admin_campaign_metrics_console_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY ai_image_gen_select_own ON public.ai_image_generations FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "admin_campaign_metrics_console_select" ON "public"."admin_campaign_daily_metrics" FOR SELECT USING ("public"."can_operate"());
 
 
 --
--- Name: ai_image_generations; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: admin_campaigns; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.ai_image_generations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."admin_campaigns" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_battle_history battle_history_select_all; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_campaigns admin_campaigns_admin_mutate; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY battle_history_select_all ON public.live_battle_history FOR SELECT USING ((auth.role() = 'authenticated'::text));
+CREATE POLICY "admin_campaigns_admin_mutate" ON "public"."admin_campaigns" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 --
--- Name: bookmarks; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: admin_campaigns admin_campaigns_console_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "admin_campaigns_console_select" ON "public"."admin_campaigns" FOR SELECT USING ("public"."can_operate"());
 
-ALTER TABLE public.bookmarks ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: bookmarks bookmarks_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_reports admin_read_live_reports; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "admin_read_live_reports" ON "public"."live_reports" FOR SELECT TO "authenticated" USING (("reporter_id" = "auth"."uid"()));
+
 
-CREATE POLICY bookmarks_delete ON public.bookmarks FOR DELETE USING ((auth.uid() = user_id));
+--
+-- Name: admin_region_daily_metrics; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."admin_region_daily_metrics" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: bookmarks bookmarks_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_region_daily_metrics admin_region_metrics_admin_mutate; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY bookmarks_insert ON public.bookmarks FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "admin_region_metrics_admin_mutate" ON "public"."admin_region_daily_metrics" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 --
--- Name: bookmarks bookmarks_select; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_region_daily_metrics admin_region_metrics_console_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "admin_region_metrics_console_select" ON "public"."admin_region_daily_metrics" FOR SELECT USING ("public"."can_operate"());
+
 
-CREATE POLICY bookmarks_select ON public.bookmarks FOR SELECT USING ((auth.uid() = user_id));
+--
+-- Name: admin_support_messages; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."admin_support_messages" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_chat_timeouts chat_timeouts_select_all; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_support_messages admin_support_messages_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY chat_timeouts_select_all ON public.live_chat_timeouts FOR SELECT USING ((auth.role() = 'authenticated'::text));
+CREATE POLICY "admin_support_messages_insert" ON "public"."admin_support_messages" FOR INSERT WITH CHECK (("public"."has_admin_console_access"() OR (EXISTS ( SELECT 1
+   FROM "public"."admin_support_threads" "t"
+  WHERE (("t"."id" = "admin_support_messages"."thread_id") AND ("t"."user_id" = "auth"."uid"()))))));
 
 
 --
--- Name: live_chat_timeouts chat_timeouts_write_host; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_support_messages admin_support_messages_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "admin_support_messages_select" ON "public"."admin_support_messages" FOR SELECT USING (("public"."has_admin_console_access"() OR (EXISTS ( SELECT 1
+   FROM "public"."admin_support_threads" "t"
+  WHERE (("t"."id" = "admin_support_messages"."thread_id") AND ("t"."user_id" = "auth"."uid"()))))));
+
 
-CREATE POLICY chat_timeouts_write_host ON public.live_chat_timeouts USING ((EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_chat_timeouts.session_id) AND (s.host_id = auth.uid()))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_chat_timeouts.session_id) AND (s.host_id = auth.uid())))));
+--
+-- Name: admin_support_threads; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."admin_support_threads" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_clip_markers clip_markers_delete_own; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_support_threads admin_support_threads_admin_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY clip_markers_delete_own ON public.live_clip_markers FOR DELETE TO authenticated USING ((auth.uid() = user_id));
+CREATE POLICY "admin_support_threads_admin_update" ON "public"."admin_support_threads" FOR UPDATE USING (("public"."can_moderate"() OR "public"."can_operate"()));
 
 
 --
--- Name: live_clip_markers clip_markers_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_support_threads admin_support_threads_user_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY clip_markers_insert ON public.live_clip_markers FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "admin_support_threads_user_insert" ON "public"."admin_support_threads" FOR INSERT WITH CHECK ((("user_id" = "auth"."uid"()) OR "public"."has_admin_console_access"()));
 
 
 --
--- Name: live_clip_markers clip_markers_select; Type: POLICY; Schema: public; Owner: -
+-- Name: admin_support_threads admin_support_threads_user_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY clip_markers_select ON public.live_clip_markers FOR SELECT USING (((auth.uid() = user_id) OR (auth.uid() IN ( SELECT live_sessions.host_id
-   FROM public.live_sessions
-  WHERE (live_sessions.id = live_clip_markers.session_id)))));
+CREATE POLICY "admin_support_threads_user_select" ON "public"."admin_support_threads" FOR SELECT USING ((("user_id" = "auth"."uid"()) OR "public"."has_admin_console_access"()));
 
 
 --
--- Name: live_cohost_blocks cohost_blocks_delete_host; Type: POLICY; Schema: public; Owner: -
+-- Name: ai_image_generations ai_image_gen_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY cohost_blocks_delete_host ON public.live_cohost_blocks FOR DELETE USING ((auth.uid() = host_id));
+CREATE POLICY "ai_image_gen_select_own" ON "public"."ai_image_generations" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: live_cohost_blocks cohost_blocks_insert_host; Type: POLICY; Schema: public; Owner: -
+-- Name: ai_image_generations; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY cohost_blocks_insert_host ON public.live_cohost_blocks FOR INSERT WITH CHECK ((auth.uid() = host_id));
+ALTER TABLE "public"."ai_image_generations" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: auction_carts; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."auction_carts" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_cohost_blocks cohost_blocks_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: auction_carts auction_carts_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY cohost_blocks_select_own ON public.live_cohost_blocks FOR SELECT USING (((auth.uid() = host_id) OR (auth.uid() = blocked_user_id)));
+CREATE POLICY "auction_carts_select" ON "public"."auction_carts" FOR SELECT USING ((("auth"."uid"() = "buyer_id") OR ("auth"."uid"() = "seller_id")));
 
 
 --
--- Name: live_cohost_blocks cohost_blocks_update_host; Type: POLICY; Schema: public; Owner: -
+-- Name: live_battle_history battle_history_select_all; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "battle_history_select_all" ON "public"."live_battle_history" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
 
-CREATE POLICY cohost_blocks_update_host ON public.live_cohost_blocks FOR UPDATE USING ((auth.uid() = host_id)) WITH CHECK ((auth.uid() = host_id));
+
+--
+-- Name: bookmarks; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."bookmarks" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: coin_pricing_tiers; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: bookmarks bookmarks_delete; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "bookmarks_delete" ON "public"."bookmarks" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
-ALTER TABLE public.coin_pricing_tiers ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: coin_purchases; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: bookmarks bookmarks_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.coin_purchases ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "bookmarks_insert" ON "public"."bookmarks" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
+
 --
--- Name: coin_purchases coin_purchases_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: bookmarks bookmarks_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY coin_purchases_select_own ON public.coin_purchases FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "bookmarks_select" ON "public"."bookmarks" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: coin_purchases coin_purchases_service_only; Type: POLICY; Schema: public; Owner: -
+-- Name: live_chat_timeouts chat_timeouts_select_all; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY coin_purchases_service_only ON public.coin_purchases USING ((auth.role() = 'service_role'::text));
+CREATE POLICY "chat_timeouts_select_all" ON "public"."live_chat_timeouts" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
 
 
 --
--- Name: coin_pricing_tiers coin_tiers_public_read; Type: POLICY; Schema: public; Owner: -
+-- Name: live_chat_timeouts chat_timeouts_write_host; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY coin_tiers_public_read ON public.coin_pricing_tiers FOR SELECT USING ((active = true));
+CREATE POLICY "chat_timeouts_write_host" ON "public"."live_chat_timeouts" USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_chat_timeouts"."session_id") AND ("s"."host_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_chat_timeouts"."session_id") AND ("s"."host_id" = "auth"."uid"())))));
 
 
 --
--- Name: coin_pricing_tiers coin_tiers_service_write; Type: POLICY; Schema: public; Owner: -
+-- Name: live_clip_markers clip_markers_delete_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY coin_tiers_service_write ON public.coin_pricing_tiers USING ((auth.role() = 'service_role'::text));
+CREATE POLICY "clip_markers_delete_own" ON "public"."live_clip_markers" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: coins_wallets; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_clip_markers clip_markers_insert; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "clip_markers_insert" ON "public"."live_clip_markers" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
 
-ALTER TABLE public.coins_wallets ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: comment_likes; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_clip_markers clip_markers_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "clip_markers_select" ON "public"."live_clip_markers" FOR SELECT USING ((("auth"."uid"() = "user_id") OR ("auth"."uid"() IN ( SELECT "live_sessions"."host_id"
+   FROM "public"."live_sessions"
+  WHERE ("live_sessions"."id" = "live_clip_markers"."session_id")))));
 
+
 --
--- Name: comment_likes comment_likes_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_cohost_blocks cohost_blocks_delete_host; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY comment_likes_delete ON public.comment_likes FOR DELETE USING ((auth.uid() = user_id));
+CREATE POLICY "cohost_blocks_delete_host" ON "public"."live_cohost_blocks" FOR DELETE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: comment_likes comment_likes_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_cohost_blocks cohost_blocks_insert_host; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY comment_likes_insert ON public.comment_likes FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "cohost_blocks_insert_host" ON "public"."live_cohost_blocks" FOR INSERT WITH CHECK (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: comment_likes comment_likes_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_cohost_blocks cohost_blocks_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY comment_likes_select ON public.comment_likes FOR SELECT USING (true);
+CREATE POLICY "cohost_blocks_select_own" ON "public"."live_cohost_blocks" FOR SELECT USING ((("auth"."uid"() = "host_id") OR ("auth"."uid"() = "blocked_user_id")));
 
 
 --
--- Name: comments; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_cohost_blocks cohost_blocks_update_host; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "cohost_blocks_update_host" ON "public"."live_cohost_blocks" FOR UPDATE USING (("auth"."uid"() = "host_id")) WITH CHECK (("auth"."uid"() = "host_id"));
 
-ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: comments comments_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: coin_pricing_tiers; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY comments_insert ON public.comments FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.posts p
-  WHERE ((p.id = comments.post_id) AND ((p.is_guild_post = false) OR (EXISTS ( SELECT 1
-           FROM public.profiles
-          WHERE ((profiles.id = auth.uid()) AND (profiles.guild_id = p.guild_id)))))))));
+ALTER TABLE "public"."coin_pricing_tiers" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: coin_purchases; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."coin_purchases" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: comments comments_insert_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: coin_purchases coin_purchases_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY comments_insert_policy ON public.comments FOR INSERT TO authenticated WITH CHECK (((auth.uid() = user_id) AND (EXISTS ( SELECT 1
-   FROM public.posts p
-  WHERE ((p.id = comments.post_id) AND ((COALESCE(p.allow_comments, true) = true) OR (p.author_id = auth.uid())))))));
+CREATE POLICY "coin_purchases_select_own" ON "public"."coin_purchases" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: content_reports; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: coin_purchases coin_purchases_service_only; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "coin_purchases_service_only" ON "public"."coin_purchases" USING (("auth"."role"() = 'service_role'::"text"));
 
-ALTER TABLE public.content_reports ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: conversations conv_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: coin_pricing_tiers coin_tiers_public_read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY conv_insert ON public.conversations FOR INSERT WITH CHECK (((auth.uid() = participant_1) OR (auth.uid() = participant_2)));
+CREATE POLICY "coin_tiers_public_read" ON "public"."coin_pricing_tiers" FOR SELECT USING (("active" = true));
 
 
 --
--- Name: conversations conv_select; Type: POLICY; Schema: public; Owner: -
+-- Name: coin_pricing_tiers coin_tiers_service_write; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY conv_select ON public.conversations FOR SELECT USING (((auth.uid() = participant_1) OR (auth.uid() = participant_2)));
+CREATE POLICY "coin_tiers_service_write" ON "public"."coin_pricing_tiers" USING (("auth"."role"() = 'service_role'::"text"));
 
 
 --
--- Name: conversations; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: coins_wallets; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."coins_wallets" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: creator_tips; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: comment_likes; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.creator_tips ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."comment_likes" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: creator_tips creator_tips_select_recipient; Type: POLICY; Schema: public; Owner: -
+-- Name: comment_likes comment_likes_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY creator_tips_select_recipient ON public.creator_tips FOR SELECT USING ((auth.uid() = recipient_id));
+CREATE POLICY "comment_likes_delete" ON "public"."comment_likes" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: creator_tips creator_tips_select_sender; Type: POLICY; Schema: public; Owner: -
+-- Name: comment_likes comment_likes_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY creator_tips_select_sender ON public.creator_tips FOR SELECT USING ((auth.uid() = sender_id));
+CREATE POLICY "comment_likes_insert" ON "public"."comment_likes" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: live_duet_history duet_history_select_participants; Type: POLICY; Schema: public; Owner: -
+-- Name: comment_likes comment_likes_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "comment_likes_select" ON "public"."comment_likes" FOR SELECT USING (true);
+
 
-CREATE POLICY duet_history_select_participants ON public.live_duet_history FOR SELECT USING (((auth.uid() = host_id) OR (auth.uid() = guest_id)));
+--
+-- Name: comments; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."comments" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_duet_invites duet_invites_select_participants; Type: POLICY; Schema: public; Owner: -
+-- Name: comments comments_insert_policy; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY duet_invites_select_participants ON public.live_duet_invites FOR SELECT USING (((auth.uid() = host_id) OR (auth.uid() = invitee_id)));
+CREATE POLICY "comments_insert_policy" ON "public"."comments" FOR INSERT TO "authenticated" WITH CHECK ((("auth"."uid"() = "user_id") AND (EXISTS ( SELECT 1
+   FROM "public"."posts" "p"
+  WHERE (("p"."id" = "comments"."post_id") AND ((COALESCE("p"."allow_comments", true) = true) OR ("p"."author_id" = "auth"."uid"())) AND (("p"."is_guild_post" = false) OR (EXISTS ( SELECT 1
+           FROM "public"."profiles"
+          WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."guild_id" = "p"."guild_id"))))))))));
 
 
 --
--- Name: feature_flags; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: content_reports; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.feature_flags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."content_reports" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: feature_flags feature_flags_select_all; Type: POLICY; Schema: public; Owner: -
+-- Name: conversations conv_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY feature_flags_select_all ON public.feature_flags FOR SELECT TO authenticated USING (true);
+CREATE POLICY "conv_insert" ON "public"."conversations" FOR INSERT WITH CHECK ((("auth"."uid"() = "participant_1") OR ("auth"."uid"() = "participant_2")));
 
 
 --
--- Name: follow_requests; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: conversations conv_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.follow_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "conv_select" ON "public"."conversations" FOR SELECT USING ((("auth"."uid"() = "participant_1") OR ("auth"."uid"() = "participant_2")));
 
+
 --
--- Name: follow_requests follow_requests_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: conversations; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
+
+ALTER TABLE "public"."conversations" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY follow_requests_delete ON public.follow_requests FOR DELETE USING (((auth.uid() = sender_id) OR (auth.uid() = receiver_id)));
+--
+-- Name: creator_tips; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."creator_tips" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: follow_requests follow_requests_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: creator_tips creator_tips_select_recipient; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY follow_requests_insert ON public.follow_requests FOR INSERT WITH CHECK (((auth.uid() = sender_id) AND (sender_id <> receiver_id)));
+CREATE POLICY "creator_tips_select_recipient" ON "public"."creator_tips" FOR SELECT USING (("auth"."uid"() = "recipient_id"));
 
 
 --
--- Name: follow_requests follow_requests_select; Type: POLICY; Schema: public; Owner: -
+-- Name: creator_tips creator_tips_select_sender; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY follow_requests_select ON public.follow_requests FOR SELECT USING (((auth.uid() = sender_id) OR (auth.uid() = receiver_id)));
+CREATE POLICY "creator_tips_select_sender" ON "public"."creator_tips" FOR SELECT USING (("auth"."uid"() = "sender_id"));
 
 
 --
--- Name: follows; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_duet_history duet_history_select_participants; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.follows ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "duet_history_select_participants" ON "public"."live_duet_history" FOR SELECT USING ((("auth"."uid"() = "host_id") OR ("auth"."uid"() = "guest_id")));
 
+
 --
--- Name: follows follows_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_duet_invites duet_invites_select_participants; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "duet_invites_select_participants" ON "public"."live_duet_invites" FOR SELECT USING ((("auth"."uid"() = "host_id") OR ("auth"."uid"() = "invitee_id")));
 
-CREATE POLICY follows_delete ON public.follows FOR DELETE USING ((auth.uid() = follower_id));
 
+--
+-- Name: feature_flags; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."feature_flags" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: follows follows_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: feature_flags feature_flags_select_all; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "feature_flags_select_all" ON "public"."feature_flags" FOR SELECT TO "authenticated" USING (true);
 
-CREATE POLICY follows_insert ON public.follows FOR INSERT WITH CHECK ((auth.uid() = follower_id));
 
+--
+-- Name: follow_requests; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."follow_requests" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: follows follows_select; Type: POLICY; Schema: public; Owner: -
+-- Name: follow_requests follow_requests_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY follows_select ON public.follows FOR SELECT USING (true);
+CREATE POLICY "follow_requests_delete" ON "public"."follow_requests" FOR DELETE USING ((("auth"."uid"() = "sender_id") OR ("auth"."uid"() = "receiver_id")));
 
 
 --
--- Name: gift_catalog; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: follow_requests follow_requests_insert; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "follow_requests_insert" ON "public"."follow_requests" FOR INSERT WITH CHECK ((("auth"."uid"() = "sender_id") AND ("sender_id" <> "receiver_id")));
 
-ALTER TABLE public.gift_catalog ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: gift_catalog gift_catalog_public_read; Type: POLICY; Schema: public; Owner: -
+-- Name: follow_requests follow_requests_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY gift_catalog_public_read ON public.gift_catalog FOR SELECT USING (true);
+CREATE POLICY "follow_requests_select" ON "public"."follow_requests" FOR SELECT USING ((("auth"."uid"() = "sender_id") OR ("auth"."uid"() = "receiver_id")));
 
 
 --
--- Name: gift_transactions; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: follows; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.gift_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."follows" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: gift_transactions gift_tx_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: follows follows_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY gift_tx_insert ON public.gift_transactions FOR INSERT WITH CHECK ((auth.uid() = sender_id));
+CREATE POLICY "follows_delete" ON "public"."follows" FOR DELETE USING (("auth"."uid"() = "follower_id"));
 
 
 --
--- Name: gift_transactions gift_tx_select; Type: POLICY; Schema: public; Owner: -
+-- Name: follows follows_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY gift_tx_select ON public.gift_transactions FOR SELECT USING (((auth.uid() = sender_id) OR (auth.uid() = recipient_id)));
+CREATE POLICY "follows_insert" ON "public"."follows" FOR INSERT WITH CHECK (("auth"."uid"() = "follower_id"));
+
+
+--
+-- Name: follows follows_select; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "follows_select" ON "public"."follows" FOR SELECT USING (true);
+
+
+--
+-- Name: gift_catalog; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."gift_catalog" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: gift_transactions gift_tx_select_visible_live_session; Type: POLICY; Schema: public; Owner: -
+-- Name: gift_catalog gift_catalog_public_read; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "gift_catalog_public_read" ON "public"."gift_catalog" FOR SELECT USING (true);
 
-CREATE POLICY gift_tx_select_visible_live_session ON public.gift_transactions FOR SELECT USING (((auth.uid() = sender_id) OR (auth.uid() = recipient_id) OR (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id)::text = gift_transactions.live_session_id)))));
+
+--
+-- Name: gift_transactions; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."gift_transactions" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: guilds; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: gift_transactions gift_tx_insert; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "gift_tx_insert" ON "public"."gift_transactions" FOR INSERT WITH CHECK (("auth"."uid"() = "sender_id"));
 
-ALTER TABLE public.guilds ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_reports insert_own_live_reports; Type: POLICY; Schema: public; Owner: -
+-- Name: gift_transactions gift_tx_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY insert_own_live_reports ON public.live_reports FOR INSERT TO authenticated WITH CHECK ((reporter_id = auth.uid()));
+CREATE POLICY "gift_tx_select" ON "public"."gift_transactions" FOR SELECT USING ((("auth"."uid"() = "sender_id") OR ("auth"."uid"() = "recipient_id")));
 
 
 --
--- Name: live_reports insert_own_reports; Type: POLICY; Schema: public; Owner: -
+-- Name: gift_transactions gift_tx_select_visible_live_session; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "gift_tx_select_visible_live_session" ON "public"."gift_transactions" FOR SELECT USING ((("auth"."uid"() = "sender_id") OR ("auth"."uid"() = "recipient_id") OR (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id")::"text" = "gift_transactions"."live_session_id")))));
+
 
-CREATE POLICY insert_own_reports ON public.live_reports FOR INSERT TO authenticated WITH CHECK ((reporter_id = auth.uid()));
+--
+-- Name: guilds; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."guilds" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: likes; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_reports insert_own_live_reports; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.likes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "insert_own_live_reports" ON "public"."live_reports" FOR INSERT TO "authenticated" WITH CHECK (("reporter_id" = "auth"."uid"()));
 
+
 --
--- Name: live_battle_history; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_reports insert_own_reports; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "insert_own_reports" ON "public"."live_reports" FOR INSERT TO "authenticated" WITH CHECK (("reporter_id" = "auth"."uid"()));
 
-ALTER TABLE public.live_battle_history ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_chat_timeouts; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: likes; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_chat_timeouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."likes" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_clip_markers; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_auctions; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_clip_markers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_auctions" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_cohost_blocks; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_auctions live_auctions_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_cohost_blocks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "live_auctions_select" ON "public"."live_auctions" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_auctions"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
+
 --
--- Name: live_cohosts; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_auto_bids; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_cohosts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_auto_bids" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_cohosts live_cohosts_delete_host; Type: POLICY; Schema: public; Owner: -
+-- Name: live_auto_bids live_auto_bids_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_cohosts_delete_host ON public.live_cohosts FOR DELETE USING ((EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_cohosts.session_id) AND (s.host_id = auth.uid())))));
+CREATE POLICY "live_auto_bids_select_own" ON "public"."live_auto_bids" FOR SELECT USING (("auth"."uid"() = "bidder_id"));
 
 
 --
--- Name: live_cohosts live_cohosts_insert_host; Type: POLICY; Schema: public; Owner: -
+-- Name: live_battle_history; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
+
+ALTER TABLE "public"."live_battle_history" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY live_cohosts_insert_host ON public.live_cohosts FOR INSERT WITH CHECK (((auth.uid() = invited_by) AND (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_cohosts.session_id) AND (s.host_id = auth.uid()) AND (s.status = 'active'::text))))));
+--
+-- Name: live_bids; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_bids" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_cohosts live_cohosts_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_bids live_bids_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_cohosts_select ON public.live_cohosts FOR SELECT USING (true);
+CREATE POLICY "live_bids_select" ON "public"."live_bids" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM ("public"."live_auctions" "a"
+     JOIN "public"."live_sessions" "s" ON (("s"."id" = "a"."session_id")))
+  WHERE (("a"."id" = "live_bids"."auction_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
 
 --
--- Name: live_cohosts live_cohosts_update_host; Type: POLICY; Schema: public; Owner: -
+-- Name: live_chat_timeouts; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_cohosts_update_host ON public.live_cohosts FOR UPDATE USING ((EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_cohosts.session_id) AND (s.host_id = auth.uid()))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_cohosts.session_id) AND (s.host_id = auth.uid())))));
+ALTER TABLE "public"."live_chat_timeouts" ENABLE ROW LEVEL SECURITY;
 
+--
+-- Name: live_clip_markers; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."live_clip_markers" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: live_cohost_blocks; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_cohost_blocks" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: live_comments; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_cohosts; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_cohosts" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_comments live_comments_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_cohosts live_cohosts_delete_host; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_comments_delete ON public.live_comments FOR DELETE USING ((auth.uid() = user_id));
+CREATE POLICY "live_cohosts_delete_host" ON "public"."live_cohosts" FOR DELETE USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_cohosts"."session_id") AND ("s"."host_id" = "auth"."uid"())))));
 
 
 --
--- Name: live_comments live_comments_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_cohosts live_cohosts_insert_host; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_comments_insert ON public.live_comments FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "live_cohosts_insert_host" ON "public"."live_cohosts" FOR INSERT WITH CHECK ((("auth"."uid"() = "invited_by") AND (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_cohosts"."session_id") AND ("s"."host_id" = "auth"."uid"()) AND ("s"."status" = 'active'::"text"))))));
 
 
 --
--- Name: live_comments live_comments_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_cohosts live_cohosts_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_comments_select ON public.live_comments FOR SELECT USING (true);
+CREATE POLICY "live_cohosts_select" ON "public"."live_cohosts" FOR SELECT USING (true);
 
 
 --
--- Name: live_duet_history; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_cohosts live_cohosts_update_host; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_cohosts_update_host" ON "public"."live_cohosts" FOR UPDATE USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_cohosts"."session_id") AND ("s"."host_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_cohosts"."session_id") AND ("s"."host_id" = "auth"."uid"())))));
 
-ALTER TABLE public.live_duet_history ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_duet_invites; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_comments; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_duet_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_comments" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_moderators; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_comments live_comments_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_moderators ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "live_comments_delete" ON "public"."live_comments" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
+
 --
--- Name: live_placed_products; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_comments live_comments_insert; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_comments_insert" ON "public"."live_comments" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
-ALTER TABLE public.live_placed_products ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_placed_products live_placed_products_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_comments live_comments_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_comments_select" ON "public"."live_comments" FOR SELECT USING (true);
+
 
-CREATE POLICY live_placed_products_delete ON public.live_placed_products FOR DELETE USING ((auth.uid() = host_id));
+--
+-- Name: live_duet_history; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_duet_history" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_placed_products live_placed_products_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_duet_invites; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_placed_products_insert ON public.live_placed_products FOR INSERT WITH CHECK (((auth.uid() = host_id) AND (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_placed_products.session_id) AND (s.host_id = auth.uid())))) AND (EXISTS ( SELECT 1
-   FROM public.products p
-  WHERE ((p.id = live_placed_products.product_id) AND (p.seller_id = auth.uid()))))));
+ALTER TABLE "public"."live_duet_invites" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: live_giveaway_entries; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_giveaway_entries" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_placed_products live_placed_products_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_giveaway_entries live_giveaway_entries_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_giveaway_entries_select_own" ON "public"."live_giveaway_entries" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
-CREATE POLICY live_placed_products_select ON public.live_placed_products FOR SELECT USING ((auth.role() = 'authenticated'::text));
+
+--
+-- Name: live_giveaways; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_giveaways" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_placed_products live_placed_products_update; Type: POLICY; Schema: public; Owner: -
+-- Name: live_giveaways live_giveaways_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_giveaways_select" ON "public"."live_giveaways" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_giveaways"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
-CREATE POLICY live_placed_products_update ON public.live_placed_products FOR UPDATE USING ((auth.uid() = host_id)) WITH CHECK (((auth.uid() = host_id) AND (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_placed_products.session_id) AND (s.host_id = auth.uid())))) AND (EXISTS ( SELECT 1
-   FROM public.products p
-  WHERE ((p.id = live_placed_products.product_id) AND (p.seller_id = auth.uid()))))));
+
+--
+-- Name: live_moderators; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_moderators" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_poll_votes; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_placed_products; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_poll_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_placed_products" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_poll_votes live_poll_votes_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_placed_products live_placed_products_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_poll_votes_insert ON public.live_poll_votes FOR INSERT WITH CHECK (((auth.uid() = user_id) AND (EXISTS ( SELECT 1
-   FROM public.live_polls p
-  WHERE ((p.id = live_poll_votes.poll_id) AND (p.closed_at IS NULL))))));
+CREATE POLICY "live_placed_products_delete" ON "public"."live_placed_products" FOR DELETE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: live_poll_votes live_poll_votes_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_placed_products live_placed_products_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_poll_votes_select ON public.live_poll_votes FOR SELECT USING ((auth.role() = 'authenticated'::text));
+CREATE POLICY "live_placed_products_insert" ON "public"."live_placed_products" FOR INSERT WITH CHECK ((("auth"."uid"() = "host_id") AND (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_placed_products"."session_id") AND ("s"."host_id" = "auth"."uid"())))) AND (EXISTS ( SELECT 1
+   FROM "public"."products" "p"
+  WHERE (("p"."id" = "live_placed_products"."product_id") AND ("p"."seller_id" = "auth"."uid"()))))));
 
 
 --
--- Name: live_polls; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_placed_products live_placed_products_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_placed_products_select" ON "public"."live_placed_products" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
 
-ALTER TABLE public.live_polls ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_polls live_polls_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_placed_products live_placed_products_update; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_placed_products_update" ON "public"."live_placed_products" FOR UPDATE USING (("auth"."uid"() = "host_id")) WITH CHECK ((("auth"."uid"() = "host_id") AND (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_placed_products"."session_id") AND ("s"."host_id" = "auth"."uid"())))) AND (EXISTS ( SELECT 1
+   FROM "public"."products" "p"
+  WHERE (("p"."id" = "live_placed_products"."product_id") AND ("p"."seller_id" = "auth"."uid"()))))));
+
 
-CREATE POLICY live_polls_delete ON public.live_polls FOR DELETE USING (((auth.uid() = host_id) OR (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_polls.session_id) AND (s.host_id = auth.uid())))) OR public.is_live_session_moderator(session_id, auth.uid())));
+--
+-- Name: live_poll_votes; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_poll_votes" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_polls live_polls_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_poll_votes live_poll_votes_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_polls_insert ON public.live_polls FOR INSERT WITH CHECK (((auth.uid() = host_id) AND ((EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_polls.session_id) AND (s.host_id = auth.uid())))) OR public.is_live_session_moderator(session_id, auth.uid()))));
+CREATE POLICY "live_poll_votes_insert" ON "public"."live_poll_votes" FOR INSERT WITH CHECK ((("auth"."uid"() = "user_id") AND (EXISTS ( SELECT 1
+   FROM "public"."live_polls" "p"
+  WHERE (("p"."id" = "live_poll_votes"."poll_id") AND ("p"."closed_at" IS NULL))))));
 
 
 --
--- Name: live_polls live_polls_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_poll_votes live_poll_votes_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_poll_votes_select" ON "public"."live_poll_votes" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
 
-CREATE POLICY live_polls_select ON public.live_polls FOR SELECT USING (true);
+--
+-- Name: live_polls; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_polls" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_polls live_polls_update; Type: POLICY; Schema: public; Owner: -
+-- Name: live_polls live_polls_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_polls_update ON public.live_polls FOR UPDATE USING (((auth.uid() = host_id) OR (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_polls.session_id) AND (s.host_id = auth.uid())))) OR public.is_live_session_moderator(session_id, auth.uid()))) WITH CHECK (((auth.uid() = host_id) OR (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_polls.session_id) AND (s.host_id = auth.uid())))) OR public.is_live_session_moderator(session_id, auth.uid())));
+CREATE POLICY "live_polls_delete" ON "public"."live_polls" FOR DELETE USING ((("auth"."uid"() = "host_id") OR (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_polls"."session_id") AND ("s"."host_id" = "auth"."uid"())))) OR "public"."is_live_session_moderator"("session_id", "auth"."uid"())));
 
 
 --
--- Name: live_reactions; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_polls live_polls_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_reactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "live_polls_insert" ON "public"."live_polls" FOR INSERT WITH CHECK ((("auth"."uid"() = "host_id") AND ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_polls"."session_id") AND ("s"."host_id" = "auth"."uid"())))) OR "public"."is_live_session_moderator"("session_id", "auth"."uid"()))));
 
+
 --
--- Name: live_reactions live_reactions_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_polls live_polls_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_reactions_insert ON public.live_reactions FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "live_polls_select" ON "public"."live_polls" FOR SELECT USING (true);
 
 
 --
--- Name: live_reactions live_reactions_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_polls live_polls_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_reactions_select ON public.live_reactions FOR SELECT USING (true);
+CREATE POLICY "live_polls_update" ON "public"."live_polls" FOR UPDATE USING ((("auth"."uid"() = "host_id") OR (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_polls"."session_id") AND ("s"."host_id" = "auth"."uid"())))) OR "public"."is_live_session_moderator"("session_id", "auth"."uid"()))) WITH CHECK ((("auth"."uid"() = "host_id") OR (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_polls"."session_id") AND ("s"."host_id" = "auth"."uid"())))) OR "public"."is_live_session_moderator"("session_id", "auth"."uid"())));
 
 
 --
--- Name: live_recordings; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_reactions; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_recordings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_reactions" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_recordings live_recordings_delete_own; Type: POLICY; Schema: public; Owner: -
+-- Name: live_reactions live_reactions_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_recordings_delete_own ON public.live_recordings FOR DELETE USING ((auth.uid() = host_id));
+CREATE POLICY "live_reactions_insert" ON "public"."live_reactions" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: live_recordings live_recordings_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: live_reactions live_reactions_select; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_reactions_select" ON "public"."live_reactions" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_reactions"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
-CREATE POLICY live_recordings_select_own ON public.live_recordings FOR SELECT USING ((auth.uid() = host_id));
 
+--
+-- Name: live_recordings; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_recordings" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: live_recordings live_recordings_select_public; Type: POLICY; Schema: public; Owner: -
+-- Name: live_recordings live_recordings_delete_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_recordings_select_public ON public.live_recordings FOR SELECT USING (((status = 'ready'::text) AND (is_public = true)));
+CREATE POLICY "live_recordings_delete_own" ON "public"."live_recordings" FOR DELETE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: live_recordings live_recordings_update_own; Type: POLICY; Schema: public; Owner: -
+-- Name: live_recordings live_recordings_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_recordings_update_own ON public.live_recordings FOR UPDATE USING ((auth.uid() = host_id));
+CREATE POLICY "live_recordings_select_own" ON "public"."live_recordings" FOR SELECT USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: live_reports; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_recordings live_recordings_select_public; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "live_recordings_select_public" ON "public"."live_recordings" FOR SELECT USING ((("status" = 'ready'::"text") AND ("is_public" = true)));
 
-ALTER TABLE public.live_reports ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_session_viewers; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_recordings live_recordings_update_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_session_viewers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "live_recordings_update_own" ON "public"."live_recordings" FOR UPDATE USING (("auth"."uid"() = "host_id"));
 
+
 --
--- Name: live_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_reports; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_reports" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_sessions live_sessions_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_session_viewers; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
+
+ALTER TABLE "public"."live_session_viewers" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY live_sessions_delete ON public.live_sessions FOR DELETE USING ((auth.uid() = host_id));
+--
+-- Name: live_sessions; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_sessions" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_sessions live_sessions_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_sessions live_sessions_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_sessions_insert ON public.live_sessions FOR INSERT WITH CHECK ((auth.uid() = host_id));
+CREATE POLICY "live_sessions_delete" ON "public"."live_sessions" FOR DELETE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: live_sessions live_sessions_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_sessions live_sessions_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_sessions_select ON public.live_sessions FOR SELECT USING (true);
+CREATE POLICY "live_sessions_insert" ON "public"."live_sessions" FOR INSERT WITH CHECK (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: live_sessions live_sessions_select_with_women_only; Type: POLICY; Schema: public; Owner: -
+-- Name: live_sessions live_sessions_select_with_women_only; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_sessions_select_with_women_only ON public.live_sessions FOR SELECT USING (((women_only = false) OR (host_id = auth.uid()) OR public.is_women_only_verified()));
+CREATE POLICY "live_sessions_select_with_women_only" ON "public"."live_sessions" FOR SELECT USING ((("women_only" = false) OR ("host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"()));
 
 
 --
--- Name: live_sessions live_sessions_update; Type: POLICY; Schema: public; Owner: -
+-- Name: live_sessions live_sessions_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_sessions_update ON public.live_sessions FOR UPDATE USING ((auth.uid() = host_id));
+CREATE POLICY "live_sessions_update" ON "public"."live_sessions" FOR UPDATE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: live_stickers; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_stickers; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_stickers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."live_stickers" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_stickers live_stickers_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: live_stickers live_stickers_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_stickers_delete ON public.live_stickers FOR DELETE USING ((auth.uid() = host_id));
+CREATE POLICY "live_stickers_delete" ON "public"."live_stickers" FOR DELETE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: live_stickers live_stickers_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: live_stickers live_stickers_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_stickers_insert ON public.live_stickers FOR INSERT WITH CHECK (((auth.uid() = host_id) AND (EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_stickers.session_id) AND (s.host_id = auth.uid()))))));
+CREATE POLICY "live_stickers_insert" ON "public"."live_stickers" FOR INSERT WITH CHECK ((("auth"."uid"() = "host_id") AND (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_stickers"."session_id") AND ("s"."host_id" = "auth"."uid"()))))));
 
 
 --
--- Name: live_stickers live_stickers_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_stickers live_stickers_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_stickers_select ON public.live_stickers FOR SELECT USING ((auth.role() = 'authenticated'::text));
+CREATE POLICY "live_stickers_select" ON "public"."live_stickers" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
 
 
 --
--- Name: live_stickers live_stickers_update; Type: POLICY; Schema: public; Owner: -
+-- Name: live_stickers live_stickers_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_stickers_update ON public.live_stickers FOR UPDATE USING ((auth.uid() = host_id)) WITH CHECK ((auth.uid() = host_id));
+CREATE POLICY "live_stickers_update" ON "public"."live_stickers" FOR UPDATE USING (("auth"."uid"() = "host_id")) WITH CHECK (("auth"."uid"() = "host_id"));
+
+
+--
+-- Name: live_viewer_welcomes; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."live_viewer_welcomes" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: live_viewer_welcomes; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: live_viewer_welcomes live_viewer_welcomes_read_all; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.live_viewer_welcomes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "live_viewer_welcomes_read_all" ON "public"."live_viewer_welcomes" FOR SELECT USING (true);
 
+
 --
--- Name: live_viewer_welcomes live_viewer_welcomes_read_all; Type: POLICY; Schema: public; Owner: -
+-- Name: live_session_viewers lsv_select_host; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY live_viewer_welcomes_read_all ON public.live_viewer_welcomes FOR SELECT USING (true);
+CREATE POLICY "lsv_select_host" ON "public"."live_session_viewers" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_session_viewers"."session_id") AND ("s"."host_id" = "auth"."uid"())))));
 
 
 --
--- Name: live_session_viewers lsv_select_host; Type: POLICY; Schema: public; Owner: -
+-- Name: live_session_viewers lsv_select_self; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY lsv_select_host ON public.live_session_viewers FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.live_sessions s
-  WHERE ((s.id = live_session_viewers.session_id) AND (s.host_id = auth.uid())))));
+CREATE POLICY "lsv_select_self" ON "public"."live_session_viewers" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: live_session_viewers lsv_select_self; Type: POLICY; Schema: public; Owner: -
+-- Name: message_reactions; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
+
+ALTER TABLE "public"."message_reactions" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY lsv_select_self ON public.live_session_viewers FOR SELECT USING ((auth.uid() = user_id));
+--
+-- Name: messages; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."messages" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: message_reactions; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: moderation_auto_flags; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.message_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."moderation_auto_flags" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: messages; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: moderation_auto_flags moderation_auto_flags_admin_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "moderation_auto_flags_admin_select" ON "public"."moderation_auto_flags" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."is_admin" = true)))));
 
+
 --
--- Name: moderation_auto_flags; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: messages msg_insert; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "msg_insert" ON "public"."messages" FOR INSERT WITH CHECK ((("auth"."uid"() = "sender_id") AND (EXISTS ( SELECT 1
+   FROM "public"."conversations" "c"
+  WHERE (("c"."id" = "messages"."conversation_id") AND (("c"."participant_1" = "auth"."uid"()) OR ("c"."participant_2" = "auth"."uid"())))))));
 
-ALTER TABLE public.moderation_auto_flags ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: moderation_auto_flags moderation_auto_flags_admin_select; Type: POLICY; Schema: public; Owner: -
+-- Name: messages msg_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY moderation_auto_flags_admin_select ON public.moderation_auto_flags FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.profiles
-  WHERE ((profiles.id = auth.uid()) AND (profiles.is_admin = true)))));
+CREATE POLICY "msg_select" ON "public"."messages" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."conversations" "c"
+  WHERE (("c"."id" = "messages"."conversation_id") AND (("c"."participant_1" = "auth"."uid"()) OR ("c"."participant_2" = "auth"."uid"()))))));
 
 
 --
--- Name: messages msg_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: messages msg_update; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "msg_update" ON "public"."messages" FOR UPDATE USING (("auth"."uid"() = "sender_id")) WITH CHECK (("auth"."uid"() = "sender_id"));
+
 
-CREATE POLICY msg_insert ON public.messages FOR INSERT WITH CHECK (((auth.uid() = sender_id) AND (EXISTS ( SELECT 1
-   FROM public.conversations c
-  WHERE ((c.id = messages.conversation_id) AND ((c.participant_1 = auth.uid()) OR (c.participant_2 = auth.uid())))))));
+--
+-- Name: muted_live_hosts; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."muted_live_hosts" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: messages msg_select; Type: POLICY; Schema: public; Owner: -
+-- Name: notifications notif_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY msg_select ON public.messages FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.conversations c
-  WHERE ((c.id = messages.conversation_id) AND ((c.participant_1 = auth.uid()) OR (c.participant_2 = auth.uid()))))));
+CREATE POLICY "notif_insert" ON "public"."notifications" FOR INSERT WITH CHECK (true);
 
 
 --
--- Name: messages msg_update; Type: POLICY; Schema: public; Owner: -
+-- Name: notifications notif_insert_own_sender; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY msg_update ON public.messages FOR UPDATE USING ((auth.uid() = sender_id)) WITH CHECK ((auth.uid() = sender_id));
+CREATE POLICY "notif_insert_own_sender" ON "public"."notifications" FOR INSERT TO "authenticated" WITH CHECK (("sender_id" = "auth"."uid"()));
 
 
 --
--- Name: muted_live_hosts; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: notifications notif_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.muted_live_hosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "notif_select" ON "public"."notifications" FOR SELECT USING (("auth"."uid"() = "recipient_id"));
 
+
 --
--- Name: notifications notif_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: notifications notif_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY notif_insert ON public.notifications FOR INSERT WITH CHECK (true);
+CREATE POLICY "notif_update" ON "public"."notifications" FOR UPDATE USING (("auth"."uid"() = "recipient_id"));
 
 
 --
--- Name: notifications notif_select; Type: POLICY; Schema: public; Owner: -
+-- Name: notifications; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
+
+ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY notif_select ON public.notifications FOR SELECT USING ((auth.uid() = recipient_id));
+--
+-- Name: order_disputes; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."order_disputes" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: notifications notif_service_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: order_disputes order_disputes_read; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "order_disputes_read" ON "public"."order_disputes" FOR SELECT USING ((("auth"."uid"() = "reporter_id") OR ("auth"."uid"() = "against_id") OR COALESCE("public"."is_admin"(), false)));
+
 
-CREATE POLICY notif_service_insert ON public.notifications FOR INSERT WITH CHECK (true);
+--
+-- Name: order_reviews; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."order_reviews" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: notifications notif_update; Type: POLICY; Schema: public; Owner: -
+-- Name: order_reviews order_reviews_party_read; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "order_reviews_party_read" ON "public"."order_reviews" FOR SELECT USING ((("auth"."uid"() = "reviewer_id") OR ("auth"."uid"() = "reviewee_id")));
+
 
-CREATE POLICY notif_update ON public.notifications FOR UPDATE USING ((auth.uid() = recipient_id));
+--
+-- Name: orders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."orders" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: notifications; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: orders orders_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "orders_insert" ON "public"."orders" FOR INSERT WITH CHECK (("buyer_id" = "auth"."uid"()));
 
+
 --
--- Name: orders; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: orders orders_select_buyer; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "orders_select_buyer" ON "public"."orders" FOR SELECT USING (("buyer_id" = "auth"."uid"()));
 
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: orders orders_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: orders orders_select_seller; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY orders_insert ON public.orders FOR INSERT WITH CHECK ((buyer_id = auth.uid()));
+CREATE POLICY "orders_select_seller" ON "public"."orders" FOR SELECT USING (("seller_id" = "auth"."uid"()));
 
 
 --
--- Name: orders orders_select_buyer; Type: POLICY; Schema: public; Owner: -
+-- Name: orders orders_update_seller; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY orders_select_buyer ON public.orders FOR SELECT USING ((buyer_id = auth.uid()));
+CREATE POLICY "orders_update_seller" ON "public"."orders" FOR UPDATE USING (("seller_id" = "auth"."uid"()));
 
 
 --
--- Name: orders orders_select_seller; Type: POLICY; Schema: public; Owner: -
+-- Name: muted_live_hosts own mutes delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY orders_select_seller ON public.orders FOR SELECT USING ((seller_id = auth.uid()));
+CREATE POLICY "own mutes delete" ON "public"."muted_live_hosts" FOR DELETE USING (("user_id" = "auth"."uid"()));
 
 
 --
--- Name: orders orders_update_seller; Type: POLICY; Schema: public; Owner: -
+-- Name: muted_live_hosts own mutes read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY orders_update_seller ON public.orders FOR UPDATE USING ((seller_id = auth.uid()));
+CREATE POLICY "own mutes read" ON "public"."muted_live_hosts" FOR SELECT USING (("user_id" = "auth"."uid"()));
 
 
 --
--- Name: muted_live_hosts own mutes delete; Type: POLICY; Schema: public; Owner: -
+-- Name: muted_live_hosts own mutes write; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "own mutes delete" ON public.muted_live_hosts FOR DELETE USING ((user_id = auth.uid()));
+CREATE POLICY "own mutes write" ON "public"."muted_live_hosts" FOR INSERT WITH CHECK (("user_id" = "auth"."uid"()));
 
 
 --
--- Name: muted_live_hosts own mutes read; Type: POLICY; Schema: public; Owner: -
+-- Name: user_whip_ingresses own_ingress_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "own mutes read" ON public.muted_live_hosts FOR SELECT USING ((user_id = auth.uid()));
+CREATE POLICY "own_ingress_delete" ON "public"."user_whip_ingresses" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: muted_live_hosts own mutes write; Type: POLICY; Schema: public; Owner: -
+-- Name: user_whip_ingresses own_ingress_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "own mutes write" ON public.muted_live_hosts FOR INSERT WITH CHECK ((user_id = auth.uid()));
+CREATE POLICY "own_ingress_insert" ON "public"."user_whip_ingresses" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: user_whip_ingresses own_ingress_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: user_whip_ingresses own_ingress_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY own_ingress_delete ON public.user_whip_ingresses FOR DELETE TO authenticated USING ((auth.uid() = user_id));
+CREATE POLICY "own_ingress_select" ON "public"."user_whip_ingresses" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: user_whip_ingresses own_ingress_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: user_whip_ingresses own_ingress_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY own_ingress_insert ON public.user_whip_ingresses FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "own_ingress_update" ON "public"."user_whip_ingresses" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: user_whip_ingresses own_ingress_select; Type: POLICY; Schema: public; Owner: -
+-- Name: live_moderators p_live_moderators_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY own_ingress_select ON public.user_whip_ingresses FOR SELECT TO authenticated USING ((auth.uid() = user_id));
+CREATE POLICY "p_live_moderators_select" ON "public"."live_moderators" FOR SELECT USING (true);
 
 
 --
--- Name: user_whip_ingresses own_ingress_update; Type: POLICY; Schema: public; Owner: -
+-- Name: payout_requests; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY own_ingress_update ON public.user_whip_ingresses FOR UPDATE TO authenticated USING ((auth.uid() = user_id));
+ALTER TABLE "public"."payout_requests" ENABLE ROW LEVEL SECURITY;
 
+--
+-- Name: payout_requests payout_requests_insert_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "payout_requests_insert_own" ON "public"."payout_requests" FOR INSERT WITH CHECK (("creator_id" = "auth"."uid"()));
+
 
 --
--- Name: live_moderators p_live_moderators_select; Type: POLICY; Schema: public; Owner: -
+-- Name: payout_requests payout_requests_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY p_live_moderators_select ON public.live_moderators FOR SELECT USING (true);
+CREATE POLICY "payout_requests_select_own" ON "public"."payout_requests" FOR SELECT USING (("creator_id" = "auth"."uid"()));
+
+
+--
+-- Name: post_drafts; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."post_drafts" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: payout_requests; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: post_dwell_log; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.payout_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."post_dwell_log" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: payout_requests payout_requests_insert_own; Type: POLICY; Schema: public; Owner: -
+-- Name: post_dwell_log post_dwell_log_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY payout_requests_insert_own ON public.payout_requests FOR INSERT WITH CHECK ((creator_id = auth.uid()));
+CREATE POLICY "post_dwell_log_select_own" ON "public"."post_dwell_log" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: payout_requests payout_requests_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: post_reports; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY payout_requests_select_own ON public.payout_requests FOR SELECT USING ((creator_id = auth.uid()));
+ALTER TABLE "public"."post_reports" ENABLE ROW LEVEL SECURITY;
 
+--
+-- Name: post_views; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."post_views" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: post_views_log; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."post_views_log" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: post_drafts; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: post_views_log post_views_log_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "post_views_log_select_own" ON "public"."post_views_log" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
-ALTER TABLE public.post_drafts ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: post_dwell_log; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: posts; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.post_dwell_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."posts" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: post_dwell_log post_dwell_log_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: posts posts_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY post_dwell_log_select_own ON public.post_dwell_log FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "posts_select_own" ON "public"."posts" FOR SELECT USING (("author_id" = "auth"."uid"()));
 
 
 --
--- Name: post_reports; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: posts posts_select_public_friends_private; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.post_reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "posts_select_public_friends_private" ON "public"."posts" FOR SELECT USING ((("author_id" = "auth"."uid"()) OR ((COALESCE("privacy", 'public'::"text") = 'public'::"text") AND ((COALESCE("women_only", false) = false) OR "public"."is_women_only_verified"())) OR ((COALESCE("privacy", 'public'::"text") = 'friends'::"text") AND ("auth"."uid"() IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM "public"."follows" "f"
+  WHERE (("f"."follower_id" = "auth"."uid"()) AND ("f"."following_id" = "posts"."author_id")))) AND ((COALESCE("women_only", false) = false) OR "public"."is_women_only_verified"()))));
 
+
 --
--- Name: post_views; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: posts posts_visibility_policy; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "posts_visibility_policy" ON "public"."posts" FOR SELECT USING ((("auth"."uid"() = "author_id") OR ("privacy" = 'public'::"text") OR (("privacy" = 'friends'::"text") AND (EXISTS ( SELECT 1
+   FROM "public"."follows"
+  WHERE (("follows"."follower_id" = "auth"."uid"()) AND ("follows"."following_id" = "posts"."author_id")))))));
 
-ALTER TABLE public.post_views ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: post_views_log; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: preorder_rounds; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.post_views_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."preorder_rounds" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: post_views_log post_views_log_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: preorder_rounds preorder_rounds_read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY post_views_log_select_own ON public.post_views_log FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "preorder_rounds_read" ON "public"."preorder_rounds" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
 
 
 --
--- Name: posts; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: product_preorders preorders_owner_all; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "preorders_owner_all" ON "public"."product_preorders" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
 
+
 --
--- Name: posts posts_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: product_preorders preorders_seller_read; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "preorders_seller_read" ON "public"."product_preorders" FOR SELECT USING (((EXISTS ( SELECT 1
+   FROM "public"."products" "p"
+  WHERE (("p"."id" = "product_preorders"."product_id") AND ("p"."seller_id" = "auth"."uid"())))) OR COALESCE("public"."is_admin"(), false)));
 
-CREATE POLICY posts_select_own ON public.posts FOR SELECT USING ((author_id = auth.uid()));
 
+--
+-- Name: product_orders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."product_orders" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: posts posts_select_public_friends_private; Type: POLICY; Schema: public; Owner: -
+-- Name: product_orders product_orders_party_read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY posts_select_public_friends_private ON public.posts FOR SELECT USING (((author_id = auth.uid()) OR ((COALESCE(privacy, 'public'::text) = 'public'::text) AND ((COALESCE(women_only, false) = false) OR public.is_women_only_verified())) OR ((COALESCE(privacy, 'public'::text) = 'friends'::text) AND (auth.uid() IS NOT NULL) AND (EXISTS ( SELECT 1
-   FROM public.follows f
-  WHERE ((f.follower_id = auth.uid()) AND (f.following_id = posts.author_id)))) AND ((COALESCE(women_only, false) = false) OR public.is_women_only_verified()))));
+CREATE POLICY "product_orders_party_read" ON "public"."product_orders" FOR SELECT USING ((("auth"."uid"() = "buyer_id") OR ("auth"."uid"() = "seller_id")));
 
 
 --
--- Name: posts posts_visibility_policy; Type: POLICY; Schema: public; Owner: -
+-- Name: product_orders product_orders_service_write; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "product_orders_service_write" ON "public"."product_orders" USING (("auth"."role"() = 'service_role'::"text")) WITH CHECK (("auth"."role"() = 'service_role'::"text"));
 
-CREATE POLICY posts_visibility_policy ON public.posts FOR SELECT USING (((auth.uid() = author_id) OR (privacy = 'public'::text) OR ((privacy = 'friends'::text) AND (EXISTS ( SELECT 1
-   FROM public.follows
-  WHERE ((follows.follower_id = auth.uid()) AND (follows.following_id = posts.author_id)))))));
 
+--
+-- Name: product_preorders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."product_preorders" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: product_reviews; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: product_reviews; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.product_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."product_reviews" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: products; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: products; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."products" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: products products_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: products products_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY products_delete ON public.products FOR DELETE USING ((seller_id = auth.uid()));
+CREATE POLICY "products_delete" ON "public"."products" FOR DELETE USING (("seller_id" = "auth"."uid"()));
 
 
 --
--- Name: products products_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: products products_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY products_insert ON public.products FOR INSERT WITH CHECK ((seller_id = auth.uid()));
+CREATE POLICY "products_insert" ON "public"."products" FOR INSERT WITH CHECK (("seller_id" = "auth"."uid"()));
 
 
 --
--- Name: products products_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: products products_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY products_select_own ON public.products FOR SELECT USING ((seller_id = auth.uid()));
+CREATE POLICY "products_select_own" ON "public"."products" FOR SELECT USING (("seller_id" = "auth"."uid"()));
 
 
 --
--- Name: products products_select_public; Type: POLICY; Schema: public; Owner: -
+-- Name: products products_select_public; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY products_select_public ON public.products FOR SELECT USING (((is_active = true) AND (women_only = false)));
+CREATE POLICY "products_select_public" ON "public"."products" FOR SELECT USING ((("is_active" = true) AND ("women_only" = false)));
 
 
 --
--- Name: products products_select_woz; Type: POLICY; Schema: public; Owner: -
+-- Name: products products_select_woz; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY products_select_woz ON public.products FOR SELECT USING (((is_active = true) AND (women_only = true) AND public.is_women_only_verified()));
+CREATE POLICY "products_select_woz" ON "public"."products" FOR SELECT USING ((("is_active" = true) AND ("women_only" = true) AND "public"."is_women_only_verified"()));
 
 
 --
--- Name: products products_update; Type: POLICY; Schema: public; Owner: -
+-- Name: products products_update; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "products_update" ON "public"."products" FOR UPDATE USING (("seller_id" = "auth"."uid"()));
 
-CREATE POLICY products_update ON public.products FOR UPDATE USING ((seller_id = auth.uid()));
 
+--
+-- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: push_tokens; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."push_tokens" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: push_tokens; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: r2_delete_queue; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."r2_delete_queue" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: r2_delete_queue; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: message_reactions reactions delete own; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "reactions delete own" ON "public"."message_reactions" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
-ALTER TABLE public.r2_delete_queue ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: message_reactions reactions delete own; Type: POLICY; Schema: public; Owner: -
+-- Name: message_reactions reactions insert own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "reactions delete own" ON public.message_reactions FOR DELETE USING ((auth.uid() = user_id));
+CREATE POLICY "reactions insert own" ON "public"."message_reactions" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: message_reactions reactions insert own; Type: POLICY; Schema: public; Owner: -
+-- Name: message_reactions reactions public read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "reactions insert own" ON public.message_reactions FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "reactions public read" ON "public"."message_reactions" FOR SELECT USING (true);
 
 
 --
--- Name: message_reactions reactions public read; Type: POLICY; Schema: public; Owner: -
+-- Name: content_reports reports_admin_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "reactions public read" ON public.message_reactions FOR SELECT USING (true);
+CREATE POLICY "reports_admin_select" ON "public"."content_reports" FOR SELECT USING ("public"."can_moderate"());
 
 
 --
--- Name: content_reports reports_admin_select; Type: POLICY; Schema: public; Owner: -
+-- Name: content_reports reports_admin_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY reports_admin_select ON public.content_reports FOR SELECT USING (public.can_moderate());
+CREATE POLICY "reports_admin_update" ON "public"."content_reports" FOR UPDATE USING ("public"."can_moderate"());
 
 
 --
--- Name: content_reports reports_admin_update; Type: POLICY; Schema: public; Owner: -
+-- Name: content_reports reports_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY reports_admin_update ON public.content_reports FOR UPDATE USING (public.can_moderate());
+CREATE POLICY "reports_insert" ON "public"."content_reports" FOR INSERT WITH CHECK (("reporter_id" = "auth"."uid"()));
 
 
 --
--- Name: content_reports reports_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: reposts; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY reports_insert ON public.content_reports FOR INSERT WITH CHECK ((reporter_id = auth.uid()));
+ALTER TABLE "public"."reposts" ENABLE ROW LEVEL SECURITY;
 
+--
+-- Name: product_reviews reviews_delete; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "reviews_delete" ON "public"."product_reviews" FOR DELETE USING (("auth"."uid"() = "reviewer_id"));
+
 
 --
--- Name: reposts; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: product_reviews reviews_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.reposts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "reviews_insert" ON "public"."product_reviews" FOR INSERT WITH CHECK ((("auth"."uid"() = "reviewer_id") AND (EXISTS ( SELECT 1
+   FROM "public"."orders" "o"
+  WHERE (("o"."id" = "product_reviews"."order_id") AND ("o"."buyer_id" = "auth"."uid"()) AND ("o"."product_id" = "product_reviews"."product_id") AND ("o"."status" = 'completed'::"text"))))));
 
+
 --
--- Name: product_reviews reviews_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: product_reviews reviews_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY reviews_delete ON public.product_reviews FOR DELETE USING ((auth.uid() = reviewer_id));
+CREATE POLICY "reviews_select" ON "public"."product_reviews" FOR SELECT USING (true);
 
 
 --
--- Name: product_reviews reviews_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: product_reviews reviews_update; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY reviews_insert ON public.product_reviews FOR INSERT WITH CHECK (((auth.uid() = reviewer_id) AND (EXISTS ( SELECT 1
-   FROM public.orders o
-  WHERE ((o.id = product_reviews.order_id) AND (o.buyer_id = auth.uid()) AND (o.product_id = product_reviews.product_id) AND (o.status = 'completed'::text))))));
+CREATE POLICY "reviews_update" ON "public"."product_reviews" FOR UPDATE USING (("auth"."uid"() = "reviewer_id"));
 
 
 --
--- Name: product_reviews reviews_select; Type: POLICY; Schema: public; Owner: -
+-- Name: saved_products saved_delete_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY reviews_select ON public.product_reviews FOR SELECT USING (true);
+CREATE POLICY "saved_delete_own" ON "public"."saved_products" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: product_reviews reviews_update; Type: POLICY; Schema: public; Owner: -
+-- Name: saved_products saved_insert_own; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "saved_insert_own" ON "public"."saved_products" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
-CREATE POLICY reviews_update ON public.product_reviews FOR UPDATE USING ((auth.uid() = reviewer_id));
+
+--
+-- Name: saved_products; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."saved_products" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: saved_products saved_delete_own; Type: POLICY; Schema: public; Owner: -
+-- Name: saved_products saved_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "saved_select_own" ON "public"."saved_products" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
-CREATE POLICY saved_delete_own ON public.saved_products FOR DELETE USING ((auth.uid() = user_id));
+
+--
+-- Name: scheduled_lives; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."scheduled_lives" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: saved_products saved_insert_own; Type: POLICY; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_delete_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY saved_insert_own ON public.saved_products FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "scheduled_lives_delete_own" ON "public"."scheduled_lives" FOR DELETE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: saved_products; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_insert_own; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "scheduled_lives_insert_own" ON "public"."scheduled_lives" FOR INSERT WITH CHECK (("auth"."uid"() = "host_id"));
 
-ALTER TABLE public.saved_products ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: saved_products saved_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY saved_select_own ON public.saved_products FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "scheduled_lives_select_own" ON "public"."scheduled_lives" FOR SELECT USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: scheduled_lives; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_select_public; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.scheduled_lives ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "scheduled_lives_select_public" ON "public"."scheduled_lives" FOR SELECT USING (("status" = ANY (ARRAY['scheduled'::"text", 'reminded'::"text", 'live'::"text"])));
 
+
 --
--- Name: scheduled_lives scheduled_lives_delete_own; Type: POLICY; Schema: public; Owner: -
+-- Name: scheduled_lives scheduled_lives_update_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY scheduled_lives_delete_own ON public.scheduled_lives FOR DELETE USING ((auth.uid() = host_id));
+CREATE POLICY "scheduled_lives_update_own" ON "public"."scheduled_lives" FOR UPDATE USING (("auth"."uid"() = "host_id"));
 
 
 --
--- Name: scheduled_lives scheduled_lives_insert_own; Type: POLICY; Schema: public; Owner: -
+-- Name: scheduled_posts; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
+
+ALTER TABLE "public"."scheduled_posts" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY scheduled_lives_insert_own ON public.scheduled_lives FOR INSERT WITH CHECK ((auth.uid() = host_id));
+--
+-- Name: seller_accounts; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."seller_accounts" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: scheduled_lives scheduled_lives_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: seller_accounts seller_accounts_read_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY scheduled_lives_select_own ON public.scheduled_lives FOR SELECT USING ((auth.uid() = host_id));
+CREATE POLICY "seller_accounts_read_own" ON "public"."seller_accounts" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: scheduled_lives scheduled_lives_select_public; Type: POLICY; Schema: public; Owner: -
+-- Name: seller_accounts seller_accounts_service_write; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "seller_accounts_service_write" ON "public"."seller_accounts" USING (("auth"."role"() = 'service_role'::"text")) WITH CHECK (("auth"."role"() = 'service_role'::"text"));
+
 
-CREATE POLICY scheduled_lives_select_public ON public.scheduled_lives FOR SELECT USING ((status = ANY (ARRAY['scheduled'::text, 'reminded'::text, 'live'::text])));
+--
+-- Name: shop_banners; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."shop_banners" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: scheduled_lives scheduled_lives_update_own; Type: POLICY; Schema: public; Owner: -
+-- Name: shop_banners shop_banners_admin_all; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY scheduled_lives_update_own ON public.scheduled_lives FOR UPDATE USING ((auth.uid() = host_id));
+CREATE POLICY "shop_banners_admin_all" ON "public"."shop_banners" USING ((EXISTS ( SELECT 1
+   FROM "public"."profiles" "p"
+  WHERE (("p"."id" = "auth"."uid"()) AND ("p"."is_admin" = true))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."profiles" "p"
+  WHERE (("p"."id" = "auth"."uid"()) AND ("p"."is_admin" = true)))));
 
 
 --
--- Name: scheduled_posts; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: shop_banners shop_banners_read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.scheduled_posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "shop_banners_read" ON "public"."shop_banners" FOR SELECT USING ((("active" = true) AND (("starts_at" IS NULL) OR ("starts_at" <= "now"())) AND (("ends_at" IS NULL) OR ("ends_at" > "now"()))));
 
+
 --
--- Name: stories; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: stories; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.stories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."stories" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: stories stories_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: stories stories_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY stories_delete ON public.stories FOR DELETE USING ((auth.uid() = user_id));
+CREATE POLICY "stories_delete" ON "public"."stories" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: stories stories_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: stories stories_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY stories_insert ON public.stories FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "stories_insert" ON "public"."stories" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: stories stories_own_archived_select; Type: POLICY; Schema: public; Owner: -
+-- Name: stories stories_own_archived_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY stories_own_archived_select ON public.stories FOR SELECT USING (((auth.uid() = user_id) OR (archived = false)));
+CREATE POLICY "stories_own_archived_select" ON "public"."stories" FOR SELECT USING ((("auth"."uid"() = "user_id") OR ("archived" = false)));
 
 
 --
--- Name: stories stories_select; Type: POLICY; Schema: public; Owner: -
+-- Name: stories stories_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY stories_select ON public.stories FOR SELECT USING (true);
+CREATE POLICY "stories_select" ON "public"."stories" FOR SELECT USING (true);
 
 
 --
--- Name: story_comments; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: story_comments; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.story_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."story_comments" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: story_comments story_comments_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: story_comments story_comments_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_comments_delete ON public.story_comments FOR DELETE USING ((auth.uid() = author_id));
+CREATE POLICY "story_comments_delete" ON "public"."story_comments" FOR DELETE USING (("auth"."uid"() = "author_id"));
 
 
 --
--- Name: story_comments story_comments_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: story_comments story_comments_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_comments_insert ON public.story_comments FOR INSERT WITH CHECK ((auth.uid() = author_id));
+CREATE POLICY "story_comments_insert" ON "public"."story_comments" FOR INSERT WITH CHECK (("auth"."uid"() = "author_id"));
 
 
 --
--- Name: story_comments story_comments_read; Type: POLICY; Schema: public; Owner: -
+-- Name: story_comments story_comments_read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_comments_read ON public.story_comments FOR SELECT USING (true);
+CREATE POLICY "story_comments_read" ON "public"."story_comments" FOR SELECT USING (true);
 
 
 --
--- Name: story_highlights; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: story_highlights; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.story_highlights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."story_highlights" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: story_highlights story_highlights_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_highlights_delete ON public.story_highlights FOR DELETE USING ((auth.uid() = user_id));
+CREATE POLICY "story_highlights_delete" ON "public"."story_highlights" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: story_highlights story_highlights_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_highlights_insert ON public.story_highlights FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "story_highlights_insert" ON "public"."story_highlights" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: story_highlights story_highlights_select; Type: POLICY; Schema: public; Owner: -
+-- Name: story_highlights story_highlights_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_highlights_select ON public.story_highlights FOR SELECT USING (true);
+CREATE POLICY "story_highlights_select" ON "public"."story_highlights" FOR SELECT USING (true);
 
 
 --
--- Name: story_likes; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: story_likes; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.story_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."story_likes" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: story_likes story_likes delete own; Type: POLICY; Schema: public; Owner: -
+-- Name: story_likes story_likes delete own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "story_likes delete own" ON public.story_likes FOR DELETE USING ((auth.uid() = user_id));
+CREATE POLICY "story_likes delete own" ON "public"."story_likes" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: story_likes story_likes insert own; Type: POLICY; Schema: public; Owner: -
+-- Name: story_likes story_likes insert own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "story_likes insert own" ON public.story_likes FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "story_likes insert own" ON "public"."story_likes" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: story_likes story_likes public read; Type: POLICY; Schema: public; Owner: -
+-- Name: story_likes story_likes public read; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "story_likes public read" ON public.story_likes FOR SELECT USING (true);
+CREATE POLICY "story_likes public read" ON "public"."story_likes" FOR SELECT USING (true);
 
 
 --
--- Name: story_views; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: story_views; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.story_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."story_views" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: story_views story_views_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: story_views story_views_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_views_insert ON public.story_views FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "story_views_insert" ON "public"."story_views" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: story_views story_views_select; Type: POLICY; Schema: public; Owner: -
+-- Name: story_views story_views_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_views_select ON public.story_views FOR SELECT USING (true);
+CREATE POLICY "story_views_select" ON "public"."story_views" FOR SELECT USING (true);
 
 
 --
--- Name: story_votes; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: story_votes; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.story_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."story_votes" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: story_votes story_votes_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: story_votes story_votes_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_votes_delete ON public.story_votes FOR DELETE USING ((auth.uid() = user_id));
+CREATE POLICY "story_votes_delete" ON "public"."story_votes" FOR DELETE USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: story_votes story_votes_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: story_votes story_votes_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_votes_insert ON public.story_votes FOR INSERT WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY "story_votes_insert" ON "public"."story_votes" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: story_votes story_votes_select; Type: POLICY; Schema: public; Owner: -
+-- Name: story_votes story_votes_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY story_votes_select ON public.story_votes FOR SELECT USING (true);
+CREATE POLICY "story_votes_select" ON "public"."story_votes" FOR SELECT USING (true);
 
 
 --
--- Name: post_reports user can insert own reports; Type: POLICY; Schema: public; Owner: -
+-- Name: post_reports user can insert own reports; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "user can insert own reports" ON public.post_reports FOR INSERT WITH CHECK ((auth.uid() = reporter_id));
+CREATE POLICY "user can insert own reports" ON "public"."post_reports" FOR INSERT WITH CHECK (("auth"."uid"() = "reporter_id"));
 
 
 --
--- Name: post_reports user can read own reports; Type: POLICY; Schema: public; Owner: -
+-- Name: post_reports user can read own reports; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "user can read own reports" ON public.post_reports FOR SELECT USING ((auth.uid() = reporter_id));
+CREATE POLICY "user can read own reports" ON "public"."post_reports" FOR SELECT USING (("auth"."uid"() = "reporter_id"));
 
 
 --
--- Name: user_blocks; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: user_blocks; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.user_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."user_blocks" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_blocks user_blocks_delete; Type: POLICY; Schema: public; Owner: -
+-- Name: user_blocks user_blocks_delete; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY user_blocks_delete ON public.user_blocks FOR DELETE USING ((blocker_id = auth.uid()));
+CREATE POLICY "user_blocks_delete" ON "public"."user_blocks" FOR DELETE USING (("blocker_id" = "auth"."uid"()));
 
 
 --
--- Name: user_blocks user_blocks_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: user_blocks user_blocks_insert; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY user_blocks_insert ON public.user_blocks FOR INSERT WITH CHECK ((blocker_id = auth.uid()));
+CREATE POLICY "user_blocks_insert" ON "public"."user_blocks" FOR INSERT WITH CHECK (("blocker_id" = "auth"."uid"()));
 
 
 --
--- Name: user_blocks user_blocks_select; Type: POLICY; Schema: public; Owner: -
+-- Name: user_blocks user_blocks_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY user_blocks_select ON public.user_blocks FOR SELECT USING ((blocker_id = auth.uid()));
+CREATE POLICY "user_blocks_select" ON "public"."user_blocks" FOR SELECT USING (("blocker_id" = "auth"."uid"()));
 
 
 --
--- Name: web_push_subscriptions user_manages_own_web_push_subs; Type: POLICY; Schema: public; Owner: -
+-- Name: web_push_subscriptions user_manages_own_web_push_subs; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "user_manages_own_web_push_subs" ON "public"."web_push_subscriptions" TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
 
-CREATE POLICY user_manages_own_web_push_subs ON public.web_push_subscriptions TO authenticated USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
 
+--
+-- Name: user_reports; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."user_reports" ENABLE ROW LEVEL SECURITY;
+
 --
--- Name: user_reports; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: user_reports user_reports_insert; Type: POLICY; Schema: public; Owner: postgres
 --
+
+CREATE POLICY "user_reports_insert" ON "public"."user_reports" FOR INSERT WITH CHECK (("auth"."uid"() = "reporter_id"));
 
-ALTER TABLE public.user_reports ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_reports user_reports_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: user_reports user_reports_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY user_reports_insert ON public.user_reports FOR INSERT WITH CHECK ((auth.uid() = reporter_id));
+CREATE POLICY "user_reports_select_own" ON "public"."user_reports" FOR SELECT USING (("auth"."uid"() = "reporter_id"));
+
+
+--
+-- Name: user_tag_affinity; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
 
+ALTER TABLE "public"."user_tag_affinity" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_reports user_reports_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: user_tag_affinity user_tag_affinity_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY user_reports_select_own ON public.user_reports FOR SELECT USING ((auth.uid() = reporter_id));
+CREATE POLICY "user_tag_affinity_select_own" ON "public"."user_tag_affinity" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: user_vibe_profile; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: user_vibe_profile; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.user_vibe_profile ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."user_vibe_profile" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: user_whip_ingresses; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: user_whip_ingresses; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.user_whip_ingresses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."user_whip_ingresses" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: coins_wallets wallet_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: coins_wallets wallet_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY wallet_select_own ON public.coins_wallets FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "wallet_select_own" ON "public"."coins_wallets" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: coins_wallets wallet_update_service; Type: POLICY; Schema: public; Owner: -
+-- Name: coins_wallets wallet_update_service; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY wallet_update_service ON public.coins_wallets USING ((auth.role() = 'service_role'::text));
+CREATE POLICY "wallet_update_service" ON "public"."coins_wallets" USING (("auth"."role"() = 'service_role'::"text"));
 
 
 --
--- Name: web_coin_orders; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: web_coin_orders; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
-ALTER TABLE public.web_coin_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."web_coin_orders" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: web_coin_orders web_coin_orders_select_own; Type: POLICY; Schema: public; Owner: -
+-- Name: web_coin_orders web_coin_orders_select_own; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY web_coin_orders_select_own ON public.web_coin_orders FOR SELECT USING ((auth.uid() = user_id));
+CREATE POLICY "web_coin_orders_select_own" ON "public"."web_coin_orders" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 --
--- Name: web_coin_orders web_coin_orders_service_write; Type: POLICY; Schema: public; Owner: -
+-- Name: web_coin_orders web_coin_orders_service_write; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY web_coin_orders_service_write ON public.web_coin_orders USING ((auth.role() = 'service_role'::text));
+CREATE POLICY "web_coin_orders_service_write" ON "public"."web_coin_orders" USING (("auth"."role"() = 'service_role'::"text"));
 
 
 --
--- Name: web_push_subscriptions; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: web_push_subscriptions; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
+
+ALTER TABLE "public"."web_push_subscriptions" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: women_only_requests; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."women_only_requests" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: women_only_requests woz_requests_select_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SELECT USING ((("user_id" = "auth"."uid"()) OR "public"."is_admin"()));
 
-ALTER TABLE public.web_push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict PAu9biEB9qphmPDjbC6UgDejrAU8D3JcNauygfhG9h8ftKCnbxBYgjrwguvNrOJ
+-- \unrestrict fNzzzMsygDvxAS2S2WnZielGq0YchqVdMnOBNJIa7m8FlAKyYge3AmQQJnJW68Z
 

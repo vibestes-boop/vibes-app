@@ -35,7 +35,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | 9 Stück, alle eingespielt — bei zweien fehlt nur der Tracking-Eintrag, siehe Abschnitt 5 |
+| Migrationen | 9 Stück, alle eingespielt und seit 14.08.2026 auch alle sauber verzeichnet |
 | Git | Branch `berkat`, **21 Commits, nicht gepusht** |
 
 ### Starten
@@ -94,22 +94,26 @@ bleibt schwarz, die Vorschau meldet einen Fehler — beides erwartet), und ihm f
 
 Diese Liste ist der wertvollste Teil des Dokuments.
 
-### `supabase db push` ist verboten
+### `supabase db push` war verboten — der Grund ist seit 14.08.2026 weg
 
-`supabase migration list` meldet **61 Migrationen als nicht eingespielt**, beginnend bei
-`20260614190000`. Das ist eine **Tracking-Lücke, kein fehlendes Schema** — am 14.08.2026 gegen die
-Live-DB belegt (siehe Abschnitt 7). Das Tracking blieb bei `buy_product_wallet_lock`
-(`20260613120000`) stehen; alles danach wurde per SQL-Editor eingespielt.
+**Historie, weil sie sich wiederholen kann:** `supabase migration list` meldete **61 Migrationen als
+nicht eingespielt**, beginnend bei `20260614190000`. Das war eine **Tracking-Lücke, kein fehlendes
+Schema** — gegen die Live-DB belegt (Abschnitt 7). Das Tracking blieb bei `buy_product_wallet_lock`
+(`20260613120000`) stehen; alles danach wurde per SQL-Editor eingespielt. Ein `db push` hätte alle
+61 erneut gefahren und bei der ersten nicht-idempotenten Anweisung mittendrin abgebrochen.
 
-**Ein `db push` würde alle 61 erneut fahren** und bei der ersten nicht-idempotenten Anweisung
-mittendrin abbrechen.
+**Erledigt am 14.08.2026.** Beide `migration repair`-Läufe sind durch, `supabase migration list`
+zeigt **232 Migrationen mit Eintrag in beiden Spalten, keine Lücke**. Ein `db push` würde jetzt
+nichts mehr tun, weil nichts mehr offen ist.
 
-Richtiger Weg für neue Migrationen:
+Der Weg für neue Migrationen bleibt trotzdem derselbe, solange am SQL-Editor gearbeitet wird:
 
 1. SQL im Supabase-SQL-Editor ausführen
 2. `supabase migration repair --status applied <version>`
 
-Für die Drift selbst liegt eine eigene Aufgabe bereit (siehe Abschnitt 7).
+Wer stattdessen wieder auf `db push` umstellen will: Das geht ab jetzt sauber, aber **erst prüfen,
+ob die Datei wirklich noch nicht gelaufen ist** — nach zwei Monaten Editor-Betrieb ist die
+Gewohnheit „ich mach das schnell im Browser" die eigentliche Gefahr, nicht das Werkzeug.
 
 ### LiveKit läuft nicht in Expo Go
 
@@ -324,11 +328,8 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Neun Migrationen, **alle eingespielt**. Bei den letzten beiden fehlt nur noch der Tracking-Eintrag:
-
-```bash
-cd /Users/zaurhatuev/vibes-app && supabase migration repair --status applied 20260814140000 20260814150000
-```
+Neun Migrationen, **alle eingespielt und seit 14.08.2026 auch alle verzeichnet** — die beiden
+zuletzt offenen Tracking-Einträge (`20260814140000`, `20260814150000`) sind repariert.
 
 | Datei | Inhalt |
 |---|---|
@@ -417,47 +418,91 @@ beim Käufer sichtbar.
 
 ## 7. Offene Punkte außerhalb des Codes
 
-### Migrations-Tracking begradigen — vorbereitet, wartet auf einen Klick
+### Migrations-Tracking begradigen — erledigt am 14.08.2026
 
-Es sind **61** (nicht 62), von `20260614190000` bis `20260716130000`. Zu jeder gibt es eine Datei.
+Es waren **61** (nicht 62), von `20260614190000` bis `20260716130000`. Zu jeder gab es eine Datei.
 
-Vorbereitet liegt alles unter `supabase/_ops/`: eine **Nur-Lese-Abfrage** für den SQL-Editor, die
-75 Funktionen, 24 Policies, 21 Indizes, 2 Speicher-Eimer, 6 gelöschte Indizes, 3 gelöschte
-Funktionen und eine Spalten-Nullbarkeit in den Systemtabellen nachschlägt — plus die Anleitung.
-Leeres Ergebnis heißt: gefahrlos markieren. Zeilen heißen: genau die fehlen.
+**Erledigt.** Beide Reparatur-Läufe sind durch (die 61 plus die beiden vom 14.08.),
+`supabase migration list` zeigt jetzt **232 Migrationen, alle in beiden Spalten, keine Lücke**.
 
-**Warum nicht einfach markieren:** Eine Migration als eingespielt zu markieren, die es nicht ist,
-macht die Lücke für immer unsichtbar. Bei `drop_debug_coin_backdoors` hieße das, die Hintertüren
-lägen weiter in der Produktivdatenbank.
+Wie es belegt wurde — falls die Frage je wiederkommt: Unter `supabase/_ops/` liegt eine
+**Nur-Lese-Abfrage** für den SQL-Editor, die 75 Funktionen, 24 Policies, 21 Indizes, 2 Speicher-Eimer,
+6 gelöschte Indizes, 3 gelöschte Funktionen und eine Spalten-Nullbarkeit in den Systemtabellen
+nachschlägt — plus die Anleitung. Leeres Ergebnis heißt: gefahrlos markieren. Zeilen heißen: genau
+die fehlen. 19 der 61 waren zusätzlich über die REST-Schnittstelle belegt (Tabellen und Spalten,
+alle vorhanden), die Abfrage deckte weitere 38 ab. Vier lassen sich prinzipiell nicht über die bloße
+Existenz eines Objekts prüfen — sie sind in der README benannt.
 
-19 der 61 sind über die REST-Schnittstelle belegt (Tabellen und Spalten, alle vorhanden). Die
-Abfrage deckt weitere 38 ab. Vier lassen sich prinzipiell nicht über die bloße Existenz eines
-Objekts prüfen — sie sind in der README benannt.
+**Der Lauf ergab genau einen Befund, und der war ein Fehlalarm:** `seller_accounts_read` fehlte —
+weil die spätere Migration `20260710140000` sie ausdrücklich löscht und `seller_accounts_read_own`
+an ihre Stelle setzt. Ihr Fehlen war also der **Beleg**, dass die Nachfolge-Migration lief. Die
+Abfrage ist entsprechend korrigiert; sie erwartet später ersetzte Policies nicht mehr.
 
-**Der Lauf am 14.08. ergab genau einen Befund, und der war ein Fehlalarm:** `seller_accounts_read`
-fehlt — weil die spätere Migration `20260710140000` sie ausdrücklich löscht und
-`seller_accounts_read_own` an ihre Stelle setzt. Ihr Fehlen ist also der **Beleg**, dass die
-Nachfolge-Migration lief. Die Abfrage ist entsprechend korrigiert; sie erwartet später ersetzte
-Policies nicht mehr. **Alle 61 sind damit belegt eingespielt, die Reparatur ist gefahrlos:**
+**Warum das nicht einfach von Anfang an markiert wurde** — die Regel gilt weiter: Eine Migration als
+eingespielt zu markieren, die es nicht ist, macht die Lücke für immer unsichtbar. Bei
+`drop_debug_coin_backdoors` hieße das, die Hintertüren lägen weiter in der Produktivdatenbank.
 
-```bash
-cd /Users/zaurhatuev/vibes-app && supabase migration repair --status applied $(ls supabase/migrations/*.sql | sed -n 's#.*/\([0-9]\{14\}\)_.*#\1#p' | awk '$1>="20260614190000" && $1<="20260716130000"')
-```
+### Der Schema-Abzug war zwei Monate alt — erneuert am 14.08.2026
 
-### Der Schema-Abzug ist zwei Monate alt
+`supabase/schema_live.sql` stammte vom **14.06.2026** und war damit älter als fast alle 61
+Migrationen, obwohl CLAUDE.md ihn als Quelle der Wahrheit führt. Die **gesamte Berkat-Schicht fehlte
+darin** — `live_auctions`, `live_bids`, `auction_carts`, `live_auto_bids`, `live_giveaways`: keine
+davon war verzeichnet. Wer dort eine Spalte nachschlug, prüfte gegen einen Stand vor der App.
 
-`supabase/schema_live.sql` stammt vom **14.06.2026** und ist damit älter als fast alle 61
-Migrationen — obwohl CLAUDE.md ihn als Quelle der Wahrheit führt. Wer dort eine Spalte nachschlägt,
-prüft gegen einen veralteten Stand. Erneuern geht mit `supabase db dump`, das braucht aber Docker
-Desktop (auf diesem Rechner nicht installiert). **Ohne Docker geht es nicht:** Die REST-Schnittstelle
-liefert die vollständige Beschreibung nur gegen einen *geheimen* Schlüssel, nicht gegen den
-öffentlichen. Einzelne Spalten lassen sich abfragen, eine vollständige Liste aufzählen nicht.
+**Erneuert.** Jetzt 93 Tabellen statt 78, 275 Funktionen statt 208, 212 Policies statt 195.
+`SCHEMA.md` ist mitgezogen.
+
+**Der Umweg um Docker** — die frühere Annahme „ohne Docker geht es nicht" war falsch:
+`supabase db dump` braucht tatsächlich Docker, aber es kann mit `--dry-run` auch nur das fertige
+`pg_dump`-Skript **ausdrucken** statt es auszuführen. Und die CLI benutzt dafür kein gespeichertes
+DB-Passwort, sondern legt sich über die Management-API eine kurzlebige Rolle an
+(`cli_login_postgres`) — deshalb fragt auch `migration repair` nie nach einem Passwort. Natives
+`pg_dump` (Homebrew, 18.4) führt das Skript dann aus. Rezept steht in CLAUDE.md, Regel 10.
+
+Zwei Fallen dabei: `--keep-comments` muss mit, sonst fallen die `-- Name: …`-Kopfzeilen weg und der
+Abzug wird unlesbar. Und das erzeugte `/tmp`-Skript trägt das kurzlebige Passwort im Klartext —
+danach löschen, nie committen.
+
+**Das Parse-Skript für `SCHEMA.md` existierte nicht.** CLAUDE.md nannte es seit Juni („dann das
+Parse-Skript"), im Repo lag es nie — genau deshalb war `SCHEMA.md` zwei Monate lang nicht
+nachziehbar. Nachgebaut als `supabase/_ops/schema-md.mjs`; gegengeprüft, dass es die 78 vorher
+bekannten Tabellen zeichengenau so ausgibt wie die alte Datei.
+
+### Der Sicherheits-Durchgang vor dem Push fand ein Loch — in Serlo, nicht in Berkat
+
+Berkats eigener Code war sauber: keine Geheimnisse in den 22 Commits, RLS auf allen neuen
+Tabellen, alle RPCs mit gepinntem `search_path` und Rollen-Prüfung, der Geldpfad rechnet
+serverseitig, Adressen nur für die zwei Beteiligten.
+
+Gefunden wurde etwas anderes: **`credit_coins(user_id, coins)` war für die Rolle `anon`
+freigegeben** — `SECURITY DEFINER`, ohne jede Prüfung, schreibt direkt ins Coin-Guthaben. Mit dem
+öffentlichen Client-Schlüssel, der in jedem App-Bundle steckt, konnte sich jeder beliebig viele
+Coins gutschreiben, **ohne angemeldet zu sein**. Belegt mit einem Aufruf mit erfundener Nutzer-ID:
+Er lief bis zum Fremdschlüssel durch (`23503`), nicht bis zu einer Rechteprüfung.
+
+Ursache: Die April-Migration hatte korrekt `revoke all … from public`. Ein späteres DROP+CREATE
+setzte die Rechte auf den Postgres-Standard zurück — `EXECUTE` für PUBLIC, und PUBLIC schließt
+`anon` ein. Behoben mit `20260814160000_revoke_anon_money_rpcs.sql`, zusammen mit zehn weiteren
+ungeprüften `anon`-RPCs. Gegengeprüft: alle liefern jetzt `permission denied`.
+
+**Offen geblieben:** `toggle_pin_post(p_post_id, p_user_id)` nimmt die Nutzer-ID als Parameter und
+prüft sie nicht gegen `auth.uid()`. `anon` ist raus, aber ein angemeldetes Konto kann weiterhin
+fremde Beiträge an- und abpinnen. Der Fix ändert die Signatur und berührt zwei Aufrufstellen —
+eigener Schritt.
+
+**Konsequenz für den Schema-Abzug:** Er wird ab jetzt mit `--no-privileges` gezogen. Das Repo ist
+öffentlich; ein Abzug mit Rechten trägt ~1000 `GRANT`-Zeilen und hätte genau diese Lücke verraten.
 
 ### Berkat pushen
 
-Eingecheckt ist alles: Branch `berkat`, **21 Commits**. **Gepusht ist nichts** — das braucht eine
-ausdrückliche Freigabe. `.env` ist über `apps/berkat/.gitignore` ausgeschlossen und liegt nicht im
-Commit; `node_modules`, `ios/` und `android/` ebenso wenig.
+Am 14.08.2026 nach dem Sicherheits-Durchgang **gepusht** — Branch `berkat` auf
+`vibestes-boop/vibes-app`. Basis ist `origin/main` (nicht `origin/master`, das steht seit April
+still). `.env` ist über `apps/berkat/.gitignore` ausgeschlossen und liegt nicht im Commit;
+`node_modules`, `ios/` und `android/` ebenso wenig.
+
+**Das Repo ist öffentlich.** Alles, was hier hineingeht, ist sofort weltweit lesbar und wird von
+Bots binnen Sekunden durchsucht. Vor jedem weiteren Push gilt deshalb: keine Geheimnisse, und keine
+Datei, die das Rechte-Modell der Live-DB beschreibt.
 
 ### Stripe-Modus
 
