@@ -716,33 +716,32 @@ dem Simulator und der Zuschlag-Push hat kein Ziel.
 1. **Eigene Benachrichtigungsliste in Berkat** — es gibt keine. Der Konto-Tab zeigt Körbe samt Frist,
    und der Gewinner sieht im Raum einen `won`-Zustand mit Erfolgs-Haptik, aber keine Historie. Wer
    einen Push wegwischt, findet ihn nirgends wieder.
-2. **Android-Build — vorbereitet, wartet auf Firebase.** Für Android wurde noch nie gebaut.
-   `app.json` ist fertig konfiguriert (Berechtigungen inklusive `POST_NOTIFICATIONS`,
-   `googleServicesFile` gesetzt), es fehlt allein die Datei.
+2. **Android-Build — erledigt am 14.08.2026.** Der erste Android-Build überhaupt, im ersten
+   Anlauf durch (11 Minuten, `versionCode` 2, APK unter der internen Verteilung). Anders als bei
+   iOS gab es keine Berechtigungs-Hürde, weil Firebase vorher stand.
 
-   Beim Vergleich mit Serlo fiel dabei ein zweiter Mangel auf, der nichts mit Push zu tun hat:
-   Berkat deklarierte nur `RECORD_AUDIO`, **keine `CAMERA`-Berechtigung** — für eine
-   Live-Streaming-App auf Android wäre das schon ohne Benachrichtigungen ein Problem gewesen.
-   Ist mit ergänzt.
+   **Firebase-Anbindung:** Projekt `kleinanzeigen-62bc9`, App-Paket `app.berkat.market`.
+   `google-services.json` liegt in `apps/berkat/` und ist eingecheckt — sie enthält kein
+   Geheimnis, nur Projekt-ID, Paketname und einen Firebase-API-Key, der ohnehin in jeder APK
+   steckt. Der **FCM-V1-Dienstkonto-Schlüssel** liegt bei EAS.
 
-   **Was du in Firebase tun musst** (geht nur mit deinem Google-Konto):
+   ⚠️ **Beide müssen aus demselben Firebase-Projekt stammen.** Passt der Dienstkonto-Schlüssel
+   nicht zur `google-services.json`, lehnt Google die Zustellung ab — und zwar erst zur Laufzeit,
+   der Build läuft trotzdem durch. Beim Einrichten stand im EAS-Menü ein alter Schlüssel für
+   `serlo-199be` zur Auswahl; den zu nehmen wäre genau dieser Fehler gewesen.
 
-   1. [console.firebase.google.com](https://console.firebase.google.com) → Projekt `serlo-199be`
-      öffnen (oder ein eigenes für Berkat anlegen — beides geht, ein gemeinsames Projekt ist
-      einfacher zu verwalten)
-   2. *Android-App hinzufügen* mit dem Paketnamen **`app.berkat.market`**
-   3. `google-services.json` herunterladen und nach `apps/berkat/` legen
-   4. In den Projekteinstellungen → *Cloud Messaging* den **FCM-V1-Dienstkontoschlüssel** als
-      JSON erzeugen und bei EAS hinterlegen:
-      `eas credentials --platform android` → *Push Notifications: Manage your FCM V1 service account key*
+   ⚠️ **Der Dienstkonto-Schlüssel ist ein echtes Geheimnis** (`type: service_account` +
+   `private_key`), anders als `google-services.json`. Er lag beim Einrichten kurz im Repo-Ordner —
+   nicht eingecheckt, aber auch nicht ignoriert. `apps/berkat/.gitignore` fängt das jetzt ab
+   (`*firebase-adminsdk*.json`, `*service-account*.json`). Nach dem Hochladen zu EAS lokal löschen.
 
-   Danach baut `eas build --profile development --platform android`. Der Keystore wird von EAS
-   beim ersten Lauf selbst erzeugt, dafür braucht es nichts.
+   Beim Vergleich mit Serlos Android-Block fiel außerdem auf, dass Berkat nur `RECORD_AUDIO`
+   deklarierte und **keine `CAMERA`** — für eine Live-Streaming-App wäre das schon ohne Push ein
+   Problem gewesen. Ist ergänzt, zusammen mit `POST_NOTIFICATIONS` (Android 13+).
 
-   ⚠️ Ohne Schritt 3 scheitert der Build sofort mit „google-services.json not found" — die Datei
-   ist in `app.json` bereits referenziert. Wer vorher einen Android-Build **ohne** Push will,
-   streicht dort die Zeile `googleServicesFile`; die App läuft dann, nur `getExpoPushTokenAsync`
-   schlägt fehl und `pushAvailable` bleibt praktisch wirkungslos.
+   **Noch nicht geprüft:** ob der Push auf einem echten Android-Gerät ankommt. Die Registrierung
+   überspringt Emulatoren per `Device.isDevice`, es braucht also ein Telefon.
+
 3. **Web-Push hat null Abonnenten.** Der Weg ist seit 20260814220000 wieder da und VAPID-Schlüssel
    sind gesetzt, aber `web_push_subscriptions` ist leer — es hat schlicht noch nie jemand im Browser
    die Berechtigung erteilt. Erst dann lässt sich prüfen, ob wirklich etwas ankommt.
