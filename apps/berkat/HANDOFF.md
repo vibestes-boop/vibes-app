@@ -1617,5 +1617,11 @@ eine Bürgschaft ist kein Kaufknopf.
 Das Sheet bleibt dumm — die Zeile kommt fertig als Prop aus `app/live/[id].tsx`. So läuft die
 Abfrage einmal je Live-Raum statt bei jedem Öffnen des Sheets.
 
-**Gerendert wurde sie noch nicht gesehen:** Dafür muss ein Konto senden, für das jemand gebürgt hat.
-Kürzester Weg: vom zweiten Konto aus für den Gastgeber bürgen, dann dessen Sheet öffnen.
+**Am 15.08.2026 im Zwei-Konten-Durchlauf gesehen:** `amir32` bürgte für `berkattest`, danach stand
+im Sheet der laufenden Show **„amir32 bürgt — du folgst ihm"** — unter den drei Kacheln, über
+„Profil anzeigen". Die Formulierung ist personalisiert, nicht gezählt.
+
+⚠️ **Falle beim Prüfen:** Das iPhone hing noch am alten Bündel, weil der Mac zwischendurch vom
+iPhone-Hotspot (`172.20.10.2`) zurück ins WLAN (`192.168.178.60`) gewechselt war. Neuer Code kommt
+dann nicht an, und man sucht ihn im Quelltext statt im Netz. Die aktuelle Adresse liefert
+`ipconfig getifaddr en0`; im Dev-Client den passenden Eintrag wählen.
