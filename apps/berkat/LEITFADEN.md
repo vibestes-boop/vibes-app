@@ -168,6 +168,7 @@ berkat://messages/<empfänger-id>
 | Symptom | Erster Verdacht |
 |---|---|
 | **Weißer Bildschirm** nach einer Änderung | Fast Refresh verträgt keine neuen Hooks. App schließen, neu öffnen. **Erst danach suchen.** |
+| **„Refreshing…" in Schleife**, auf allen Geräten gleichzeitig | Ein Paket wurde installiert, **während Metro lief** — der Zwischenspeicher zeigt noch auf die alte Modul-Auflösung. Metro beenden und mit `--clear` neu starten. Kein App-Fehler; im Protokoll steht nichts. |
 | **Liste bleibt leer, kein Fehler** | RLS. PostgREST antwortet bei fehlendem Recht mit leerer Menge statt Fehler. Policies in `supabase/schema_live.sql` nachschlagen. |
 | **Gar nichts passiert, kein Log** | `void supabase.rpc(…)` ohne `.then()`. Der Aufruf geht nie raus. |
 | **`42501 permission denied`** auf `live_sessions` oder `user_whip_ingresses` | Neue Spalte ohne `GRANT SELECT (spalte)`. Ein Filter zählt als Lesezugriff. |
