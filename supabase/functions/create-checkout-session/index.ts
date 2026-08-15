@@ -222,6 +222,16 @@ Deno.serve(async (req) => {
   // ANGEFRAGT — Betrag und Empfänger stehen fest, seit `create_berkat_tip` sie
   // geprüft hat. Hier wird nichts mehr aus dem Body übernommen außer der ID.
   if (body.tip_id && typeof body.tip_id === 'string') {
+    // ⚠️ `stripeKey` MUSS hier lokal geholt werden. Die Datei deklariert ihn
+    // zweimal mit `const` — einmal im Bestellzweig, einmal im Coin-Zweig ganz
+    // unten. Dieser Zweig liegt dazwischen und griffe sonst auf die spätere
+    // Deklaration zu, die zu diesem Zeitpunkt noch in der temporalen Todeszone
+    // liegt: ReferenceError, unbehandelt, HTTP 500. TypeScript sieht das nicht,
+    // weil die Variable im Gültigkeitsbereich sehr wohl existiert.
+    // (Am 15.08.2026 genau so passiert.)
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeKey) return json({ error: 'server_misconfigured' }, 500);
+
     const tipClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: tip } = await tipClient
@@ -281,7 +291,16 @@ Deno.serve(async (req) => {
     if (!tRes.ok) {
       const errBody = await tRes.text();
       console.error('[create-checkout-session] tip stripe error', tRes.status, errBody);
-      return json({ error: 'stripe_session_create_failed' }, 502);
+      // Stripes Begründung mitgeben. Sie ist eine Validierungsmeldung, kein
+      // Geheimnis — und ohne sie sieht im Client jeder Fehlschlag gleich aus.
+      // Am 15.08.2026 hat genau das die Suche unnötig lang gemacht.
+      let detail = '';
+      try {
+        detail = String(JSON.parse(errBody)?.error?.message ?? '').slice(0, 300);
+      } catch {
+        detail = errBody.slice(0, 300);
+      }
+      return json({ error: 'stripe_session_create_failed', detail }, 502);
     }
 
     const tSession = (await tRes.json()) as { id: string; url: string };

@@ -22,6 +22,56 @@ export const TIP_PRESETS = [200, 500, 1000, 2000];
 export const TIP_MIN_CENTS = 100;
 export const TIP_MAX_CENTS = 50_000;
 
+/**
+ * Was die Edge Function geantwortet hat.
+ *
+ * `functions.invoke` wirft bei jedem Nicht-2xx denselben nichtssagenden Fehler
+ * — die eigentliche Begründung steckt im Rumpf der Antwort, den supabase-js an
+ * `error.context` hängt (ein `Response`). Ohne das Auslesen sieht ein fehlender
+ * Datensatz genauso aus wie eine abgelehnte Stripe-Anfrage, und man sucht im
+ * Dunkeln. Genau das ist am 15.08.2026 beim ersten Trinkgeld passiert.
+ */
+async function functionErrorCode(
+  fnError: unknown,
+): Promise<{ code: string; detail: string; status: number }> {
+  const context = (fnError as { context?: Response }).context;
+  // Der Status allein sagt schon, welcher Zweig gegriffen hat (404/403/409/502)
+  // — und er ist auch dann noch da, wenn der Rumpf nicht mehr zu lesen ist.
+  // supabase-js liest ihn je nach Fassung selbst aus, dann wirft `.json()`
+  // „body already consumed". Deshalb zuerst den Status sichern.
+  const status = typeof context?.status === 'number' ? context.status : 0;
+  try {
+    if (!context || typeof context.json !== 'function') return { code: '', detail: '', status };
+    const body = (await context.json()) as { error?: string; detail?: string } | null;
+    return {
+      code: String(body?.error ?? ''),
+      detail: String(body?.detail ?? ''),
+      status,
+    };
+  } catch {
+    return { code: '', detail: '', status };
+  }
+}
+
+function checkoutErrorText(code: string): string {
+  switch (code) {
+    case 'tip_not_found':
+      return 'Das Trinkgeld wurde nicht gefunden. Versuch es noch einmal.';
+    case 'not_authorized':
+      return 'Das ist nicht dein Trinkgeld.';
+    case 'tip_not_payable':
+      return 'Dieses Trinkgeld ist schon bezahlt oder abgelaufen.';
+    case 'stripe_session_create_failed':
+      return 'Stripe hat die Zahlung abgelehnt. Versuch es noch einmal.';
+    case 'server_misconfigured':
+      return 'Auf dem Server fehlt ein Schlüssel. Das müssen wir beheben.';
+    case '':
+      return 'Die Kasse ließ sich nicht öffnen. Versuch es noch einmal.';
+    default:
+      return `Die Kasse antwortete mit „${code}".`;
+  }
+}
+
 function tipErrorText(message: string): string {
   if (message.includes('cannot_tip_self')) return 'Dir selbst geht leider nicht. 🙂';
   if (message.includes('amount_out_of_range'))
@@ -58,7 +108,31 @@ export function useSendTip() {
         { body: { tip_id: tipId } },
       );
       if (fnError) {
-        return { ok: false, message: 'Die Kasse ließ sich nicht öffnen. Versuch es noch einmal.' };
+        const { code, detail, status } = await functionErrorCode(fnError);
+        if (__DEV__) {
+          console.warn(
+            '[Berkat] Trinkgeld-Kasse:',
+            (fnError as Error).message,
+            '· status',
+            status,
+            '· code',
+            code,
+            '· detail',
+            detail,
+          );
+        }
+        // Stripes eigene Begründung schlägt jede allgemeine Formulierung —
+        // sie sagt, welches Feld nicht passt.
+        if (detail) return { ok: false, message: detail };
+        if (code) return { ok: false, message: checkoutErrorText(code) };
+        // Weder Code noch Begründung lesbar: dann wenigstens der Status, sonst
+        // sieht jeder Fehlschlag gleich aus.
+        return {
+          ok: false,
+          message: status
+            ? `Die Kasse antwortete mit HTTP ${status}.`
+            : 'Die Kasse war nicht erreichbar. Netz prüfen und nochmal.',
+        };
       }
 
       const url = (data as { url?: string } | null)?.url;
