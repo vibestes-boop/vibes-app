@@ -169,6 +169,38 @@ die **nur das Aggregat** herausgibt. Die Policy aufzuweichen ist der falsche Ref
 `order_reviews` hätte ein `USING(true)` jeden Kommentar und jede Käufer-Verkäufer-Beziehung
 freigegeben.
 
+### `create-checkout-session`: `stripeKey` steht nicht dort, wo man ihn vermutet
+
+Am 15.08.2026 gekostet: Der Trinkgeld-Knopf endete in „Die Kasse ließ sich nicht öffnen", die
+Funktion antwortete mit **HTTP 500** — sie warf also, statt etwas abzulehnen.
+
+`stripeKey` ist in der Datei **nicht auf Modulebene** deklariert, sondern **zweimal lokal** mit
+`const`: einmal im Bestellzweig, einmal im Coin-Zweig ganz unten. Ein neuer Zweig dazwischen greift
+damit auf die *spätere* Deklaration zu, die zu dem Zeitpunkt noch in der temporalen Todeszone
+liegt → `ReferenceError`, unbehandelt, 500.
+
+**TypeScript sieht das nicht.** Die Variable ist im Gültigkeitsbereich, sie ist nur noch nicht
+initialisiert. Wer dieser Funktion einen vierten Zweig hinzufügt, holt sich den Schlüssel deshalb
+selbst:
+
+```ts
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+if (!stripeKey) return json({ error: 'server_misconfigured' }, 500);
+```
+
+### Eine Fehlermeldung für alles ist keine Fehlermeldung
+
+Der eigentliche Grund, warum die Suche oben so lange dauerte: Der Client zeigte bei **jedem**
+Fehlschlag denselben Satz — fehlender Datensatz, falscher Besitzer, Stripe-Ablehnung, Absturz. Die
+ersten drei Prüfungen liefen deshalb in die falsche Richtung (Stripe-Parameter, Secrets,
+Datenbankrechte), obwohl der HTTP-Status die Antwort sofort gehabt hätte: **500, nicht 502** — also
+kein Stripe-Problem.
+
+`supabase.functions.invoke` wirft bei jedem Nicht-2xx denselben nichtssagenden Fehler; die
+Begründung steckt im Rumpf, den supabase-js an `error.context` hängt (ein `Response`). Je nach
+Fassung ist der Rumpf schon gelesen, dann wirft `.json()` — **den Status zuerst sichern**, der bleibt
+immer lesbar. Muster in `lib/useTip.ts`, `functionErrorCode()`.
+
 ### Fast Refresh verträgt keine neuen Hooks
 
 Wer einer laufenden Komponente einen Hook hinzufügt, bekommt einen **weißen Bildschirm** — React
@@ -451,7 +483,7 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Verkäufer-Sheet | Tipp auf den Kopf im Live-Raum: Bewertung, Versandtempo, Zuschläge + sechs Wege — Abschnitt 10 |
 | Öffentliche Verkäufer-Seite | `app/seller/[id].tsx` — Kennzahlen, laufende Show, zuletzt Verkauftes |
 | Direktnachrichten | Verlauf + Posteingang, geteilt mit Serlo (`conversations`, `messages`) |
-| Trinkgeld | echtes Geld über Stripe (`berkat_tips`), **nie durchgelaufen** — Abschnitt 10 |
+| Trinkgeld | echtes Geld über Stripe (`berkat_tips`) — am 15.08.2026 einmal komplett durchgelaufen |
 | Bewertungen | „Ist angekommen" → fünf Sterne; öffentlicher Schnitt via `get_seller_rating` |
 | Live-Raum | Video, Kamera-Vorschau vor dem Senden, Kamera-Steuerung, Chat mit Eingabe, wegwischbare Kommentare, Sammelkorb-Leiste, „Als Nächstes", Shop-Zettel |
 | Auktion | Gebot, Anti-Snipe (+10 s), Sofortkauf, Max-Gebot, Zuschlag, „Du führst" |
@@ -471,11 +503,9 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
-1. **Der Trinkgeld-Weg ist nie durchgelaufen.** Gebaut, Migration eingespielt, beide Edge
-   Functions deployt — aber niemand hat je bezahlt. Beim ersten Versuch auf die Adresszeile
-   schauen: `cs_test_…` ist Spielgeld, `cs_live_…` wäre echtes.
-2. **Vier der sechs Sheet-Zeilen sind ungesehen.** Trinkgeld, Nachricht, Sperren und Melden fallen
-   bei einem selbst korrekt weg — sie brauchen den Blick vom zweiten Konto.
+1. **Sperren und Melden sind ungeprüft.** Beide fallen bei einem selbst weg, brauchen also einen
+   fremden Gastgeber im Live-Raum. Die Schreibwege (`user_blocks`, `user_reports`) tragen die RLS
+   ohne Zutun, aber gelaufen ist noch keiner.
 3. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
 4. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
@@ -1073,6 +1103,15 @@ geprüft. Gegengeprüft: Ein direkter INSERT von außen antwortet mit `42501 per
 Der Zweig in `create-checkout-session` wird nur betreten, wenn `tip_id` im Körper steht; der
 bestehende Bestellweg ist unverändert. Bestätigt wird ausschließlich vom Webhook, idempotent über
 `status = 'pending'`.
+
+**Am 15.08.2026 komplett durchgelaufen:** Zeile angelegt, Stripe-Sitzung im Sandbox-Modus, Testkarte
+bezahlt, und die Zeile sprang auf `paid`. Das ist gleichzeitig der Beweis für den Webhook-Deploy —
+den Wechsel macht ausschließlich er. Zwei Fallen dabei, siehe Abschnitt 3
+(`stripeKey`-Deklaration und die Sackgasse einer Fehlermeldung für alles).
+
+**Testen ohne zweites Gerät:** Ein Trinkgeld an sich selbst blockt der Server. Über den Direktlink
+`berkat://tip/<empfänger-id>` lässt sich der Weg aber vom Simulator aus auslösen, solange der
+Empfänger ein anderes Konto ist. Dasselbe gilt für `berkat://messages/<id>`.
 
 ⚠️ **Beide Edge Functions brauchten einen Deploy** (`create-checkout-session` und `stripe-webhook`,
 letztere zwingend mit `--no-verify-jwt`). Am 15.08.2026 erledigt und gemessen: Der Webhook antwortet
