@@ -5,14 +5,19 @@
 // Edge Function die Stripe-Seite. Der Client behauptet nie einen Betrag —
 // er fragt einen an.
 //
-// Bezahlt wird im Browser. Bestätigt wird die Zahlung ausschließlich vom
-// Webhook; kehrt jemand ohne zu zahlen zurück, bleibt die Zeile 'pending'
-// und kostet niemanden etwas.
+// Bezahlt wird als Blatt über der App (siehe `payBrowser.ts`). Bestätigt wird
+// die Zahlung ausschließlich vom Webhook; kehrt jemand ohne zu zahlen zurück,
+// bleibt die Zeile 'pending' und kostet niemanden etwas.
 
 import { useCallback } from 'react';
-import { Linking } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import { openPaymentPage } from './payBrowser';
+import {
+  functionErrorCode,
+  functionErrorMessage,
+  sharedCheckoutErrorText,
+} from './functionError';
 
 export type TipResult = { ok: true } | { ok: false; message: string };
 
@@ -22,38 +27,7 @@ export const TIP_PRESETS = [200, 500, 1000, 2000];
 export const TIP_MIN_CENTS = 100;
 export const TIP_MAX_CENTS = 50_000;
 
-/**
- * Was die Edge Function geantwortet hat.
- *
- * `functions.invoke` wirft bei jedem Nicht-2xx denselben nichtssagenden Fehler
- * — die eigentliche Begründung steckt im Rumpf der Antwort, den supabase-js an
- * `error.context` hängt (ein `Response`). Ohne das Auslesen sieht ein fehlender
- * Datensatz genauso aus wie eine abgelehnte Stripe-Anfrage, und man sucht im
- * Dunkeln. Genau das ist am 15.08.2026 beim ersten Trinkgeld passiert.
- */
-async function functionErrorCode(
-  fnError: unknown,
-): Promise<{ code: string; detail: string; status: number }> {
-  const context = (fnError as { context?: Response }).context;
-  // Der Status allein sagt schon, welcher Zweig gegriffen hat (404/403/409/502)
-  // — und er ist auch dann noch da, wenn der Rumpf nicht mehr zu lesen ist.
-  // supabase-js liest ihn je nach Fassung selbst aus, dann wirft `.json()`
-  // „body already consumed". Deshalb zuerst den Status sichern.
-  const status = typeof context?.status === 'number' ? context.status : 0;
-  try {
-    if (!context || typeof context.json !== 'function') return { code: '', detail: '', status };
-    const body = (await context.json()) as { error?: string; detail?: string } | null;
-    return {
-      code: String(body?.error ?? ''),
-      detail: String(body?.detail ?? ''),
-      status,
-    };
-  } catch {
-    return { code: '', detail: '', status };
-  }
-}
-
-function checkoutErrorText(code: string): string {
+function tipCheckoutErrorText(code: string): string | null {
   switch (code) {
     case 'tip_not_found':
       return 'Das Trinkgeld wurde nicht gefunden. Versuch es noch einmal.';
@@ -61,14 +35,8 @@ function checkoutErrorText(code: string): string {
       return 'Das ist nicht dein Trinkgeld.';
     case 'tip_not_payable':
       return 'Dieses Trinkgeld ist schon bezahlt oder abgelaufen.';
-    case 'stripe_session_create_failed':
-      return 'Stripe hat die Zahlung abgelehnt. Versuch es noch einmal.';
-    case 'server_misconfigured':
-      return 'Auf dem Server fehlt ein Schlüssel. Das müssen wir beheben.';
-    case '':
-      return 'Die Kasse ließ sich nicht öffnen. Versuch es noch einmal.';
     default:
-      return `Die Kasse antwortete mit „${code}".`;
+      return sharedCheckoutErrorText(code);
   }
 }
 
@@ -108,37 +76,26 @@ export function useSendTip() {
         { body: { tip_id: tipId } },
       );
       if (fnError) {
-        const { code, detail, status } = await functionErrorCode(fnError);
+        const parsed = await functionErrorCode(fnError);
         if (__DEV__) {
           console.warn(
             '[Berkat] Trinkgeld-Kasse:',
             (fnError as Error).message,
             '· status',
-            status,
+            parsed.status,
             '· code',
-            code,
+            parsed.code,
             '· detail',
-            detail,
+            parsed.detail,
           );
         }
-        // Stripes eigene Begründung schlägt jede allgemeine Formulierung —
-        // sie sagt, welches Feld nicht passt.
-        if (detail) return { ok: false, message: detail };
-        if (code) return { ok: false, message: checkoutErrorText(code) };
-        // Weder Code noch Begründung lesbar: dann wenigstens der Status, sonst
-        // sieht jeder Fehlschlag gleich aus.
-        return {
-          ok: false,
-          message: status
-            ? `Die Kasse antwortete mit HTTP ${status}.`
-            : 'Die Kasse war nicht erreichbar. Netz prüfen und nochmal.',
-        };
+        return { ok: false, message: functionErrorMessage(parsed, tipCheckoutErrorText) };
       }
 
       const url = (data as { url?: string } | null)?.url;
       if (!url) return { ok: false, message: 'Stripe hat keine Bezahlseite geliefert.' };
 
-      await Linking.openURL(url);
+      await openPaymentPage(url);
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'tips-received'] });
       return { ok: true };
     },

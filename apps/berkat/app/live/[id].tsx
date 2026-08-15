@@ -62,9 +62,11 @@ import { useLiveReactions } from '../../lib/useReactions';
 import { liveKitAvailable, liveKitFailure } from '../../lib/livekit';
 import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib/useLiveVideo';
 import { stage, radius, space } from '../../theme/tokens';
+import { useCheckoutCart } from '../../lib/useCheckout';
 import {
   bidErrorText,
   formatCartWindow,
+  formatEuro,
   nextMinBid,
   useCart,
   useCountdown,
@@ -188,6 +190,34 @@ export default function LiveAuctionRoom() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [itemsOpen, setItemsOpen] = useState(false);
+  const [paying, setPaying] = useState(false);
+
+  // Bezahlen am Ende der Show — dort, wo der Käufer gerade steht.
+  //
+  // Vorher führte der Weg von hier aus: Raum verlassen → Reiter „Konto"
+  // finden → bezahlen. Der Bildschirm sagte das sogar wörtlich („wartet unter
+  // Konto"), was für einen Menschen, der eben vor Publikum gewonnen hat, eine
+  // Hausaufgabe statt eines Abschlusses ist.
+  //
+  // Bewusst NUR hier und ausdrücklich NICHT neben der laufenden Auktion:
+  // `checkout_auction_cart` friert den Korb ein (`checkout_pending`, siehe
+  // Übergabe Abschnitt 4 „Der Korb friert beim Gang zur Kasse ein"). Jeder
+  // weitere Zuschlag landet danach in einem NEUEN Korb — wer mitten in der
+  // Show bezahlt, zahlt beim nächsten Gewinn ein zweites Mal Versand. Der
+  // Sammelkorb ist das, was eine 5-€-Auktion überhaupt erst wirtschaftlich
+  // macht; ein Knopf, der ihn mittendrin zerschneidet, gehört nicht in eine
+  // laufende Show. Ist die Show vorbei, kommt aus ihr auch nichts mehr nach.
+  const checkout = useCheckoutCart();
+  const payCart = useCallback(
+    async (cartId: string) => {
+      setPaying(true);
+      setNotice(null);
+      const result = await checkout(cartId);
+      setPaying(false);
+      if (!result.ok) setNotice(result.message);
+    },
+    [checkout],
+  );
   const [duration, setDuration] = useState(30);
   const [startBusy, setStartBusy] = useState(false);
   const [draft, setDraft] = useState('');
@@ -512,16 +542,50 @@ export default function LiveAuctionRoom() {
   // kommt. Der Hinweis auf das Paket steht bewusst dabei: Wer gerade etwas
   // gewonnen hat, soll wissen, wo es liegt.
   if (session && session.status !== 'active') {
+    // Als eigene Bindung, nicht als `cart && …` im JSX: TypeScript verengt
+    // `cart` sonst innerhalb der Zweige nicht, und der Betrag am Knopf wäre
+    // ohne Ausrufezeichen nicht zu haben.
+    const wonCart = cart && cart.itemCount > 0 ? cart : null;
     return (
       <View style={[styles.screen, styles.center, { padding: space.xl }]}>
         <Text style={styles.emptyTitle}>Die Show ist zu Ende</Text>
         <Text style={styles.emptyBody}>
-          {cart && cart.itemCount > 0
-            ? `Dein Paket mit ${cart.itemCount} ${cart.itemCount === 1 ? 'Artikel' : 'Artikeln'} wartet unter „Konto“.`
+          {wonCart
+            ? `Du hast ${wonCart.itemCount} ${wonCart.itemCount === 1 ? 'Artikel' : 'Artikel'} gewonnen — alles zusammen in einem Paket. 🎉`
             : 'Danke fürs Zuschauen — schau, wer gerade sonst live ist.'}
         </Text>
+
+        {wonCart ? (
+          <>
+            <Pressable
+              style={[styles.payNow, paying && styles.payNowBusy]}
+              disabled={paying}
+              onPress={() => void payCart(wonCart.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${formatEuro(wonCart.totalCents)} bezahlen`}
+            >
+              {paying ? (
+                <ActivityIndicator color={stage.goldInk} />
+              ) : (
+                <>
+                  <Package size={18} color={stage.goldInk} />
+                  <Text style={styles.payNowText}>
+                    {formatEuro(wonCart.totalCents)} bezahlen
+                  </Text>
+                </>
+              )}
+            </Pressable>
+            <Text style={styles.payNowHint}>
+              {notice ?? 'Versandadresse gibst du auf der Bezahlseite ein.'}
+            </Text>
+          </>
+        ) : null}
+
         <Pressable style={styles.backButton} onPress={leaveRoom}>
-          <Text style={styles.backButtonText}>Zurück</Text>
+          {/* „Später" statt „Zurück", solange etwas offen ist: Der Korb bleibt
+              24 Stunden stehen, und wer jetzt nicht zahlt, hat nichts verloren.
+              „Zurück" würde daneben wie Abbrechen aussehen. */}
+          <Text style={styles.backButtonText}>{wonCart ? 'Später' : 'Zurück'}</Text>
         </Pressable>
       </View>
     );
@@ -1044,6 +1108,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: space.sm,
   },
+  // Gold ist auf der Bühne der Kauf — Gebot, Preis, Zuschlag-Weg. Der letzte
+  // Schritt dieses Wegs trägt deshalb dieselbe Farbe wie der erste.
+  payNow: {
+    marginTop: space.lg,
+    minHeight: 52,
+    minWidth: 220,
+    borderRadius: radius.pill,
+    backgroundColor: stage.gold,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: space.xl,
+  },
+  payNowBusy: { opacity: 0.6 },
+  payNowText: { fontSize: 17, fontWeight: '700', color: stage.goldInk },
+  payNowHint: {
+    fontSize: 12,
+    color: stage.textMuted,
+    textAlign: 'center',
+    marginTop: space.sm,
+  },
+
   backButton: {
     marginTop: space.lg,
     borderRadius: radius.pill,
