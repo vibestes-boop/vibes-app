@@ -17,6 +17,7 @@ import {
   useUsernames,
 } from '../../lib/useAuction';
 import { useCheckoutCart } from '../../lib/useCheckout';
+import { shippingHint, useShippingLookup } from '../../lib/useShipping';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
 import { useMyReviews, useOrderReviewActions } from '../../lib/useOrderReview';
 import { RatingStars } from '../../components/RatingStars';
@@ -136,6 +137,7 @@ export default function AccountScreen() {
   ]);
 
   const checkout = useCheckoutCart();
+  const shippingFor = useShippingLookup();
   const [payingId, setPayingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -245,7 +247,11 @@ export default function AccountScreen() {
                 </Text>
               )}
             </Pressable>
-            <Text style={styles.payHint}>Versandadresse gibst du auf der Bezahlseite ein.</Text>
+            <Text style={styles.payHint}>
+              {[shippingHint(shippingFor(cart.seller_id)), 'Adresse gibst du auf der Bezahlseite ein.']
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
           </View>
         ))
       )}

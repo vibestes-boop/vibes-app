@@ -337,6 +337,12 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     metadata?: Record<string, string>;
     shipping_details?: { name?: string; address?: Record<string, string> };
     customer_details?: { name?: string; address?: Record<string, string> };
+    // Der tatsächlich gezahlte Versand. Stripe rechnet ihn aus der vom Käufer
+    // gewählten `shipping_option` und meldet ihn hier zurück — er steht NICHT in
+    // `amount_eur`, weil Ware und Versand bei Stripe Connect getrennt verrechnet
+    // werden. Fehlt das Feld (Serlo-Produktkauf ohne Versandoptionen), bleibt es
+    // bei 0.
+    total_details?: { amount_shipping?: number };
   };
 
   const orderId = session.client_reference_id ?? session.metadata?.order_id;
@@ -355,6 +361,7 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
       status: 'paid',
       paid_at: new Date().toISOString(),
       stripe_payment_intent: session.payment_intent ?? null,
+      shipping_cents: session.total_details?.amount_shipping ?? 0,
       ship_name: ship?.name ?? null,
       ship_street: street,
       ship_zip: addr.postal_code ?? null,

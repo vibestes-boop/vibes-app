@@ -9,6 +9,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Package, Play } from 'lucide-react-native';
 import { stage, radius, space, auction as auctionConfig } from '../theme/tokens';
 import { formatCountdown, formatEuro, type Auction, type MiniProfile } from '../lib/useAuction';
+import { shippingHint } from '../lib/useShipping';
 import { Avatar } from './Avatar';
 import { BidButton } from './BidButton';
 
@@ -30,6 +31,11 @@ type Props = {
   startBusy?: boolean;
   onMaxBid?: () => void;
   myMaxCents?: number | null;
+  /**
+   * Günstigster Versandsatz des Verkäufers in Cent, `null` wenn keiner
+   * hinterlegt ist. Steht hier nichts, wird auch nichts behauptet.
+   */
+  shippingFromCents?: number | null;
 };
 
 export function AuctionPanel({
@@ -46,6 +52,7 @@ export function AuctionPanel({
   startBusy,
   onMaxBid,
   myMaxCents,
+  shippingFromCents,
 }: Props) {
   const isSold = auction?.status === 'sold';
   const urgent = secondsLeft <= auctionConfig.urgentSeconds;
@@ -108,7 +115,14 @@ export function AuctionPanel({
                 ? `Auktion oder Sofortkauf für ${formatEuro(auction.buy_now_cents)}`
                 : `Startet bei ${formatEuro(auction.start_price_cents)}, Schritt ${formatEuro(auction.min_increment_cents)}`}
             </Text>
-            <Text style={styles.shipping}>Versand und Steuern kommen dazu</Text>
+            {/* Stand bis 15.08.2026 „Versand und Steuern kommen dazu" — beides
+                war unwahr: Es wurde weder Versand noch Steuer berechnet. Eine
+                falsche Preisangabe ist nach PAngV angreifbar, und beim ersten
+                fremden Verkäufer wäre es ein Streit. Jetzt steht hier der echte
+                Satz, oder gar nichts. */}
+            <Text style={styles.shipping}>
+              {shippingHint(shippingFromCents) ?? 'Alle Zuschläge kommen in ein Paket'}
+            </Text>
           </View>
 
           <View style={styles.priceBlock}>

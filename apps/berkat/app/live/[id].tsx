@@ -63,6 +63,7 @@ import { liveKitAvailable, liveKitFailure } from '../../lib/livekit';
 import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib/useLiveVideo';
 import { stage, radius, space } from '../../theme/tokens';
 import { useCheckoutCart } from '../../lib/useCheckout';
+import { shippingHint, useShippingFrom } from '../../lib/useShipping';
 import {
   bidErrorText,
   formatCartWindow,
@@ -172,6 +173,7 @@ export default function LiveAuctionRoom() {
 
   const { data: soldCount } = useSellerSoldCount(session?.host_id);
   const { data: cart } = useCart(myUserId, session?.host_id);
+  const { data: shippingFrom } = useShippingFrom(session?.host_id);
   const comments = useLiveChat(id);
   const placeBid = usePlaceBid();
   const follow = useFollow(session?.host_id, myUserId);
@@ -576,7 +578,10 @@ export default function LiveAuctionRoom() {
               )}
             </Pressable>
             <Text style={styles.payNowHint}>
-              {notice ?? 'Versandadresse gibst du auf der Bezahlseite ein.'}
+              {notice ??
+                [shippingHint(shippingFrom), 'Adresse gibst du auf der Bezahlseite ein.']
+                  .filter(Boolean)
+                  .join(' · ')}
             </Text>
           </>
         ) : null}
@@ -868,6 +873,7 @@ export default function LiveAuctionRoom() {
             secondsLeft={secondsLeft}
             myUserId={myUserId}
             leader={leader}
+            shippingFromCents={shippingFrom}
             busy={busy}
             cartLabel={
               cart && cart.itemCount > 0

@@ -182,6 +182,44 @@ Deno.serve(async (req) => {
     }
     pform.set('line_items[0][quantity]', '1');
 
+    // ── Versand — nur Berkat ─────────────────────────────────────────────────
+    // Eine Pauschale pro PAKET, nicht pro Artikel: Drei Zuschläge beim selben
+    // Verkäufer sind eine Sendung. Genau dafür gibt es den Sammelkorb, und ohne
+    // das wäre eine 5-€-Auktion unmöglich, weil der Versand teurer wäre als die
+    // Ware.
+    //
+    // Die Sätze liegen in `berkat_shipping_rates` (20260815180000), je Zone
+    // einer, Verkäufer-Satz schlägt Plattform-Vorgabe. Stripe zeigt sie als
+    // Auswahl und meldet den gewählten Betrag als `total_details.amount_shipping`
+    // zurück — der Webhook schreibt ihn nach `product_orders.shipping_cents`.
+    //
+    // Bewusst NICHT in `amount_eur` eingerechnet: Bei Stripe Connect bekommt der
+    // Verkäufer die Ware und der Versand wird anders verrechnet. Wer beides
+    // addiert, pflückt es in Phase 2 wieder auseinander.
+    //
+    // Serlos Shop bleibt unberührt — der Zweig hängt an `isAuctionCart`, und
+    // `cart_id` ist bei einem Produktkauf immer NULL.
+    if (isAuctionCart && order.cart_id) {
+      const { data: rates, error: ratesError } = await adminClient.rpc(
+        'get_cart_shipping_options',
+        { p_cart_id: order.cart_id },
+      );
+      if (ratesError) {
+        // Kein harter Abbruch: Lieber eine Bestellung ohne Versandposten als
+        // eine Kasse, die sich gar nicht öffnet. Der Fehler gehört aber ins Log,
+        // sonst verschwindet fehlender Versand lautlos.
+        console.error('[create-checkout-session] shipping rates', ratesError.message);
+      }
+      const options = (rates ?? []) as { label: string; cents: number }[];
+      options.forEach((rate, i) => {
+        const p = `shipping_options[${i}][shipping_rate_data]`;
+        pform.set(`${p}[type]`, 'fixed_amount');
+        pform.set(`${p}[fixed_amount][amount]`, String(rate.cents));
+        pform.set(`${p}[fixed_amount][currency]`, order.currency ?? 'eur');
+        pform.set(`${p}[display_name]`, rate.label);
+      });
+    }
+
     const pStripeRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
       method: 'POST',
       headers: {

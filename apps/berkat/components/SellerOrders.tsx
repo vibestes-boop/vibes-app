@@ -10,6 +10,8 @@ import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-nat
 import { MapPin, Package, Truck } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { trackingUrl, type SellerOrder } from '../lib/useSellerOrders';
+import { formatCents, useShippingCheck } from '../lib/useShipping';
+import { useSession } from '../lib/session';
 
 type Props = {
   orders: SellerOrder[];
@@ -30,7 +32,18 @@ function statusLabel(status: string): { text: string; bg: string; color: string 
   }
 }
 
-function OrderRow({ order, busy, onShip }: { order: SellerOrder; busy: boolean; onShip: Props['onShip'] }) {
+function OrderRow({
+  order,
+  busy,
+  onShip,
+  shortfall,
+}: {
+  order: SellerOrder;
+  busy: boolean;
+  onShip: Props['onShip'];
+  /** Fehlbetrag beim Versand in Cent, `null` wenn alles passt. */
+  shortfall: number | null;
+}) {
   const [carrier, setCarrier] = useState('DHL');
   const [tracking, setTracking] = useState('');
   const status = statusLabel(order.status);
@@ -70,6 +83,20 @@ function OrderRow({ order, busy, onShip }: { order: SellerOrder; busy: boolean; 
       ) : (
         <Text style={styles.noAddress}>Noch keine Adresse übermittelt.</Text>
       )}
+
+      {/* Stripe Checkout kann Versandoptionen nicht ans Lieferland binden — der
+          Käufer wählt frei. Meist ist das ein Versehen (erste Option getippt),
+          kein Betrug. Deshalb wird nichts blockiert, sondern nur sichtbar
+          gemacht, BEVOR gepackt wird. */}
+      {shortfall ? (
+        <View style={styles.shortfall}>
+          <Text style={styles.shortfallText}>
+            Versand passt nicht zum Land: {formatCents(order.shipping_cents)} bezahlt,
+            nach {order.ship_country} wären es {formatCents(order.shipping_cents + shortfall)}.
+            Frag kurz nach, bevor du packst.
+          </Text>
+        </View>
+      ) : null}
 
       {order.status === 'paid' ? (
         <>
@@ -117,19 +144,42 @@ function OrderRow({ order, busy, onShip }: { order: SellerOrder; busy: boolean; 
 }
 
 export function SellerOrders({ orders, busyId, onShip }: Props) {
+  // Der Verkäufer ist hier immer der angemeldete Nutzer — seine eigenen Sätze
+  // schlagen also die Plattform-Vorgabe, falls er welche hinterlegt hat.
+  // Hook VOR dem frühen Return: Die Zahl der Hooks muss über alle Renderläufe
+  // gleich bleiben, sonst bricht React beim ersten leeren Bestell-Stapel.
+  const checkShipping = useShippingCheck(useSession((s) => s.userId));
+
   if (orders.length === 0) return null;
 
   return (
     <>
       <Text style={styles.sectionLabel}>Bestellungen ({orders.length})</Text>
       {orders.map((order) => (
-        <OrderRow key={order.id} order={order} busy={busyId === order.id} onShip={onShip} />
+        <OrderRow
+          key={order.id}
+          order={order}
+          busy={busyId === order.id}
+          onShip={onShip}
+          shortfall={checkShipping(order.shipping_cents, order.ship_country)}
+        />
       ))}
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  // Terrakotta ist auf hell die Dringlichkeit — hier als Fläche mit dunkler
+  // Schrift, weil ein reiner Farbtext neben grauer Adresse untergeht.
+  shortfall: {
+    marginTop: space.sm,
+    backgroundColor: 'rgba(214,69,47,0.10)',
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
+  shortfallText: { fontSize: 12, lineHeight: 17, color: ui.live, fontWeight: '600' },
+
   sectionLabel: {
     fontSize: 12,
     fontWeight: '600',

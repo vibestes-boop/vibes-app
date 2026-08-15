@@ -14,6 +14,8 @@ export type SellerOrder = {
   buyer_id: string;
   title: string | null;
   amount_eur: string;
+  /** Was der Käufer an Versand gezahlt hat. 0 bei Bestellungen von vor dem 15.08.2026. */
+  shipping_cents: number;
   status: string;
   ship_name: string | null;
   ship_street: string | null;
@@ -39,7 +41,7 @@ export function useSellerOrders(userId: string | null) {
       const { data, error } = await supabase
         .from('product_orders')
         .select(
-          'id, buyer_id, title, amount_eur, status, ship_name, ship_street, ship_zip, ship_city, ship_country, tracking_carrier, tracking_number, paid_at, created_at',
+          'id, buyer_id, title, amount_eur, shipping_cents, status, ship_name, ship_street, ship_zip, ship_city, ship_country, tracking_carrier, tracking_number, paid_at, created_at',
         )
         .eq('seller_id', userId!)
         .in('status', ['paid', 'shipped', 'delivered'])
