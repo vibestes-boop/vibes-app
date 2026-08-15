@@ -29,7 +29,9 @@ import { useSession } from '../../lib/session';
 import { useFollow } from '../../lib/useFollow';
 import { formatEuro } from '../../lib/useAuction';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
+import { useVouchActions, useVouches, vouchErrorText } from '../../lib/useVouch';
 import { Avatar } from '../../components/Avatar';
+import { VouchPanel } from '../../components/VouchPanel';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
 
@@ -138,6 +140,9 @@ export default function SellerScreen() {
   const { data: stats } = useSellerStats(id);
   const { data: liveShow, refetch: refetchLive } = useSellerLiveShow(id);
   const { data: items = [], refetch: refetchItems } = useSellerSoldItems(id);
+  const { data: vouches = [] } = useVouches(id, myUserId);
+  const vouch = useVouchActions(id, myUserId);
+  const [vouchNotice, setVouchNotice] = useState<string | null>(null);
   const follow = useFollow(id, myUserId);
 
   const [pulling, setPulling] = useState(false);
@@ -264,6 +269,40 @@ export default function SellerScreen() {
                 />
               </View>
 
+              {/* Steht ABSICHTLICH unter den Kacheln: Erst die Institution
+                  (Sterne, Versandzeit, Zuschläge), dann die Menschen. Wer die
+                  Zahlen nicht überzeugend findet, liest hier weiter — und für
+                  diese Community ist das der Teil, der entscheidet. */}
+              <VouchPanel
+                vouches={vouches}
+                isSelf={myUserId === id}
+                myUserId={myUserId}
+                busy={vouch.add.isPending || vouch.remove.isPending}
+                onVouch={(note) =>
+                  void vouch.add
+                    .mutateAsync(note)
+                    .then(() => setVouchNotice('Danke — dein Name steht jetzt bei ihm. 🤝'))
+                    .catch((e: unknown) =>
+                      setVouchNotice(
+                        vouchErrorText(e instanceof Error ? e.message : String(e)),
+                      ),
+                    )
+                }
+                onUnvouch={() =>
+                  void vouch.remove
+                    .mutateAsync()
+                    .then(() => setVouchNotice('Zurückgezogen.'))
+                    .catch(() => setVouchNotice('Das hat nicht geklappt.'))
+                }
+                onOpenProfile={(userId) => router.push(`/seller/${userId}`)}
+              />
+
+              {vouchNotice ? (
+                <Pressable onPress={() => setVouchNotice(null)}>
+                  <Text style={styles.vouchNotice}>{vouchNotice}</Text>
+                </Pressable>
+              ) : null}
+
               <Text style={styles.section}>
                 {items.length > 0 ? 'Zuletzt verkauft' : ''}
               </Text>
@@ -384,6 +423,13 @@ const styles = StyleSheet.create({
   tileValue: { fontSize: 19, fontWeight: '700', color: ui.text, marginTop: 2 },
   tileLabel: { fontSize: 11, color: ui.textMuted, lineHeight: 14 },
 
+  vouchNotice: {
+    fontSize: 13,
+    color: ui.success,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: space.sm,
+  },
   section: {
     fontSize: 13,
     fontWeight: '700',

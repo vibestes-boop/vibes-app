@@ -1556,3 +1556,54 @@ Verkäufers rendert mit der neuen Prüfung.
 
 **Nicht geprüft:** der Unterdeckungs-Hinweis selbst — dafür müsste jemand die DE-Pauschale zahlen
 und in die Schweiz liefern lassen.
+
+---
+
+## 15. Bürgen — Vertrauen mit Namen (Stand 15.08.2026)
+
+Die [Ausgangsanalyse](WHATNOT-ANALYSE.md) führt am Ende **sieben Stellen** auf, an denen Berkat
+besser sein kann als Whatnot. Sechs waren gebaut. Die erste stand nur auf dem Papier:
+
+> „Vertrauen statt Sterne — Bürgen und Verkaufszahl direkt unter dem Namen. Whatnot zeigt ‚5,0 ★' in
+> Winzschrift; in deiner Community entscheidet, **wer** für jemanden bürgt."
+
+Und § B5: *„Vertrauen ist personal, nicht institutionell. Ein 5-Sterne-Durchschnitt bedeutet weniger
+als ‚mein Cousin kennt ihn.' … etwas, das Whatnot strukturell nicht bauen kann."*
+
+### Die Entwurfsentscheidungen — sozial, nicht technisch
+
+- **Namen, keine Zahl.** Nirgends steht „3 Bürgen". Die Reihenfolge IST die Aussage: erst die, denen
+  der Betrachter selbst folgt (`du folgst`-Pille), danach die, die hier am meisten gehandelt haben.
+  Eine reine Anzahl wäre wieder ein Sterne-Durchschnitt unter anderem Namen.
+- **Keine Hürde vorm Bürgen.** Ein Filter „nur wer schon gekauft hat" wäre ausgerechnet am Anfang
+  tot — also genau dann, wenn die ersten Verkäufer Vertrauen brauchen. Stattdessen steht neben jedem
+  Namen, was er selbst wiegt: „2 Käufe · 4 Zuschläge" oder ausdrücklich **„Neu hier"**. Damit
+  gewichtet der Leser, nicht die Datenbank.
+- **Öffentlich und zurechenbar.** Ein anonymer Bürge ist wertlos. Wer bürgt, steht mit Namen da und
+  trägt das Risiko, sich zu blamieren — das ist der Mechanismus, nicht die Tabellenzeile.
+- **Jederzeit widerrufbar.** Vertrauen kann enden.
+- **Der Satz ist kurz** (3–140 Zeichen, freiwillig). Das Gewicht liegt auf dem Namen; ein langes Feld
+  lädt zu Werbung ein.
+
+### Wo es liegt
+
+| | |
+|---|---|
+| `20260815200000` | `berkat_vouches` (unique je Paar, kein Selbst-Bürgen), `get_vouch_weights` |
+| `lib/useVouch.ts` | Liste + Sortierung + Aktionen; `vouchSummary()` für eine Zeile |
+| `components/VouchPanel.tsx` | die Ansicht |
+| `app/seller/[id].tsx` | eingehängt **unter** den Kacheln, **über** „Zuletzt verkauft" |
+
+`get_vouch_weights` ist `SECURITY DEFINER` und nur für `authenticated`: `product_orders` und
+`live_auctions` sind für Dritte zu Recht gesperrt (Adressen, Beträge), herausgegeben werden
+ausschließlich zwei Zähler. Ohne Konto bleiben die Gewichte deshalb leer — der **Name** ist ohnehin
+das Signal, und bieten kann man ohne Konto nicht.
+
+### Geprüft am 15.08.2026
+
+Vom Simulator (`berkattest`) auf amir32s Profil: Leerzustand → „Ich bürge für ihn" → Satz eingegeben
+→ Eintrag erscheint mit **„2 Käufe · 4 Zuschläge"** und dem Satz, Knopf springt auf „Bürgschaft
+zurückziehen", Rückmeldung „Danke — dein Name steht jetzt bei ihm."
+
+**Noch nicht gebaut:** die Zusammenfassung im `SellerSheet` des Live-Raums (`vouchSummary()` liegt
+bereit, ist aber nirgends aufgerufen). Dort wäre sie am wertvollsten — im Moment vor dem Gebot.
