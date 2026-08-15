@@ -13,6 +13,7 @@ import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { openPaymentPage } from './payBrowser';
+import { reportProblem } from './report';
 import {
   functionErrorCode,
   functionErrorMessage,
@@ -89,6 +90,11 @@ export function useSendTip() {
             parsed.detail,
           );
         }
+        reportProblem('kasse.trinkgeld', {
+          status: parsed.status,
+          code: parsed.code,
+          detail: parsed.detail,
+        });
         return { ok: false, message: functionErrorMessage(parsed, tipCheckoutErrorText) };
       }
 

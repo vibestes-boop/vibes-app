@@ -7,6 +7,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // So früh wie möglich: setzt den DOMException-Ersatz und meldet LiveKit an,
 // bevor irgendein Screen geladen wird. LiveKit verlangt das ausdrücklich vor
 // der ersten Benutzung.
+// ⚠️ MUSS VOR `../lib/livekit` stehen. Dieser Import startet die
+// Fehlerüberwachung als Nebenwirkung; `livekit` meldet als Nebenwirkung LiveKit
+// an. Module werden in der Reihenfolge ihrer Imports ausgewertet — wer die
+// beiden Zeilen tauscht, verliert alle Abstürze aus der Video-Schicht.
+import '../lib/report';
 import { liveKitAvailable } from '../lib/livekit';
 import { useSessionBootstrap } from '../lib/session';
 import { usePushRegistration } from '../lib/usePush';

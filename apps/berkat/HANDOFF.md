@@ -1625,3 +1625,51 @@ im Sheet der laufenden Show **„amir32 bürgt — du folgst ihm"** — unter de
 iPhone-Hotspot (`172.20.10.2`) zurück ins WLAN (`192.168.178.60`) gewechselt war. Neuer Code kommt
 dann nicht an, und man sucht ihn im Quelltext statt im Netz. Die aktuelle Adresse liefert
 `ipconfig getifaddr en0`; im Dev-Client den passenden Eintrag wählen.
+
+---
+
+## 16. Fehlerüberwachung (Stand 15.08.2026)
+
+Berkat hatte **keine**. Serlo meldet seit Monaten an Sentry, Berkat an niemanden — eine App, die
+Geld bewegt, meldete keinen einzigen Absturz. Hängt bei einem Verkäufer die Kasse, erfährt man es
+nur, wenn er anruft. In Phase 0 ist das nicht bezahlbar: Fünf Händler, die man mühsam überzeugt hat,
+ruft man kein zweites Mal an.
+
+### Entscheidungen
+
+**Dasselbe Sentry-Projekt wie Serlo**, getrennt über `environment: 'berkat'` und den Tag
+`app: berkat`. Ein eigenes Projekt wäre sauberer, braucht aber einen Sentry-Zugang — und derselbe
+fehlende Zugang hat am selben Tag beim Stripe-Konto einen halben Nachmittag gekostet. Die DSN steht
+in Serlos `eas.json` und ist damit ohne Anmeldung verfügbar. Ein eigenes Projekt ist später eine
+Umgebungsvariable.
+
+**Abstürze sind nicht der Punkt.** Der Wert liegt bei den **abgefangenen** Fehlern: Eine Kasse, die
+sich nicht öffnet, stürzt nicht ab — sie zeigt eine freundliche Meldung, und der Käufer geht.
+`reportProblem()` meldet deshalb an drei Stellen des Geldwegs (`kasse.sammelkorb`,
+`kasse.korb-abschluss`, `kasse.trinkgeld`) mit Status, Code und Stripes Begründung. Ohne Beträge,
+ohne Adressen, ohne Nutzer-IDs — was hier landet, verlässt das eigene Haus.
+
+**Nur außerhalb der Entwicklung** (`enabled: !__DEV__`). Im Entwicklungslauf steht jeder Fehler
+ohnehin in Metro; was ankommen soll, sind Fehler auf **fremden** Geräten. Die DSN steht deshalb nur
+in den Profilen `preview` und `production`, nicht in `development`.
+
+### Zwei Fallen, beide beim Bauen aufgetreten
+
+⚠️ **Die Import-Reihenfolge im Wurzel-Layout ist tragend.** `lib/livekit` meldet LiveKit als
+**Nebenwirkung seines Imports** an, und ES-Importe laufen alle, bevor die erste Zeile im Rumpf
+ausgeführt wird. Ein `initErrorReporting()` im Rumpf käme also immer zu spät. Deshalb startet
+`lib/report` die Überwachung beim Import — und der Import steht **vor** dem von `livekit`. Wer die
+zwei Zeilen tauscht, verliert alle Abstürze aus der Video-Schicht.
+
+⚠️ **Auch der AUFRUF muss abgesichert sein, nicht nur das Laden.** Das JS-Paket lässt sich
+einbinden, während das native Gegenstück im Build fehlt — dann wirft erst `init()`, und zwar beim
+Start, vor jedem Rendern. Ein Absturz ausgerechnet in der Fehlerüberwachung. `load()`, `init()` und
+beide Melde-Wege liegen deshalb in `try/catch`.
+
+### Stand
+
+Auf dem aktuellen Entwickler-Build läuft die App unverändert (geprüft) und meldet **nichts** — beides
+richtig so. Scharf wird es mit dem nächsten `preview`- oder `production`-Build; `@sentry/react-native`
+ist nativ und braucht ihn ohnehin.
+
+In Sentry filtert man danach über `environment:berkat` beziehungsweise den Tag `app:berkat`.

@@ -19,6 +19,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { openPaymentPage, refetchAfterPayment } from './payBrowser';
+import { reportProblem } from './report';
 import {
   functionErrorCode,
   functionErrorMessage,
@@ -59,6 +60,7 @@ export function useCheckoutCart() {
         p_cart_id: cartId,
       });
       if (error || !orderId) {
+        reportProblem('kasse.korb-abschluss', { message: error?.message ?? 'leer' });
         return { ok: false, message: cartErrorText(error?.message ?? '') };
       }
 
@@ -80,6 +82,14 @@ export function useCheckoutCart() {
             parsed.detail,
           );
         }
+        // Eine Kasse, die sich nicht öffnet, stürzt nicht ab — sie zeigt eine
+        // freundliche Meldung, und der Käufer geht. Ohne diese Zeile wäre genau
+        // das unsichtbar.
+        reportProblem('kasse.sammelkorb', {
+          status: parsed.status,
+          code: parsed.code,
+          detail: parsed.detail,
+        });
         return { ok: false, message: functionErrorMessage(parsed, orderCheckoutErrorText) };
       }
 
