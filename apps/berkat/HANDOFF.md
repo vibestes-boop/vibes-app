@@ -1,7 +1,10 @@
 # Berkat — Übergabe
 
-**Stand: 14.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 15.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
+
+Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
+ein Phasenplan mit Abbruchkriterien. **Phase 1 ist bis auf einen Punkt gebaut** (Abschnitt 8).
 
 ---
 
@@ -504,10 +507,14 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
-3. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
+Kurz, und nichts davon blockiert den nächsten Schritt.
+
+1. **1-Tap-Kauf im Stream** — der letzte offene Punkt aus Phase 1. Heute: Sammelkorb → Konto →
+   Browser → Stripe. Whatnot: ein Tippen, ohne den Stream zu verlassen. Siehe Abschnitt 8.
+2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
-4. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
-5. **E-Mail-Bestätigung ist abgeschaltet.** Für eine Live-Auktion richtig — wer gerade zuschaut,
+3. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
+4. **E-Mail-Bestätigung ist abgeschaltet.** Für eine Live-Auktion richtig — wer gerade zuschaut,
    springt nicht ins Postfach. Der Preis: Niemand weist nach, dass ihm die Adresse gehört. Ein
    Wegwerf-Konto kann bieten, gewinnen und nie zahlen — und blockiert den Artikel 24 Stunden im
    Korb. Vor fremden Verkäufern neu abwägen.
@@ -665,6 +672,33 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
+### Wo Berkat im Whatnot-Phasenplan steht
+
+Der Plan stammt aus [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md), Abschnitt „Konkreter Weg". Er ist
+die Messlatte — nicht die Wunschliste, die beim Bauen entsteht.
+
+| Phase | Inhalt | Stand |
+|---|---|---|
+| **0 — Sendeplan** | 5 Verkäufer, feste Termine, 4–8 Wochen, **kein Code** | ⏳ nie gemacht |
+| **1 — Auktion** | Gebots-RPC, Server-Timer, Anti-Snipe, Sammelversand, 1-Tap-Kauf | ✅ bis auf 1-Tap |
+| **2 — Marktplatz** | Stripe Connect, Verkäufer-Onboarding, DAC7, Bürgen-System | ❌ offen |
+| **3 — Wachstum** | WOZ-Live, Loyalty-Saison, Sponsor-Gift, Boost | ❌ bewusst später |
+
+Von den sechs Bausteinen der Analyse sind vier gebaut — plus vieles, was gar nicht auf der Liste
+stand (Verkäufer-Sheet, Bewertungen, Direktnachrichten, Trinkgeld, Live-Vorschau).
+
+**Was Phase 1 noch fehlt: 1-Tap-Kauf im Stream.** Heute führt der Weg vom Sammelkorb über das Konto
+in den Browser zu Stripe. Whatnot kauft mit einem Tippen, ohne den Stream zu verlassen. Die Analyse
+führt das als „klein".
+
+⚠️ **Was in Phase 1 ausdrücklich NICHT gebaut wird** — wörtlich aus der Analyse: „Ads, Loyalty,
+Replay, Breaks, Mystery — alles davon ist Aufsatz und lenkt vom einzigen ab, was zählt: bekommt eine
+Auktion in deiner Community mehr Geld für dieselbe Ware als ein Festpreis?"
+
+**Phase 0 hat ein hartes Abbruchkriterium:** „<3 Verkäufer senden nach 4 Wochen regelmäßig →
+stoppen." Sie steht im Plan **vor** dem Code und wurde übersprungen. Das ist derselbe Punkt, den
+Abschnitt 7 als das eigentliche Risiko führt.
+
 ### Die App-Trennung ist vollständig ausgerollt (Stand 15.08.2026)
 
 Gebaut am 14.08.2026, seit dem 15.08. überall draußen. Der Abschnitt bleibt stehen, weil die
@@ -724,19 +758,21 @@ Bündel war für beide Runtimes sicher.
 Die `app.json`-Änderungen (Android-Berechtigungen, `versionCode` 48) gehen **nicht** per OTA raus —
 die warten auf einen nativen Build und gehören zum Play-Store-Test, nicht hierher.
 
-### Und danach
+### Und danach — drei Möglichkeiten, in der Reihenfolge, die ich empfehle
 
-In dieser Reihenfolge, weil jeder Punkt den nächsten billiger macht:
+**1. 1-Tap-Kauf im Stream.** Der letzte offene Punkt aus Phase 1, laut Analyse „klein". Macht aus
+dem Kauf einen Reflex statt eines Ausflugs in den Browser — und schließt Phase 1 sauber ab.
 
-1. **Die zwei offenen Prüfungen an der Vorschau** — der Zustand „gerade zugeschlagen" und der
-   Kontrast über einem echten Foto. Beides fällt im nächsten Zwei-Konten-Durchlauf nebenbei ab,
-   wenn man daran denkt, ein **helles** Cover zu setzen und ein Gebot abzugeben.
-2. **Eine Benachrichtigungsliste in Berkat.** Der wunde Punkt aus Abschnitt 6: Wer einen Push
-   wegwischt, findet ihn nirgends wieder. Die Daten liegen längst in `notifications` mit
-   `app = 'berkat'`, es fehlt nur die Oberfläche.
-3. **Und dann das, was hier seit Anfang an als das eigentliche Risiko steht:** fünf Verkäufer, acht
-   Wochen, wöchentlich zwei Stunden. Der Code ist so weit, dass sich das testen lässt. Weitere
-   Funktionen zu bauen, bevor diese Frage beantwortet ist, ist die teurere Wette.
+**2. Phase 0 nachholen: fünf Verkäufer, acht Wochen.** Kein Code. Der Plan sieht sie vor dem Bauen
+vor, sie wurde übersprungen, und sie hat als einzige ein Abbruchkriterium. Solange sie offen ist,
+weiß niemand, ob das Format in dieser Community trägt.
+
+**3. Phase 2: Stripe Connect und Verkäufer-Onboarding.** Groß und rechtslastig (Abschnitt 7). Die
+Analyse sagt ausdrücklich: erst wenn Verkäufer-Nachfrage da ist. Das vor Punkt 2 zu bauen wäre genau
+der Fehler, vor dem sie warnt.
+
+Was im Code noch offen ist, steht in Abschnitt 6 unter „Was fehlt" — es ist wenig, und nichts davon
+blockiert Punkt 2.
 
 ### Live-Vorschau auf den Show-Karten — gebaut am 14.08.2026
 
@@ -895,8 +931,8 @@ Konto. Ein zweites Gerät braucht es also nicht.
 - **Ob ein Herz aus der Serlo-App in Berkat ankommt** — der Broadcast-Vertrag ist gebaut, aber nie
   über beide Apps gemessen
 - **Max-Gebot und Anti-Snipe** unter echtem Gegendruck (zwei Menschen, die gleichzeitig bieten)
-- **Der Vorschau-Zustand „gerade zugeschlagen"** und der **Kontrast über einem echten Foto** —
-  beides fällt im nächsten Zwei-Konten-Durchlauf ab, siehe Abschnitt 8
+- **Der Vorschau-Zustand „gerade zugeschlagen"** — braucht ein Gebot vom zweiten Konto. Der
+  Kontrast über echtem Foto ist am 15.08. gemessen und behoben (Abschnitt 8).
 
 ---
 
