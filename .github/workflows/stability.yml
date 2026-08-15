@@ -84,6 +84,10 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # production_integrity_snapshot steht seit 20260814160000 nur service_role
+      # offen — mit dem anon-Schluessel antwortet die Datenbank 401 und der
+      # Waechter meldet Rot, ohne dass in der Produktion etwas kaputt waere.
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5

@@ -89,9 +89,23 @@ console.log('');
 console.log('Production integrity monitor passed.');
 
 async function fetchIntegritySnapshot() {
+  // Seit 20260814160000 ist `production_integrity_snapshot` ausschliesslich fuer
+  // service_role freigegeben. Die Migration hat damals reihenweise RPCs von anon
+  // getrennt (Anlass: credit_coins war ohne Anmeldung aufrufbar) und diese hier
+  // mitgenommen — zu Recht, sie legt Queue-Tiefe, Cron-Zustand und Medien-Zahlen
+  // offen. Der Monitor ist der legitime Aufrufer und muss sich entsprechend
+  // ausweisen; mit dem anon-Schluessel antwortet die Datenbank 401.
+  if (!serviceKey) {
+    failures.push(
+      '[snapshot] SUPABASE_SERVICE_ROLE_KEY fehlt. production_integrity_snapshot ist seit ' +
+        '20260814160000 nur fuer service_role freigegeben — der anon-Schluessel bekommt 401.',
+    );
+    return null;
+  }
+
   const result = await fetchJson(`${supabaseUrl}/rest/v1/rpc/production_integrity_snapshot`, {
     method: 'POST',
-    headers: supabaseHeaders(),
+    headers: elevatedHeaders(),
     body: '{}',
   });
 
@@ -367,6 +381,28 @@ function supabaseHeaders() {
     accept: 'application/json',
     apikey: anonKey,
     authorization: `Bearer ${anonKey}`,
+    'content-type': 'application/json',
+  };
+}
+
+/**
+ * Fuer RPCs, die bewusst nur service_role offenstehen.
+ *
+ * Zwei Schluessel-Formate sind im Umlauf und wollen unterschiedlich behandelt
+ * werden:
+ *
+ *   - Alt (JWT, `eyJ…`): geht in beide Header. PostgREST liest die Rolle aus
+ *     dem Bearer-Token.
+ *   - Neu (`sb_secret_…`): gehoert AUSSCHLIESSLICH in `apikey`. Als Bearer
+ *     gesetzt antwortet der Gateway `401 Expected 3 parts in JWT; got 1` —
+ *     genau daran ist der erste Reparaturversuch am 15.08.2026 gescheitert.
+ */
+function elevatedHeaders() {
+  const looksLikeJwt = serviceKey.split('.').length === 3;
+  return {
+    accept: 'application/json',
+    apikey: serviceKey,
+    ...(looksLikeJwt ? { authorization: `Bearer ${serviceKey}` } : {}),
     'content-type': 'application/json',
   };
 }
