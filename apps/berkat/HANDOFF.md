@@ -6,6 +6,10 @@ Supabase-Backend mit Serlo.
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
 ein Phasenplan mit Abbruchkriterien. **Phase 1 ist bis auf einen Punkt gebaut** (Abschnitt 8).
 
+> **Wer nicht lesen, sondern arbeiten will:** [`LEITFADEN.md`](LEITFADEN.md) — was nach einer
+> Änderung zu tun ist, welche Befehle, welche Verdächtigen bei welchem Fehler, und was man nie tut.
+> Dieses Dokument hier ist der Zustandsbericht; der Leitfaden ist die Bedienungsanleitung.
+
 ---
 
 ## 1. Was Berkat ist
@@ -35,6 +39,7 @@ Was Berkat bewusst anders macht als Whatnot:
 |---|---|
 | App | `apps/berkat/` — eigenständige Expo-App, eigene `node_modules`, eigener Store-Eintrag |
 | Ausgangsanalyse | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Grundstrategie, Psychologie, Technik, Machbarkeit und der Phasenplan, auf den dieses Dokument sich bezieht |
+| Arbeitsleitfaden | [`LEITFADEN.md`](LEITFADEN.md) — Befehle, Entscheidungsbaum „muss ich bauen?", Fehlersuche, harte Linien |
 | Website | `apps/berkat-web/` — vier statische Seiten, **live** unter `berkat-live.pages.dev` |
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
@@ -424,7 +429,7 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Dreizehn Migrationen, **alle eingespielt und verzeichnet** (Stand 15.08.2026). Der Weg bleibt: SQL
+Vierzehn Migrationen, **alle eingespielt und verzeichnet** (Stand 15.08.2026). Der Weg bleibt: SQL
 im Editor ausführen, danach `supabase migration repair --status applied <version>`.
 
 | Datei | Inhalt |
@@ -442,6 +447,7 @@ im Editor ausführen, danach `supabase migration repair --status applied <versio
 | `20260814290000_grant_select_live_sessions_app.sql` | `GRANT SELECT (app)` — ohne das ist die neue Spalte für die Clients unsichtbar, siehe Abschnitt 3 |
 | `20260814300000_berkat_tips.sql` | `berkat_tips` + `create_berkat_tip` — Trinkgeld in echtem Geld, **nicht** in Coins |
 | `20260814310000_seller_rating_public.sql` | `get_seller_rating` — nur Schnitt und Anzahl, die einzelnen Bewertungen bleiben privat |
+| `20260815120000_berkat_scheduled_shows.sql` | **Serlo-weit:** `scheduled_lives.app` + Index; die Erinnerung vererbt die App an `notifications.app`; `schedule_berkat_show` als Berkat-Eingang — Abschnitt 13 |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -495,7 +501,7 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Reaktionen | Herz-Knopf **und Tippen aufs Bild**, fliegende Herzen, Zähler — auf Serlos Broadcast-Vertrag, also plattformübergreifend |
 | Gewinnspiel | anlegen, mitmachen, ziehen — Teilnahme immer kostenlos |
 | Kleines Fenster | echtes Video, läuft über alle Reiter weiter |
-| Bezahlen | Sammelkorb → eine Bestellung → Stripe → Adresse → `paid` → eigene Erfolgsseite |
+| Bezahlen | Sammelkorb → eine Bestellung → Stripe → Adresse → `paid` → eigene Erfolgsseite. Die Kasse öffnet seit 15.08.2026 **in der App**, nicht in Safari — Abschnitt 11 |
 | Versand (Verkäufer) | Bestellliste mit Adresse, Sendungsnummer, Verfolgungs-Link |
 | Kauf-Übersicht (Käufer) | „Gekauft" im Konto: Zustand, Artikel, Sendungsnummer |
 | Zuschauerzahl, Folgen, Teilen | fertig |
@@ -509,8 +515,11 @@ beim Käufer sichtbar.
 
 Kurz, und nichts davon blockiert den nächsten Schritt.
 
-1. **1-Tap-Kauf im Stream** — der letzte offene Punkt aus Phase 1. Heute: Sammelkorb → Konto →
-   Browser → Stripe. Whatnot: ein Tippen, ohne den Stream zu verlassen. Siehe Abschnitt 8.
+1. **1-Tap-Kauf im Stream — halb erledigt.** Der Weg aus der App heraus ist weg (Abschnitt 11): Die
+   Kasse liegt als Blatt über der App, und am Ende der Show steht der Bezahl-Knopf direkt da. Was
+   noch fehlt, ist das eigentliche *eine Tippen* — hinterlegte Zahlungsmethode, Apple/Google Pay
+   statt Kartennummer. Das ist ein eigener Bau mit Adressformular und SCA-Behandlung; die Analyse
+   führt es als „klein", das war zu optimistisch.
 2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
 3. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
@@ -679,7 +688,7 @@ die Messlatte — nicht die Wunschliste, die beim Bauen entsteht.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
-| **0 — Sendeplan** | 5 Verkäufer, feste Termine, 4–8 Wochen, **kein Code** | ⏳ nie gemacht |
+| **0 — Sendeplan** | 5 Verkäufer, feste Termine, 4–8 Wochen, **kein Code** | ⏳ offen — das Werkzeug dafür steht seit 15.08. (Abschnitt 13), die fünf Verkäufer nicht |
 | **1 — Auktion** | Gebots-RPC, Server-Timer, Anti-Snipe, Sammelversand, 1-Tap-Kauf | ✅ bis auf 1-Tap |
 | **2 — Marktplatz** | Stripe Connect, Verkäufer-Onboarding, DAC7, Bürgen-System | ❌ offen |
 | **3 — Wachstum** | WOZ-Live, Loyalty-Saison, Sponsor-Gift, Boost | ❌ bewusst später |
@@ -760,8 +769,9 @@ die warten auf einen nativen Build und gehören zum Play-Store-Test, nicht hierh
 
 ### Und danach — drei Möglichkeiten, in der Reihenfolge, die ich empfehle
 
-**1. 1-Tap-Kauf im Stream.** Der letzte offene Punkt aus Phase 1, laut Analyse „klein". Macht aus
-dem Kauf einen Reflex statt eines Ausflugs in den Browser — und schließt Phase 1 sauber ab.
+**1. 1-Tap-Kauf im Stream — die erste Hälfte ist am 15.08.2026 gebaut** (Abschnitt 11). Der Ausflug
+in den Browser ist weg. Die zweite Hälfte — hinterlegte Zahlungsmethode, Apple/Google Pay — steht
+noch aus und ist größer, als die Analyse annahm.
 
 **2. Phase 0 nachholen: fünf Verkäufer, acht Wochen.** Kein Code. Der Plan sieht sie vor dem Bauen
 vor, sie wurde übersprungen, und sie hat als einzige ein Abbruchkriterium. Solange sie offen ist,
@@ -1192,3 +1202,286 @@ keinen Verkäufer.
 Am 15.08.2026 am echten Datenstand durchgespielt — bestätigt, fünf Sterne vergeben, und der
 anonyme Aufruf von `get_seller_rating` liefert `{"rating":5.00,"review_count":1}`, während die
 einzelnen Bewertungen für Fremde weiterhin leer bleiben.
+
+---
+
+## 11. Die Kasse (Stand 15.08.2026)
+
+Bis dahin führte der Weg vom Zuschlag zum Geld so: Raum verlassen → Reiter „Konto" suchen →
+antippen → **Safari übernimmt den Bildschirm** → zahlen → von Hand in die App zurückfinden. Der
+alte Kommentar in `useCheckout.ts` schrieb den letzten Schritt offen hin: „Zurück in die App kommt
+man von Hand."
+
+Das ist die teuerste Sekunde, die Berkat hat. Wer dort steht, hat gerade vor Publikum gewonnen.
+
+### Was sich geändert hat
+
+| | vorher | jetzt |
+|---|---|---|
+| Wo die Kasse aufgeht | Safari, eigene App | Blatt **über** Berkat (`payBrowser.ts`) |
+| Weg zurück | App-Umschalter | „Fertig" in der Leiste |
+| Wo man bezahlen kann | nur Reiter „Konto" | zusätzlich **am Ende der Show** |
+| Fehlermeldung im Sammelkorb | ein Satz für alles | Code, Begründung, sonst der HTTP-Status |
+
+### Warum es KEINEN Bezahl-Knopf neben der laufenden Auktion gibt
+
+Das ist der naheliegende Griff und wäre ein Eigentor. `checkout_auction_cart` **friert den Korb
+ein** (`checkout_pending`, Abschnitt 4). Jeder weitere Zuschlag landet danach in einem **neuen**
+Korb — wer mitten in der Show bezahlt, zahlt beim nächsten Gewinn ein zweites Mal Versand.
+
+Der Sammelkorb ist genau das, was eine 5-€-Auktion überhaupt erst wirtschaftlich macht, und laut
+Ausgangsanalyse einer der sieben Punkte, in denen Berkat besser ist als Whatnot. Ein Knopf, der ihn
+mittendrin zerschneidet, gehört nicht in eine laufende Show. **Ist die Show vorbei, kommt aus ihr
+auch nichts mehr nach** — deshalb steht er dort und nur dort.
+
+Die Sammelkorb-Leiste im Raum bleibt reine Anzeige. Wer sie „vervollständigt", baut den Fehler ein.
+
+### Fallen dabei
+
+- **`expo-web-browser` ist ein natives Modul.** Ein statischer Import hätte auf jedem älteren Build
+  schon beim Laden der Datei geworfen — und Konto-Tab *und* Live-Raum mitgerissen, weil beide die
+  Kasse einbinden. Deshalb dieselbe Vorsicht wie bei LiveKit: `require` in `try/catch`, und ohne das
+  Modul fällt die Kasse auf den alten Safari-Weg zurück statt auf einen weißen Bildschirm.
+- **Nicht `openAuthSessionAsync`.** Das benutzt ASWebAuthenticationSession und stellt beim ersten
+  Mal einen System-Dialog davor: „‚Berkat' möchte sich bei ‚stripe.com' anmelden." Vor einer Zahlung
+  ist das das falsche Wort zur falschen Zeit. Der Komfort des Selbst-Schließens ist ihn nicht wert.
+- **Die Leiste darf nicht einklappen** (`enableBarCollapsing: false`). In ihr sitzt der einzige Weg
+  zurück; ein langes Stripe-Formular hätte sie weggescrollt.
+- **Nach dem Schließen muss dreimal nachgeladen werden.** Bezahlt wird vom Webhook bestätigt, nicht
+  vom Client — zwischen „Blatt zu" und „Korb bezahlt" liegt ein Serverweg. Ein einzelnes Nachladen
+  träfe fast immer noch den Stand von vorher, und der Käufer sähe sein eben bezahltes Paket weiter
+  als offen. Nur der erste Ruf wird abgewartet, die beiden späteren korrigieren still.
+- **Die Fehler-Auswertung lag nur im Trinkgeld.** Die Lehre vom 15.08. („eine Fehlermeldung für
+  alles ist keine Fehlermeldung") war nie auf den Sammelkorb übertragen worden — ausgerechnet auf
+  den wichtigeren Geldweg. Sie liegt jetzt in `lib/functionError.ts` und wird von beiden benutzt.
+- **`pod install` scheitert an der Zeichenkodierung**, wenn die Shell nicht auf UTF-8 steht
+  (`Unicode Normalization not appropriate for ASCII-8BIT`). Sieht nach Podfile-Fehler aus, ist aber
+  die Umgebung: `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` davorsetzen.
+
+### Was geprüft ist — und was nicht
+
+**Geprüft** am 15.08.2026 im Simulator, mit neu gebautem Build: Die Stripe-Seite öffnet als Blatt
+über Berkat (`checkout.stripe.com`, „Fertig"-Knopf, Leiste bleibt stehen), und das Schließen führt
+**genau auf den Bildschirm von vorher zurück, mit unveränderter Auswahl**. Ausgelöst über den
+Trinkgeld-Weg (`berkat://tip/<id>`), der denselben Baustein benutzt. Konto-Tab und Startseite laden
+mit dem neuen Modul unverändert.
+
+**Nicht geprüft:** der Bezahl-Knopf auf dem Show-Ende-Bildschirm. Er braucht einen offenen Korb,
+also einen echten Zuschlag — und der Server lässt niemanden auf eigene Artikel bieten
+(`seller_cannot_bid`). Das geht nur im Zwei-Konten-Durchlauf aus Abschnitt 8. Übersetzt und
+gebündelt ist er.
+
+### ⚠️ Zwei Funde aus dem Durchlauf, die nichts mit der Kasse zu tun haben
+
+**1. Klarna steht in der Bezahlseite — und ist laut Ausgangsanalyse eine rote Linie.**
+Im Stripe-Checkout stehen als Zahlungsmethoden „Karte, **Klarna**, Amazon Pay, eps". Die Analyse
+führt unter B3 **Riba** auf: „Klarna/BNPL/Ratenzahlung mit Zinsen → 🔴 Ausschließen." Für eine App,
+deren Verkaufsargument die muslimische Diaspora ist, ist eine Ratenzahlung im Kassenfenster kein
+Detail. Das ist **keine Code-Sache** — es hängt an den Zahlungsmethoden im Stripe-Dashboard und ist
+dort mit ein paar Klicks abzuschalten. Betrifft auch Serlos Shop, weil beide dieselbe Function
+benutzen.
+
+**2. Versand wird nie berechnet.** `checkout_auction_cart` schreibt `amount_eur` als reine Summe der
+Zuschläge, und `create-checkout-session` setzt für Berkat **keine `shipping_options`** — Stripe
+sammelt nur die Adresse ein. Der Käufer zahlt also exakt den Hammerpreis. Im Live-Raum steht aber
+unter jedem Artikel „Versand und Steuern kommen dazu". Entweder ist der Satz falsch, oder der
+Versand fehlt im Geldweg. Beides ist vor dem ersten fremden Verkäufer zu klären — bei ihm zahlt es
+sonst jemand aus eigener Tasche.
+
+---
+
+## 12. Builds sparen — was wirklich einen Build braucht
+
+Jeder EAS-Build in der Cloud kostet Kontingent. Der größte Hebel ist nicht, sie zu bündeln,
+sondern **die meisten gar nicht erst auszulösen**: Der weitaus größte Teil der Arbeit an dieser App
+braucht überhaupt keinen Build.
+
+### Die Trennlinie
+
+| Braucht **keinen** Build | Braucht einen Build |
+|---|---|
+| Jede `.ts`/`.tsx`-Änderung — Bildschirme, Hooks, Texte, Stile, Logik | Neues npm-Paket **mit nativem Anteil** (`expo-web-browser`, LiveKit, `expo-notifications` …) |
+| Neue Routen und Komponenten | Änderungen in `app.json`: `plugins`, `permissions`, `infoPlist`, Bundle-ID, Icon, Splash |
+| SQL-Migrationen, RPCs, Edge Functions | `google-services.json`, Berechtigungen, Entitlements |
+| Alles, was zur Laufzeit geladen wird (Bilder, Lottie, Remote-Config) | Expo-SDK-Wechsel |
+
+In der Entwicklung reicht für die linke Spalte ein Neuladen aus Metro. In Produktion geht sie per
+`eas update` raus (OTA) — Details in Abschnitt 8, inklusive der Zwei-Runtimes-Falle.
+
+**Faustregel:** Hat sich `package.json` (nativer Anteil) oder `app.json` nicht geändert, ist ein
+Build verschwendet.
+
+### Lokal bauen kostet nichts
+
+Der Simulator-Build läuft vollständig auf dem eigenen Rechner und zieht **kein** EAS-Kontingent:
+
+```bash
+cd /Users/zaurhatuev/vibes-app/apps/berkat && npx expo run:ios
+```
+
+Läuft schon Metro auf 8081, `--no-bundler` anhängen — sonst weicht ein zweiter Start still auf 8082
+aus (Abschnitt 9). Und `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` davorsetzen, falls `pod install` mit
+`Unicode Normalization … ASCII-8BIT` abbricht.
+
+Für das **eigene iPhone am Kabel** gilt dasselbe mit `--device`; Xcode verwaltet das Profil selbst,
+solange dort ein Apple-Konto angemeldet ist. Einmal ausprobieren — klappt es, ist der Entwickler-
+Build auf dem Telefon ab dann kostenlos.
+
+`eas build --local` fährt dasselbe Rezept wie die Cloud auf dem eigenen Mac und zählt ebenfalls
+nicht gegen das Kontingent — braucht aber **fastlane** (`brew install fastlane`), das hier fehlt.
+Android lokal bräuchte zusätzlich **Java 17+** (installiert ist 1.8) und ein gesetztes
+`ANDROID_HOME`; bis dahin bleibt Android der einzige Grund, in die Cloud zu gehen.
+
+### Wenn doch die Cloud: stapeln
+
+Native Änderungen sammeln, statt jede einzeln zu bauen. Dafür steht unten die Warteschlange. Regel:
+**Erst bauen, wenn etwas darin steht und man es wirklich auf dem Gerät prüfen muss** — und dann nur
+für die Plattform, um die es geht (`--platform ios`, nicht `all`).
+
+### Warteschlange: offene native Änderungen
+
+Nach jedem Build geleert.
+
+- _(leer — der Build vom 15.08.2026 hat `expo-web-browser` mitgenommen)_
+
+---
+
+## 13. Sendeplan — angekündigte Shows (Stand 15.08.2026)
+
+Der Hebel Nr. 1 aus der [Ausgangsanalyse](WHATNOT-ANALYSE.md): *„Whatnots gesamte Retention hängt
+an planbaren, wiederkehrenden Shows … was fehlt, ist das Ritual: benannte, wiederkehrende Sendungen
++ Erinnerungs-Push. Kostet fast nichts, verändert alles."* Und § 3.5: *„Die 80 % Monatsretention …
+kommen daher, dass donnerstags um 14:30 dieselbe Person dieselbe Show macht."*
+
+Es war zugleich das, was **Phase 0 blockierte**. Phase 0 heißt „5 Verkäufer, **feste Termine**" — und
+in Berkat ließ sich ein Termin nirgends ankündigen.
+
+### Fast nichts davon ist neu
+
+Serlo hat den kompletten Apparat seit dem 21.04.2026 (`20260421000000_scheduled_lives.sql`):
+Tabelle, vier RPCs, ein pg_cron, der 15 Minuten vorher **alle Follower des Gastgebers**
+benachrichtigt, und der Push-Text liegt als `scheduled_live_reminder` bereits im `CASE` von
+`fn_send_push_on_notification`. Berkat nutzt `follows` ohnehin — der Empfängerkreis stimmt also ohne
+eine einzige neue Tabelle. Angeschlossen statt nachgebaut, nach Abschnitt 4.
+
+Gefehlt hat nur die App-Dimension.
+
+| Was | Wo |
+|---|---|
+| `scheduled_lives.app` + CHECK + Index | `20260815120000` |
+| Erinnerung vererbt die App an `notifications.app` | dieselbe Migration |
+| `schedule_berkat_show` als Eingang | dieselbe Migration |
+| Serlos vier Lesepfade auf `app='serlo'` gefiltert | `lib/useScheduledLives.ts`, `apps/web/lib/data/live-host.ts` |
+| Planer, „Demnächst"-Streifen, Verknüpfung beim Start | `lib/useSchedule.ts`, `components/SchedulePlanner.tsx`, `components/UpcomingStrip.tsx` |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Kein zusätzlicher Parameter an `schedule_live`.** Ein defaultierter Parameter erzeugt in Postgres
+  eine **Überladung**, keine geänderte Funktion — und Überladungen machen PostgREST mehrdeutig
+  (HTTP 300, bei `publish_due_scheduled_posts` gemessen). Ausgelieferte Serlo-Versionen rufen
+  `schedule_live` weiter unverändert. `schedule_berkat_show` wickelt sie ein und erbt damit alle
+  Prüfungen: Anmeldung, nicht-leerer Titel, Fenster 5 Minuten bis 30 Tage.
+- **Die Erinnerung musste angefasst werden.** Ohne `app` in der `notifications`-Zeile landet die
+  Erinnerung an einen Berkat-Auktionsabend auf dem **Serlo-Gerät**. Der bewusste Rückfall aus
+  Abschnitt 9 („kein Gerät der Ziel-App gefunden → alle Geräte") greift hier gerade nicht, weil ein
+  Serlo-Gerät ja gefunden WIRD.
+- **`allow_gifts` steht fest auf `false`.** Geschenke laufen über Coins, und Coins sind in Berkat
+  ausgeschlossen (Abschnitt 7). Ein `true` wäre ein Versprechen ohne Oberfläche.
+- **Kein „Erinnere mich"-Knopf.** Das wäre ein zweiter Mechanismus neben `follows`. Wer erinnert
+  werden will, folgt — und bekommt damit gleich alle weiteren Termine desselben Verkäufers. Der
+  Streifen führt deshalb aufs **Verkäufer-Profil**, nicht auf eine Terminseite: Der Folgen-Knopf ist
+  die einzige Handlung, die dort etwas bewirkt.
+- **Kacheln statt Datums-Wähler.** Ein freier Zeitstempel lädt zu „irgendwann Dienstag halb neun"
+  ein; das Ritual ist aber die Wiederholung. Feste Abendplätze (17–22 Uhr) machen sie zur
+  Standardeinstellung. Nebenbei spart es einen Build — `@react-native-community/datetimepicker`
+  wäre ein natives Modul, zwei Reihen `Pressable` sind es nicht.
+- **Der Leerzustand der Startseite ändert sich mit.** Steht ein Termin an, sagt sie nicht mehr
+  „schau später wieder rein", sondern verweist nach oben. „Komm später mal wieder, vielleicht" ist
+  die falsche Auskunft, wenn es eine Antwort gibt.
+- **Beim Start wird verknüpft.** Gibt es einen eigenen Termin im Fenster ±2 Stunden, hängt
+  `link_live_session_to_scheduled` ihn an die gestartete Show. Ohne das bliebe die Ankündigung auf
+  `scheduled` stehen und liefe in `expired`. Zwei Stunden, weil eine Show selten pünktlich beginnt.
+  Schlägt es fehl, wird es nur geloggt — die Show läuft da schon, und ein misslungenes Verknüpfen
+  darf den Gastgeber nicht aus seiner eigenen Sendung werfen.
+
+### Geprüft am 15.08.2026, am echten Datenstand
+
+Migration eingespielt und verzeichnet (232 → 233). Drei Rechte-Proben gegen die Live-DB:
+`SELECT app` → 200, **`?app=eq.berkat` → 200** (das war die Falle vom 14.08.), `schedule_berkat_show`
+ohne Anmeldung → `42501 permission denied`.
+
+Im Simulator durchgespielt: Termin „Heute 20:00" eingetragen → Zeile in der DB mit **`app='berkat'`**
+und `18:00Z` (= 20:00 lokal, Zeitzone stimmt) → auf der Startseite steht „Demnächst · berkattest ·
+Heute 20:00 · in 4 Std", der Leerzustand verweist darauf, und im Verkaufen-Reiter steht der Termin
+mit Absage-Knopf.
+
+**Nicht geprüft:** ob die Erinnerung 15 Minuten vorher tatsächlich auf einem Berkat-Gerät ankommt.
+Das braucht einen Follower und einen abgewarteten Termin — der einfachste Weg ist, mit dem zweiten
+Konto zu folgen und einen Termin ~20 Minuten in die Zukunft zu legen.
+
+### Wiederkehrende Reihen — nachgezogen am 15.08.2026
+
+Die Analyse sagt nicht „geplante Sendungen", sondern **„benannte, *wiederkehrende* Sendungen"**. Ein
+Verkäufer, der jede Woche daran denken muss, vergisst es — und dann bricht das Ritual für alle, die
+sich „samstags 20 Uhr" gemerkt haben. Über acht Wochen Phase 0 mit fünf Verkäufern wären das rund
+vierzig Einzeleinträge.
+
+Der Planer hat deshalb einen Rhythmus-Umschalter, **„Jede Woche · 4×" ist die Voreinstellung**. Wer
+bewusst nur einmal senden will, schaltet auf „Einmal".
+
+- **Vier ist keine Designzahl, sondern die Serverregel.** `schedule_live` lehnt alles über 30 Tage
+  ab. Vier Wochen passen im schlechtesten Fall gerade hinein (6 Tage Vorlauf + 21 = 27 Tage), eine
+  fünfte nie. Der Hinweistext sagt das offen, statt den Nutzer in die Fehlermeldung laufen zu lassen.
+- **Gerechnet wird über den Kalender, nicht über Millisekunden.** `+7 * 86_400_000` verschiebt die
+  Uhrzeit um eine Stunde, sobald die Reihe über die Zeitumstellung läuft — aus „20:00" würde Ende
+  Oktober lautlos „19:00". `setDate(getDate() + 7)` behält die Wanduhrzeit.
+- **Teilerfolg wird ehrlich gemeldet.** Bricht der dritte Eintrag ab, stehen zwei echte Termine —
+  die Meldung sagt dann „2 von 4", nicht „eingetragen". Nur wenn gar nichts entsteht, ist es ein
+  Fehlschlag mit der echten Servermeldung.
+- **Der Streifen fasst eine Reihe zu EINER Karte zusammen** (`nextPerSeries`, Schlüssel ist
+  Verkäufer + Titel). Vier gleiche Karten hätten die anderen Verkäufer aus dem Streifen gedrängt.
+  Die Anzahl bleibt erhalten und wird zum Abzeichen **„jede Woche"** — und genau das ist das
+  Ritual-Signal: nicht „heute um 20:00", sondern „das ist immer so".
+
+**Geprüft am 15.08.2026:** Reihe „Schmuck Samstag" eingetragen → vier Zeilen in der DB
+(15.08./22.08./29.08./05.09., je 18:00Z = 20:00 lokal, alle `app='berkat'`) → auf der Startseite
+**zwei** Karten statt fünf, die Reihe mit dem Abzeichen, der Einzeltermin ohne.
+
+### Nachtrag am 15.08.2026: die Abendplätze allein waren zu eng
+
+Beim ersten echten Gebrauch sofort aufgefallen: Um 16:49 war **17:00 der einzige wählbare Platz**,
+und der lag 11 Minuten entfernt. Wer spontan senden will („ich mach in einer halben Stunde auf"),
+hatte keine passende Kachel — und am späten Abend wäre für heute gar keine mehr übrig gewesen. Der
+Planer hätte dann genau das verhindert, wozu er da ist.
+
+Zwei Nachbesserungen:
+
+- **Relative Kacheln für heute**: „in 30 Min", „in 1 Std", „in 2 Std", vor den Uhrzeiten. Der
+  Zieltermin wird dabei **beim Drücken** neu gerechnet, nicht beim Anzeigen — zwischen beidem können
+  Minuten vergehen, und „in 30 Min" muss ab dem Tippen gelten.
+- **Vergangene Stunden fallen für heute weg.** Vorher standen um 21:30 alle sechs Abendplätze da,
+  fünf davon in der Vergangenheit; man tippte darauf und bekam nur „Dieser Zeitpunkt ist schon
+  vorbei". Fällt die gewählte Stunde aus der Liste, rutscht die Auswahl auf die erste noch mögliche.
+
+Eine spontane Sendung ist bewusst **keine Reihe**: Wird eine relative Kachel gewählt, verschwindet
+der Wiederholungs-Umschalter, und der Knopf nennt die konkrete Uhrzeit („Für Heute 17:22 eintragen").
+
+### Die Erinnerung ist gelaufen — 15.08.2026, 16:50 Uhr
+
+Nicht simuliert, sondern am echten Betrieb beobachtet: Zwei Termine auf 17:00 sprangen um
+**14:50:00 UTC** auf `status='reminded'` mit gesetztem `reminded_at` — der erste 5-Minuten-Takt,
+der sie im 15-Minuten-Fenster sah. `amir32` folgt `berkattest`, es entstand also eine echte
+Benachrichtigung.
+
+Push-Text: **„🔔 Gleich live — berkattest startet in 15 Min: ‚…'"**.
+
+**Die letzte Meile ist ebenfalls belegt.** Beide Meldungen kamen auf dem iPhone an, gruppiert unter
+**Berkat** und mit dem Berkat-Symbol — nicht in Serlo. Der Sendeplan ist damit von der eingetragenen
+Kachel bis zum Sperrbildschirm durchgemessen.
+
+Eine Feinheit, die dabei NICHT unterschieden werden kann: ob der `app`-Filter in `send_push_to_user`
+gegriffen hat oder der bewusste Rückfall aus Abschnitt 9 („kein Gerät der Ziel-App gefunden → alle
+Geräte"). Solange auf dem Telefon kein Serlo-Token liegt, führen beide Wege nach Berkat, und
+`push_tokens` ist für einen Client nicht lesbar. Praktisch ist das heute folgenlos — relevant wird
+es erst, wenn **beide Apps auf demselben Gerät** installiert sind. Wer das prüfen will, braucht
+genau diesen Fall.
