@@ -43,10 +43,24 @@
         </li>
       </ol>
 
-      <a class="cta" href="berkat://">Zurück zu Berkat</a>
+      <!--
+        Seit dem 15.08.2026 öffnet Berkat die Kasse als Blatt ÜBER der App
+        (SFSafariViewController bzw. Android Custom Tab), nicht mehr in Safari.
+        Darin ist ein `<a href="berkat://">` TOT: Eigene Schemata öffnet dieses
+        Blatt nicht. Der Knopf sah aus wie der Weg zurück und tat nichts —
+        unmittelbar nachdem jemand bezahlt hat, ist das der denkbar schlechteste
+        Moment für einen toten Knopf.
+
+        Deshalb steht die Handlung, die WIRKLICH funktioniert, jetzt vorne: das
+        „Fertig" oben in der Leiste. Der Deeplink bleibt als kleine Zeile für den
+        Fall, dass jemand doch in einem echten Browser landet.
+      -->
+      <p class="cta-hint">
+        Tipp oben links auf <strong>Fertig</strong> — du bist sofort wieder in Berkat.
+      </p>
       <p class="note">
-        Öffnet sich nichts, wechsle einfach von Hand zur App zurück — die Zahlung
-        ist unabhängig davon durch.
+        Im Browser gelandet? <a href="berkat://account">Berkat öffnen</a>. Klappt auch
+        das nicht, wechsle von Hand zur App — die Zahlung ist unabhängig davon durch.
       </p>
     </main>
 
