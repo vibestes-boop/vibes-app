@@ -1485,3 +1485,74 @@ Geräte"). Solange auf dem Telefon kein Serlo-Token liegt, führen beide Wege na
 `push_tokens` ist für einen Client nicht lesbar. Praktisch ist das heute folgenlos — relevant wird
 es erst, wenn **beide Apps auf demselben Gerät** installiert sind. Wer das prüfen will, braucht
 genau diesen Fall.
+
+---
+
+## 14. Versand (Stand 15.08.2026)
+
+Bis dahin wurde **gar kein Versand berechnet** — `amount_eur` war die reine Summe der Zuschläge,
+`shipping_options` gab es nicht, und der Live-Raum versprach trotzdem „Versand und Steuern kommen
+dazu". Beides unwahr, und beim ersten fremden Verkäufer ein Streit.
+
+### Das Modell
+
+Eine Pauschale **pro Paket**, nicht pro Artikel — genau dafür gibt es den Sammelkorb. **Pro Zone**,
+weil ein Paket nach Zürich real das Doppelte kostet. **Pro Verkäufer mit Plattform-Vorgabe als
+Rückfall** (`seller_id IS NULL`), damit ab dem ersten Drittverkäufer nichts umgebaut werden muss.
+
+Startwerte: DE 4,90 € · AT 9,90 € · CH 9,90 €. `free_from_cents` steht bereit, ist aber leer —
+„gratis ab X €" ist ein Versprechen, das jemand bezahlen muss.
+
+| Wo | Was |
+|---|---|
+| `20260815180000` | `berkat_shipping_rates`, `get_cart_shipping_options`, `product_orders.shipping_cents` |
+| `20260815190000` | EXECUTE für `service_role` — ohne das wirft die Kasse zur Laufzeit `42501` |
+| `create-checkout-session` | `shipping_options` **nur** im Berkat-Zweig (`isAuctionCart`) |
+| `stripe-webhook` | `total_details.amount_shipping` → `shipping_cents` |
+| `lib/useShipping.ts` | „zzgl. Versand ab 4,90 €" + Prüfung für den Verkäufer |
+
+**Versand wird bewusst NICHT in `amount_eur` gerechnet.** Bei Stripe Connect bekommt der Verkäufer
+die Ware und der Versand wird anders verrechnet — wer beides addiert, pflückt es in Phase 2 wieder
+auseinander.
+
+### ⚠️ Die Zone ist nicht erzwingbar
+
+**Stripe Checkout kann Versandoptionen nicht ans Lieferland binden.** Der Käufer wählt frei, Stripe
+sammelt die Adresse getrennt ein. Im allerersten echten Durchlauf sofort aufgetreten: zwei
+Bestellungen mit `shipping_cents = 990` bei `ship_country = 'DE'`.
+
+Der häufigere Fall ist **kein Betrug, sondern ein Versehen** — jemand tippt auf die erste
+angebotene Option. Deshalb wird nichts blockiert, sondern in „Bestellungen" sichtbar gemacht, wenn
+der gezahlte Versand **unter** dem Satz für das Lieferland liegt. Überzahlung wird nicht gemeldet:
+Sie kostet den Verkäufer nichts.
+
+Erzwingen ließe es sich nur mit einer eigenen Bezahlmaske statt Stripe Checkout — das gehört zu
+Stripe Connect und damit in Phase 2.
+
+### Falle: die Idempotenz-Sperre
+
+`create-checkout-session` benutzt `Idempotency-Key: product-order-<id>`. Stripe merkt sich eine
+Sitzung damit **24 Stunden**. Eine Bestellung, die schon vor dem Deploy einmal eine Kassen-Sitzung
+hatte, bekommt die **alte ohne Versandoptionen** zurück. Beim Testen also einen frischen Korb
+nehmen, sonst sucht man den Fehler im Code, wo keiner ist.
+
+### Falle: der tote Rückweg auf der Erfolgsseite
+
+`bezahlt.html` hatte einen Knopf „Zurück zu Berkat" (`<a href="berkat://">`). Seit die Kasse als
+Blatt über der App läuft (Abschnitt 11), ist der **tot**: Eigene Schemata öffnet ein
+SFSafariViewController nicht. Er sah aus wie der Weg zurück und tat nichts — unmittelbar nachdem
+jemand bezahlt hat.
+
+Jetzt steht dort die Handlung, die wirklich funktioniert: „Tipp oben links auf **Fertig**". Der
+Deeplink bleibt als kleine Zeile für den Browser-Fall und zeigt auf `berkat://account`. Wer die
+Kasse je wieder in Safari öffnet, muss diesen Text zurückdrehen.
+
+### Geprüft am 15.08.2026, am echten Geld-Weg
+
+Zwei-Konten-Durchlauf: Zuschlag 1 € → bezahlt mit `4242 4242 4242 4242` → in der Datenbank steht
+`amount_eur 1.00`, **`shipping_cents 490`**, `status paid`, `ship_country DE`. Die Kasse zeigte die
+drei Zonen als Auswahl, „zzgl. Versand ab 4,90 €" steht im Live-Raum, und die Bestellliste des
+Verkäufers rendert mit der neuen Prüfung.
+
+**Nicht geprüft:** der Unterdeckungs-Hinweis selbst — dafür müsste jemand die DE-Pauschale zahlen
+und in die Schweiz liefern lassen.
