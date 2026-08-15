@@ -64,6 +64,7 @@ import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib
 import { stage, radius, space } from '../../theme/tokens';
 import { useCheckoutCart } from '../../lib/useCheckout';
 import { shippingHint, useShippingFrom } from '../../lib/useShipping';
+import { useVouches, vouchSummary } from '../../lib/useVouch';
 import {
   bidErrorText,
   formatCartWindow,
@@ -174,6 +175,7 @@ export default function LiveAuctionRoom() {
   const { data: soldCount } = useSellerSoldCount(session?.host_id);
   const { data: cart } = useCart(myUserId, session?.host_id);
   const { data: shippingFrom } = useShippingFrom(session?.host_id);
+  const { data: vouches = [] } = useVouches(session?.host_id, myUserId);
   const comments = useLiveChat(id);
   const placeBid = usePlaceBid();
   const follow = useFollow(session?.host_id, myUserId);
@@ -939,6 +941,7 @@ export default function LiveAuctionRoom() {
         stats={sellerStats}
         isBlocked={Boolean(blocked?.has(session.host_id))}
         isSelf={isHost}
+        vouchLine={vouchSummary(vouches)}
         follow={follow}
         onClose={() => setSellerOpen(false)}
         onTip={openTip}

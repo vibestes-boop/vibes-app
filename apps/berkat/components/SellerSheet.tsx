@@ -20,10 +20,12 @@ import {
   AtSign,
   Ban,
   ChevronLeft,
+  ChevronRight,
   CircleUser,
   Flag,
   Gift,
   MessageSquare,
+  ShieldCheck,
   Star,
   Tag,
   Truck,
@@ -47,6 +49,13 @@ type Props = {
   isBlocked: boolean;
   /** Nicht anzeigen, wenn man sich selbst ansieht */
   isSelf: boolean;
+  /**
+   * „Amir und Ruslan bürgen — beiden folgst du". `null`, wenn niemand bürgt.
+   *
+   * Kommt fertig von außen und wird hier nicht berechnet: Das Sheet bleibt
+   * dumm, und die Abfrage läuft einmal je Live-Raum statt bei jedem Öffnen.
+   */
+  vouchLine?: string | null;
   follow: { canFollow: boolean; isFollowing: boolean; busy: boolean; toggle: () => void };
   onClose: () => void;
   onTip: () => void;
@@ -66,6 +75,7 @@ export function SellerSheet({
   stats,
   isBlocked,
   isSelf,
+  vouchLine,
   follow,
   onClose,
   onTip,
@@ -181,6 +191,26 @@ export function SellerSheet({
                   label={stats?.sold === 1 ? 'Zuschlag' : 'Zuschläge'}
                 />
               </View>
+
+              {/* Direkt unter den Zahlen — und bewusst DARUNTER, nicht darüber:
+                  Erst die Institution (Sterne, Versandzeit, Zuschläge), dann die
+                  Menschen. Wer den Zahlen nicht traut, liest hier weiter, und in
+                  dieser Community ist das der Teil, der entscheidet. Antippen
+                  führt aufs Profil, wo die vollständige Liste steht. */}
+              {vouchLine ? (
+                <Pressable
+                  style={styles.vouchLine}
+                  onPress={onProfile}
+                  accessibilityRole="button"
+                  accessibilityLabel={vouchLine}
+                >
+                  <ShieldCheck size={15} color={stage.lead} />
+                  <Text numberOfLines={2} style={styles.vouchText}>
+                    {vouchLine}
+                  </Text>
+                  <ChevronRight size={15} color={stage.textMuted} />
+                </Pressable>
+              ) : null}
 
               <View style={styles.rows}>
                 <Row
@@ -322,6 +352,19 @@ const styles = StyleSheet.create({
   followTextActive: { color: stage.textMuted },
 
   tiles: { flexDirection: 'row', gap: space.sm },
+  vouchLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginTop: space.md,
+    backgroundColor: 'rgba(79,183,142,0.10)',
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm + 2,
+  },
+  // Hellgrün ist auf der Bühne „du führst"/Bestätigung — hier die Zusage eines
+  // Menschen. Bewusst nicht Gold: Gold ist der Kauf, das hier ist Vertrauen.
+  vouchText: { flex: 1, fontSize: 13, fontWeight: '600', color: stage.text, lineHeight: 18 },
   tile: {
     flex: 1,
     backgroundColor: stage.surfaceHigh,

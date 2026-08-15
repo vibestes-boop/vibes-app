@@ -1605,5 +1605,17 @@ Vom Simulator (`berkattest`) auf amir32s Profil: Leerzustand → „Ich bürge f
 → Eintrag erscheint mit **„2 Käufe · 4 Zuschläge"** und dem Satz, Knopf springt auf „Bürgschaft
 zurückziehen", Rückmeldung „Danke — dein Name steht jetzt bei ihm."
 
-**Noch nicht gebaut:** die Zusammenfassung im `SellerSheet` des Live-Raums (`vouchSummary()` liegt
-bereit, ist aber nirgends aufgerufen). Dort wäre sie am wertvollsten — im Moment vor dem Gebot.
+### Die Zeile im Live-Raum
+
+`vouchSummary()` hängt seit dem 15.08.2026 im `SellerSheet`, direkt unter den drei Zahlen und über
+den sechs Zeilen — erst die Institution, dann die Menschen. Antippen führt aufs Profil, wo die
+vollständige Liste steht.
+
+Hellgrün statt Gold ist Absicht: Gold ist auf der Bühne der **Kauf** (Gebot, Preis, Zuschlag), und
+eine Bürgschaft ist kein Kaufknopf.
+
+Das Sheet bleibt dumm — die Zeile kommt fertig als Prop aus `app/live/[id].tsx`. So läuft die
+Abfrage einmal je Live-Raum statt bei jedem Öffnen des Sheets.
+
+**Gerendert wurde sie noch nicht gesehen:** Dafür muss ein Konto senden, für das jemand gebürgt hat.
+Kürzester Weg: vom zweiten Konto aus für den Gastgeber bürgen, dann dessen Sheet öffnen.
