@@ -45,7 +45,15 @@ import {
 } from '../../lib/useStudio';
 import { orderErrorText, useMarkShipped, useSellerOrders } from '../../lib/useSellerOrders';
 import { useReceivedTips } from '../../lib/useTip';
+import {
+  linkShowToPlan,
+  matchingPlan,
+  scheduleErrorText,
+  useMyPlannedShows,
+  usePlanShow,
+} from '../../lib/useSchedule';
 import { BerkatMark } from '../../components/BerkatMark';
+import { SchedulePlanner } from '../../components/SchedulePlanner';
 import { SellerOrders } from '../../components/SellerOrders';
 import { ui, radius, space } from '../../theme/tokens';
 
@@ -86,6 +94,9 @@ export default function SellScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const formY = useRef(0);
+
+  const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
+  const { plan: planShow, cancel: cancelPlan } = usePlanShow(myUserId);
 
   const { data: orders = [] } = useSellerOrders(myUserId);
   const { data: tips = [] } = useReceivedTips(myUserId);
@@ -249,6 +260,7 @@ export default function SellScreen() {
         ) : null}
 
         {!show ? (
+          <>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Mach die Show auf</Text>
             <Text style={styles.cardBody}>
@@ -300,6 +312,17 @@ export default function SellScreen() {
                     title: showTitle,
                     thumbnailUrl: coverUrl,
                   });
+                  // Steht für jetzt ein angekündigter Termin an, gehört er mit
+                  // dieser Show zusammen — sonst bliebe die Ankündigung auf
+                  // „geplant" stehen, liefe irgendwann in `expired`, und wer sie
+                  // auf der Startseite antippt, käme nirgendwo hin, obwohl die
+                  // Show längst läuft. Bewusst ohne `await`-Abbruch: Die Show ist
+                  // an dieser Stelle schon gestartet, und ein misslungenes
+                  // Verknüpfen darf den Gastgeber nicht aus seiner eigenen
+                  // Sendung werfen.
+                  const due = matchingPlan(plannedShows, Date.now());
+                  if (due) await linkShowToPlan(due.id, sessionId);
+
                   // Zurücksetzen, damit nach dem Beenden nicht der alte Name
                   // und das alte Cover in der leeren Maske stehen.
                   setShowTitle('');
@@ -312,6 +335,39 @@ export default function SellScreen() {
               <Text style={styles.primaryButtonText}>Show starten</Text>
             </Pressable>
           </View>
+
+          <SchedulePlanner
+            plans={plannedShows}
+            busy={planShow.isPending || cancelPlan.isPending}
+            onPlan={(input) =>
+              void planShow
+                .mutateAsync(input)
+                .then(({ created, total }) =>
+                  setNotice(
+                    created === total
+                      ? created === 1
+                        ? 'Eingetragen — deine Follower bekommen eine Erinnerung. 🎉'
+                        : `${created} Termine eingetragen — deine Follower bekommen jedes Mal eine Erinnerung. 🎉`
+                      : // Ehrlich statt hübsch: Wenn nur ein Teil durchkam, muss
+                        // der Verkäufer das wissen, sonst verlässt er sich auf
+                        // Termine, die es nicht gibt.
+                        `${created} von ${total} Terminen eingetragen — der Rest hat nicht geklappt.`,
+                  ),
+                )
+                .catch((error: unknown) =>
+                  setNotice(
+                    scheduleErrorText(error instanceof Error ? error.message : String(error)),
+                  ),
+                )
+            }
+            onCancel={(planId) =>
+              void cancelPlan
+                .mutateAsync(planId)
+                .then(() => setNotice('Termin abgesagt.'))
+                .catch(() => setNotice('Der Termin ließ sich nicht absagen.'))
+            }
+          />
+          </>
         ) : (
           <>
             <View style={styles.card}>

@@ -26,6 +26,8 @@ import { BerkatMark } from '../../components/BerkatMark';
 import { Avatar } from '../../components/Avatar';
 import { CategoryRail, type RailItem } from '../../components/CategoryRail';
 import { LivePreview } from '../../components/LivePreview';
+import { UpcomingStrip } from '../../components/UpcomingStrip';
+import { useUpcomingShows } from '../../lib/useSchedule';
 import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
@@ -81,6 +83,7 @@ export default function HomeScreen() {
   const userId = useSession((st) => st.userId);
   const { data: unread = 0 } = useUnreadCount(userId);
   const { data: shows = [], isLoading, refetch } = useLiveShows();
+  const { data: upcoming = [], refetch: refetchUpcoming } = useUpcomingShows();
 
   // Der Kreisel gehört NUR zum Ziehen von Hand. Hinge er an isRefetching,
   // würde er alle 20 Sekunden beim automatischen Abruf aufspringen — die Liste
@@ -89,11 +92,11 @@ export default function HomeScreen() {
   const pullToRefresh = useCallback(async () => {
     setPulling(true);
     try {
-      await refetch();
+      await Promise.all([refetch(), refetchUpcoming()]);
     } finally {
       setPulling(false);
     }
-  }, [refetch]);
+  }, [refetch, refetchUpcoming]);
   const profiles = useProfiles(shows.map((s) => s.host_id));
 
   // Was in jeder Show gerade läuft. Die Uhr des Servers gilt auch hier: Der
@@ -130,6 +133,9 @@ export default function HomeScreen() {
       }
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'shows'] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'show-previews'] });
+      // Auch der Sendeplan: Wer gerade im Verkaufen-Reiter einen Termin
+      // eingetragen hat, soll ihn beim Zurückwechseln sofort oben stehen sehen.
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows'] });
     }, [queryClient]),
   );
 
@@ -241,6 +247,18 @@ export default function HomeScreen() {
           paddingHorizontal: space.md,
           paddingBottom: insets.bottom + space.xl,
         }}
+        // Der Sendeplan steht ÜBER dem Raster, nicht darin: Er beantwortet eine
+        // andere Frage („wann kommt wieder was?") als die Karten („was läuft
+        // jetzt?"). Bei aktiver Suche verschwindet er — ein Termin ist kein
+        // Suchtreffer.
+        ListHeaderComponent={
+          search || filter !== ALL ? null : (
+            <UpcomingStrip
+              shows={upcoming}
+              onSelect={(hostId) => router.push(`/seller/${hostId}`)}
+            />
+          )
+        }
         ListEmptyComponent={
           isLoading ? null : (
             <View style={styles.empty}>
@@ -251,7 +269,12 @@ export default function HomeScreen() {
               <Text style={styles.emptyBody}>
                 {search || filter !== ALL
                   ? 'Versuch es mit einem anderen Wort.'
-                  : 'Schau später wieder rein — oder mach unter „Verkaufen" selbst die erste Show auf.'}
+                  : // Steht ein Termin an, ist „schau später wieder rein" die
+                    // falsche Auskunft — es gibt ja eine Antwort, und sie steht
+                    // direkt darüber.
+                    upcoming.length > 0
+                    ? 'Aber der nächste Termin steht schon oben — folge dem Verkäufer, dann erinnern wir dich.'
+                    : 'Schau später wieder rein — oder mach unter „Verkaufen" selbst die erste Show auf.'}
               </Text>
             </View>
           )
