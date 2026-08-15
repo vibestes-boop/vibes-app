@@ -503,9 +503,6 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
-1. **Sperren und Melden sind ungeprüft.** Beide fallen bei einem selbst weg, brauchen also einen
-   fremden Gastgeber im Live-Raum. Die Schreibwege (`user_blocks`, `user_reports`) tragen die RLS
-   ohne Zutun, aber gelaufen ist noch keiner.
 3. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
 4. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
@@ -1094,6 +1091,20 @@ Erst das Freundliche, dann mit Abstand das Unfreundliche. Der Abstand ist nicht 
 
 Bei sich selbst fallen Trinkgeld, Nachricht, Sperren und Melden weg. Das ist der Grund, warum man
 sie beim Testen als Gastgeber nie zu Gesicht bekommt.
+
+**Alle sechs sind am 15.08.2026 einmal gelaufen** — die vier gesperrten vom zweiten Konto aus:
+
+| Zeile | Belegt durch |
+|---|---|
+| Trinkgeld | `berkat_tips` auf `paid`, vom Webhook gesetzt |
+| Profil anzeigen | Seite lädt, Kennzahlen und Verkauftes stehen |
+| Nachricht | Konversation + `messages`-Zeile, `read: false` |
+| Im Chat erwähnen | `@name` landet im Eingabefeld, Sheet schließt |
+| Melden | `user_reports`-Zeile, richtiger Grund und Melder |
+| Sperren | Zeile geschrieben — belegt dadurch, dass die Zeile danach „Sperre aufheben" zeigt; dieser Text liest `user_blocks` |
+
+Beim Sperren ist das der einzige Nachweis, den es gibt: Wer danach gleich wieder aufhebt,
+hinterlässt keine Spur in der Tabelle. Der Beschriftungswechsel ist der Beweis.
 
 Die Sperre wird bewusst **nicht** serverseitig durchgesetzt: Sie ist die Sicht EINES Zuschauers,
 die anderen sollen den Verlauf unverändert sehen.
