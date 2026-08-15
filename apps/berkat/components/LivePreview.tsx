@@ -160,13 +160,17 @@ const s = StyleSheet.create({
   /** Platz für das Artikelbild, das rechts über die Oberkante hinausragt. */
   textInset: { marginRight: 42 },
 
-  label: { fontSize: 10, fontWeight: '600', color: ui.textMuted },
+  // `overlayMuted`/`overlayUrgent` statt `textMuted`/`live`: Am 15.08.2026 über
+  // einem echten Foto nachgemessen — die hellen Fassungen kamen auf 3,84:1 und
+  // 3,92:1 und lagen damit unter den 4,5:1, die WCAG für diese Schriftgrößen
+  // verlangt. Nur hier abgedunkelt; auf der Sandfläche bleibt es beim Original.
+  label: { fontSize: 10, fontWeight: '600', color: ui.overlayMuted },
   title: { fontSize: 13, fontWeight: '700', color: ui.text, marginTop: 1 },
 
   bottomRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 3 },
   state: { flex: 1, fontSize: 12, fontWeight: '700' },
-  urgent: { color: ui.live },
-  calm: { color: ui.textMuted },
+  urgent: { color: ui.overlayUrgent },
+  calm: { color: ui.overlayMuted },
   price: { fontSize: 13, fontWeight: '700', color: ui.text },
 
   thumb: {

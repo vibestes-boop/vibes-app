@@ -805,10 +805,19 @@ Gelöst wie bei Whatnot: eine **milchige, fast deckende** Fläche, nicht zartes 
 auf Transparenz setzt, bekommt genau den Fehler, der Serlo wiederholt erwischt hat: lesbar auf dem
 einen Bild, unsichtbar auf dem nächsten.
 
-**Noch nicht über einem echten Foto gesehen.** Der Testlauf am 14.08. abends lief mit einer Show
-ohne Cover, das Widget lag also auf der Sandfläche statt auf Bildinhalt. Genau der Fall, vor dem
-dieser Abschnitt warnt, ist damit der einzige ungetestete. Beim nächsten Durchlauf ein Cover
-setzen — und zwar ein helles.
+**Am 15.08.2026 über einem echten Foto nachgemessen** — und der Befund war nicht der erwartete.
+
+Die Fläche hält, was sie verspricht: über dem hellsten und dem dunkelsten Punkt desselben Bildes
+unterscheidet sie sich um **11 von 255**, genau die 94 %. Was man beim Vergrößern für Durchscheinen
+hält, ist die Skalierung.
+
+Die **Schrift** hielt nicht. `textMuted` kam auf **3,84:1** und `live` auf **3,92:1** — WCAG verlangt
+für diese Schriftgrößen 4,5:1. Lesbar wirkte es trotzdem, deshalb hätte ein Blick allein das nie
+gefunden. Dafür gibt es jetzt `ui.overlayMuted` und `ui.overlayUrgent`, die abgedunkelten Fassungen;
+nachgemessen an den gerenderten Bildpunkten stehen alle drei Zeilen bei **5,14 / 14,77 / 4,83:1**.
+
+Wer die Töne wieder aufhellt, macht genau diesen Fehler zurück. Sie stehen deshalb in `tokens.ts`
+und nicht in der Komponente.
 
 #### Am echten Datenstand geprüft (14.08.2026 abends)
 

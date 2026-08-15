@@ -28,6 +28,20 @@ export const ui = {
    * also deckt die Fläche.
    */
   overlay: 'rgba(255,255,255,0.94)',
+  /**
+   * Text AUF `overlay`. Nur dort — sonst gilt `textMuted` bzw. `live`.
+   *
+   * Am 15.08.2026 nachgemessen, über dem hellsten und dem dunkelsten Punkt
+   * eines Fotos: Die Fläche hält, was sie verspricht (11 von 255 Unterschied,
+   * genau die 94 %). Die Schrift hielt nicht — `textMuted` kam auf 3,84:1 und
+   * `live` auf 3,92:1, WCAG verlangt für diese Schriftgrößen 4,5:1.
+   *
+   * Diese zwei Töne sind die abgedunkelten Fassungen und erreichen 4,98:1 und
+   * 4,68:1. Sie stehen hier statt in der Komponente, damit sie beim nächsten
+   * „ein bisschen heller wäre hübscher" auffallen.
+   */
+  overlayMuted: '#5C6B62',
+  overlayUrgent: '#C43A25',
 
   text: '#14241E',
   textMuted: '#6E7D75',
