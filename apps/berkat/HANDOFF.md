@@ -35,7 +35,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | 11 Stück, alle eingespielt — Abschnitt 5 |
+| Migrationen | 13 Stück, alle eingespielt — Abschnitt 5 |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -146,6 +146,28 @@ GRANT SELECT (<spalte>) ON <tabelle> TO anon, authenticated;
 
 **Nie** das Tabellen-Recht wiederherstellen — das gäbe die geheime Spalte mit frei. Steht auch als
 Regel 11 in der `CLAUDE.md` des Hauptprojekts.
+
+### Geerbte Serlo-Tabellen sind enger, als sie aussehen
+
+Berkat greift auf Tabellen zu, die Serlo gehören (Abschnitt 4, „Kein zweiter Weg"). Zwei davon
+haben eine RLS, die genau das verbietet, was man naheliegend tun würde — beide sind am 14.08.2026
+beim Bau des Verkäufer-Sheets aufgefallen, beide **lautlos**:
+
+| Tabelle | Was NICHT geht | Der Weg |
+|---|---|---|
+| `order_reviews` | Bewertungen eines Verkäufers lesen — die Policy lässt nur Bewerter und Bewerteten durch, ein Zuschauer bekommt **null Zeilen** | `get_seller_rating` (Aggregat) |
+| `messages` | `update({ read: true })` als Empfänger — `msg_update` erlaubt nur dem **Absender** zu ändern, der Aufruf trifft null Zeilen | RPC `mark_messages_read` |
+
+Das Muster dahinter: Die Abfrage ist syntaktisch richtig, das Recht fehlt, und PostgREST antwortet
+mit einer **leeren Menge statt einem Fehler**. Man sieht „keine Bewertungen" und „nichts als gelesen
+markiert" — und sucht den Fehler im Client.
+
+**Vor jedem neuen Zugriff auf eine geerbte Tabelle** deshalb in `supabase/schema_live.sql` die
+Policies nachschlagen (`grep -n "ON \"public\".\"<tabelle>\"" | grep POLICY`). Steht dort nur eine
+Lese-Policy für die Beteiligten, braucht es eine Funktion — und wenn sie öffentlich sein soll, eine,
+die **nur das Aggregat** herausgibt. Die Policy aufzuweichen ist der falsche Reflex: Bei
+`order_reviews` hätte ein `USING(true)` jeden Kommentar und jede Käufer-Verkäufer-Beziehung
+freigegeben.
 
 ### Fast Refresh verträgt keine neuen Hooks
 
@@ -366,9 +388,8 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Elf Migrationen, **alle eingespielt**. Das Tracking war am 14.08.2026 vollständig begradigt; die
-beiden letzten (`20260814280000`, `20260814290000`) sind über den SQL-Editor gelaufen und brauchen
-noch ihr `supabase migration repair --status applied <version>`, falls das nicht schon geschehen ist.
+Dreizehn Migrationen, **alle eingespielt und verzeichnet** (Stand 15.08.2026). Der Weg bleibt: SQL
+im Editor ausführen, danach `supabase migration repair --status applied <version>`.
 
 | Datei | Inhalt |
 |---|---|
@@ -383,6 +404,8 @@ noch ihr `supabase migration repair --status applied <version>`, falls das nicht
 | `20260814150000_berkat_cart_freeze_on_checkout.sql` | Korb-Zustand `checkout_pending`, `checkout_auction_cart` neu |
 | `20260814280000_live_sessions_app_routing.sql` | **Serlo-weit:** `live_sessions.app` + Backfill über `room_name`, Index, `get_public_profile_web` gefiltert |
 | `20260814290000_grant_select_live_sessions_app.sql` | `GRANT SELECT (app)` — ohne das ist die neue Spalte für die Clients unsichtbar, siehe Abschnitt 3 |
+| `20260814300000_berkat_tips.sql` | `berkat_tips` + `create_berkat_tip` — Trinkgeld in echtem Geld, **nicht** in Coins |
+| `20260814310000_seller_rating_public.sql` | `get_seller_rating` — nur Schnitt und Anzahl, die einzelnen Bewertungen bleiben privat |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -425,6 +448,11 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Anmeldung | E-Mail/Passwort **und Registrierung** gegen dieselbe Supabase-Instanz. Google/Apple fehlen |
 | Startseite | Suche, Kategorie-Leiste mit zwei Größen (schrumpft beim Scrollen), Show-Karten |
 | Live-Vorschau auf den Karten | zeigt je Show den laufenden / nächsten / gerade zugeschlagenen Artikel mit Uhr und Preis — Abschnitt 8 |
+| Verkäufer-Sheet | Tipp auf den Kopf im Live-Raum: Bewertung, Versandtempo, Zuschläge + sechs Wege — Abschnitt 10 |
+| Öffentliche Verkäufer-Seite | `app/seller/[id].tsx` — Kennzahlen, laufende Show, zuletzt Verkauftes |
+| Direktnachrichten | Verlauf + Posteingang, geteilt mit Serlo (`conversations`, `messages`) |
+| Trinkgeld | echtes Geld über Stripe (`berkat_tips`), **nie durchgelaufen** — Abschnitt 10 |
+| Bewertungen | „Ist angekommen" → fünf Sterne; öffentlicher Schnitt via `get_seller_rating` |
 | Live-Raum | Video, Kamera-Vorschau vor dem Senden, Kamera-Steuerung, Chat mit Eingabe, wegwischbare Kommentare, Sammelkorb-Leiste, „Als Nächstes", Shop-Zettel |
 | Auktion | Gebot, Anti-Snipe (+10 s), Sofortkauf, Max-Gebot, Zuschlag, „Du führst" |
 | Verkäufer-Regie | Show starten/beenden, Artikel auflegen mit Bild, **nachträglich ändern**, **Starten aus dem Raum heraus**, Dauer 20/30/60 s |
@@ -443,16 +471,15 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
-0. **Der Web-Teil der App-Trennung fehlt noch.** Datenbank, Berkat und beide Serlo-OTAs sind
-   draußen; `apps/web` hängt am Merge nach `main`. Bis dahin zeigt Serlos Web — `/live`, Landing,
-   Gilden-Rail, LIVE-Ring auf dem Profil — weiterhin Berkat-Shows. Siehe Abschnitt 8.
-1. **Benachrichtigungen an den Käufer — eigene Liste in Berkat fehlt.** Zuschlag, Versand und
-   Zahlungserinnerung entstehen serverseitig und kommen auf dem Gerät an; wer einen Push
-   wegwischt, findet ihn aber nirgends wieder. Details in Abschnitt 9.
-2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
+1. **Der Trinkgeld-Weg ist nie durchgelaufen.** Gebaut, Migration eingespielt, beide Edge
+   Functions deployt — aber niemand hat je bezahlt. Beim ersten Versuch auf die Adresszeile
+   schauen: `cs_test_…` ist Spielgeld, `cs_live_…` wäre echtes.
+2. **Vier der sechs Sheet-Zeilen sind ungesehen.** Trinkgeld, Nachricht, Sperren und Melden fallen
+   bei einem selbst korrekt weg — sie brauchen den Blick vom zweiten Konto.
+3. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
-3. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
-4. **E-Mail-Bestätigung ist abgeschaltet.** Für eine Live-Auktion richtig — wer gerade zuschaut,
+4. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
+5. **E-Mail-Bestätigung ist abgeschaltet.** Für eine Live-Auktion richtig — wer gerade zuschaut,
    springt nicht ins Postfach. Der Preis: Niemand weist nach, dass ihm die Adresse gehört. Ein
    Wegwerf-Konto kann bieten, gewinnen und nie zahlen — und blockiert den Artikel 24 Stunden im
    Korb. Vor fremden Verkäufern neu abwägen.
@@ -610,10 +637,10 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
-### ⚠️ Zuerst: die App-Trennung fertig ausrollen
+### Die App-Trennung ist vollständig ausgerollt (Stand 15.08.2026)
 
-Gebaut am 14.08.2026, **in der Datenbank drin, im Code drin, aber noch nicht bei den Nutzern.**
-Ein halb ausgerollter Stand ist der schlechteste — das gehört als Erstes zu Ende gebracht.
+Gebaut am 14.08.2026, seit dem 15.08. überall draußen. Der Abschnitt bleibt stehen, weil die
+Begründungen darin für jede weitere geteilte Tabelle gelten.
 
 **Das Problem:** Eine Berkat-Show war eine ganz normale Zeile in `live_sessions`, und Serlos Listen
 holten alle aktiven Sessions ohne Unterscheidung. Wer in Berkat eine Show aufmachte, erschien für
@@ -642,7 +669,7 @@ Listen-Abfragen beider Apps und im Web. Drei Stellen gingen über bloße Sichtba
 | Serlo, OTA Runtime **1.31.0** | ✅ raus am 14.08.2026, 22:43 |
 | Serlo, OTA Runtime **1.30.0** | ✅ raus am 14.08.2026, 23:0x |
 | Push `origin/berkat` | ✅ aktuell |
-| `apps/web` (Vercel) | ⏳ **offen** — hängt am Merge nach `main` |
+| `apps/web` (Vercel) | ✅ am 15.08.2026 — `berkat` per Fast-Forward nach `main`, Vercel baut von dort |
 
 Berkat musste vor Serlo dran sein: Solange ein alter Berkat-Stand läuft, legt er Shows **ohne**
 `app` an, die per Default auf `'serlo'` fallen und trotz Filter wieder auftauchen. Deshalb bleibt
@@ -983,3 +1010,89 @@ einen Doppel-Push bekommt.
 Zuschlag, Versand und Zahlungserinnerung entstehen damit serverseitig (Trigger bzw. pg_cron alle 15
 Minuten), die Texte stehen in allen Oberflächen, die App-Trennung beim Versand steht, und Berkat
 registriert seinen Token.
+
+---
+
+## 10. Verkäufer-Sheet und Bewertungen (Stand 15.08.2026)
+
+Ein Tipp auf den Kopf des Verkäufers im Live-Raum war bis dahin tot. Jetzt öffnet er das Sheet nach
+Whatnot-Vorbild: oben die Zahlen, an denen ein Fremder entscheidet, ob er diesem Menschen Geld
+schickt — darunter alles, was man mit ihm tun kann.
+
+`components/SellerSheet.tsx`, verkabelt in `app/live/[id].tsx`.
+
+### Die drei Kacheln
+
+Alle drei werden aus dem gerechnet, was ohnehin entsteht (`lib/useSellerStats.ts`). Es gibt keine
+gepflegte Kennzahl-Tabelle und keinen Cron — **eine Zahl, die jemand von Hand setzen kann, ist als
+Vertrauenssignal wertlos.**
+
+| Kachel | Quelle | Leerzustand |
+|---|---|---|
+| ★ Bewertung | `get_seller_rating` (Aggregat-RPC) | „Noch keine Bewertung" |
+| 🚚 Versandzeit | `product_orders`, letzte 20, nur `cart_id IS NOT NULL` | „Noch nichts versendet" |
+| 🏷 Zuschläge | `live_auctions` mit `status='sold'` | „0 Zuschläge" |
+
+Jede Kachel zeigt „—" statt einer erfundenen Zahl. „5,0" ohne eine einzige Bewertung wäre die
+schlimmste Variante — sie behauptet Vertrauen, das niemand vergeben hat.
+
+Das Versandtempo nimmt bewusst nur die **letzten 20** Bestellungen: Wer vor einem Jahr langsam war
+und heute schnell ist, soll heute gemessen werden.
+
+### Die sechs Zeilen
+
+Erst das Freundliche, dann mit Abstand das Unfreundliche. Der Abstand ist nicht Kosmetik — ein
+„Sperren" direkt unter „Erwähnen" wird verrutscht getroffen.
+
+| Zeile | Wohin |
+|---|---|
+| Trinkgeld | `app/tip/[id].tsx` → Stripe |
+| Profil anzeigen | `app/seller/[id].tsx` |
+| Nachricht | `app/messages/[id].tsx` (Parameter ist die **Gegenseite**, nicht die Unterhaltung) |
+| Im Chat erwähnen | schreibt `@name` ins Eingabefeld und fokussiert es |
+| Sperren | `user_blocks`, Gesperrte werden im Chat **clientseitig** ausgeblendet |
+| Melden | `user_reports`, mit Gründe-Auswahl im selben Sheet |
+
+Bei sich selbst fallen Trinkgeld, Nachricht, Sperren und Melden weg. Das ist der Grund, warum man
+sie beim Testen als Gastgeber nie zu Gesicht bekommt.
+
+Die Sperre wird bewusst **nicht** serverseitig durchgesetzt: Sie ist die Sicht EINES Zuschauers,
+die anderen sollen den Verlauf unverändert sehen.
+
+### Trinkgeld ist kein Kauf
+
+`creator_tips` existiert seit April — läuft aber über **Coins**, und die sind in Berkat
+ausgeschlossen (E-Geld, siehe Abschnitt 7). Deshalb eine eigene Tabelle `berkat_tips` mit echtem
+Geld über denselben Stripe-Weg wie der Sammelkorb.
+
+Keine Sonderzeile in `product_orders`: Dort hängen Versand, Streitfälle und Bewertungen dran, die
+für ein Trinkgeld alle sinnlos wären. Betragsgrenzen (1 € bis 500 €) stehen **serverseitig** in
+`create_berkat_tip` und zusätzlich als CHECK — ein Betrag ist Geld, und Geld wird nicht im Client
+geprüft. Gegengeprüft: Ein direkter INSERT von außen antwortet mit `42501 permission denied`.
+
+Der Zweig in `create-checkout-session` wird nur betreten, wenn `tip_id` im Körper steht; der
+bestehende Bestellweg ist unverändert. Bestätigt wird ausschließlich vom Webhook, idempotent über
+`status = 'pending'`.
+
+⚠️ **Beide Edge Functions brauchten einen Deploy** (`create-checkout-session` und `stripe-webhook`,
+letztere zwingend mit `--no-verify-jwt`). Am 15.08.2026 erledigt und gemessen: Der Webhook antwortet
+mit **400**, nicht 401 — das JWT-Gate ist also aus.
+
+### Warum die Bewertung zwei Löcher hatte
+
+Die Stern-Kachel wäre ohne zwei Nachträge dauerhaft leer geblieben.
+
+**Sie war für Dritte nicht lesbar.** Siehe Abschnitt 3, „Geerbte Serlo-Tabellen sind enger, als sie
+aussehen". Gelöst mit `get_seller_rating`, das nur Schnitt und Anzahl herausgibt.
+
+**Und niemand konnte je bewertet werden.** `submit_order_review` verlangt `status = 'delivered'`,
+und keine Berkat-Bestellung erreichte diesen Zustand — `confirm_order_delivered` liegt seit Serlos
+Shop auf dem Server, Berkat rief sie nie. Jetzt steht im Konto bei „unterwegs" ein **„Ist
+angekommen"**, danach die Sternauswahl (`components/RatingStars.tsx`).
+
+Die Reihenfolge ist keine Bürokratie: Eine Bewertung vor der Lieferung bewertet eine Erwartung,
+keinen Verkäufer.
+
+Am 15.08.2026 am echten Datenstand durchgespielt — bestätigt, fünf Sterne vergeben, und der
+anonyme Aufruf von `get_seller_rating` liefert `{"rating":5.00,"review_count":1}`, während die
+einzelnen Bewertungen für Fremde weiterhin leer bleiben.
