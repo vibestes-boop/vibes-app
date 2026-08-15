@@ -306,6 +306,9 @@ export const getUpcomingScheduledLives = cache(
     const { data } = await supabase
       .from('scheduled_lives')
       .select('*, profiles!host_id(username, avatar_url)')
+      // Berkat teilt sich diese Tabelle seit 20260815120000 — ohne den Filter
+      // stünde ein Berkat-Auktionsabend in Serlos „Demnächst"-Streifen.
+      .eq('app', 'serlo')
       .in('status', ['scheduled', 'reminded'])
       .gt('scheduled_at', cutoff)
       .order('scheduled_at', { ascending: true })
@@ -325,6 +328,7 @@ export const getMyScheduledLives = cache(
       .from('scheduled_lives')
       .select('*, profiles!host_id(username, avatar_url)')
       .eq('host_id', user.id)
+      .eq('app', 'serlo')
       .in('status', ['scheduled', 'reminded', 'live'])
       .order('scheduled_at', { ascending: true })
       .limit(20);

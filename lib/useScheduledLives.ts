@@ -130,6 +130,10 @@ export function useScheduledLives(hostId?: string | null) {
         .from('scheduled_lives')
         .select('*, profiles!host_id(username, avatar_url)')
         .eq('host_id', targetId)
+        // Seit 20260815120000 teilt sich Berkat diese Tabelle. Ohne den Filter
+        // stünde ein Berkat-Auktionsabend in Serlos Liste — dieselbe Vermischung,
+        // die am 14.08. für live_sessions behoben wurde.
+        .eq('app', 'serlo')
         .order('scheduled_at', { ascending: true })
         .limit(50);
 
@@ -279,6 +283,7 @@ export function useUpcomingLives(limit = 20) {
       const { data, error } = await supabase
         .from('scheduled_lives')
         .select('*, profiles!host_id(username, avatar_url)')
+        .eq('app', 'serlo')
         .in('status', ['scheduled', 'reminded'])
         .gt('scheduled_at', new Date(Date.now() - 10 * 60_000).toISOString())
         .order('scheduled_at', { ascending: true })
