@@ -9,13 +9,25 @@
 //    spätes Gebot die Auktion, springt sie sichtbar zurück. Anti-Snipe ist eine
 //    Regel, kein Trick — man soll sie sehen.
 
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Check, ChevronsRight, PartyPopper } from 'lucide-react-native';
 import { stage, radius, space, auction as auctionConfig } from '../theme/tokens';
 import { formatEuro, nextMinBid, type Auction } from '../lib/useAuction';
 import { RollupNumber } from './RollupNumber';
+
+/** Griff und Innenabstand der Ziehbahn. Müssen zu `styles.knob` passen. */
+const KNOB = 40;
+const TRACK_PAD = 4;
 
 export type BidButtonState =
   | 'idle'
@@ -38,6 +50,137 @@ type Props = {
   /** Bereits hinterlegtes Maximum — macht den Knopf zur Anzeige */
   myMaxCents?: number | null;
 };
+
+/**
+ * Ziehen statt tippen — der Schutz vor dem versehentlichen Gebot.
+ *
+ * ⚠️ WARUM DAS KEIN SCHMUCK IST
+ * Ein Gebot ist eine bindende Willenserklärung über echtes Geld. Der Knopf sitzt
+ * am unteren Rand, also genau dort, wo der Daumen beim Halten des Telefons
+ * ohnehin liegt — und darüber läuft ein Video, auf das man tippt, um ein Herz zu
+ * schicken. Ein Bildschirm, auf dem Tippen die normale Geste ist, darf einen
+ * Kauf nicht mit demselben Tippen auslösen.
+ *
+ * Der Knopf hat das `»`-Symbol seit dem 13.08.2026 getragen und trotzdem nur auf
+ * ein Antippen gehört. Die Form versprach eine Geste, die es nicht gab. Jetzt
+ * gibt es sie.
+ *
+ * KERN-APIs, KEIN NEUES PAKET: `PanResponder` und `Animated` kommen aus React
+ * Native selbst. `react-native-gesture-handler` liegt zwar in der package.json,
+ * wird aber nirgends benutzt und bräuchte einen `GestureHandlerRootView` im
+ * Wurzel-Layout; Reanimated hat Berkat gar nicht. Der Kern-Weg kostet damit
+ * keinen nativen Build (Abschnitt 12).
+ *
+ * ⚠️ BARRIEREFREIHEIT: Für VoiceOver ist eine Wischgeste feindlich — dort führt
+ * `onAccessibilityTap` direkt zum Gebot. Wer den Bildschirm nicht sieht, tippt
+ * ohnehin nicht versehentlich auf eine Stelle, die er nicht kennt.
+ */
+function SlideToBid({
+  label,
+  tone,
+  onConfirm,
+  busy,
+}: {
+  label: string;
+  tone: 'gold' | 'live';
+  onConfirm: () => void;
+  busy: boolean;
+}) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const x = useRef(new Animated.Value(0)).current;
+
+  // Der zuletzt gezogene Weg. Als Ref, weil `Animated.Value` sich nicht sauber
+  // synchron auslesen lässt und die PanResponder-Rückrufe sonst auf einem alten
+  // Stand stehen blieben.
+  const dragged = useRef(0);
+  const travelRef = useRef(0);
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+
+  const travel = Math.max(0, trackWidth - KNOB - TRACK_PAD * 2);
+  travelRef.current = travel;
+
+  const reset = (animated: boolean) => {
+    dragged.current = 0;
+    if (animated) {
+      Animated.spring(x, { toValue: 0, useNativeDriver: true, friction: 7, tension: 180 }).start();
+    } else {
+      x.setValue(0);
+    }
+  };
+
+  // Nach einem Gebot wechselt der Zustand ohnehin („Du führst"), aber wenn ein
+  // Gegengebot sofort zurückkommt, steht derselbe Knopf wieder da — dann muss
+  // der Griff links stehen und nicht am Anschlag.
+  useEffect(() => {
+    if (!busy) reset(false);
+  }, [busy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        // Erst ab einer echten waagerechten Bewegung übernehmen. Ohne das
+        // schluckt der Griff jedes Antippen, und ein senkrechtes Wischen über
+        // dem Knopf würde die Liste darüber nicht mehr erreichen.
+        onMoveShouldSetPanResponder: (_e, g) =>
+          !busyRef.current && Math.abs(g.dx) > 4 && Math.abs(g.dx) > Math.abs(g.dy),
+        onPanResponderMove: (_e, g) => {
+          const next = Math.max(0, Math.min(travelRef.current, g.dx));
+          dragged.current = next;
+          x.setValue(next);
+        },
+        onPanResponderRelease: () => {
+          const t = travelRef.current;
+          // 60 % des Weges. Weniger wäre wieder versehentlich auslösbar, mehr
+          // fühlt sich nach Arbeit an — und in den letzten Sekunden einer
+          // Auktion zählt jede Zehntelsekunde.
+          if (t > 0 && dragged.current >= t * 0.6) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            Animated.timing(x, {
+              toValue: t,
+              duration: 90,
+              useNativeDriver: true,
+            }).start(() => reset(false));
+            onConfirm();
+          } else {
+            reset(true);
+          }
+        },
+        onPanResponderTerminate: () => reset(true),
+      }),
+    // `onConfirm` ändert sich mit jedem Gebotsbetrag — der Responder muss den
+    // aktuellen kennen, sonst bietet ein später Zug den alten Preis.
+    [onConfirm, x],
+  );
+
+  const ink = tone === 'gold' ? stage.goldInk : stage.liveInk;
+  const surface = tone === 'gold' ? stage.gold : stage.live;
+
+  const onLayout = (e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width);
+
+  return (
+    <View
+      onLayout={onLayout}
+      style={[styles.primary, { backgroundColor: surface, opacity: busy ? 0.6 : 1 }]}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}. Zum Bieten nach rechts ziehen.`}
+      onAccessibilityTap={() => {
+        if (!busy) onConfirm();
+      }}
+    >
+      <Text style={[styles.label, { color: ink }]} numberOfLines={1}>
+        {label}
+      </Text>
+
+      <Animated.View
+        {...responder.panHandlers}
+        style={[styles.knob, { backgroundColor: ink, transform: [{ translateX: x }] }]}
+      >
+        <ChevronsRight size={20} color={surface} />
+      </Animated.View>
+    </View>
+  );
+}
 
 function resolveState(
   auction: Auction | null,
@@ -105,13 +248,13 @@ export function BidButton({
   const target = nextMinBid(auction);
   const canPress = (state === 'idle' || state === 'outbid' || state === 'urgent') && !busy;
 
-  const press = () => {
+  /** Zustände, in denen ein Gebot überhaupt möglich ist. */
+  const interactive = state === 'idle' || state === 'outbid' || state === 'urgent';
+
+  // Ohne eigene Haptik: Die Ziehbahn meldet den Erfolg schon selbst, und zwei
+  // Rückmeldungen für eine Handlung fühlen sich nach Fehler an.
+  const confirm = () => {
     if (!canPress) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.97, duration: 70, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, friction: 5, tension: 220, useNativeDriver: true }),
-    ]).start();
     onBid(target);
   };
 
@@ -153,9 +296,16 @@ export function BidButton({
         ) : null}
 
         <Animated.View style={[styles.grow, { transform: [{ scale }] }]}>
+          {interactive ? (
+            <SlideToBid
+              label={`${state === 'outbid' ? 'Kontern' : 'Gebot'}: ${formatEuro(target)}`}
+              tone={state === 'outbid' ? 'live' : 'gold'}
+              busy={Boolean(busy)}
+              onConfirm={confirm}
+            />
+          ) : (
           <Pressable
-            onPress={press}
-            disabled={!canPress}
+            disabled
             accessibilityRole="button"
             accessibilityLabel={
               state === 'leading'
@@ -192,24 +342,9 @@ export function BidButton({
               <Text style={[styles.label, { color: stage.textMuted }]}>
                 Warte auf den nächsten Artikel
               </Text>
-            ) : (
-              <View style={styles.center}>
-                <Text
-                  style={[
-                    styles.label,
-                    { color: state === 'outbid' ? stage.liveInk : stage.goldInk },
-                  ]}
-                >
-                  {state === 'outbid' ? 'Kontern' : 'Gebot'}: {formatEuro(target)}
-                </Text>
-                <ChevronsRight
-                  size={20}
-                  color={state === 'outbid' ? stage.liveInk : stage.goldInk}
-                  style={{ marginLeft: 6 }}
-                />
-              </View>
-            )}
+            ) : null /* idle, urgent und outbid rendert `SlideToBid` oben */}
           </Pressable>
+          )}
         </Animated.View>
       </View>
 
@@ -244,6 +379,18 @@ const styles = StyleSheet.create({
   primary: {
     height: 48,
     borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Der Griff liegt absolut darin — ohne das ragt er über die Pille hinaus.
+    overflow: 'hidden',
+  },
+  /* Der Griff der Ziehbahn. Muss zu KNOB und TRACK_PAD oben passen. */
+  knob: {
+    position: 'absolute',
+    left: TRACK_PAD,
+    width: KNOB,
+    height: KNOB,
+    borderRadius: KNOB / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },

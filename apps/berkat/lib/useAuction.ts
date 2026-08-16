@@ -148,7 +148,33 @@ export function useLiveAuctions(sessionId: string | undefined) {
     return subscribeToTable(
       `berkat-auctions-${sessionId}`,
       { event: '*', table: 'live_auctions', filter: `session_id=eq.${sessionId}` },
-      () => queryClient.invalidateQueries({ queryKey }),
+      (payload) => {
+        void queryClient.invalidateQueries({ queryKey });
+
+        // ⚠️ Ein Zuschlag verändert AUCH den Sammelkorb — und der lädt sonst
+        // nie nach.
+        //
+        // Am 16.08.2026 an einer echten Sendung gemessen: drei Artikel
+        // gewonnen, und die Sammelkorb-Leiste blieb den ganzen Abend
+        // unsichtbar. `useCart` hat weder einen Takt noch eine Invalidierung;
+        // das Einzige, was sie je verwarf, war der Bezahlvorgang
+        // (`payBrowser.ts`). Im Live-Raum, der offen stehen bleibt, feuert
+        // davon nichts — die Leiste erschien erst nach Verlassen und
+        // Neubetreten, weil der Bildschirm dann neu aufgebaut wurde.
+        //
+        // Das trifft genau den Moment, den die Analyse „die teuerste Sekunde"
+        // nennt: Jemand hat gerade vor Publikum gewonnen und sieht nichts
+        // davon.
+        //
+        // Nur bei `sold`, nicht bei jeder Änderung: Ein Gebot ändert den Korb
+        // nicht, und eine Show mit zwanzig Artikeln erzeugt sonst hunderte
+        // überflüssige Abfragen (Kostenhygiene, siehe Abschnitt 4).
+        if ((payload.new as { status?: string } | undefined)?.status === 'sold') {
+          // Ohne Nutzer- und Verkäufer-ID als Präfix-Treffer: Der Korb hängt an
+          // beiden, und hier ist nur die Session bekannt.
+          void queryClient.invalidateQueries({ queryKey: ['berkat', 'cart'] });
+        }
+      },
     );
   }, [sessionId, queryClient, queryKey]);
 
