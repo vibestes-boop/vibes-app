@@ -447,3 +447,152 @@ regelmäßig senden will.
 - die aktuellen Stripe- und LiveKit-Tarife (vor der Kalkulation nachsehen)
 - **jede** steuerliche und rechtliche Frage in diesem Dokument
 - ob Apple Trinkgeld in Berkat als digitale Leistung einstuft
+
+---
+
+## 6. Nachtrag 15.08.2026 — die Tarife sind nachgesehen
+
+§ 5 nennt als offen: *„die aktuellen Stripe- und LiveKit-Tarife (vor der Kalkulation nachsehen)"*.
+Hier stehen sie. Alles Folgende ist **recherchiert, nicht geschätzt** — Quellen am Ende. Was dieses
+Dokument oben behauptet, bleibt bis auf **eine** Formulierung gültig.
+
+### 6.1 Die Sätze
+
+| Posten | Satz |
+|---|---|
+| Stripe EWR-Karte | **1,5 % + 0,25 €** ✅ wie oben angenommen |
+| Stripe Premiumkarte EWR / Auslandskarte | 1,9 % / **3,25 %** + 0,25 € (+2 % Währung) |
+| Stripe Rückbuchung | **15–20 €** je Fall, Quellen widersprechen sich |
+| LiveKit Verbindungsminuten | ~0,0005 $/Min **je Zuschauer** |
+| LiveKit Bandbreite | ~0,11 $/GB — **nur abwärts**, Upstream ist frei |
+| LiveKit „Build" (gratis) | 5.000 Min + 50 GB/Monat |
+| LiveKit „Ship" | 50 $/Monat, 150.000 Min + 250 GB inkl. |
+
+### 6.2 LiveKit ist jetzt gemessen, nicht geahnt
+
+§ 2.5 nannte LiveKit „den einzigen Posten, der mit Erfolg explodiert". Das stimmt, und so sieht die
+Explosion aus. Ein Zuschauer verbraucht bei 1,5 Mbit/s **11,25 MB pro Minute**.
+
+| Szenario | Zuschauerminuten | Kosten |
+|---|---|---|
+| Eine frühe Show: 20 Zuschauer, 2 h | 2.400 | **≈ 3,90 €** |
+| 5 Verkäufer × 4 Shows/Monat | 48.000 | **≈ 76 €/Monat** |
+| 100 Zuschauer, 20 Shows/Monat | 240.000 | **≈ 340 €/Monat** |
+
+⚠️ **Der Hebel ist die BITRATE, nicht die Zuschauerzahl.** Die Bandbreite macht über zwei Drittel
+der Rechnung aus und wächst linear mit der Videoqualität. 720p statt 1080p halbiert diese Zahlen —
+und niemand kauft ein Parfüm wegen 1080p. Das ist die Stellschraube, die vor der 340-€-Rechnung
+schützt, und sie kostet nichts außer einer Zeile Konfiguration.
+
+### 6.3 Neu und unangenehm: die Kleinkorb-Klippe
+
+Oben steht „davon gehen Stripe-Gebühren ab". Es ist schlimmer als ein Abzug — bei kleinen Beträgen
+**frisst die feste Gebühr den Ertrag ganz**:
+
+| Korb | Warenwert | Stripe | in % **vom Warenwert** |
+|---|---|---|---|
+| 1 × 1 € | 1,00 € | 0,34 € | **34 %** |
+| 3 × 1 € | 3,00 € | 0,37 € | 12 % |
+| 5 × 1 € | 5,00 € | 0,40 € | 8 % |
+| 20 × 1 € | 20,00 € | 0,62 € | 3,1 % |
+
+**Bei 8 % Provision liegt der Break-even bei rund 5 € Warenwert im Korb.** Darunter zahlt die
+Plattform bei jeder Bestellung drauf. Der „1 €-Start" — die zentrale Mechanik der App — ist ohne
+Gegenmaßnahme ein Zuschussgeschäft.
+
+**Die Gegenmaßnahme ist bereits gebaut.** Weil Berkat **einmal pro Paket** abrechnet statt pro
+Artikel, verteilt sich die feste Gebühr über den ganzen Abend. Der Sammelkorb war als
+Versand-Ersparnis gedacht; er ist zugleich der Grund, warum das Gebührenmodell überhaupt trägt.
+
+### 6.4 Was in der Kostenliste fehlte: Stripe Connect
+
+§ 2.5 führt Connect nicht als Kostenposten. Ab Phase 2 fällt an:
+
+- **~2 € je aktivem Verkäufer-Konto und Monat** — bei 5 Verkäufern 10 €/Monat, **bevor** irgendetwas
+  verkauft wird. Die Gebühr wächst linear mit der Zahl der Verkäufer, nicht mit dem Umsatz.
+- **0,25 % + 0,10 €** je Auszahlung (EWR)
+
+⚠️ **Beides entfällt im Modell „Stripe handles pricing"**, bei dem Stripe die Zahlungsgebühr direkt
+beim Verkäufer abrechnet. Für Berkat ist das die richtige Wahl: keine Kontogebühr, keine
+Auszahlungsgebühr, und die eigene Provision läuft trotzdem als Anteil mit. **Diese Entscheidung
+gehört getroffen, bevor Connect eingerichtet wird** — sie später zu drehen heißt, alle
+Verkäuferkonten neu anzulegen.
+
+Ebenfalls nicht in der Liste: **Umsatzsteuer auf die Provision selbst.** Sie ist eine
+Dienstleistung. 8 % netto sind 9,52 % brutto. Bei Kleinunternehmer-Status entfällt das — bis die
+Grenze reißt, und § 2.5 warnt zu Recht, dass Kommissionsware sie schneller reißt als gedacht.
+
+### 6.5 Was Whatnot wirklich macht — Korrektur
+
+Es gibt bei Whatnot **keinen provisionsfreien Anfangszeitraum für neue Verkäufer.** Was es gibt:
+
+| | |
+|---|---|
+| **0-%-Provisions-TAGE** | 24 Stunden, z. B. 7. Aug. und 18. Apr. 2026 — für **alle** Verkäufer |
+| Hochpreis-Rabatt | 0 % auf den Anteil über 1.500 $ |
+| Regional / Kategorie | Australien 4 % zu bestimmten Stunden; Frankreich/Belgien **Mode 0 % bis 31.08.2026** |
+| **Regulärer EU-Satz** | **6,67 % + USt** ≈ 7,9 % brutto — nicht die 8 %, die oben als „Whatnot-Niveau" stehen |
+| Zahlungsgebühr | wird **getrennt weitergereicht**, ist nicht in den 8 % enthalten |
+
+**Warum Tage klüger sind als Monate:** Ein 0-%-Tag ist ein *Ereignis* — Verkäufer heben ihre beste
+Ware dafür auf, es gibt einen Ausschlag, und er endet von selbst. Ein Freizeitraum erzeugt keine
+Dringlichkeit; danach muss ein Preis **von null aus** eingeführt werden, und das ist der schwerste
+Verkauf, den es gibt. Whatnot lässt niemanden auf „gratis" ankern.
+
+### 6.6 Die eine Stelle, die dieses Dokument ändern sollte
+
+§ 0 schließt: *„Du kannst es dir leisten, Verkäufern lange 0 % zu geben."* Der **Schluss stimmt** —
+die Rechnung oben bestätigt ihn: Bei 2.400 € Umsatz im Monat bringt 8 % Provision 192 €, während
+allein LiveKit und Supabase 136 € kosten und die eigene Arbeitszeit unbezahlt bleibt. Provision ist
+bei dieser Größe kein Geschäftsmodell.
+
+Was geändert gehört, ist die **Formulierung im Fahrplan**: Dort steht „Angebot: 0 % dauerhaft."
+
+> **Besser: „0 % in der Startphase" — mit genanntem Enddatum.**
+
+Es kostet heute exakt dasselbe, verspricht dasselbe, und lässt die Tür offen. „Dauerhaft" ist ein
+Versprechen, das entweder ewig gilt oder eines Tages gebrochen wird. Wer später doch Provision
+braucht, hat dann das Gespräch zu führen, das Whatnot sich mit seinen 0-%-Tagen erspart.
+
+**Wenn ein Satz eingeführt wird, dann als Zahl, die nie null war** — lieber von Anfang an 3 % als
+später von 0 auf 8.
+
+### 6.7 Die Zahl, die wichtiger ist als jeder Prozentsatz
+
+Bei 5 Verkäufern, 20 Shows und 2.400 € Umsatz im Monat:
+
+| | mit durchgereichter Zahlungsgebühr | ohne |
+|---|---|---|
+| Provision 8 % | 192 € | 192 € |
+| Technik (LiveKit + Supabase-Anteil) | −136 € | −136 € |
+| Stripe | trägt der Verkäufer | −88 € |
+| **Ergebnis** | **+56 €** | **−32 €** |
+
+In beiden Spalten ist **die eigene Arbeitszeit unbezahlt**. Bei 10 Stunden im Monat zu 40 € trägt
+sich das Ganze erst ab rund **8.000 € Umsatz im Monat** — etwa 25 Zuschläge je Show.
+
+**Das ist die Zahl, an der die Strategie hängt**, nicht die Wahl zwischen 5 % und 8 %. Und sie
+bestätigt § 0 noch einmal: Der Weg dorthin führt über die eigene Marge, nicht über fremde Verkäufer.
+
+### 6.8 Was weiterhin ungeprüft ist
+
+- **Deine echten Stripe-Konditionen** im Dashboard — Listenpreis ≠ Vertragspreis (Zugang läuft
+  gerade über die Ausweis-Wiederherstellung)
+- **Kleinunternehmer oder nicht** — entscheidet über 19 % auf die Provision
+- In welchem LiveKit-Tarif das Konto aktuell steckt
+- Die tatsächliche Bitrate, mit der Berkat sendet — davon hängt § 6.2 zur Hälfte ab
+
+### Quellen (abgerufen 15.08.2026)
+
+- Whatnot: [Seller fees](https://help.whatnot.com/hc/en-us/sections/44398189207565-Fees-commissions) ·
+  [0 % für 24 Stunden](https://help.whatnot.com/hc/en-us/articles/47622990380301-0-Commission-for-24-Hours-August-7th-FAQs) ·
+  [Hochpreis-Rabatt](https://help.whatnot.com/hc/en-us/articles/27912945518733-Reduced-Commission-on-High-Value-Orders) ·
+  [Gebühren-Übersicht 2026](https://www.voolist.com/blog/whatnot-fees-2026)
+- LiveKit: [Preise](https://livekit.com/pricing) ·
+  [Kostenschätzung](https://kb.livekit.io/articles/3947254704-understanding-livekit-cloud-pricing)
+- Stripe: [Gebühren Deutschland](https://transaktionsgebuehren.com/stripe) ·
+  [Connect-Preise](https://stripe.com/connect/pricing)
+
+⚠️ Die Stripe- und LiveKit-Zahlen stammen teils aus Vergleichsseiten Dritter. **Vor einer
+Entscheidung an der Quelle prüfen** — das ist keine Floskel, die Chargeback-Gebühr allein streute
+zwischen 15 und 20 €.
