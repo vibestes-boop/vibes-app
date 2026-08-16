@@ -27,6 +27,8 @@ import { Avatar } from '../../components/Avatar';
 import { CategoryRail, type RailItem } from '../../components/CategoryRail';
 import { LivePreview } from '../../components/LivePreview';
 import { UpcomingStrip } from '../../components/UpcomingStrip';
+import { SellerResults } from '../../components/SellerResults';
+import { SEARCH_MIN, useSellerSearch } from '../../lib/useSellerSearch';
 import { useUpcomingShows } from '../../lib/useSchedule';
 import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
@@ -140,6 +142,11 @@ export default function HomeScreen() {
   );
 
   const [search, setSearch] = useState('');
+  // Die Suche im Raster filtert nur, was OHNEHIN geladen ist — also die
+  // laufenden Shows. Diese hier fragt den Server nach Menschen und findet sie
+  // deshalb auch, wenn gerade niemand sendet.
+  const { data: foundSellers = [], isFetching: searching } = useSellerSearch(search);
+  const searchingSellers = search.trim().length >= SEARCH_MIN;
   const [filter, setFilter] = useState(ALL);
 
   const [railCollapsed, setRailCollapsed] = useState(false);
@@ -252,7 +259,17 @@ export default function HomeScreen() {
         // jetzt?"). Bei aktiver Suche verschwindet er — ein Termin ist kein
         // Suchtreffer.
         ListHeaderComponent={
-          search || filter !== ALL ? null : (
+          // Wer sucht, sucht selten eine laufende Show — er sucht einen
+          // Menschen. Deshalb steht die Trefferliste an derselben Stelle, an
+          // der sonst der „Demnächst"-Streifen steht.
+          searchingSellers ? (
+            <SellerResults
+              sellers={foundSellers}
+              loading={searching}
+              query={search.trim()}
+              onSelect={(sellerId) => router.push(`/seller/${sellerId}`)}
+            />
+          ) : search || filter !== ALL ? null : (
             <UpcomingStrip
               shows={upcoming}
               onSelect={(hostId) => router.push(`/seller/${hostId}`)}
@@ -264,10 +281,16 @@ export default function HomeScreen() {
             <View style={styles.empty}>
               <BerkatMark size={40} color={ui.sunken} />
               <Text style={styles.emptyTitle}>
-                {search || filter !== ALL ? 'Nichts gefunden' : 'Gerade ist niemand live'}
+                {searchingSellers && foundSellers.length > 0
+                  ? 'Keine laufende Show'
+                  : search || filter !== ALL
+                    ? 'Nichts gefunden'
+                    : 'Gerade ist niemand live'}
               </Text>
               <Text style={styles.emptyBody}>
-                {search || filter !== ALL
+                {searchingSellers && foundSellers.length > 0
+                  ? 'Aber die Verkäufer oben — tipp auf einen, um zu sehen, was er anbietet.'
+                  : search || filter !== ALL
                   ? 'Versuch es mit einem anderen Wort.'
                   : // Steht ein Termin an, ist „schau später wieder rein" die
                     // falsche Auskunft — es gibt ja eine Antwort, und sie steht

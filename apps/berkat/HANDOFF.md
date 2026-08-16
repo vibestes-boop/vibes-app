@@ -1742,3 +1742,35 @@ Sammelkorb unter „Konto" liegen.
   `session_id` mit eigenen Prüfungen. Später.
 - **Eigener Benachrichtigungstext.** Wer ein Dauerangebot kauft, bekommt „🎉 Zuschlag — du hast
   gewonnen!". Für einen Festpreis schief, gilt aber schon heute für den Sofortkauf.
+
+### Nachtrag 16.08.2026: die Suche fand niemanden
+
+Beim ersten Gebrauch der Dauerangebote sofort aufgefallen: Das Suchfeld heißt „Show oder Verkäufer
+suchen", filterte aber nur die **bereits geladenen Live-Shows** im Speicher —
+
+```js
+return shows.filter((show) => …)
+```
+
+Ist niemand live, ist `shows` leer, und die Suche findet **grundsätzlich nichts**. Damit war ein
+Verkäufer ohne laufende Sendung überhaupt nicht auffindbar — und die Dauerangebote, deren einziger
+Zugang das Verkäufer-Profil ist, für Fremde unerreichbar. Ein Feature, das ohne das andere wertlos
+gewesen wäre.
+
+`search_berkat_sellers` (`20260816090000`) fragt jetzt den **Server** nach Menschen.
+
+- **Keine offene Suche über `profiles`.** Das ist Serlos Tabelle mit den Nutzern beider Apps; eine
+  Namenssuche darauf würde Berkats Suchfeld mit Serlo-Konten fluten. Gesucht wird unter denen, die
+  in Berkat etwas getan haben: ein Angebot eingestellt, etwas verkauft oder eine Show gehalten.
+- **Mindestens zwei Zeichen.** Ein einzelner Buchstabe wäre ein Durchlauf über alle Nutzer beider
+  Apps, und das Ergebnis ohnehin unbrauchbar.
+- **300 ms Entprellung** im Client — sonst liefe je Tastendruck eine Abfrage.
+- Sortiert nach „hat gerade etwas im Regal", dann nach Zuschlägen.
+- Der Leerzustand des Rasters ändert sich mit: Werden Verkäufer gefunden, steht dort **„Keine
+  laufende Show — aber die Verkäufer oben"** statt „Nichts gefunden".
+
+**Geprüft am 16.08.2026:** „Berkat" findet `berkattest` mit „1 kaufbar · 4 Zuschläge",
+Groß-/Kleinschreibung egal.
+
+**Bewusst nicht mitgesucht:** Artikelnamen. Dafür braucht es erst genug Angebote — und ein Suchfeld,
+das Verkäufer und Artikel mischt, muss beides sortieren können.
