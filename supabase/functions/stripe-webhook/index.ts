@@ -372,7 +372,8 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     .eq('status', 'payment_requested')
     // `cart_id` unterscheidet die Herkunft: gesetzt = Berkat-Sammelkorb,
     // NULL = Serlo-Produktkauf. Dieselbe Weiche wie in create-checkout-session.
-    .select('id, buyer_id, seller_id, product_id, quantity, cart_id');
+    // `title` kommt seit dem 16.08.2026 mit — siehe die Meldung unten.
+    .select('id, buyer_id, seller_id, product_id, quantity, cart_id, title');
 
   if (claimErr) {
     console.error('[stripe-webhook] product claim failed', claimErr);
@@ -411,6 +412,17 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     // geschrieben hat. In der Meldungsliste trägt ohnehin das Symbol daneben
     // die Bedeutung; der Satz braucht das Zeichen nicht.
     comment_text: 'Eine Bestellung wurde bezahlt — bitte versenden',
+    // Welcher Artikel — sonst stehen bei vier offenen Bestellungen vier
+    // wortgleiche Zeilen untereinander, und der Verkäufer weiß nicht, welche
+    // gemeint ist. Am 16.08.2026 im Simulator genau so gesehen.
+    //
+    // NUR für Berkat gesetzt: `product_name` in Serlos Meldungsliste zu füllen
+    // wäre eine Verhaltensänderung an einem laufenden Produkt — dieselbe Linie,
+    // aus der `notify_order_shipped` auf Berkat begrenzt wurde. Bei einer
+    // Berkat-Bestellung ist `title` entweder der Artikelname oder „3 Artikel
+    // aus der Live-Show" (gesetzt in `checkout_auction_cart`); beides sagt
+    // mehr als gar nichts.
+    product_name: row.cart_id ? row.title ?? null : null,
     app: row.cart_id ? 'berkat' : 'serlo',
   });
 }

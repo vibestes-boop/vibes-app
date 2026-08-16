@@ -23,8 +23,71 @@ export type MyOrder = {
   paid_at: string | null;
   shipped_at: string | null;
   /** Die einzelnen Artikel — aus dem Sammelkorb der Bestellung. */
-  items: string[];
+  items: CartItem[];
 };
+
+/**
+ * Ein Artikel aus einem Sammelkorb.
+ *
+ * War bis zum 16.08.2026 nur der Titel. Ein Paket ohne Bilder ist eine Liste
+ * von Wörtern — wer drei Sachen an einem Abend gewonnen hat, erkennt sie am
+ * Foto und nicht an „Silberring, handgemacht". Das Bild liegt ohnehin an der
+ * Auktion; es wurde nur nicht mitgenommen.
+ */
+export type CartItem = {
+  title: string;
+  image_url: string | null;
+};
+
+/**
+ * Eine einzelne Bestellung — für die Detailseite.
+ *
+ * Eigene Abfrage statt „aus `useMyOrders` heraussuchen": Die Seite muss auch
+ * kalt aufgehen (Direktlink, App-Neustart, später ein Push), und dann ist die
+ * große Liste noch nicht geladen. Sie holt zusätzlich `shipping_cents` — auf
+ * der Übersicht wäre das Rauschen, hier gehört es zur Abrechnung.
+ *
+ * Die Policy auf `product_orders` lässt Käufer und Verkäufer ihre eigenen
+ * Zeilen sehen; `buyer_id` steht trotzdem im Filter, damit die Absicht im Code
+ * steht und nicht nur in der Datenbank.
+ */
+export function useMyOrder(orderId: string | undefined, userId: string | null) {
+  return useQuery({
+    queryKey: ['berkat', 'my-order', orderId],
+    enabled: Boolean(orderId && userId),
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<(MyOrder & { shipping_cents: number }) | null> => {
+      const { data, error } = await supabase
+        .from('product_orders')
+        .select(
+          'id, seller_id, title, amount_eur, shipping_cents, status, cart_id, tracking_carrier, tracking_number, paid_at, shipped_at',
+        )
+        .eq('id', orderId!)
+        .eq('buyer_id', userId!)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+
+      const order = data as unknown as Omit<MyOrder, 'items'> & { shipping_cents: number };
+      if (!order.cart_id) return { ...order, items: [] };
+
+      const { data: won } = await supabase
+        .from('live_auctions')
+        .select('title, image_url')
+        .eq('cart_id', order.cart_id)
+        .eq('status', 'sold');
+
+      return {
+        ...order,
+        items: ((won ?? []) as { title: string; image_url: string | null }[]).map((row) => ({
+          title: row.title,
+          image_url: row.image_url,
+        })),
+      };
+    },
+  });
+}
 
 export function useMyOrders(userId: string | null) {
   return useQuery({
@@ -52,18 +115,22 @@ export function useMyOrders(userId: string | null) {
       // Die Artikelnamen liegen an den Auktionen, nicht an der Bestellung —
       // die trägt nur eine Zusammenfassung wie „3 Artikel aus der Live-Show".
       const cartIds = orders.map((o) => o.cart_id).filter((id): id is string => Boolean(id));
-      const byCart = new Map<string, string[]>();
+      const byCart = new Map<string, CartItem[]>();
 
       if (cartIds.length > 0) {
         const { data: won, error: wonError } = await supabase
           .from('live_auctions')
-          .select('cart_id, title')
+          .select('cart_id, title, image_url')
           .in('cart_id', cartIds)
           .eq('status', 'sold');
         if (wonError) throw wonError;
-        for (const row of (won ?? []) as { cart_id: string; title: string }[]) {
+        for (const row of (won ?? []) as {
+          cart_id: string;
+          title: string;
+          image_url: string | null;
+        }[]) {
           const list = byCart.get(row.cart_id) ?? [];
-          list.push(row.title);
+          list.push({ title: row.title, image_url: row.image_url });
           byCart.set(row.cart_id, list);
         }
       }

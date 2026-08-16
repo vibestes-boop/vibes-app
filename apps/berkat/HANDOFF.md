@@ -30,6 +30,10 @@ was gilt.
 | **Verkäufer-Suche** — findet auch, wer nicht sendet | ✅ (17, Nachtrag) |
 | Fehlerüberwachung (Sentry) | ✅ eingebaut, **scharf erst ab dem nächsten Build** (16) |
 | Meldungen — Glocke, Ziel je Typ | ✅ (17, Nachtrag) |
+| **Fünf Reiter** — Kategorien und Aktivität dazu | ✅ (18) |
+| **Kategorien** — 12 Ober-, 61 Unterkategorien, Aufklappen | ✅ am Datenstand geprüft (18) |
+| **Einladungen** — Verkäufer-Bonus scharf, Käufer-Bonus **aus** | ✅ (18) |
+| **Profil** — Reiter, Bewertungstexte, Banner, Teilen, Sperren | ✅ (18) |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -207,8 +211,14 @@ Das war richtig. Aber Postgres kann ein Recht nicht spaltenweise abziehen — es
 Tabellen-Recht auf und schreibt Einzelrechte für jede **damals vorhandene** Spalte. Ab da ist die
 Liste fest, und jede später hinzugefügte Spalte steht in keiner dieser Zusagen.
 
-Betroffen sind zwei Tabellen: `live_sessions` und `user_whip_ingresses` (`stream_key`,
-`20260426000000`). Wer einer davon eine Spalte hinzufügt, hängt an dieselbe Migration:
+Betroffen sind **drei** Tabellen: `live_sessions`, `user_whip_ingresses` (`stream_key`,
+`20260426000000`) und seit dem 14.08.2026 auch **`profiles`** — dort nahm
+`20260814240000` den `push_token` aus der Sicht der Clients und schrieb dafür eine
+ausdrückliche Liste von 41 Spalten. Am 16.08. beim Bannerbild wieder aufgeschlagen:
+`banner_url` brauchte ein eigenes `GRANT`, sonst wäre **jede** Profil-Abfrage gescheitert,
+die die Spalte auch nur erwähnt — nicht nur die Spalte selbst.
+
+Wer einer der drei eine Spalte hinzufügt, hängt an dieselbe Migration:
 
 ```sql
 GRANT SELECT (<spalte>) ON <tabelle> TO anon, authenticated;
@@ -509,6 +519,11 @@ im Editor ausführen, danach `supabase migration repair --status applied <versio
 | `20260814300000_berkat_tips.sql` | `berkat_tips` + `create_berkat_tip` — Trinkgeld in echtem Geld, **nicht** in Coins |
 | `20260814310000_seller_rating_public.sql` | `get_seller_rating` — nur Schnitt und Anzahl, die einzelnen Bewertungen bleiben privat |
 | `20260815120000_berkat_scheduled_shows.sql` | **Serlo-weit:** `scheduled_lives.app` + Index; die Erinnerung vererbt die App an `notifications.app`; `schedule_berkat_show` als Berkat-Eingang — Abschnitt 13 |
+| `20260816120000_berkat_categories.sql` | `berkat_categories`, `live_auctions.category`, `get_berkat_category_counts`, `create_standing_listing` mit Kategorie (DROP+CREATE) — Abschnitt 18 |
+| `20260816130000_berkat_rewards.sql` | Einladungen, Versand-Gutschriften, Verkäufer-Vergünstigungen, `berkat_reward_policy` (Käufer-Bonus ab Werk **aus**) — Abschnitt 18 |
+| `20260816150000_berkat_category_tree.sql` | `parent_slug` + Wächter gegen die dritte Ebene, 12 Eltern / 61 Kinder, Zähler mit Aufrollen — Abschnitt 18 |
+| `20260816160000_berkat_seller_reviews_public.sql` | `get_seller_reviews` — Bewertungstexte öffentlich, nur Berkat-Bestellungen, Frauen-Only geschützt — Abschnitt 18 |
+| `20260816170000_profiles_banner.sql` | **Serlo-weit:** `profiles.banner_url` + **`GRANT SELECT`** — ohne das wäre die Spalte für alle Clients unsichtbar, siehe unten |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -581,8 +596,9 @@ Kurz, und nichts davon blockiert den nächsten Schritt.
    noch fehlt, ist das eigentliche *eine Tippen* — hinterlegte Zahlungsmethode, Apple/Google Pay
    statt Kartennummer. Das ist ein eigener Bau mit Adressformular und SCA-Behandlung; die Analyse
    führt es als „klein", das war zu optimistisch.
-2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
-   sie keinen Inhalt hätten
+2. ~~**Kategorien- und Aktivitäts-Reiter**~~ — **am 16.08.2026 gebaut**, Abschnitt 18. Die
+   Begründung „bewusst weggelassen, solange sie keinen Inhalt hätten" war falsch: Kategorien
+   leben von den Dauerangeboten und sind damit gerade dann voll, wenn die Startseite leer ist.
 3. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
 4. **E-Mail-Bestätigung ist abgeschaltet.** Für eine Live-Auktion richtig — wer gerade zuschaut,
    springt nicht ins Postfach. Der Preis: Niemand weist nach, dass ihm die Adresse gehört. Ein
@@ -1111,9 +1127,10 @@ dem Simulator und der Zuschlag-Push hat kein Ziel.
 
 ### Was noch fehlt
 
-1. **Eigene Benachrichtigungsliste in Berkat** — es gibt keine. Der Konto-Tab zeigt Körbe samt Frist,
-   und der Gewinner sieht im Raum einen `won`-Zustand mit Erfolgs-Haptik, aber keine Historie. Wer
-   einen Push wegwischt, findet ihn nirgends wieder.
+1. ~~**Eigene Benachrichtigungsliste in Berkat**~~ — **existiert** (`app/notifications.tsx` +
+   `lib/useNotifications.ts`, Glocke oben rechts auf der Startseite). Dieser Punkt war schon
+   überholt, als er noch hier stand; seit dem 16.08. liegt daneben zusätzlich ein
+   **Posteingang** für Direktnachrichten mit eigenem Abzeichen.
 2. **Android-Build — erledigt am 14.08.2026.** Der erste Android-Build überhaupt, im ersten
    Anlauf durch (11 Minuten, `versionCode` 2, APK unter der internen Verteilung). Anders als bei
    iOS gab es keine Berechtigungs-Hürde, weil Firebase vorher stand.
@@ -1839,3 +1856,382 @@ Groß-/Kleinschreibung egal.
 
 **Bewusst nicht mitgesucht:** Artikelnamen. Dafür braucht es erst genug Angebote — und ein Suchfeld,
 das Verkäufer und Artikel mischt, muss beides sortieren können.
+
+---
+
+## 18. Fünf Reiter, Kategorien, Einladungen, Profil (Stand 16.08.2026)
+
+Der Tag, an dem die Regel „nichts bauen, was leer wäre" mehrfach gekippt wurde — und zwar zu
+Recht. Zaur: *„Nichts weglassen, alles bauen, auch wenn die Seite leer ist."*
+
+### Fünf Reiter statt drei
+
+`Startseite · Kategorien · Verkaufen · Aktivität · Konto`. Die alte Begründung im Layout
+(„ein Reiter, der auf eine leere Seite führt, sieht billiger aus als einer, der fehlt") galt
+nur, solange beide wirklich leer gewesen wären. Sind sie nicht:
+
+- **Kategorien** lebt von den Dauerangeboten. Die liegen rund um die Uhr da, während eine Show
+  94 % der Zeit nicht läuft — der Reiter ist also gerade dann voll, wenn die Startseite leer ist.
+- **Aktivität** lebt von Folgen, eigenen Geboten und Belohnungen. Nichts davon erzeugt einen
+  Push, alles davon will man wiederfinden. Sechs Quellen, eine nach Zeit sortierte Liste.
+
+Der Kopf der Startseite trägt jetzt **zwei** Knöpfe: Posteingang und Glocke. Sie sehen gleich
+aus, sind aber nicht dasselbe — links steht, was ein MENSCH geschrieben hat, rechts, was
+BERKAT gemeldet hat.
+
+### Kategorien: die Leiste war eine Attrappe
+
+`lib/useStudio.ts` schrieb bei jeder Show `category: 'shopping'` fest ein. Die Kategorie-Leiste
+auf der Startseite filterte seit dem 13.08. also über **genau einen Wert**. Migration
+`20260816120000` setzt die 20 alten Berkat-Zeilen auf NULL zurück.
+
+Der Baum hat **zwei Ebenen** (`20260816150000`): 12 Ober-, 61 Unterkategorien. Eine flache
+Liste zwingt in eine Entscheidung, die es nicht gibt — wenige grobe Kacheln (niemand findet
+etwas) oder achtzig feine (niemand scrollt so weit).
+
+⚠️ **Ein Trigger verbietet die dritte Ebene.** Der Zähl-Aufruf rollt Kinder genau eine Stufe
+auf ihr Elternteil; ein Enkel wäre in jeder Zahl und jeder Kachel unsichtbar, ohne dass es
+auffiele.
+
+**Whatnots Liste wurde bewusst NICHT übernommen** — Sportkarten, Trading Card Games, Comics,
+NASCAR-Pins, Nachlassverkäufe sind ein amerikanischer Sammlermarkt. Der Baum hier kommt aus dem,
+was diese Community handelt: Abaya, Hijab, Oud & Bakhoor, Gold, Gebetsteppiche. Weiterhin
+ausgeschlossen (Analyse A8): Elektro/Batterien, Lebensmittel, Alkohol.
+
+**Die Kachel zeigt Zuschauer, nicht Shows** — „1901 Zuschauer" liest sich als *hier ist was
+los*, „2 Shows" liest sich als leer. Ist nichts live, fällt sie auf „12 kaufbar" zurück; ist
+gar nichts da, steht **nichts** da statt einer toten Null. Whatnot kann diesen Rückfall
+strukturell nicht, die haben kein Dauerregal je Kategorie.
+
+### Einladungen — und warum der Käufer-Bonus ab Werk AUS ist
+
+Zwei Seiten, weil Berkat zwei verschiedene Knappheiten hat:
+
+| Du bringst | Belohnung | Kostet heute |
+|---|---|---|
+| einen **Käufer** | 1× Gratis-Versand | 4,83 € je Einlösung |
+| einen **Verkäufer** | 30 Tage provisionsfrei für beide | **0 €** (es gibt keine Provision) |
+
+Die Rechnung, die den Entwurf bestimmt hat (Sätze aus `STRATEGIE-VERKAEUFER-UND-GELD.md`):
+Eine Gutschrift kostet nicht die 1,40 € Deckungsbeitrag, sondern **4,83 €** — die Pauschale
+fällt weg und das Porto fällt trotzdem an. **Die Verlustschwelle liegt bei 6,64 € Warenwert**,
+und genau darunter liegt der wahrscheinlichste Fall: Ein Neuer löst den Code ein und testet
+mit EINEM Artikel für 1 €.
+
+Deshalb steht `berkat_reward_policy.buyer_rewards_enabled` auf **false**, dazu
+`min_cart_cents = 1500`, `inviter_reward_after = 3`, `monthly_cap = 3`. Einladungen werden
+trotzdem von Tag eins an verzeichnet — genau daraus entsteht die Zahl, die vor dem Anschalten
+fehlt. Die beiden Abfragen dafür stehen am Ende der Migration.
+
+⚠️ **Vor Phase 2 neu bepreisen oder abschalten.** Mit Drittverkäufern gibt es keine Warenmarge
+mehr, nur Provision — 8 % von 15 € = 1,20 € gegen eine 4,90-€-Gutschrift. Der Käufer-Bonus
+funktioniert **nur, solange Zaur selbst der Verkäufer ist**.
+
+**Kein neuer Meldungstyp dafür.** Ein Typ in `notifications` bräuchte neun Oberflächen auf
+einmal (Abschnitt 9); wer nur einen Teil anfasst, bekommt „Neue Aktivität auf Serlo". Eine
+Belohnung ist nicht eilig — sie steht im Aktivitäts-Reiter.
+
+### Das Profil hatte keine Tür
+
+Der teuerste Fund des Tages, und kein Fehler im Code: **Acht Stellen springen auf
+`/seller/<id>`, keine einzige mit der eigenen ID.** Das eigene Regal, die eigenen Bürgen und
+die eigene Bio waren damit unerreichbar. Bei Whatnot IST der Konto-Reiter das Profil; hier
+führt er jetzt hin (Avatar-Zeile antippen).
+
+Dazu, alles am Whatnot-Profil abgeglichen:
+
+- **Reiter Shop · Bewertungen · Live-Shows.** Bürgen und Kacheln stehen ÜBER den Reitern — für
+  diese Community ist das der Teil, der entscheidet. „Clips" fehlt: Berkat hat kein Replay.
+- **Bewertungstexte** (`20260816160000`). Zwei Schranken: nur Berkat-Bestellungen (Serlos Texte
+  werden durch eine Berkat-Änderung nicht neu öffentlich) und **Frauen-Only bleibt zu** — ob
+  eine Verkäuferin WOZ sendet, ist öffentlich, wer bei ihr kauft, nicht. Im Schnitt zählen sie
+  weiter mit, denn ein Durchschnitt nennt keinen Namen.
+- **Es gab nie einen Text zum Anzeigen.** `order_reviews.comment` existiert, `submit_order_review`
+  nimmt `p_comment`, `useOrderReview` reicht es durch — nur fragte die Oberfläche nie danach.
+  Der Stern öffnet jetzt ein Blatt mit freiwilligem Textfeld.
+- **Follower-Zahl**, **Nachricht + Trinkgeld** (existierten seit dem 15.08., waren aber nur im
+  Live-Raum-Sheet erreichbar — also genau dann nicht, wenn niemand sendet), **Teilen**,
+  **Drei-Punkte-Menü** mit Sperren/Melden (`useSellerActions` hatte alles, RLS trägt es ohne RPC).
+- **Kopfbild, Anzeigename, aufklappbare Bio.** `display_name` existierte längst; die Behauptung
+  „Spalte fehlt, Serlo-weit" war falsch. `banner_url` ist neu — mit `GRANT SELECT`, siehe die
+  Warnung in Abschnitt 3.
+
+### Zwei Fehler, die an einem Tag zweimal derselbe waren
+
+**Ein zurückgezogenes Dauerangebot blieb im Kategorien-Reiter stehen**, und ein Tipp darauf
+führte auf ein Profil, auf dem es nicht mehr war. Die Datenbank war die ganze Zeit richtig
+(`status = 'cancelled'`). Zwei Ursachen: `cancel` setzte nur `['berkat','standing']` zurück,
+nicht die Kategorie-Abfragen — und die Kategorie-Seite lud beim Zurückkommen nicht nach.
+
+Daraus die Regel: **Expo Router hält nicht nur REITER aufgebaut, sondern auch STACK-Bildschirme.**
+Abschnitt 3 beschreibt die Falle nur für Reiter; sie gilt eine Ebene tiefer genauso. Und: Wer
+etwas an drei Orten anzeigt, muss an allen drei zurücksetzen — deshalb liegt das jetzt in EINER
+Funktion in `lib/useStanding.ts` statt an jeder Aufrufstelle einzeln.
+
+### Ein Dauerangebot konnte nie ein Foto haben
+
+Beim Ausprobieren am Gerät aufgefallen, weil der Bild-Wähler oben im
+Verkaufen-Reiter zur SHOW gehört und es aussah, als müsse man ihn auch fürs Regal
+benutzen. Die eigentliche Ursache war eine Lücke: `create_standing_listing` nimmt
+seit dem 15.08. ein `p_image_url`, `lib/useStanding.ts` reicht es durch — und
+`StandingComposer` hatte **kein einziges Bild-Vorkommen**. Jedes Dauerangebot
+blieb ein graues Feld, auf dem Profil wie im Kategorien-Reiter.
+
+Das war genau verkehrt herum gedacht. In einer Show hält der Verkäufer den
+Artikel **in die Kamera** — das Vorschaubild ist Zugabe. Ein Dauerangebot hat
+keine Kamera; dort **ist** das Foto die ganze Auslage. Der einzige Ort ohne
+Bild-Wähler war der, an dem er am meisten zählt.
+
+Behoben: eigener Wähler im `StandingComposer`, links vom Titel und damit in
+derselben Anordnung wie „Artikel auflegen" darüber — das nimmt der Verwechslung
+gleich die Grundlage. Weiterhin **kein Zwang**, nur ein Hinweis: Wer abends
+schnell drei Sachen einstellt, bricht sonst nach dem ersten ab.
+
+### Der Verkaufen-Reiter machte vier Jobs auf einem Scroll
+
+977 Zeilen, und darin: Show-Regie, Sendeplan, Regal und Bestellungen. Beim
+Ausprobieren am Gerät sofort als unübersichtlich gemeldet.
+
+Der teuerste Teil war nicht die Länge, sondern **wo der einzige Job mit einer
+Frist lag**: ganz unten. Die Meldung „Bezahlt — bitte packen" führte auf
+`/(tabs)/sell`, also an den Anfang — der Verkäufer landete im Show-Formular und
+musste an zwei Formularen und dem Regal vorbeiscrollen. Seine durchschnittliche
+**Versandzeit ist eine der drei Kacheln auf seinem öffentlichen Profil**; jede
+Minute Sucherei zahlt er dort in Vertrauen.
+
+**Warum KEINE Tabs innerhalb des Reiters**, obwohl das die naheliegende Idee war:
+
+- Unten liegen bereits fünf Reiter, das Profil hat seit heute eigene Tabs. Eine
+  dritte Ebene macht aus der App eine Tab-Sammlung.
+- Die vier Jobs sind keine Geschwister. Sobald gesendet wird, gibt es nur noch
+  einen — die anderen sind dann nicht „ein Tab weiter", sondern irrelevant.
+- **Ein Push kann auf einen BILDSCHIRM springen, nicht auf einen Tab-Zustand
+  darin.** Das war das ausschlaggebende Argument.
+
+Stattdessen: `app/orders.tsx` und `app/shelf.tsx` als eigene Bildschirme, im
+Reiter nur noch zwei Zeilen mit Zahlen. Dazu ein **Abzeichen an der unteren
+Leiste**, wenn Bestellungen auf `paid` stehen (`useOpenOrderCount`, `head: true`,
+überträgt keine Zeile) — und `order_paid`/`new_order` zeigen jetzt auf
+`/orders`.
+
+Das Abzeichen zählt bewusst NUR `paid`: Ein Abzeichen, das nie auf null geht,
+liest bald niemand mehr. Und es ist gold statt rot — rot ist in Berkat die
+laufende Uhr (live, überboten), eine wartende Bestellung ist eine andere Art
+von dringend.
+
+### Nachtrag: die Kategorie-Leiste zeigte Slugs
+
+Selbst eingebaut und beim Nachsehen gefunden. `live_sessions.category` trug bis
+zum 16.08. immer die Konstante `'shopping'`; die Leiste auf der Startseite nahm
+diesen Wert direkt als Anzeigename UND als Filterschlüssel — was funktionierte,
+solange beides dasselbe war.
+
+Mit der gepflegten Liste stehen dort **Slugs**. Die Leiste hätte „beauty" und
+„buecher" angezeigt statt „Beauty & Duft" und „Bücher & Medien", und dasselbe
+unter jeder Show-Karte.
+
+`RailItem` trennt jetzt `slug` (Schlüssel) von `name` (Anzeige), und die
+Startseite übersetzt über `useCategoryOptions`. Der Sentinel für „keine
+Kategorie" ist von `'Für dich'` auf `'__all__'` gewechselt — die
+Spalten-Prüfung auf `berkat_categories.slug` verlangt
+`^[a-z][a-z0-9-]{1,30}$`, eine Kollision ist damit ausgeschlossen.
+
+**Merksatz:** Sobald ein Wert eine gepflegte Liste bekommt, hört er auf, sein
+eigener Anzeigename zu sein. Wer beides in einem Feld führt, merkt den Bruch
+erst, wenn die Liste da ist.
+
+### Nachtrag: Artikelbilder überall, wo es sie gibt
+
+Die Bilder lagen die ganze Zeit an `live_auctions.image_url` — sie wurden nur
+an fünf Stellen nicht mitgeholt. Eine Bestellung trägt lediglich eine
+Zusammenfassung („3 Artikel aus der Live-Show"); was drin liegt, weiß nur der
+Sammelkorb.
+
+| Wo | vorher | jetzt |
+|---|---|---|
+| Konto → Gekauft | Wortliste `· Titel` | Reihe mit Vorschaubild |
+| Konto → Deine Pakete | nur „2 Artikel · 1 Paket" | Bilderstreifen (max. 6, dann „+n") |
+| Bestellungen (Verkäufer) | nur Titel und Adresse | jeder Artikel mit Bild — **wer packt, braucht das** |
+| Aktivität | Avatar des Verkäufers | Artikelbild, wo es eines gibt |
+| Verkaufen → Verkauft | nur Text | Vorschaubild wie in der Warteschlange darüber |
+
+Zwei Entscheidungen dabei:
+
+- **In der Aktivität steht das Artikelbild VOR dem Avatar.** Bei einem Zuschlag
+  erkennt man die Sache, nicht den Menschen — der Name steht ohnehin darunter.
+  Bei „sendet gerade" gibt es kein Artikelbild, dort bleibt der Avatar richtig:
+  Da IST der Mensch das Ereignis.
+- **Artikelbilder sind eckig, Avatare rund.** Der Formunterschied trägt die
+  Bedeutung, ohne dass ein Wort nötig wäre.
+
+`useSellerOrders` holte bis dahin nicht einmal die `cart_id` — ohne sie war der
+Weg zu den Artikeln gar nicht erst offen.
+
+### Nachtrag: gelaufene Shows ohne Bild und ohne Uhrzeit
+
+Beides selbst eingebaut, beide Ursachen verschieden — und die Datenbank war an
+keiner beteiligt (`thumbnail_url` gesetzt, `started_at` gesetzt).
+
+**Das Bild wurde geholt und weggeworfen.** `useSellerShows` selektiert
+`thumbnail_url` von Anfang an, aber der Zeilentyp im Profil trug das Feld nicht
+— es kam nie in der Liste an. Eine gelaufene Show stand als grauer Kreis mit
+Funkturm-Symbol da, obwohl ihr Cover vorlag.
+
+**Die Zeitangabe war nur für die Zukunft gebaut.** `showWhen` prüfte
+`days >= 0 && days < 7` und fiel für alles andere auf ein blankes Datum ohne
+Uhrzeit zurück. Eine Show von heute 12:23 stand damit als „16.08.26" da — also
+mit der einzigen Angabe, die man ohnehin weiß, und ohne die, die man sucht.
+
+Die neue Fassung rechnet in **Kalendertagen statt Millisekunden**: „heute
+12:23", „gestern 23:02", „Mi 20:00", sonst „01.08. · 14:00". Der Unterschied
+ist nicht kosmetisch — `(a - b) / 86_400_000` beantwortet „wie viele
+24-Stunden-Blöcke liegen dazwischen", nicht „welcher Tag ist das". Eine Show
+von gestern 23:00 wäre um 08:00 morgens sonst „heute". Dieselbe Unterscheidung
+wie bei den wiederkehrenden Terminen in Abschnitt 13.
+
+Gegengeprüft an sieben echten Zeitstempeln aus der Live-DB.
+
+### Bildgrößen: die Regel, die vorher fehlte
+
+Frage aus dem Gebrauch: „Warum sind die Bilder bei Whatnot größer?" Nachgemessen
+— in Berkat existierten genau ZWEI Größen: volle Breite (1:1) an zwei Stellen
+und 34–76 px Listen-Vorschau überall sonst.
+
+Whatnot benutzt **auch** kleine Vorschaubilder (~44 px in der aufgeklappten
+Unterkategorien-Liste). Der Unterschied ist nicht die Größe, sondern die
+Zuordnung:
+
+> **Das Bild ist so groß wie die Frage, die der Bildschirm beantwortet.**
+> „Was soll ich mir ansehen?" (stöbern) → das Bild IST der Inhalt.
+> „Welches davon meine ich?" (arbeiten) → das Bild ist nur Wiedererkennung.
+
+Auf Whatnots Kategorie-Kachel füllt die Illustration rund 60 % der Fläche; bei
+uns waren es 19 px Icon in einer 104-px-Kachel, also ~3 %.
+
+Drei Flächen lagen danach falsch und sind umgestellt:
+
+| Fläche | vorher | jetzt |
+|---|---|---|
+| Kategorie-Seite | 60-px-Zeilen | zweispaltiges Raster, quadratisch |
+| Profil → Shop | 52-px-Zeilen | Raster (`StandingShelf layout="grid"`) |
+| Kategorie-Kacheln | 19-px-Icon | **echtes Produktbild**, Kachel 104 → 152 px |
+
+Richtig klein bleiben: Bestellungen (36), Konto (34/44), Aktivität (38),
+Warteschlange im Studio (44). Das sind Arbeitsflächen — dort ist ein großes
+Bild im Weg. `StandingShelf` trägt deshalb ein `layout`-Prop: Profil `grid`,
+`/shelf` (eigenes Regal verwalten) `list`.
+
+**Die Kategorie-Kachel: Zwischenstand mit Absicht.** Kurzzeitig stand dort das
+neueste Produktfoto der Kategorie (`useCategoryPreviews`). Das ist wieder raus —
+Zaur erzeugt **eigene 3D-Bilder je Kategorie**, und ein echtes Foto neben einem
+Rendering hätte zwei Bildsprachen auf derselben Fläche gemischt.
+
+Der Aufbau steht trotzdem schon richtig, damit der Tausch später nur eine Stelle
+ist: **Name oben, Bildfläche (`tileArt`) darunter, Zahl unten** — dieselbe
+Anordnung wie bei Whatnot. Vorerst trägt die Bildfläche das Symbol groß (44 px);
+kommen die Renderings, wird nur ihr Inhalt getauscht, Kachelgröße und Raster
+bleiben.
+
+Der Aufklapp-Pfeil ist raus (Zaurs Entscheidung). Dass eine Kachel aufklappt,
+zeigt sich jetzt nur noch dadurch, DASS sie aufklappt — plus die goldene Fläche
+im offenen Zustand.
+
+### Bestellungen: das Zusteller-Feld erzeugte tote Verfolgungs-Links
+
+Der wichtigste Fund beim Umbau der Bestell-Ansicht, und er war unsichtbar:
+Das Zusteller-Feld war ein **freies Textfeld** mit Vorgabe „DHL".
+`trackingUrl` in `lib/useSellerOrders.ts` kennt aber genau sechs Schreibweisen
+(DHL, DHL Express, Hermes, DPD, GLS, UPS). Wer „Deutsche Post", „Post AT" oder
+auch nur eine andere Schreibung eintippt, erzeugt beim KÄUFER einen Eintrag
+**ohne Verfolgungs-Link** — ohne Fehlermeldung, ohne dass es jemandem auffällt.
+
+Jetzt eine Auswahl aus genau den sechs. Wer die Liste erweitert, muss
+`trackingUrl` mit erweitern — sonst ist der neue Eintrag wieder ein toter Link.
+Das steht als Warnung an der Konstante.
+
+Dazu, weil vier gleich große Karten mit Adressblock und leerem
+Sendungsnummer-Feld eine Wand waren:
+
+- **Nach Zustand gruppiert.** „Zu packen" oben und offen, alles Erledigte
+  darunter als eine Zeile je Bestellung.
+- **Der Käufername steht im Kopf**, nicht der Bestelltitel — der ist bei einem
+  Sammelkorb ohnehin nur „3 Artikel aus der Live-Show", und die Artikel stehen
+  mit Bild direkt darunter.
+- **Wie lange der Käufer wartet** („vor 3 Std"). Nicht Höflichkeit: Die
+  durchschnittliche Versandzeit ist eine Kachel auf dem öffentlichen Profil.
+- **Die Adresse ist `selectable`.** Sie muss in ein Versandportal übertragen
+  werden; langes Antippen markiert sie. Kostet nichts und braucht kein
+  Zwischenablage-Modul — das wäre nativ und damit ein neuer Build.
+- **Ohne Sendungsnummer kein Versand-Knopf.** `shipped` ohne Nummer wäre eine
+  Behauptung ohne Beleg, und der Käufer bekäme eine Meldung ohne Inhalt.
+- Der grüne Balken „N warten aufs Packen" ist raus — die Zahl steht jetzt in
+  der Überschrift und am Reiter-Abzeichen. Dreimal ist Lärm.
+
+### Gemessen: größere Bilder kosten nichts
+
+Frage aus dem Gebrauch: „Wird die App langsamer bei größeren Bildern?" Die
+Vermutung war, dass unkomprimierte Handyfotos hochgeladen werden. **Gemessen,
+und die Vermutung war falsch:**
+
+```
+Pafürm  246 KB · Parfüm 16€  286 KB · Einzelstück  307 KB · Parfüm ab 9,90 €  326 KB
+```
+
+`pickImage` schneidet mit `allowsEditing` zu und komprimiert auf `quality:
+0.85` — die Dateien liegen bei 250–330 KB. Entscheidend ist ohnehin etwas
+anderes: **Die Anzeigegröße ändert am Download gar nichts.** Dieselbe Datei
+wird geladen, ob sie in 36 oder 200 px gezeichnet wird; größer kostet nur etwas
+Decode und GPU-Speicher, bei diesen Größen nicht messbar. Die Kategorie-Seite
+mit bis zu 60 Artikeln virtualisiert über `FlatList`.
+
+**Ein Resize beim Hochladen ist also NICHT nötig** und stünde sonst in der
+Warteschlange in Abschnitt 12 (`expo-image-manipulator` wäre nativ).
+
+### Whatnot hat die Versand-Oberfläche gar nicht
+
+Sie **erzeugen das Etikett selbst**. Der Verkäufer tippt weder Zusteller noch
+Sendungsnummer — die Verfolgung hängt automatisch dran und steht unter
+„Shipments" im Seller Hub. Eigene Etiketten (BYOL) sind die Ausnahme, nur für
+freigegebene Verkäufer, und die Nummer trägt man dann **nur auf der Website**
+ein.
+
+Der Vergleich trägt an dieser Stelle also nicht: Berkat ist zwangsläufig in der
+BYOL-Welt, weil es keine Etiketten verkauft. Es gibt hier nichts abzuschauen —
+sondern etwas zu erfinden.
+
+**Erfunden:** Der Zusteller ist mit dem vorbelegt, mit dem dieser Verkäufer
+ZULETZT versendet hat (aus `orders`, kein neuer Speicher). Ein Verkäufer nutzt
+fast immer denselben; ihn bei jeder Bestellung neu wählen zu lassen war die
+eigentliche Zumutung, nicht die Form des Widgets. Eine gespeicherte Einstellung
+bräuchte AsyncStorage (nativ, neuer Build) und wäre sogar schlechter: Die Daten
+spiegeln, was er TATSÄCHLICH tut, nicht was er einmal eingestellt hat.
+
+### Verfeinerung der Bildgrößen-Regel
+
+Die Regel „stöbern → groß, arbeiten → klein" war zu grob. Beim **Packen** ist
+die Arbeit selbst visuell: Man vergleicht das Bild mit einem Gegenstand auf dem
+Tisch. Genauer also:
+
+> **Ist das Bild die Auskunft — oder nur die Wiedererkennung?**
+
+Bestellliste im Konto („wo ist mein Zeug") → Wiedererkennung, klein.
+Packliste („welches Ding nehme ich in die Hand") → Auskunft, **56 px**.
+Dieselbe Bestellung unter „Erledigt" → wieder Wiedererkennung, 36 px.
+
+### Was ungeprüft ist
+
+- **Alles Sichtbare.** Aufklappen der Kategorien, die neuen Profil-Reiter, das Bearbeiten-Blatt,
+  der Banner-Upload, die zwei neuen Verkäufer-Bildschirme und das Reiter-Abzeichen — nichts
+  davon lief auf einem Gerät.
+- **Der Bewertungen-Reiter ist zwangsläufig leer**, es gibt noch keinen einzigen Text.
+- **Die Frauen-Only-Schranke bei den Bewertungen** — die Gegenprobe steht am Ende von
+  `20260816160000`.
+- **Der Käufer-Bonus** wurde nie scharf geschaltet, also nie durchlaufen.
+
+### Ein Ärgernis fürs Protokoll
+
+`npx expo export` wählt den Einstiegspunkt **nicht deterministisch**: mal `index.ts`
+(3938 Module), mal `expo-router/entry.js` (3671). Der Unterschied sind die ~270 Module des
+LiveKit-`registerGlobals`-Blocks, den nur `index.ts` lädt — und `index.ts` ist laut
+`package.json` der richtige Einstieg. Beide Läufe sind fehlerfrei, die Ursache ist ungeklärt.
+Ob `eas update` davon betroffen ist, wurde **nicht** geprüft.

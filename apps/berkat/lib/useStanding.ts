@@ -56,6 +56,8 @@ export function standingErrorText(message: string): string {
   if (message.includes('not_women_only_verified'))
     return 'Frauen-Only kannst du erst setzen, wenn dein Zugang freigegeben ist.';
   if (message.includes('seller_cannot_bid')) return 'Das ist dein eigener Artikel. 🙂';
+  if (message.includes('unknown_category'))
+    return 'Diese Kategorie gibt es nicht mehr. Wähl eine andere.';
   if (message.includes('auction_closed') || message.includes('listing_not_found'))
     return 'Der Artikel ist schon weg.';
   if (message.includes('not_authenticated')) return 'Melde dich an, dann geht es weiter.';
@@ -70,8 +72,24 @@ export function standingErrorText(message: string): string {
 export function useStandingActions(sellerId: string | undefined, myUserId: string | null) {
   const queryClient = useQueryClient();
 
+  /**
+   * Ein Dauerangebot steht an DREI Orten, und alle drei müssen nachladen.
+   *
+   * Am 16.08.2026 genau daran gescheitert: „Fahrrad" wurde unter Sonstiges
+   * angelegt, auf dem Profil zurückgezogen — und blieb im Kategorien-Reiter
+   * stehen. Antippen führte dann auf ein Profil, auf dem er nicht mehr war.
+   * Die Datenbank war die ganze Zeit richtig (`status = 'cancelled'`), nur
+   * wurde `['berkat', 'standing']` allein zurückgesetzt.
+   *
+   * Deshalb hier alles zusammen statt an jeder Aufrufstelle einzeln — beim
+   * nächsten Regal-Ort ist es eine Zeile hier und nicht drei vergessene.
+   */
   const invalidate = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'standing'] });
+    // Die Kachel-Zähler im Kategorien-Reiter …
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'categories'] });
+    // … und die Liste auf der Kategorie-Seite selbst.
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'category-listings'] });
   }, [queryClient]);
 
   const create = useMutation({
@@ -80,12 +98,20 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       priceCents: number;
       imageUrl?: string | null;
       womenOnly?: boolean;
+      /** Slug aus `berkat_categories`. Ohne sie liegt der Artikel in keiner Kachel. */
+      category?: string | null;
     }) => {
+      // ⚠️ Fünf Parameter seit Migration 20260816120000. Die RPC wurde dort per
+      // DROP + CREATE ersetzt, NICHT überladen — zwei Überladungen machen
+      // PostgREST mehrdeutig (HTTP 300). Ein älterer Client mit vier Parametern
+      // bekommt deshalb PGRST202; das ist hier gefahrlos, weil Berkat in keinem
+      // Store liegt und dieser Hook der einzige Aufrufer ist.
       const { data, error } = await supabase.rpc('create_standing_listing', {
         p_title: input.title.trim(),
         p_price_cents: input.priceCents,
         p_image_url: input.imageUrl ?? null,
         p_women_only: input.womenOnly ?? false,
+        p_category: input.category ?? null,
       });
       if (error) throw error;
       return data as string;

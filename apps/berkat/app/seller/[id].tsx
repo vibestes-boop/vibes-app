@@ -8,12 +8,14 @@
 // Sie liegt auf der hellen Fläche (`ui`), nicht auf der Bühne: Man kommt zwar
 // aus dem Live-Raum hierher, aber das hier ist Stöbern, kein Zuschauen.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -22,15 +24,38 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Radio, Star, Tag, Truck } from 'lucide-react-native';
+import {
+  Ban,
+  CalendarClock,
+  ChevronLeft,
+  Coins,
+  Flag,
+  Lock,
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Radio,
+  Share2,
+  Star,
+  Tag,
+  Truck,
+} from 'lucide-react-native';
 
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
-import { useFollow } from '../../lib/useFollow';
+import { useFollow, useFollowCounts } from '../../lib/useFollow';
 import { formatEuro } from '../../lib/useAuction';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
 import { useVouchActions, useVouches, vouchErrorText } from '../../lib/useVouch';
+import { profileEditErrorText, useUpdateProfile } from '../../lib/useProfileEdit';
+import { pickAndUpload } from '../../lib/uploadImage';
+import { REPORT_REASONS, useMyBlocks, useSellerActions } from '../../lib/useSellerActions';
+import { reviewWhen, useSellerReviews, type SellerReview } from '../../lib/useSellerReviews';
+import { showWhen, useSellerShows } from '../../lib/useSellerShows';
+import { SITE_URL } from '../../lib/links';
 import { Avatar } from '../../components/Avatar';
+import { ProfileEditSheet } from '../../components/ProfileEditSheet';
+import { RatingStars } from '../../components/RatingStars';
 import { VouchPanel } from '../../components/VouchPanel';
 import { StandingShelf } from '../../components/StandingShelf';
 import {
@@ -44,7 +69,9 @@ import { radius, space, ui } from '../../theme/tokens';
 type SellerProfile = {
   id: string;
   username: string | null;
+  display_name: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
 };
 
@@ -68,6 +95,53 @@ const SPACER_ID = '__spacer__';
 type Spacer = { id: string; spacer: true };
 type GridItem = SoldItem | Spacer;
 
+/**
+ * Die Reiter nach Whatnot-Vorbild.
+ *
+ * „Clips" fehlt bewusst: Whatnot hat einen vierten Reiter dafür, Berkat hat
+ * weder Replay noch Clip-Marker (beides existiert in Serlo, wurde für Berkat
+ * aber nie angeschlossen). Ein Reiter, der nur erklären kann, dass es ihn nicht
+ * gibt, ist keiner.
+ */
+type ProfileTab = 'shop' | 'reviews' | 'shows';
+
+const TABS: { key: ProfileTab; label: string }[] = [
+  { key: 'shop', label: 'Shop' },
+  { key: 'reviews', label: 'Bewertungen' },
+  { key: 'shows', label: 'Live-Shows' },
+];
+
+/** Angekündigte und vergangene Sendungen in einer Liste. */
+type ShowRow = {
+  id: string;
+  kind: 'announced' | 'past';
+  sessionId: string | null;
+  title: string | null;
+  /**
+   * Das Cover der gelaufenen Show.
+   *
+   * `useSellerShows` holte es von Anfang an mit — dieser Typ trug es nur nicht,
+   * also landete es nie in der Liste. Eine vergangene Show stand damit als
+   * grauer Kreis mit Funkturm-Symbol da, obwohl das Bild vorlag. Eine
+   * ANGEKÜNDIGTE hat keines: `scheduled_lives` trägt kein Cover, das entsteht
+   * erst beim Starten.
+   */
+  thumbnail: string | null;
+  when: string;
+  women_only: boolean;
+};
+
+/**
+ * Was die eine Liste je nach Reiter trägt.
+ *
+ * Die Annotation ist Pflicht, nicht Kosmetik: Ohne sie leitet TypeScript aus
+ * dem Ternär eine Vereinigung von ARRAYS ab (`A[] | B[] | C[]`), und FlatList
+ * verlangt ein Array einer Vereinigung (`(A|B|C)[]`). Unterschieden werden die
+ * drei danach über je ein Merkmal, das nur einer von ihnen hat: `kind` bei der
+ * Show, `comment` bei der Bewertung, `spacer` beim Platzhalter.
+ */
+type TabItem = GridItem | SellerReview | ShowRow;
+
 function padToGrid(items: SoldItem[], columns: number): GridItem[] {
   const rest = items.length % columns;
   if (items.length === 0 || rest === 0) return items;
@@ -84,9 +158,13 @@ function useSellerProfile(id: string | undefined) {
     enabled: Boolean(id),
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<SellerProfile | null> => {
+      // ⚠️ `banner_url` ist erst seit Migration 20260816170000 für Clients
+      // lesbar. `profiles` trägt seit dem 14.08. eine ausdrückliche
+      // Spaltenliste statt eines Tabellen-SELECT — eine Spalte, die dort fehlt,
+      // lässt die GANZE Abfrage mit 42501 scheitern, nicht nur sich selbst.
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, bio')
+        .select('id, username, display_name, avatar_url, banner_url, bio')
         .eq('id', id!)
         .maybeSingle();
       if (error) throw error;
@@ -142,36 +220,145 @@ export default function SellerScreen() {
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
 
-  const { data: profile, isLoading } = useSellerProfile(id);
-  const { data: stats } = useSellerStats(id);
+  const isSelf = Boolean(myUserId && id && myUserId === id);
+
+  const { data: profile, isLoading, refetch: refetchProfile } = useSellerProfile(id);
+  const { data: stats, refetch: refetchStats } = useSellerStats(id);
   const { data: liveShow, refetch: refetchLive } = useSellerLiveShow(id);
   const { data: items = [], refetch: refetchItems } = useSellerSoldItems(id);
-  const { data: vouches = [] } = useVouches(id, myUserId);
+  const { data: vouches = [], refetch: refetchVouches } = useVouches(id, myUserId);
+  const { data: counts, refetch: refetchCounts } = useFollowCounts(id);
   const vouch = useVouchActions(id, myUserId);
   const [vouchNotice, setVouchNotice] = useState<string | null>(null);
 
-  const { data: standing = [] } = useStandingListings(id);
+  const { data: standing = [], refetch: refetchStanding } = useStandingListings(id);
   const standingActions = useStandingActions(id, myUserId);
   const [standingBusyId, setStandingBusyId] = useState<string | null>(null);
   const follow = useFollow(id, myUserId);
+
+  const updateProfile = useUpdateProfile(myUserId);
+  const [editing, setEditing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [bioOpen, setBioOpen] = useState(false);
+  const [tab, setTab] = useState<ProfileTab>('shop');
+  // Das Banner wird beim Auswählen sofort hochgeladen, aber erst beim
+  // Speichern in die Datenbank geschrieben. Deshalb liegt der Zwischenstand
+  // hier und nicht im Blatt — ein Blatt, das sich neu aufbaut, verlöre ihn.
+  const [bannerDraft, setBannerDraft] = useState<string | null>(null);
+  const [bannerUploading, setBannerUploading] = useState(false);
+
+  const { data: reviews = [], refetch: refetchReviews } = useSellerReviews(id);
+  const { past: pastShows, announced } = useSellerShows(id);
+  const sellerActions = useSellerActions(myUserId);
+  const { data: blocked } = useMyBlocks(myUserId);
+  const isBlocked = Boolean(id && blocked?.has(id));
+
+  /**
+   * Teilen.
+   *
+   * Bewusst OHNE eigene Profil-Adresse: `apps/berkat-web` hat vier statische
+   * Seiten, eine für Profile ist nicht dabei. Ein Link auf
+   * `…/seller/<id>` liefe ins Leere, und Cloudflare Pages wirft bei einer
+   * Umschreib-Regel zusätzlich den Pfad weg (HANDOFF 8). Ein Empfänger, der auf
+   * eine 404 klickt, kommt nicht wieder.
+   *
+   * Deshalb Name plus Startadresse. Sobald die Website eine Profilseite hat,
+   * ist es hier eine Zeile.
+   */
+  const shareProfile = useCallback(async () => {
+    try {
+      await Share.share({
+        message: [
+          `${profile?.username ?? 'Dieser Verkäufer'} verkauft bei Berkat — Live-Auktionen, echte Menschen.`,
+          SITE_URL,
+        ].join('\n\n'),
+      });
+    } catch {
+      // Abbrechen ist kein Fehler.
+    }
+  }, [profile?.username]);
+
+  // ALLES nachladen, nicht nur live und verkauft.
+  //
+  // Bis zum 16.08.2026 holte dieser Ruf `refetchLive` und `refetchItems` —
+  // Regal, Kacheln, Bürgen und Follower blieben stehen. Dieselbe Familie wie
+  // der Fehler, bei dem ein zurückgezogenes Dauerangebot im Kategorien-Reiter
+  // hängenblieb: Was auf der Seite steht, muss auch nachladen können.
+  const refreshAll = useCallback(
+    () =>
+      Promise.all([
+        refetchLive(),
+        refetchItems(),
+        refetchStanding(),
+        refetchStats(),
+        refetchVouches(),
+        refetchCounts(),
+        refetchProfile(),
+      ]),
+    [
+      refetchLive,
+      refetchItems,
+      refetchStanding,
+      refetchStats,
+      refetchVouches,
+      refetchCounts,
+      refetchProfile,
+    ],
+  );
+
+  // Angekündigtes zuerst — „wann kommt der wieder" ist die Frage, die den
+  // Sendeplan überhaupt wertvoll macht. Vergangenes ist nur Beleg.
+  const showRows = useMemo((): ShowRow[] => {
+    const soon = (announced.data ?? []).map((s) => ({
+      id: `a-${s.id}`,
+      kind: 'announced' as const,
+      sessionId: null,
+      title: s.title,
+      thumbnail: null,
+      when: showWhen(s.scheduled_at),
+      women_only: s.women_only,
+    }));
+    const done = (pastShows.data ?? []).map((s) => ({
+      id: `p-${s.id}`,
+      kind: 'past' as const,
+      sessionId: s.id,
+      title: s.title,
+      thumbnail: s.thumbnail_url,
+      // Fällt `started_at` aus (dürfte nicht vorkommen, die Spalte wird beim
+      // Anlegen gesetzt), ist `ended_at` die nächstbeste Wahrheit.
+      when: s.started_at
+        ? showWhen(s.started_at)
+        : s.ended_at
+          ? showWhen(s.ended_at)
+          : '',
+      women_only: s.women_only,
+    }));
+    return [...soon, ...done];
+  }, [announced.data, pastShows.data]);
+
+  const listData = useMemo(
+    (): TabItem[] =>
+      tab === 'shop' ? padToGrid(items, 3) : tab === 'reviews' ? reviews : showRows,
+    [tab, items, reviews, showRows],
+  );
 
   const [pulling, setPulling] = useState(false);
   const onPull = useCallback(async () => {
     setPulling(true);
     try {
-      await Promise.all([refetchLive(), refetchItems()]);
+      await refreshAll();
     } finally {
       setPulling(false);
     }
-  }, [refetchLive, refetchItems]);
+  }, [refreshAll]);
 
   // Dieselbe Falle wie überall in Berkat: Stack-Bildschirme bleiben aufgebaut.
-  // Wer den Verkäufer verlässt, live geht und zurückkommt, sähe sonst den alten
-  // Stand.
+  // Wer von hier ins Studio geht, einen Artikel einstellt und zurückkommt, sähe
+  // sonst den alten Stand.
   useFocusEffect(
     useCallback(() => {
-      void refetchLive();
-    }, [refetchLive]),
+      void refreshAll();
+    }, [refreshAll]),
   );
 
   const name = profile?.username ?? 'Verkäufer';
@@ -185,7 +372,33 @@ export default function SellerScreen() {
         <Text numberOfLines={1} style={styles.headerTitle}>
           {isLoading ? '' : name}
         </Text>
-        <View style={styles.back} />
+
+        <Pressable
+          hitSlop={8}
+          onPress={() => void shareProfile()}
+          style={styles.headerBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Profil teilen"
+        >
+          <Share2 size={19} color={ui.text} />
+        </Pressable>
+
+        {/* Bei sich selbst gäbe es nichts zu melden und niemanden zu sperren —
+            dann bleibt der Platz leer statt ein Menü mit einem toten Eintrag
+            zu zeigen. */}
+        {isSelf || !myUserId ? (
+          <View style={styles.headerBtn} />
+        ) : (
+          <Pressable
+            hitSlop={8}
+            onPress={() => setMenuOpen(true)}
+            style={styles.headerBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Mehr"
+          >
+            <MoreHorizontal size={21} color={ui.text} />
+          </Pressable>
+        )}
       </View>
 
       {isLoading ? (
@@ -199,10 +412,14 @@ export default function SellerScreen() {
         </View>
       ) : (
         <FlatList
-          data={padToGrid(items, 3)}
+          // `key` erzwingt einen Neuaufbau beim Reiterwechsel. FlatList darf
+          // `numColumns` zur Laufzeit nicht ändern — ohne den Schlüssel wirft
+          // es genau das als Fehler.
+          key={tab}
+          data={listData}
           keyExtractor={(item) => item.id}
-          numColumns={3}
-          columnWrapperStyle={{ gap: space.xs }}
+          numColumns={tab === 'shop' ? 3 : 1}
+          columnWrapperStyle={tab === 'shop' ? { gap: space.xs } : undefined}
           contentContainerStyle={{
             paddingHorizontal: space.md,
             paddingBottom: insets.bottom + space.xl,
@@ -213,34 +430,128 @@ export default function SellerScreen() {
           }
           ListHeaderComponent={
             <View>
+              {/* Das Kopfbild. Ohne eigenes Bild bleibt eine ruhige Fläche aus
+                  der Palette — ein Platzhalter-Foto für alle sähe aus wie ein
+                  Fehler und wäre für jede zweite Marke das falsche Bild. */}
+              <View style={styles.banner}>
+                {profile.banner_url ? (
+                  <Image
+                    source={{ uri: profile.banner_url }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                    transition={160}
+                  />
+                ) : null}
+              </View>
+
               <View style={styles.identity}>
                 <Avatar uri={profile.avatar_url} name={profile.username} size={64} />
                 <View style={styles.identityText}>
                   <Text numberOfLines={1} style={styles.name}>
-                    {name}
+                    {profile.display_name?.trim() || name}
                   </Text>
-                  {profile.bio ? (
-                    <Text numberOfLines={2} style={styles.bio}>
-                      {profile.bio}
+                  {/* Der @-Name steht klein darunter — aber nur, wenn oben
+                      etwas anderes steht. Sonst stünde er zweimal da. */}
+                  {profile.display_name?.trim() ? (
+                    <Text numberOfLines={1} style={styles.handle}>
+                      {name}
                     </Text>
                   ) : null}
                 </View>
               </View>
 
-              {follow.canFollow ? (
+              {/* Die Bio steht unter der Kopfzeile statt daneben: Bis zu 300
+                  Zeichen quetschen sich nicht neben ein 64er-Avatar. Und sie
+                  klappt auf — vorher waren zwei Zeilen hart abgeschnitten, ohne
+                  jede Möglichkeit, den Rest zu lesen. */}
+              {profile.bio ? (
                 <Pressable
-                  onPress={() => follow.toggle()}
-                  disabled={follow.busy}
-                  style={[styles.followBtn, follow.isFollowing && styles.followBtnActive]}
+                  onPress={() => setBioOpen((open) => !open)}
                   accessibilityRole="button"
+                  accessibilityState={{ expanded: bioOpen }}
                 >
-                  <Text
-                    style={[styles.followText, follow.isFollowing && styles.followTextActive]}
-                  >
-                    {follow.isFollowing ? 'Du folgst' : 'Folgen'}
+                  <Text numberOfLines={bioOpen ? undefined : 2} style={styles.bio}>
+                    {profile.bio}
                   </Text>
+                  {/* Der Knopf erscheint nur, wenn es wirklich etwas
+                      aufzuklappen gibt. Die Länge ist die einzige Auskunft, die
+                      hier ohne Messung zu haben ist — ein `onTextLayout` wäre
+                      genauer, würde aber bei jedem Render neu messen. */}
+                  {profile.bio.length > 110 ? (
+                    <Text style={styles.bioMore}>
+                      {bioOpen ? 'Weniger anzeigen' : 'Mehr anzeigen'}
+                    </Text>
+                  ) : null}
                 </Pressable>
               ) : null}
+
+              {/* „1584 Follower · 3 Gefolgt" — bei Whatnot die zweitgrößte
+                  Zahl auf der Seite. Sie steht hier, weil die drei Kacheln
+                  darunter nur ABGESCHLOSSENE Geschäfte messen: Ein Verkäufer,
+                  der anfängt, steht dort dreimal auf „—". Das hier ist die
+                  einzige Zahl, die vorher schon etwas sagt. */}
+              {counts ? (
+                <Text style={styles.counts}>
+                  <Text style={styles.countsNum}>{counts.followers}</Text> Follower ·{' '}
+                  <Text style={styles.countsNum}>{counts.following}</Text> Gefolgt
+                </Text>
+              ) : null}
+
+              {isSelf ? (
+                // Auf dem eigenen Profil ist „Folgen" sinnlos — hier steht der
+                // einzige Ort, an dem die Bio je gesetzt werden kann.
+                <Pressable
+                  onPress={() => setEditing(true)}
+                  style={styles.editBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Profil bearbeiten"
+                >
+                  <Pencil size={16} color={ui.text} />
+                  <Text style={styles.editText}>Profil bearbeiten</Text>
+                </Pressable>
+              ) : (
+                <>
+                  {follow.canFollow ? (
+                    <Pressable
+                      onPress={() => follow.toggle()}
+                      disabled={follow.busy}
+                      style={[styles.followBtn, follow.isFollowing && styles.followBtnActive]}
+                      accessibilityRole="button"
+                    >
+                      <Text
+                        style={[styles.followText, follow.isFollowing && styles.followTextActive]}
+                      >
+                        {follow.isFollowing ? 'Du folgst' : 'Folgen'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+
+                  {/* Beide Ziele gibt es seit dem 15.08., waren aber NUR aus
+                      dem Verkäufer-Sheet im Live-Raum erreichbar — also genau
+                      dann nicht, wenn niemand sendet. Whatnot stellt sie aufs
+                      Profil, und dort gehören sie hin. */}
+                  {myUserId && id ? (
+                    <View style={styles.contactRow}>
+                      <Pressable
+                        style={styles.contactBtn}
+                        onPress={() => router.push(`/messages/${id}`)}
+                        accessibilityRole="button"
+                      >
+                        <MessageSquare size={16} color={ui.text} />
+                        <Text style={styles.contactText}>Nachricht</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.contactBtn}
+                        onPress={() => router.push(`/tip/${id}`)}
+                        accessibilityRole="button"
+                      >
+                        <Coins size={16} color={ui.text} />
+                        <Text style={styles.contactText}>Trinkgeld</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </>
+              )}
 
               {/* Läuft gerade etwas, ist das der wichtigste Knopf der Seite. */}
               {liveShow ? (
@@ -279,13 +590,81 @@ export default function SellerScreen() {
                 />
               </View>
 
-              {/* Ware vor Beleg: „Jetzt kaufbar" steht über „Zuletzt verkauft"
-                  und über den Bürgen. Wer auf ein Profil kommt, während niemand
-                  sendet, soll etwas TUN können. */}
+              {/* Steht ABSICHTLICH über den Reitern: Erst die Institution
+                  (Sterne, Versandzeit, Zuschläge), dann die Menschen. Für diese
+                  Community ist das der Teil, der entscheidet — er gehört nicht
+                  hinter einen Reiter, den man erst antippen muss. */}
+              <VouchPanel
+                vouches={vouches}
+                isSelf={isSelf}
+                myUserId={myUserId}
+                busy={vouch.add.isPending || vouch.remove.isPending}
+                onVouch={(note) =>
+                  void vouch.add
+                    .mutateAsync(note)
+                    .then(() => setVouchNotice('Danke — dein Name steht jetzt bei ihm. 🤝'))
+                    .catch((e: unknown) =>
+                      setVouchNotice(
+                        vouchErrorText(e instanceof Error ? e.message : String(e)),
+                      ),
+                    )
+                }
+                onUnvouch={() =>
+                  void vouch.remove
+                    .mutateAsync()
+                    .then(() => setVouchNotice('Zurückgezogen.'))
+                    .catch(() => setVouchNotice('Das hat nicht geklappt.'))
+                }
+                onOpenProfile={(userId) => router.push(`/seller/${userId}`)}
+              />
+
+              {vouchNotice ? (
+                <Pressable onPress={() => setVouchNotice(null)}>
+                  <Text style={styles.vouchNotice}>{vouchNotice}</Text>
+                </Pressable>
+              ) : null}
+
+              {/* Die Reiter, nach Whatnot-Vorbild. „Clips" fehlt bewusst:
+                  Berkat hat kein Replay und keine Clip-Marker — ein Reiter, der
+                  nur erklären kann, dass es ihn nicht gibt, ist keiner. */}
+              <View style={styles.tabs}>
+                {TABS.map((entry) => {
+                  const on = entry.key === tab;
+                  return (
+                    <Pressable
+                      key={entry.key}
+                      onPress={() => setTab(entry.key)}
+                      style={[styles.tab, on && styles.tabOn]}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: on }}
+                    >
+                      <Text style={[styles.tabText, on && styles.tabTextOn]}>
+                        {entry.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Ware vor Beleg: „Jetzt kaufbar" steht über „Zuletzt verkauft".
+                  Wer auf ein Profil kommt, während niemand sendet, soll etwas
+                  TUN können. */}
+              {tab !== 'shop' ? null : (
               <StandingShelf
                 listings={standing}
-                isOwner={myUserId === id}
+                isOwner={isSelf}
                 signedIn={Boolean(myUserId)}
+                // Auf dem Profil wird gestöbert, nicht verwaltet — hier trägt
+                // das Bild. Unter `/shelf` bleibt es die kompakte Liste.
+                layout="grid"
+                // Nur auf dem eigenen Profil. Bei einem Fremden ist „hat
+                // nichts" eine Auskunft, die niemand braucht — da bleibt das
+                // Regal unsichtbar.
+                emptyText={
+                  isSelf
+                    ? 'Noch nichts im Regal. Unter „Verkaufen" kannst du Artikel dauerhaft anbieten — die sind rund um die Uhr kaufbar, auch wenn du nicht sendest.'
+                    : null
+                }
                 busyId={standingBusyId}
                 onBuy={(item) => {
                   setStandingBusyId(item.id);
@@ -314,57 +693,116 @@ export default function SellerScreen() {
                     .finally(() => setStandingBusyId(null));
                 }}
               />
+              )}
 
-              {/* Steht ABSICHTLICH unter den Kacheln: Erst die Institution
-                  (Sterne, Versandzeit, Zuschläge), dann die Menschen. Wer die
-                  Zahlen nicht überzeugend findet, liest hier weiter — und für
-                  diese Community ist das der Teil, der entscheidet. */}
-              <VouchPanel
-                vouches={vouches}
-                isSelf={myUserId === id}
-                myUserId={myUserId}
-                busy={vouch.add.isPending || vouch.remove.isPending}
-                onVouch={(note) =>
-                  void vouch.add
-                    .mutateAsync(note)
-                    .then(() => setVouchNotice('Danke — dein Name steht jetzt bei ihm. 🤝'))
-                    .catch((e: unknown) =>
-                      setVouchNotice(
-                        vouchErrorText(e instanceof Error ? e.message : String(e)),
-                      ),
-                    )
-                }
-                onUnvouch={() =>
-                  void vouch.remove
-                    .mutateAsync()
-                    .then(() => setVouchNotice('Zurückgezogen.'))
-                    .catch(() => setVouchNotice('Das hat nicht geklappt.'))
-                }
-                onOpenProfile={(userId) => router.push(`/seller/${userId}`)}
-              />
-
-              {vouchNotice ? (
-                <Pressable onPress={() => setVouchNotice(null)}>
-                  <Text style={styles.vouchNotice}>{vouchNotice}</Text>
-                </Pressable>
+              {tab === 'shop' && items.length > 0 ? (
+                <Text style={styles.section}>Zuletzt verkauft</Text>
               ) : null}
-
-              <Text style={styles.section}>
-                {items.length > 0 ? 'Zuletzt verkauft' : ''}
-              </Text>
             </View>
           }
           ListEmptyComponent={
             <View style={styles.empty}>
               <BerkatMark size={36} color={ui.sunken} />
-              <Text style={styles.emptyTitle}>Noch nichts verkauft</Text>
+              <Text style={styles.emptyTitle}>
+                {tab === 'reviews'
+                  ? 'Noch keine Bewertung mit Text'
+                  : tab === 'shows'
+                    ? 'Noch keine Sendung'
+                    : 'Noch nichts verkauft'}
+              </Text>
+              {/* Auf dem eigenen Profil wäre „Schau bei der nächsten Show
+                  vorbei" eine Aufforderung an sich selbst, zuzuschauen. */}
               <Text style={styles.emptyBody}>
-                {name} hat hier noch keine Auktion abgeschlossen. Schau bei der nächsten Show
-                vorbei.
+                {tab === 'reviews'
+                  ? // Die Kachel oben zählt ALLE Bewertungen, diese Liste zeigt
+                    // nur die mit Worten. Dass beides auseinandergeht, ist kein
+                    // Fehler und wird hier gesagt statt verschwiegen.
+                      isSelf
+                      ? 'Sterne allein stehen oben in der Kachel. Hier erscheinen sie, sobald jemand auch etwas dazuschreibt.'
+                      : `Bewertet wurde ${name} vielleicht schon — geschrieben hat bisher niemand.`
+                  : tab === 'shows'
+                    ? isSelf
+                      ? 'Kündige unter „Verkaufen" einen Termin an, dann steht er hier — und deine Follower bekommen 15 Minuten vorher eine Erinnerung.'
+                      : `${name} hat noch keinen Termin angekündigt.`
+                    : isSelf
+                      ? 'Sobald deine erste Auktion durch ist, steht sie hier — das ist die Auslage, die Fremde als Erstes lesen.'
+                      : `${name} hat hier noch keine Auktion abgeschlossen. Schau bei der nächsten Show vorbei.`}
               </Text>
             </View>
           }
           renderItem={({ item }) => {
+            // ── Live-Shows ────────────────────────────────────────────────
+            if ('kind' in item) {
+              const soon = item.kind === 'announced';
+              return (
+                <Pressable
+                  style={({ pressed }) => [styles.showRow, pressed && styles.rowPressed]}
+                  // Eine vergangene Show hat keinen Raum mehr, in den man gehen
+                  // könnte — Berkat hat kein Replay. Deshalb ist nur die
+                  // Ankündigung „tot" und die alte Show erst recht: beides
+                  // steht als Beleg da, nicht als Knopf.
+                  disabled
+                >
+                  {/* Das Cover, wenn es eines gibt — eine gelaufene Show ist
+                      wiedererkennbar an ihrem Bild, nicht an „Berkat-Show".
+                      Eine Ankündigung hat keins (es entsteht erst beim
+                      Starten), die behält das Kalender-Symbol. */}
+                  {item.thumbnail ? (
+                    <View style={styles.showThumb}>
+                      <Image
+                        source={{ uri: item.thumbnail }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                        transition={120}
+                      />
+                    </View>
+                  ) : (
+                    <View style={[styles.showIcon, soon && styles.showIconSoon]}>
+                      {soon ? (
+                        <CalendarClock size={17} color={ui.goldInk} />
+                      ) : (
+                        <Radio size={17} color={ui.textMuted} />
+                      )}
+                    </View>
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={styles.showTitle}>
+                      {item.title ?? (soon ? 'Angekündigte Show' : 'Show')}
+                    </Text>
+                    <Text style={styles.showMeta}>
+                      {/* Ohne Zeit kein Trennzeichen — „Gelaufen · " mit
+                          nichts dahinter sah nach einem Fehler aus. */}
+                      {soon ? 'Angekündigt' : 'Gelaufen'}
+                      {item.when ? ` · ${item.when}` : ''}
+                    </Text>
+                  </View>
+                  {item.women_only ? <Lock size={13} color={ui.success} /> : null}
+                </Pressable>
+              );
+            }
+
+            // ── Bewertungen ───────────────────────────────────────────────
+            if ('comment' in item) {
+              return (
+                <View style={styles.review}>
+                  <View style={styles.reviewHead}>
+                    <Avatar
+                      uri={item.reviewer_avatar}
+                      name={item.reviewer_name}
+                      size={30}
+                    />
+                    <Text numberOfLines={1} style={styles.reviewName}>
+                      {item.reviewer_name ?? 'Jemand'}
+                    </Text>
+                    <RatingStars value={item.rating} size={13} readOnly />
+                  </View>
+                  <Text style={styles.reviewText}>{item.comment}</Text>
+                  <Text style={styles.reviewWhen}>{reviewWhen(item.created_at)}</Text>
+                </View>
+              );
+            }
+
+            // ── Shop: zuletzt verkauft ────────────────────────────────────
             // Der Platzhalter hält nur die Spalte offen.
             if ('spacer' in item) return <View style={styles.cell} />;
             return (
@@ -392,6 +830,109 @@ export default function SellerScreen() {
           }}
         />
       )}
+
+      {/* Sperren und Melden. Beides gab es schon im Verkäufer-Sheet des
+          Live-Raums (`useSellerActions`) — also genau dann NICHT, wenn niemand
+          sendet. Auf dem Profil ist es erreichbar, ohne dass jemand live sein
+          muss. Kein RPC, keine Migration: `user_blocks_insert` verlangt
+          `blocker_id = auth.uid()`, `user_reports_insert` dasselbe für
+          `reporter_id`, die RLS trägt beides. */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
+        <View style={styles.menuWrap}>
+          <View style={styles.menu}>
+            <Pressable
+              style={styles.menuRow}
+              onPress={() => {
+                if (!id) return;
+                setMenuOpen(false);
+                void (isBlocked
+                  ? sellerActions.unblock(id)
+                  : sellerActions.block(id)
+                ).then((res) =>
+                  setVouchNotice(
+                    res.ok
+                      ? isBlocked
+                        ? 'Sperre aufgehoben.'
+                        : 'Gesperrt — du siehst seine Nachrichten im Chat nicht mehr.'
+                      : res.message,
+                  ),
+                );
+              }}
+              accessibilityRole="button"
+            >
+              <Ban size={18} color={ui.text} />
+              <Text style={styles.menuText}>
+                {isBlocked ? 'Sperre aufheben' : 'Nutzer sperren'}
+              </Text>
+            </Pressable>
+
+            <View style={styles.menuSplit} />
+
+            {REPORT_REASONS.map((reason) => (
+              <Pressable
+                key={reason.key}
+                style={styles.menuRow}
+                onPress={() => {
+                  if (!id) return;
+                  setMenuOpen(false);
+                  void sellerActions.report(id, reason.key).then((res) =>
+                    setVouchNotice(
+                      res.ok ? 'Danke — wir sehen es uns an.' : res.message,
+                    ),
+                  );
+                }}
+                accessibilityRole="button"
+              >
+                <Flag size={18} color={ui.live} />
+                <Text style={[styles.menuText, styles.menuTextDanger]}>
+                  Melden · {reason.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Pressable style={styles.menuCancel} onPress={() => setMenuOpen(false)}>
+            <Text style={styles.menuCancelText}>Abbrechen</Text>
+          </Pressable>
+        </View>
+      </Modal>
+
+      <ProfileEditSheet
+        visible={editing}
+        initialBio={profile?.bio ?? null}
+        initialDisplayName={profile?.display_name ?? null}
+        initialBanner={profile?.banner_url ?? null}
+        bannerUrl={bannerDraft}
+        uploading={bannerUploading}
+        busy={updateProfile.isPending}
+        onPickBanner={() => {
+          setBannerUploading(true);
+          // `cover` statt `article`: Das Banner ist breit, kein Quadrat —
+          // `pickImage` schneidet bei `article` auf 1:1 zu.
+          void pickAndUpload('cover')
+            .then((url) => {
+              if (url) setBannerDraft(url);
+            })
+            .catch(() => setVouchNotice('Das Bild ließ sich nicht hochladen.'))
+            .finally(() => setBannerUploading(false));
+        }}
+        onClearBanner={() => setBannerDraft(null)}
+        onClose={() => setEditing(false)}
+        onSave={(bio, displayName, bannerUrl) =>
+          void updateProfile
+            .mutateAsync({ bio, displayName, bannerUrl })
+            .then(() => {
+              setEditing(false);
+              setVouchNotice('Gespeichert. 🙂');
+            })
+            .catch((e: unknown) =>
+              setVouchNotice(
+                profileEditErrorText(e instanceof Error ? e.message : String(e)),
+              ),
+            )
+        }
+      />
     </View>
   );
 }
@@ -426,12 +967,137 @@ const styles = StyleSheet.create({
     paddingBottom: space.sm,
   },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerBtn: { width: 38, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
 
-  identity: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.md },
+  tabs: {
+    flexDirection: 'row',
+    gap: space.xs,
+    marginTop: space.lg,
+    marginBottom: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 11,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabOn: { borderBottomColor: ui.brand },
+  tabText: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
+  tabTextOn: { color: ui.text, fontWeight: '700' },
+
+  rowPressed: { opacity: 0.6 },
+  showRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
+  },
+  showIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.pill,
+    backgroundColor: ui.sunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  showIconSoon: { backgroundColor: ui.gold },
+  // Eckig wie überall, wo eine Sache steht und kein Mensch.
+  showThumb: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+  },
+  showTitle: { fontSize: 15, fontWeight: '700', color: ui.text },
+  showMeta: { fontSize: 12, color: ui.textMuted, marginTop: 2 },
+
+  review: {
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
+    gap: 6,
+  },
+  reviewHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  reviewName: { flex: 1, fontSize: 14, fontWeight: '700', color: ui.text },
+  reviewText: { fontSize: 14, color: ui.text, lineHeight: 20 },
+  reviewWhen: { fontSize: 11, color: ui.textMuted },
+
+  menuBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,36,30,0.35)' },
+  menuWrap: { flex: 1, justifyContent: 'flex-end', padding: space.md, gap: space.sm },
+  menu: { backgroundColor: ui.card, borderRadius: radius.lg, overflow: 'hidden' },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: 15,
+  },
+  // Abstand zwischen „Sperren" und den Melde-Gründen: Ein Melde-Knopf direkt
+  // unter einem Sperr-Knopf wird verrutscht getroffen (dieselbe Regel wie im
+  // Verkäufer-Sheet, HANDOFF 10).
+  menuSplit: { height: StyleSheet.hairlineWidth, backgroundColor: ui.line, marginVertical: 4 },
+  menuText: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
+  menuTextDanger: { color: ui.live },
+  menuCancel: {
+    height: 52,
+    borderRadius: radius.lg,
+    backgroundColor: ui.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuCancelText: { fontSize: 15, fontWeight: '700', color: ui.text },
+
+  banner: {
+    height: 116,
+    borderRadius: radius.md,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+    marginBottom: space.md,
+  },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
   identityText: { flex: 1, minWidth: 0 },
   name: { fontSize: 22, fontWeight: '700', color: ui.text },
-  bio: { fontSize: 13, color: ui.textMuted, marginTop: 3, lineHeight: 18 },
+  handle: { fontSize: 13, color: ui.textMuted, marginTop: 1 },
+  bio: { fontSize: 13, color: ui.text, marginBottom: 3, lineHeight: 19 },
+  bioMore: { fontSize: 12, fontWeight: '700', color: ui.brand, marginBottom: space.sm },
+
+  counts: { fontSize: 13, color: ui.textMuted, marginBottom: space.md },
+  countsNum: { fontWeight: '700', color: ui.text },
+
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    height: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+    marginBottom: space.md,
+  },
+  editText: { fontSize: 15, fontWeight: '700', color: ui.text },
+
+  contactRow: { flexDirection: 'row', gap: space.sm, marginBottom: space.md },
+  contactBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 42,
+    borderRadius: radius.pill,
+    backgroundColor: ui.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ui.line,
+  },
+  contactText: { fontSize: 14, fontWeight: '600', color: ui.text },
 
   followBtn: {
     height: 44,

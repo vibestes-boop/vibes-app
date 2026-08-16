@@ -14,7 +14,17 @@ export const RAIL_TALL = 104;
 export const RAIL_SHORT = 44;
 
 export type RailItem = {
-  /** Anzeigename, zugleich der Schlüssel */
+  /**
+   * Der Schlüssel — und zwar der Slug, NICHT der Anzeigename.
+   *
+   * Bis zum 16.08.2026 war beides dasselbe Feld, weil `live_sessions.category`
+   * eine freie Zeichenkette war (und in Berkat immer `'shopping'`). Seit die
+   * Kategorien eine gepflegte Liste sind, stehen dort Slugs — die Leiste hätte
+   * „beauty" und „buecher" angezeigt statt „Beauty & Duft" und „Bücher &
+   * Medien".
+   */
+  slug: string;
+  /** Was der Mensch liest. */
   name: string;
   /** Wie viele Shows laufen gerade darin */
   liveCount: number;
@@ -22,9 +32,10 @@ export type RailItem = {
 
 type Props = {
   items: RailItem[];
+  /** Slug der gewählten Kategorie. */
   active: string;
   collapsed: boolean;
-  onSelect: (name: string) => void;
+  onSelect: (slug: string) => void;
 };
 
 export function CategoryRail({ items, active, collapsed, onSelect }: Props) {
@@ -58,11 +69,11 @@ export function CategoryRail({ items, active, collapsed, onSelect }: Props) {
           contentContainerStyle={styles.row}
         >
           {items.map((item) => {
-            const on = item.name === active;
+            const on = item.slug === active;
             return (
               <Pressable
-                key={item.name}
-                onPress={() => onSelect(item.name)}
+                key={item.slug}
+                onPress={() => onSelect(item.slug)}
                 style={[styles.tile, on && styles.tileActive]}
                 accessibilityRole="button"
               >
@@ -87,11 +98,11 @@ export function CategoryRail({ items, active, collapsed, onSelect }: Props) {
           contentContainerStyle={styles.rowShort}
         >
           {items.map((item) => {
-            const on = item.name === active;
+            const on = item.slug === active;
             return (
               <Pressable
-                key={item.name}
-                onPress={() => onSelect(item.name)}
+                key={item.slug}
+                onPress={() => onSelect(item.slug)}
                 style={[styles.pill, on && styles.pillActive]}
                 accessibilityRole="button"
               >

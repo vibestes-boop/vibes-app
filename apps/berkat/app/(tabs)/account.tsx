@@ -3,13 +3,13 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, ChevronRight, Lock, MessageSquare, Package, Truck } from 'lucide-react-native';
+import { ChevronRight, Gift, Lock, MessageSquare, Package } from 'lucide-react-native';
+import { Image } from 'expo-image';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
-import { buyerStatus, useMyOrders } from '../../lib/useMyOrders';
-import { trackingUrl } from '../../lib/useSellerOrders';
+import { buyerStatus, useMyOrders, type CartItem } from '../../lib/useMyOrders';
 import {
   formatCartWindow,
   formatEuro,
@@ -19,7 +19,8 @@ import {
 import { useCheckoutCart } from '../../lib/useCheckout';
 import { shippingHint, useShippingLookup } from '../../lib/useShipping';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
-import { useMyReviews, useOrderReviewActions } from '../../lib/useOrderReview';
+import { useMyRewards } from '../../lib/useRewards';
+import { useMyReviews } from '../../lib/useOrderReview';
 import { RatingStars } from '../../components/RatingStars';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -31,6 +32,7 @@ type OpenCart = {
   closes_at: string;
   itemCount: number;
   totalCents: number;
+  items: CartItem[];
 };
 
 /** Offene Sammelkörbe des Käufers — je Verkäufer einer, jeder wird ein Paket. */
@@ -60,7 +62,7 @@ function useMyCarts(userId: string | null) {
 
       const { data: won, error: wonError } = await supabase
         .from('live_auctions')
-        .select('cart_id, current_bid_cents')
+        .select('cart_id, current_bid_cents, title, image_url')
         .in(
           'cart_id',
           rows.map((c) => c.id),
@@ -68,13 +70,20 @@ function useMyCarts(userId: string | null) {
         .eq('status', 'sold');
       if (wonError) throw wonError;
 
-      const items = (won ?? []) as { cart_id: string; current_bid_cents: number | null }[];
+      const items = (won ?? []) as {
+        cart_id: string;
+        current_bid_cents: number | null;
+        title: string;
+        image_url: string | null;
+      }[];
       return rows.map((cart) => {
         const mine = items.filter((item) => item.cart_id === cart.id);
         return {
           ...cart,
           itemCount: mine.length,
           totalCents: mine.reduce((sum, item) => sum + (item.current_bid_cents ?? 0), 0),
+          // Was drin liegt — vorher war ein offenes Paket nur eine Zahl.
+          items: mine.map((item) => ({ title: item.title, image_url: item.image_url })),
         };
       });
     },
@@ -91,30 +100,12 @@ export default function AccountScreen() {
   const { data: carts = [], refetch: refetchCarts } = useMyCarts(myUserId);
   const { data: orders = [], refetch: refetchOrders } = useMyOrders(myUserId);
   const { data: unreadMessages = 0, refetch: refetchUnread } = useUnreadMessageCount(myUserId);
+  const { data: rewards, refetch: refetchRewards } = useMyRewards(myUserId);
+  const openCredits = rewards?.credits_open ?? 0;
 
   // Bewerten: was ich schon abgegeben habe, damit dieselbe Bestellung nicht
   // zweimal nach Sternen fragt.
   const { data: myReviews = {} } = useMyReviews(myUserId, orders.map((o) => o.id));
-  const { confirmDelivered, submitReview } = useOrderReviewActions(myUserId);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-
-  const confirmArrived = useCallback(
-    async (orderId: string) => {
-      setConfirmingId(orderId);
-      const res = await confirmDelivered(orderId);
-      setConfirmingId(null);
-      if (!res.ok) setNotice(res.message);
-    },
-    [confirmDelivered],
-  );
-
-  const rate = useCallback(
-    async (orderId: string, rating: number) => {
-      const res = await submitReview(orderId, rating);
-      setNotice(res.ok ? 'Danke — das hilft den Nächsten. ⭐' : res.message);
-    },
-    [submitReview],
-  );
 
   // Beim Öffnen des Reiters neu laden — nicht nur beim ersten Aufbauen.
   //
@@ -129,7 +120,10 @@ export default function AccountScreen() {
       void refetchCarts();
       void refetchOrders();
       void refetchUnread();
-    }, [refetchCarts, refetchOrders, refetchUnread]),
+      // Gutschriften entstehen serverseitig (Trigger auf `product_orders`).
+      // Ohne diesen Ruf bliebe das Abzeichen stehen, bis die App neu startet.
+      void refetchRewards();
+    }, [refetchCarts, refetchOrders, refetchUnread, refetchRewards]),
   );
   const sellerNames = useUsernames([
     ...carts.map((c) => c.seller_id),
@@ -174,12 +168,24 @@ export default function AccountScreen() {
         paddingBottom: insets.bottom + space.xl,
       }}
     >
-      <View style={styles.profileRow}>
+      {/* Die Tür zum eigenen Profil.
+          Bis zum 16.08.2026 gab es keine: Acht Stellen in der App springen auf
+          /seller/<id>, keine einzige mit der eigenen. Das eigene Regal, die
+          eigenen Bürgen und die eigene Bio waren damit unerreichbar — man sah
+          seine Seite nur so, wie ein Fremder sie NICHT sieht, nämlich gar nicht.
+          Bei Whatnot IST der Konto-Reiter das Profil; hier führt er hin. */}
+      <Pressable
+        style={({ pressed }) => [styles.profileRow, pressed && styles.linkRowPressed]}
+        onPress={() => myUserId && router.push(`/seller/${myUserId}`)}
+        accessibilityRole="button"
+        accessibilityLabel="Mein Profil ansehen"
+      >
         <Avatar uri={profile?.avatar_url} name={profile?.username} size={56} ring />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} style={styles.name}>
             {profile?.username ?? 'Dein Konto'}
           </Text>
+          <Text style={styles.profileHint}>Mein Profil ansehen</Text>
           {profile?.women_only_verified ? (
             <View style={styles.wozBadge}>
               <Lock size={11} color={ui.successInk} />
@@ -187,7 +193,8 @@ export default function AccountScreen() {
             </View>
           ) : null}
         </View>
-      </View>
+        <ChevronRight size={20} color={ui.textMuted} />
+      </Pressable>
 
       {/* Der einzige Weg zu eingehenden Nachrichten. Steht über den Paketen,
           weil eine Frage des Verkäufers zur Lieferadresse dringender ist als
@@ -204,6 +211,28 @@ export default function AccountScreen() {
           <View style={styles.linkBadge}>
             <Text style={styles.linkBadgeText}>
               {unreadMessages > 9 ? '9+' : unreadMessages}
+            </Text>
+          </View>
+        ) : null}
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
+
+      {/* Einladen steht ÜBER den Paketen, weil es die einzige Zeile hier ist,
+          die Berkat größer macht statt nur den eigenen Kram zu verwalten. Das
+          Abzeichen zeigt offene Gutschriften — eine Zahl, die etwas wert ist,
+          soll man sehen, ohne die Seite zu öffnen. */}
+      <Pressable
+        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        onPress={() => router.push('/rewards')}
+        accessibilityRole="button"
+        accessibilityLabel="Einladen und Belohnungen"
+      >
+        <Gift size={19} color={ui.text} />
+        <Text style={styles.linkLabel}>Einladen</Text>
+        {openCredits > 0 ? (
+          <View style={styles.creditBadge}>
+            <Text style={styles.creditBadgeText}>
+              {openCredits}× Gratis-Versand
             </Text>
           </View>
         ) : null}
@@ -231,6 +260,32 @@ export default function AccountScreen() {
               {cart.itemCount} {cart.itemCount === 1 ? 'Artikel' : 'Artikel'} · 1 Paket ·{' '}
               {formatCartWindow(cart.closes_at, serverNow)}
             </Text>
+
+            {/* Was drin liegt, als Bilderreihe. Ein offenes Paket war vorher
+                nur eine Zahl — man sah nicht, wofür man gleich bezahlt. */}
+            {cart.items.length > 0 ? (
+              <View style={styles.cartStrip}>
+                {cart.items.slice(0, 6).map((item, index) => (
+                  <View key={`${cart.id}-${index}`} style={styles.cartThumb}>
+                    {item.image_url ? (
+                      <Image
+                        source={{ uri: item.image_url }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                        transition={120}
+                      />
+                    ) : (
+                      <Package size={15} color={ui.textMuted} />
+                    )}
+                  </View>
+                ))}
+                {cart.items.length > 6 ? (
+                  <View style={[styles.cartThumb, styles.cartMore]}>
+                    <Text style={styles.cartMoreText}>+{cart.items.length - 6}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
 
             <Pressable
               style={[styles.payButton, payingId === cart.id && styles.payButtonBusy]}
@@ -262,15 +317,25 @@ export default function AccountScreen() {
         <>
           <Text style={[styles.sectionLabel, { marginTop: space.lg }]}>Gekauft</Text>
           {orders.map((order) => {
-            const link = trackingUrl(order.tracking_carrier, order.tracking_number);
             return (
-              <View key={order.id} style={styles.card}>
+              // Die ganze Karte führt auf die Detailseite. Sie bleibt eine
+              // Zusammenfassung — Adresse, Bestellnummer und das große Bild
+              // stehen dort. Bei zwanzig Bestellungen wäre alles inline genau
+              // die Wand, die der Verkaufen-Reiter am 16.08. war.
+              <Pressable
+                key={order.id}
+                style={({ pressed }) => [styles.card, pressed && styles.linkRowPressed]}
+                onPress={() => router.push(`/order/${order.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Bestellung bei ${sellerNames[order.seller_id] ?? 'Verkäufer'} ansehen`}
+              >
                 <View style={styles.cartHead}>
                   <Package size={17} color={ui.text} />
                   <Text style={styles.cardTitle}>{sellerNames[order.seller_id] ?? '…'}</Text>
                   <Text style={styles.cartTotal}>
                     {Number(order.amount_eur).toFixed(2).replace('.', ',')} €
                   </Text>
+                  <ChevronRight size={17} color={ui.textMuted} />
                 </View>
 
                 <Text style={styles.orderStatus}>{buyerStatus(order.status)}</Text>
@@ -278,89 +343,60 @@ export default function AccountScreen() {
                 {/* Die Bestellung trägt nur eine Zusammenfassung wie „3 Artikel
                     aus der Live-Show". Was tatsächlich drin liegt, weiß nur der
                     Sammelkorb — und genau das will man hier sehen. */}
+                {/* Mit Bild statt als Wortliste: Wer an einem Abend drei Sachen
+                    gewonnen hat, erkennt sie am Foto, nicht an „Silberring,
+                    handgemacht". Das Bild hängt ohnehin an der Auktion — es
+                    wurde bis zum 16.08.2026 nur nicht mitgeholt. */}
                 {order.items.length > 0 ? (
                   <View style={styles.orderItems}>
                     {order.items.map((item, index) => (
-                      <Text key={`${order.id}-${index}`} numberOfLines={1} style={styles.orderItem}>
-                        · {item}
-                      </Text>
+                      <View key={`${order.id}-${index}`} style={styles.orderItemRow}>
+                        <View style={styles.orderThumb}>
+                          {item.image_url ? (
+                            <Image
+                              source={{ uri: item.image_url }}
+                              style={StyleSheet.absoluteFill}
+                              contentFit="cover"
+                              transition={120}
+                            />
+                          ) : (
+                            <Package size={14} color={ui.textMuted} />
+                          )}
+                        </View>
+                        <Text numberOfLines={1} style={styles.orderItem}>
+                          {item.title}
+                        </Text>
+                      </View>
                     ))}
                   </View>
                 ) : order.title ? (
                   <Text style={styles.cardBody}>{order.title}</Text>
                 ) : null}
 
-                {order.tracking_number ? (
-                  // Kennt `trackingUrl` den Zusteller nicht, gibt es keinen
-                  // Verfolgungs-Link. Dann steht die Nummer als schlichter Text
-                  // da statt als Knopf, der nichts tut — abtippen kann man sie
-                  // trotzdem.
-                  link ? (
-                    <Pressable
-                      style={styles.trackRow}
-                      onPress={() => void Linking.openURL(link)}
-                      accessibilityRole="button"
-                      accessibilityLabel="Sendung verfolgen"
-                    >
-                      <Truck size={15} color={ui.brand} />
-                      <Text style={styles.trackText}>
-                        {order.tracking_carrier ?? 'Sendung'} · {order.tracking_number}
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    <View style={styles.trackRow}>
-                      <Truck size={15} color={ui.textMuted} />
-                      <Text style={styles.trackPlain}>
-                        {order.tracking_carrier ?? 'Sendung'} · {order.tracking_number}
-                      </Text>
-                    </View>
-                  )
-                ) : order.status === 'paid' ? (
+                {/* Nur der HINWEIS, dass etwas zu tun ist — die Handlung
+                    selbst liegt auf der Detailseite.
+                    Grund: Die Karte ist seit dem 16.08.2026 selbst ein Knopf.
+                    Ein Knopf im Knopf ist in diesem Projekt schon einmal
+                    schiefgegangen (Serlo v1.26.5, Verkäufer-Karte im Shop) —
+                    dort musste das äußere Pressable wieder raus. */}
+                {order.status === 'shipped' ? (
+                  <Text style={styles.actionHint}>Angekommen? Hier eintragen →</Text>
+                ) : order.status === 'delivered' && !myReviews[order.id] ? (
+                  <Text style={styles.actionHint}>Noch nicht bewertet →</Text>
+                ) : order.status === 'delivered' ? (
+                  <View style={styles.reviewDone}>
+                    <RatingStars value={myReviews[order.id]} size={15} readOnly />
+                  </View>
+                ) : order.tracking_number ? (
+                  <Text style={styles.payHint}>
+                    {order.tracking_carrier ?? 'Sendung'} · {order.tracking_number}
+                  </Text>
+                ) : (
                   <Text style={styles.payHint}>
                     Sobald der Verkäufer packt, steht die Sendungsnummer hier.
                   </Text>
-                ) : null}
-
-                {/* Der Abschluss der Kette. Ohne diesen Knopf erreicht keine
-                    Bestellung je `delivered` — und `submit_order_review`
-                    verlangt genau das, also könnte niemand je bewertet werden. */}
-                {order.status === 'shipped' ? (
-                  <Pressable
-                    style={styles.arrivedButton}
-                    disabled={confirmingId === order.id}
-                    onPress={() => void confirmArrived(order.id)}
-                    accessibilityRole="button"
-                  >
-                    <Check size={16} color={ui.brand} />
-                    <Text style={styles.arrivedText}>
-                      {confirmingId === order.id ? 'Einen Moment …' : 'Ist angekommen'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-
-                {order.status === 'delivered' ? (
-                  myReviews[order.id] ? (
-                    <View style={styles.reviewDone}>
-                      <RatingStars value={myReviews[order.id]} size={16} readOnly />
-                      <Text style={styles.reviewDoneText}>Danke für die Bewertung 🙏</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.reviewBox}>
-                      <Text style={styles.reviewPrompt}>
-                        Wie war der Kauf bei {sellerNames[order.seller_id] ?? 'diesem Verkäufer'}?
-                      </Text>
-                      <RatingStars
-                        value={0}
-                        onChange={(rating) => void rate(order.id, rating)}
-                      />
-                      <Text style={styles.reviewHint}>
-                        Deine Sterne zählen in seinen Schnitt — den sehen alle, die seine Show
-                        aufmachen.
-                      </Text>
-                    </View>
-                  )
-                ) : null}
-              </View>
+                )}
+              </Pressable>
             );
           })}
         </>
@@ -379,6 +415,7 @@ export default function AccountScreen() {
       >
         <Text style={styles.signOutText}>Abmelden</Text>
       </Pressable>
+
     </ScrollView>
   );
 }
@@ -403,6 +440,7 @@ const styles = StyleSheet.create({
     marginBottom: space.xl,
   },
   name: { fontSize: 22, fontWeight: '700', color: ui.text },
+  profileHint: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
   wozBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -440,36 +478,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   linkBadgeText: { fontSize: 11, fontWeight: '800', color: ui.goldInk },
-
-  arrivedButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.sm,
-    height: 42,
+  creditBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: ui.brand,
-    marginTop: space.md,
+    backgroundColor: ui.success,
   },
-  arrivedText: { fontSize: 14, fontWeight: '700', color: ui.brand },
+  creditBadgeText: { fontSize: 11, fontWeight: '700', color: ui.successInk },
 
-  reviewBox: {
-    marginTop: space.md,
-    paddingTop: space.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: ui.line,
-    gap: space.sm,
-  },
-  reviewPrompt: { fontSize: 14, fontWeight: '600', color: ui.text },
-  reviewHint: { fontSize: 11, color: ui.textMuted, lineHeight: 16 },
+
   reviewDone: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
     marginTop: space.md,
   },
-  reviewDoneText: { fontSize: 12, color: ui.textMuted },
   card: {
     backgroundColor: ui.card,
     borderRadius: radius.md,
@@ -480,21 +503,37 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   cartHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  cartStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: space.sm },
+  cartThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cartMore: { backgroundColor: ui.lineStrong },
+  cartMoreText: { fontSize: 12, fontWeight: '700', color: ui.card },
   cardTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: ui.text },
   cartTotal: { fontSize: 16, fontWeight: '700', color: ui.text },
 
   orderStatus: { fontSize: 13, fontWeight: '600', color: ui.success },
-  orderItems: { gap: 2, marginTop: 2 },
-  orderItem: { fontSize: 13, color: ui.textMuted },
-  trackRow: {
-    flexDirection: 'row',
+  // Kein Knopf, sondern ein Zeiger: Die Handlung liegt eine Ebene tiefer, und
+  // der Pfeil sagt genau das.
+  actionHint: { fontSize: 13, fontWeight: '700', color: ui.brand, marginTop: 2 },
+  orderItems: { gap: 6, marginTop: space.sm },
+  orderItemRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  orderThumb: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
     alignItems: 'center',
-    gap: 6,
-    marginTop: space.xs,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  trackText: { fontSize: 13, fontWeight: '600', color: ui.brand },
-  trackPlain: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
+  orderItem: { flex: 1, fontSize: 13, color: ui.text },
   cardBody: { fontSize: 13, color: ui.textMuted, lineHeight: 19 },
   payButton: {
     marginTop: space.sm,

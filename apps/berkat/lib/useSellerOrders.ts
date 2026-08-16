@@ -8,6 +8,7 @@
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import type { CartItem } from './useMyOrders';
 
 export type SellerOrder = {
   id: string;
@@ -17,6 +18,10 @@ export type SellerOrder = {
   /** Was der Käufer an Versand gezahlt hat. 0 bei Bestellungen von vor dem 15.08.2026. */
   shipping_cents: number;
   status: string;
+  /** Berkat-Weiche: gesetzt = Sammelkorb, NULL = Serlo-Produktkauf. */
+  cart_id: string | null;
+  /** Was tatsächlich ins Paket gehört — mit Bild. */
+  items: CartItem[];
   ship_name: string | null;
   ship_street: string | null;
   ship_zip: string | null;
@@ -41,14 +46,83 @@ export function useSellerOrders(userId: string | null) {
       const { data, error } = await supabase
         .from('product_orders')
         .select(
-          'id, buyer_id, title, amount_eur, shipping_cents, status, ship_name, ship_street, ship_zip, ship_city, ship_country, tracking_carrier, tracking_number, paid_at, created_at',
+          'id, buyer_id, title, amount_eur, shipping_cents, status, cart_id, ship_name, ship_street, ship_zip, ship_city, ship_country, tracking_carrier, tracking_number, paid_at, created_at',
         )
         .eq('seller_id', userId!)
         .in('status', ['paid', 'shipped', 'delivered'])
         .order('paid_at', { ascending: false, nullsFirst: false })
         .limit(50);
       if (error) throw error;
-      return (data ?? []) as unknown as SellerOrder[];
+
+      const orders = (data ?? []) as unknown as Omit<SellerOrder, 'items'>[];
+      if (orders.length === 0) return [];
+
+      // WAS soll gepackt werden? Die Bestellung trägt nur eine Zusammenfassung
+      // („3 Artikel aus der Live-Show"); die einzelnen Artikel samt Foto hängen
+      // an den Auktionen des Sammelkorbs. Wer ein Paket packt, braucht genau
+      // die Bilder — bis zum 16.08.2026 stand dort nur Text.
+      const cartIds = orders.map((o) => o.cart_id).filter((id): id is string => Boolean(id));
+      const byCart = new Map<string, CartItem[]>();
+
+      if (cartIds.length > 0) {
+        const { data: won } = await supabase
+          .from('live_auctions')
+          .select('cart_id, title, image_url')
+          .in('cart_id', cartIds)
+          .eq('status', 'sold');
+        for (const row of (won ?? []) as {
+          cart_id: string;
+          title: string;
+          image_url: string | null;
+        }[]) {
+          const list = byCart.get(row.cart_id) ?? [];
+          list.push({ title: row.title, image_url: row.image_url });
+          byCart.set(row.cart_id, list);
+        }
+      }
+
+      return orders.map((o) => ({
+        ...o,
+        items: o.cart_id ? byCart.get(o.cart_id) ?? [] : [],
+      }));
+    },
+  });
+}
+
+/**
+ * Wie viele Bestellungen warten aufs Packen — die Zahl für das Abzeichen am
+ * Verkaufen-Reiter.
+ *
+ * Warum das eine eigene, winzige Abfrage ist und nicht aus `useSellerOrders`
+ * abgeleitet wird: Das Abzeichen hängt im Reiter-Layout, also an einer Stelle,
+ * die IMMER gemountet ist. Die große Liste dort mitzuladen hieße, fünfzig
+ * Bestellungen samt Lieferadressen im Speicher zu halten, nur um eine Zahl
+ * anzuzeigen. `head: true` überträgt keine einzige Zeile.
+ *
+ * `status = 'paid'` ist genau der Zustand mit Frist: Das Geld ist da, das Paket
+ * nicht. Alles danach (`shipped`, `delivered`) ist erledigt und gehört nicht
+ * ins Abzeichen — ein Abzeichen, das nie auf null geht, liest bald niemand mehr.
+ */
+export function useOpenOrderCount(userId: string | null) {
+  return useQuery({
+    queryKey: ['berkat', 'open-order-count', userId],
+    enabled: Boolean(userId),
+    staleTime: 20_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await supabase
+        .from('product_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('seller_id', userId!)
+        .eq('status', 'paid');
+      // Ein fehlendes Abzeichen ist ärgerlich, ein kaputter Reiter wäre
+      // schlimmer — dieselbe Regel wie beim Glocken-Zähler.
+      if (error) {
+        if (__DEV__) console.warn('[Berkat] Offene Bestellungen zählen:', error.message);
+        return 0;
+      }
+      return count ?? 0;
     },
   });
 }
@@ -79,6 +153,14 @@ export function useMarkShipped(userId: string | null) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'seller-orders', userId] });
+      // Und der Zähler für das Abzeichen an der unteren Leiste.
+      //
+      // Ohne diese Zeile blieb es nach dem Versenden auf der alten Zahl stehen,
+      // bis sein eigener Minuten-Takt lief oder der Reiter den Fokus wechselte
+      // — genau die Sorte stiller Nicht-Aktualisierung, die am 16.08. schon
+      // beim zurückgezogenen Dauerangebot zugeschlagen hat. Wer etwas an zwei
+      // Orten anzeigt, muss an beiden zurücksetzen.
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'open-order-count', userId] });
     },
   });
 

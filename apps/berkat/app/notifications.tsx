@@ -91,11 +91,16 @@ function whenLabel(iso: string): string {
  */
 function targetFor(item: BerkatNotification): string {
   switch (item.type) {
-    // Der Verkäufer packt und trägt die Sendungsnummer ein — beides im
-    // Verkaufen-Reiter, nicht im Konto.
+    // Der Verkäufer packt und trägt die Sendungsnummer ein.
+    //
+    // Bis zum 16.08.2026 führte das auf `/(tabs)/sell` — also an den Anfang
+    // eines Reiters, unter dem die Bestellungen ganz unten lagen, hinter zwei
+    // Formularen und dem Regal. Man landete im Show-Formular und musste
+    // scrollen. Jetzt trifft die Meldung den Ort, an dem die Handlung
+    // stattfindet — genau das verlangt die Regel über dieser Funktion.
     case 'order_paid':
     case 'new_order':
-      return '/(tabs)/sell';
+      return '/orders';
     case 'live':
       return item.session_id ? `/live/${item.session_id}` : '/(tabs)/';
     // Zur Erinnerung an einen Termin gibt es noch keine Show — der einzige
@@ -125,6 +130,17 @@ function Row({ item }: { item: BerkatNotification }) {
         {item.comment_text ? (
           <Text numberOfLines={2} style={styles.rowText}>
             {item.comment_text}
+          </Text>
+        ) : null}
+        {/* Der Artikelname, wenn er nicht ohnehin im Satz steht.
+            Bei `order_paid` ist der Satz für alle Bestellungen derselbe („Eine
+            Bestellung wurde bezahlt — bitte versenden"); ohne diese Zeile
+            standen bei vier offenen Bestellungen vier wortgleiche Meldungen
+            untereinander. Bei `auction_won` trägt `comment_text` den Namen
+            bereits — dann wäre er hier doppelt. */}
+        {item.product_name && !item.comment_text?.includes(item.product_name) ? (
+          <Text numberOfLines={1} style={styles.rowProduct}>
+            {item.product_name}
           </Text>
         ) : null}
         <Text style={styles.rowMeta}>
@@ -238,6 +254,7 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 15, fontWeight: '700', color: ui.text },
   rowText: { fontSize: 14, color: ui.text, lineHeight: 19 },
+  rowProduct: { fontSize: 14, fontWeight: '700', color: ui.text, marginTop: 1 },
   rowMeta: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
   dot: {
     width: 8,

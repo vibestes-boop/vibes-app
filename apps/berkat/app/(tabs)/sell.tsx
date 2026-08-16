@@ -19,7 +19,18 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Gift, ImagePlus, Pencil, Plus, Radio, Trash2, X } from 'lucide-react-native';
+import {
+  Check,
+  ChevronRight,
+  ImagePlus,
+  Package,
+  Pencil,
+  Plus,
+  Radio,
+  ShoppingBag,
+  Trash2,
+  X,
+} from 'lucide-react-native';
 import { useSession } from '../../lib/session';
 import { useLivePlayer } from '../../lib/livePlayer';
 import { pickAndUpload, type ImageKind } from '../../lib/uploadImage';
@@ -43,8 +54,7 @@ import {
   useSetShowCover,
   useStudioActions,
 } from '../../lib/useStudio';
-import { orderErrorText, useMarkShipped, useSellerOrders } from '../../lib/useSellerOrders';
-import { useReceivedTips } from '../../lib/useTip';
+import { useOpenOrderCount } from '../../lib/useSellerOrders';
 import {
   linkShowToPlan,
   matchingPlan,
@@ -54,14 +64,9 @@ import {
 } from '../../lib/useSchedule';
 import { BerkatMark } from '../../components/BerkatMark';
 import { SchedulePlanner } from '../../components/SchedulePlanner';
-import { SellerOrders } from '../../components/SellerOrders';
-import { StandingComposer } from '../../components/StandingComposer';
-import { StandingShelf } from '../../components/StandingShelf';
-import {
-  standingErrorText,
-  useStandingActions,
-  useStandingListings,
-} from '../../lib/useStanding';
+import { CategoryPicker } from '../../components/CategoryPicker';
+// Nur noch zum Zählen — bearbeitet wird das Regal auf `/shelf`.
+import { useStandingListings } from '../../lib/useStanding';
 import { ui, radius, space } from '../../theme/tokens';
 
 const DURATIONS = [20, 30, 60];
@@ -91,6 +96,8 @@ export default function SellScreen() {
   const winnerNames = useUsernames(sold.map((a) => a.winner_id));
 
   const [showTitle, setShowTitle] = useState('');
+  const [showCategory, setShowCategory] = useState<string | null>(null);
+  const [showCategoryParent, setShowCategoryParent] = useState<string | null>(null);
   const [duration, setDuration] = useState(30);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -108,27 +115,12 @@ export default function SellScreen() {
   const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
   const { plan: planShow, cancel: cancelPlan } = usePlanShow(myUserId);
 
+  // Regal und Bestellungen werden hier nur noch GEZÄHLT — bearbeitet werden sie
+  // auf `/shelf` und `/orders`. Die Listen selbst zu laden hieße, fünfzig
+  // Bestellungen samt Lieferadressen im Speicher zu halten, um zwei Zahlen
+  // anzuzeigen.
   const { data: standing = [] } = useStandingListings(myUserId ?? undefined);
-  const standingActions = useStandingActions(myUserId ?? undefined, myUserId);
-  const [standingBusyId, setStandingBusyId] = useState<string | null>(null);
-
-  const { data: orders = [] } = useSellerOrders(myUserId);
-  const { data: tips = [] } = useReceivedTips(myUserId);
-  const tipperNames = useUsernames(tips.map((t) => t.sender_id));
-  const markShipped = useMarkShipped(myUserId);
-  const [shippingId, setShippingId] = useState<string | null>(null);
-
-  const shipOrder = async (orderId: string, carrier: string, tracking: string) => {
-    setShippingId(orderId);
-    try {
-      setNotice(null);
-      await markShipped(orderId, carrier, tracking);
-    } catch (error) {
-      setNotice(orderErrorText(error instanceof Error ? error.message : String(error)));
-    } finally {
-      setShippingId(null);
-    }
-  };
+  const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
 
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [articleUrl, setArticleUrl] = useState<string | null>(null);
@@ -314,6 +306,16 @@ export default function SellScreen() {
               )}
             </Pressable>
 
+            {/* Kategorie der Show. Freiwillig, aber sie entscheidet, ob die
+                Sendung im Kategorien-Reiter überhaupt auftaucht — und dort
+                sucht, wer den Verkäufer noch nicht kennt. */}
+            <CategoryPicker
+              value={showCategory}
+              onChange={setShowCategory}
+              openParent={showCategoryParent}
+              onOpenParent={setShowCategoryParent}
+            />
+
             <Pressable
               style={[styles.primaryButton, createShow.isPending && styles.buttonBusy]}
               disabled={createShow.isPending || uploading !== null}
@@ -325,6 +327,7 @@ export default function SellScreen() {
                   const sessionId = await createShow.mutateAsync({
                     title: showTitle,
                     thumbnailUrl: coverUrl,
+                    category: showCategory,
                   });
                   // Steht für jetzt ein angekündigter Termin an, gehört er mit
                   // dieser Show zusammen — sonst bliebe die Ankündigung auf
@@ -341,6 +344,7 @@ export default function SellScreen() {
                   // und das alte Cover in der leeren Maske stehen.
                   setShowTitle('');
                   setCoverUrl(null);
+                  setShowCategory(null);
                   router.push(`/live/${sessionId}`);
                 })
               }
@@ -535,6 +539,18 @@ export default function SellScreen() {
                 <Text style={styles.sectionLabel}>Verkauft ({sold.length})</Text>
                 {sold.map((item) => (
                   <View key={item.id} style={styles.itemRow}>
+                    {/* Dasselbe Vorschaubild wie in der Warteschlange darüber —
+                        ohne es sah eine verkaufte Zeile aus wie ein anderer
+                        Artikeltyp. */}
+                    <View style={styles.itemThumb}>
+                      {item.image_url ? (
+                        <Image
+                          source={{ uri: item.image_url }}
+                          style={StyleSheet.absoluteFill}
+                          contentFit="cover"
+                        />
+                      ) : null}
+                    </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text numberOfLines={1} style={styles.itemTitle}>
                         {item.title}
@@ -658,64 +674,56 @@ export default function SellScreen() {
           </>
         )}
 
-        {/* Außerhalb der Show-Bedingung: Bestellungen wollen bearbeitet werden,
-            auch wenn gerade keine Show läuft — meistens sogar dann. */}
-        {/* Unabhängig davon, ob gerade gesendet wird — das ist der Zweck. */}
-        <StandingComposer
-          busy={standingActions.create.isPending}
-          canWomenOnly={Boolean(myProfile?.women_only_verified)}
-          onCreate={(input) =>
-            void standingActions.create
-              .mutateAsync(input)
-              .then(() => setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉'))
-              .catch((e: unknown) =>
-                setNotice(standingErrorText(e instanceof Error ? e.message : String(e))),
-              )
-          }
-        />
+        {/* ── Die beiden ruhigen Jobs, je eine Zeile ──────────────────────
+            Bis zum 16.08.2026 lagen Regal, Bestellungen und Trinkgeld hier als
+            volle Abschnitte untereinander — 977 Zeilen für vier verschiedene
+            Aufgaben auf einem Scroll. Sie stehen jetzt UNTER der eigentlichen
+            Arbeit und führen auf eigene Bildschirme.
 
-        <StandingShelf
-          listings={standing}
-          isOwner
-          signedIn
-          busyId={standingBusyId}
-          onBuy={() => {}}
-          onCancel={(item) => {
-            setStandingBusyId(item.id);
-            void standingActions.cancel
-              .mutateAsync(item.id)
-              .then(() => setNotice('Zurückgezogen.'))
-              .catch((e: unknown) =>
-                setNotice(standingErrorText(e instanceof Error ? e.message : String(e))),
-              )
-              .finally(() => setStandingBusyId(null));
-          }}
-        />
-
-        <SellerOrders orders={orders} busyId={shippingId} onShip={shipOrder} />
-
-        {/* Trinkgeld kommt ohne Bestellung an. Ohne diese Liste wüsste ein
-            Verkäufer nie, dass ihm jemand etwas dagelassen hat — und ein Danke,
-            das niemand sieht, ist keins. */}
-        {tips.length > 0 ? (
-          <View style={{ marginTop: space.lg }}>
-            <Text style={styles.sectionLabel}>Trinkgeld</Text>
-            {tips.map((tip) => (
-              <View key={tip.id} style={styles.tipRow}>
-                <Gift size={17} color={ui.gold} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.tipFrom}>{tipperNames[tip.sender_id] ?? '…'}</Text>
-                  {tip.message ? (
-                    <Text numberOfLines={2} style={styles.tipMessage}>
-                      „{tip.message}"
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.tipAmount}>{formatEuro(tip.amount_cents)}</Text>
+            Warum keine Tabs innerhalb dieses Reiters: Unten liegen schon fünf,
+            und die vier Jobs sind keine Geschwister — sobald gesendet wird,
+            gibt es nur noch einen. Vor allem aber kann ein Push auf einen
+            BILDSCHIRM springen, nicht auf einen Tab-Zustand darin; „Bezahlt —
+            bitte packen" landet jetzt direkt bei den Bestellungen. */}
+        <View style={styles.jobs}>
+          <Pressable
+            style={({ pressed }) => [styles.jobRow, pressed && styles.jobRowPressed]}
+            onPress={() => router.push('/orders')}
+            accessibilityRole="button"
+            accessibilityLabel={
+              openOrders > 0 ? `Bestellungen, ${openOrders} zu packen` : 'Bestellungen'
+            }
+          >
+            <Package size={19} color={ui.text} />
+            <Text style={styles.jobLabel}>Bestellungen</Text>
+            {openOrders > 0 ? (
+              <View style={styles.jobBadge}>
+                <Text style={styles.jobBadgeText}>{openOrders} zu packen</Text>
               </View>
-            ))}
-          </View>
-        ) : null}
+            ) : null}
+            <ChevronRight size={18} color={ui.textMuted} />
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.jobRow,
+              styles.jobRowSplit,
+              pressed && styles.jobRowPressed,
+            ]}
+            onPress={() => router.push('/shelf')}
+            accessibilityRole="button"
+            accessibilityLabel="Dein Regal"
+          >
+            <ShoppingBag size={19} color={ui.text} />
+            <Text style={styles.jobLabel}>Dein Regal</Text>
+            {standing.length > 0 ? (
+              <Text style={styles.jobMeta}>{standing.length} kaufbar</Text>
+            ) : (
+              <Text style={styles.jobMeta}>leer</Text>
+            )}
+            <ChevronRight size={18} color={ui.textMuted} />
+          </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -838,6 +846,36 @@ const styles = StyleSheet.create({
     color: ui.text,
   },
   fieldLabel: { fontSize: 11, color: ui.textMuted, marginBottom: 4 },
+
+  jobs: {
+    marginTop: space.xl,
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ui.line,
+    overflow: 'hidden',
+  },
+  jobRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 15,
+  },
+  jobRowSplit: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.line },
+  jobRowPressed: { opacity: 0.6 },
+  jobLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
+  jobMeta: { fontSize: 12, color: ui.textMuted },
+  // Gold, nicht Grau: Diese Zahl hat eine Frist, und die Versandzeit steht als
+  // Kachel auf dem öffentlichen Profil.
+  jobBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: ui.gold,
+  },
+  jobBadgeText: { fontSize: 11, fontWeight: '800', color: ui.goldInk },
+
   priceRow: { flexDirection: 'row', gap: space.sm },
   priceField: { flex: 1 },
 
@@ -854,19 +892,6 @@ const styles = StyleSheet.create({
   primaryButtonText: { fontSize: 16, fontWeight: '700', color: ui.goldInk },
   buttonBusy: { opacity: 0.6 },
 
-  tipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    backgroundColor: ui.card,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    marginBottom: space.sm,
-  },
-  tipFrom: { fontSize: 14, fontWeight: '600', color: ui.text },
-  tipMessage: { fontSize: 12, color: ui.textMuted, marginTop: 2, lineHeight: 17 },
-  tipAmount: { fontSize: 16, fontWeight: '700', color: ui.gold },
   ghostButton: {
     flex: 1,
     height: 42,

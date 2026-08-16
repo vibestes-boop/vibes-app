@@ -49,6 +49,10 @@ export function useFollow(targetUserId: string | undefined, myUserId: string | n
     },
     onSuccess: (following) => {
       queryClient.setQueryData(queryKey, following);
+      // Die Zahl auf dem Profil muss mitgehen — sonst steht dort weiter der
+      // alte Stand, während der Knopf schon „Du folgst" sagt.
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', targetUserId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', myUserId] });
     },
   });
 
@@ -59,4 +63,49 @@ export function useFollow(targetUserId: string | undefined, myUserId: string | n
     toggle: toggle.mutate,
     busy: toggle.isPending,
   };
+}
+
+/**
+ * „1584 Follower · 3 Gefolgt" — bei Whatnot die zweitgrößte Zahl auf dem
+ * Profil, in Berkat bis zum 16.08.2026 gar nicht vorhanden.
+ *
+ * Warum das mehr ist als Kosmetik: Die drei Kacheln darüber (Bewertung,
+ * Versandzeit, Zuschläge) messen ABGESCHLOSSENE Geschäfte. Ein Verkäufer, der
+ * gerade anfängt, steht dort dreimal auf „—". Die Follower-Zahl ist die
+ * einzige Zahl, die schon vor dem ersten Verkauf etwas aussagt — und in dieser
+ * Community ist „dem folgen 200 Leute" genau die Auskunft, nach der jemand
+ * sucht, der noch nicht gekauft hat.
+ *
+ * Zwei Zählabfragen mit `head: true` — es wird nur der `Content-Range`-Kopf
+ * gelesen, keine Zeile übertragen. `follows_select` steht auf `USING (true)`
+ * (am 16.08. im Schema-Abzug nachgesehen), Zählen ist also auch ohne Konto
+ * erlaubt.
+ */
+export function useFollowCounts(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['berkat', 'follow-counts', userId],
+    enabled: Boolean(userId),
+    staleTime: 60_000,
+    queryFn: async (): Promise<{ followers: number; following: number }> => {
+      const [followers, following] = await Promise.all([
+        supabase
+          .from('follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('following_id', userId!),
+        supabase
+          .from('follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('follower_id', userId!),
+      ]);
+      // Scheitert eine der beiden, ist eine 0 besser als ein kaputtes Profil —
+      // dieselbe Regel wie beim Glocken-Abzeichen auf der Startseite.
+      if ((followers.error || following.error) && __DEV__) {
+        console.warn(
+          '[Berkat] Follower zählen:',
+          followers.error?.message ?? following.error?.message,
+        );
+      }
+      return { followers: followers.count ?? 0, following: following.count ?? 0 };
+    },
+  });
 }

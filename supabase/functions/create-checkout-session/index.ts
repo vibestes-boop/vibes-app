@@ -200,8 +200,18 @@ Deno.serve(async (req) => {
     // Serlos Shop bleibt unberührt — der Zweig hängt an `isAuctionCart`, und
     // `cart_id` ist bei einem Produktkauf immer NULL.
     if (isAuctionCart && order.cart_id) {
+      // `…_for_checkout`, nicht die STABLE-Schwester `get_cart_shipping_options`:
+      // Diese Fassung reserviert zusätzlich eine Versand-Gutschrift aus einer
+      // eingelösten Einladung (Migration 20260816130000) und gibt dann ALLE
+      // Zonen zu 0 aus. Die Anzeige in der App ruft weiterhin die STABLE —
+      // eine Anzeige darf nichts verbrauchen.
+      //
+      // Idempotent je Korb: Wird die Kasse für denselben Korb ein zweites Mal
+      // geöffnet (abgebrochene Zahlung, Idempotenz-Abfrage in
+      // `checkout_auction_cart`), findet sie die bereits reservierte Gutschrift
+      // wieder und kostet keine zweite.
       const { data: rates, error: ratesError } = await adminClient.rpc(
-        'get_cart_shipping_options',
+        'get_cart_shipping_options_for_checkout',
         { p_cart_id: order.cart_id },
       );
       if (ratesError) {

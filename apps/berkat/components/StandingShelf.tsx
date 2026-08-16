@@ -23,6 +23,33 @@ type Props = {
   busyId: string | null;
   onBuy: (listing: StandingListing) => void;
   onCancel: (listing: StandingListing) => void;
+  /**
+   * Was bei einem leeren Regal stehen soll. Ohne diesen Text bleibt die
+   * Komponente unsichtbar.
+   *
+   * Am 16.08.2026 aufgefallen: Ein leeres Regal war von „gibt es hier gar
+   * nicht" nicht zu unterscheiden — ausgerechnet auf dem EIGENEN Profil, also
+   * genau dort, wo die Aufforderung stehen müsste, eines zu füllen. Auf einem
+   * fremden Profil bleibt es richtig, nichts zu zeigen: „Dieser Verkäufer hat
+   * nichts" ist eine Auskunft, die niemand braucht.
+   */
+  emptyText?: string | null;
+  /**
+   * `grid` zeigt große quadratische Bilder in zwei Spalten, `list` die
+   * kompakten Zeilen mit 52-px-Vorschau.
+   *
+   * Der Unterschied ist keine Geschmacksfrage, sondern folgt der Frage, die der
+   * Bildschirm beantwortet:
+   *   • Auf dem PROFIL stöbert ein Fremder — „was soll ich mir ansehen?".
+   *     Dort trägt das Bild.
+   *   • Unter `/shelf` verwaltet der Verkäufer sein eigenes Regal — „welches
+   *     davon ziehe ich zurück?". Dort ist das Bild nur Wiedererkennung, und
+   *     eine Zeile zeigt mehr Artikel auf einmal.
+   *
+   * Am 16.08.2026 nachgemessen: Whatnot benutzt beide Größen, nur an den
+   * jeweils richtigen Stellen.
+   */
+  layout?: 'list' | 'grid';
 };
 
 export function StandingShelf({
@@ -32,8 +59,21 @@ export function StandingShelf({
   busyId,
   onBuy,
   onCancel,
+  emptyText,
+  layout = 'list',
 }: Props) {
-  if (listings.length === 0) return null;
+  if (listings.length === 0) {
+    if (!emptyText) return null;
+    return (
+      <View style={s.wrap}>
+        <View style={s.head}>
+          <ShoppingBag size={16} color={ui.text} />
+          <Text style={s.title}>Jetzt kaufbar</Text>
+        </View>
+        <Text style={s.empty}>{emptyText}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={s.wrap}>
@@ -43,7 +83,69 @@ export function StandingShelf({
         <Text style={s.count}>{listings.length}</Text>
       </View>
 
-      {listings.map((item) => {
+      {layout === 'grid' ? (
+        <View style={s.grid}>
+          {listings.map((item) => {
+            const busy = busyId === item.id;
+            return (
+              <View key={item.id} style={s.cell}>
+                <View style={s.cellThumb}>
+                  {item.image_url ? (
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                      transition={140}
+                    />
+                  ) : null}
+                  {item.women_only ? (
+                    <View style={s.cellLock}>
+                      <Lock size={11} color={ui.successInk} />
+                    </View>
+                  ) : null}
+                </View>
+                <Text numberOfLines={2} style={s.cellTitle}>
+                  {item.title}
+                </Text>
+                <Text style={s.cellPrice}>{formatEuro(item.buy_now_cents)}</Text>
+
+                {isOwner ? (
+                  <Pressable
+                    style={s.cellGhost}
+                    disabled={busy}
+                    onPress={() => onCancel(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.title} zurückziehen`}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color={ui.textMuted} />
+                    ) : (
+                      <Text style={s.ghostText}>Zurückziehen</Text>
+                    )}
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={[s.cellBuy, (busy || !signedIn) && s.buyOff]}
+                    disabled={busy || !signedIn}
+                    onPress={() => onBuy(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.title} für ${formatEuro(item.buy_now_cents)} kaufen`}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color={ui.goldInk} />
+                    ) : (
+                      <Text style={s.buyText}>Kaufen</Text>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+          {/* Hält die letzte Spalte offen, wenn die Anzahl ungerade ist. */}
+          {listings.length % 2 === 1 ? <View style={s.cell} /> : null}
+        </View>
+      ) : (
+      listings.map((item) => {
         const busy = busyId === item.id;
         return (
           <View key={item.id} style={s.row}>
@@ -99,7 +201,8 @@ export function StandingShelf({
             )}
           </View>
         );
-      })}
+      })
+      )}
 
       {/* Derselbe Satz wie im Live-Raum, und er stimmt aus demselben Grund:
           Ein Kauf hier landet im gleichen Paket wie ein Zuschlag heute Abend. */}
@@ -161,4 +264,47 @@ const s = StyleSheet.create({
   ghostText: { fontSize: 12, fontWeight: '600', color: ui.textMuted },
 
   hint: { fontSize: 11, color: ui.textMuted, marginTop: space.xs, lineHeight: 16 },
+  empty: { fontSize: 13, color: ui.textMuted, lineHeight: 19 },
+
+  // ── Raster-Fassung fürs Stöbern ──────────────────────────────────────────
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginTop: space.xs },
+  // `48%` statt `flex: 1`: In einem umbrechenden Flex-Container würde `flex: 1`
+  // eine einzelne Karte in der letzten Zeile auf volle Breite ziehen.
+  cell: { width: '48%' },
+  cellThumb: {
+    aspectRatio: 1,
+    borderRadius: radius.md,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+  },
+  cellLock: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
+    backgroundColor: ui.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellTitle: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 6 },
+  cellPrice: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
+  cellBuy: {
+    marginTop: space.sm,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: ui.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellGhost: {
+    marginTop: space.sm,
+    height: 36,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: ui.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell, Lock, Search } from 'lucide-react-native';
+import { Bell, Lock, MessageSquare, Search } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -30,9 +30,11 @@ import { UpcomingStrip } from '../../components/UpcomingStrip';
 import { SellerResults } from '../../components/SellerResults';
 import { SEARCH_MIN, useSellerSearch } from '../../lib/useSellerSearch';
 import { useUpcomingShows } from '../../lib/useSchedule';
+import { useCategoryOptions } from '../../lib/useCategories';
 import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
+import { useUnreadMessageCount } from '../../lib/useDirectMessages';
 
 type LiveShow = {
   id: string;
@@ -44,7 +46,16 @@ type LiveShow = {
   women_only: boolean;
 };
 
-const ALL = 'Für dich';
+/**
+ * Sentinel für „keine Kategorie gewählt".
+ *
+ * Bewusst ein Wert, der nie ein echter Slug sein kann: Die Spalten-Prüfung auf
+ * `berkat_categories.slug` verlangt `^[a-z][a-z0-9-]{1,30}$`, die zwei
+ * Unterstriche schließen eine Kollision also aus. Vorher stand hier der
+ * Anzeigename „Für dich" und diente zugleich als Filterwert — das ging nur so
+ * lange gut, wie Name und Schlüssel dasselbe waren.
+ */
+const ALL = '__all__';
 
 // Der Lückenfüller der letzten Reihe. `spacer` ist kein Zierrat, sondern das
 // Kennzeichen, an dem Karte und Platzhalter sicher auseinandergehalten werden.
@@ -84,6 +95,10 @@ export default function HomeScreen() {
   // fehlende Zahl darf die Startseite nicht mitreißen.
   const userId = useSession((st) => st.userId);
   const { data: unread = 0 } = useUnreadCount(userId);
+  // Zweites Abzeichen, eigene Quelle: Nachrichten sind keine Meldungen. Wer
+  // eine Frage zur Lieferadresse bekommt, findet sie sonst nur, wenn er zufällig
+  // ins Konto geht — bis zum 16.08.2026 war das der einzige Weg dorthin.
+  const { data: unreadMessages = 0 } = useUnreadMessageCount(userId);
   const { data: shows = [], isLoading, refetch } = useLiveShows();
   const { data: upcoming = [], refetch: refetchUpcoming } = useUpcomingShows();
 
@@ -138,9 +153,11 @@ export default function HomeScreen() {
       // Auch der Sendeplan: Wer gerade im Verkaufen-Reiter einen Termin
       // eingetragen hat, soll ihn beim Zurückwechseln sofort oben stehen sehen.
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows'] });
-      // Und die Glocke. Sie hing sonst bis zu 30 Sekunden hinterher, weil
-      // Meldungen serverseitig entstehen und der Reiter im Speicher bleibt.
+      // Und die beiden Abzeichen oben rechts. Sie hingen sonst bis zu 30 bzw.
+      // 60 Sekunden hinterher, weil beide Quellen serverseitig entstehen und
+      // der Reiter im Speicher bleibt.
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'notifications-unread'] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'unread-messages'] });
     }, [queryClient]),
   );
 
@@ -165,6 +182,20 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // `live_sessions.category` trägt seit dem 16.08.2026 einen SLUG, keinen
+  // Anzeigenamen. Ohne diese Übersetzung stünde in der Leiste „beauty" und
+  // „buecher" statt „Beauty & Duft" und „Bücher & Medien" — vorher fiel das
+  // nicht auf, weil dort immer die Konstante `'shopping'` stand.
+  const { groups: categoryGroups } = useCategoryOptions();
+  const categoryNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const parent of categoryGroups) {
+      map.set(parent.slug, parent.name);
+      for (const child of parent.children) map.set(child.slug, child.name);
+    }
+    return map;
+  }, [categoryGroups]);
+
   const categories = useMemo((): RailItem[] => {
     const counts = new Map<string, number>();
     for (const show of shows) {
@@ -172,12 +203,18 @@ export default function HomeScreen() {
       counts.set(show.category, (counts.get(show.category) ?? 0) + 1);
     }
     return [
-      { name: ALL, liveCount: shows.length },
+      { slug: ALL, name: 'Für dich', liveCount: shows.length },
       ...Array.from(counts.entries())
         .sort((a, b) => b[1] - a[1])
-        .map(([name, liveCount]) => ({ name, liveCount })),
+        .map(([slug, liveCount]) => ({
+          slug,
+          // Kennt die Liste den Slug nicht (alte Zeile, gelöschte Kategorie),
+          // steht er selbst da — besser als eine leere Kachel.
+          name: categoryNames.get(slug) ?? slug,
+          liveCount,
+        })),
     ];
-  }, [shows]);
+  }, [shows, categoryNames]);
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -207,20 +244,46 @@ export default function HomeScreen() {
         <BerkatMark size={24} color={ui.brand} />
         <Text style={styles.wordmark}>berkat</Text>
 
-        {/* Rechts außen: Meldungen. Das Abzeichen zählt nur Berkat-Meldungen —
-            die Tabelle gehört Serlo und Berkat gemeinsam. */}
-        <Pressable
-          hitSlop={10}
-          onPress={() => router.push('/notifications')}
-          style={styles.bell}
-        >
-          <Bell size={21} color={ui.text} />
-          {unread > 0 ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
-            </View>
-          ) : null}
-        </Pressable>
+        {/* Rechts außen zwei Knöpfe, wie bei Whatnot: Posteingang und Glocke.
+            Sie sehen gleich aus, sind aber nicht dasselbe — links steht, was
+            ein MENSCH geschrieben hat, rechts, was BERKAT gemeldet hat. Der
+            Posteingang steht davor, weil eine Frage des Verkäufers zur
+            Lieferadresse dringender ist als ein Paket mit 24 Stunden Zeit. */}
+        <View style={styles.headerActions}>
+          <Pressable
+            hitSlop={8}
+            onPress={() => router.push('/messages')}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unreadMessages > 0 ? `Nachrichten, ${unreadMessages} ungelesen` : 'Nachrichten'
+            }
+          >
+            <MessageSquare size={21} color={ui.text} />
+            {unreadMessages > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+
+          <Pressable
+            hitSlop={8}
+            onPress={() => router.push('/notifications')}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel={unread > 0 ? `Meldungen, ${unread} neue` : 'Meldungen'}
+          >
+            <Bell size={21} color={ui.text} />
+            {unread > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.searchWrap}>
@@ -361,7 +424,11 @@ export default function HomeScreen() {
               <Text numberOfLines={2} style={styles.cardTitle}>
                 {item.title ?? 'Ohne Titel'}
               </Text>
-              {item.category ? <Text style={styles.cardCategory}>{item.category}</Text> : null}
+              {item.category ? (
+                <Text style={styles.cardCategory}>
+                  {categoryNames.get(item.category) ?? item.category}
+                </Text>
+              ) : null}
             </Pressable>
           );
         }}
@@ -380,7 +447,8 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
   },
   wordmark: { fontSize: 21, fontWeight: '700', color: ui.text, letterSpacing: -0.4 },
-  bell: { marginLeft: 'auto', width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  headerActions: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 2 },
+  iconButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
     top: 3,

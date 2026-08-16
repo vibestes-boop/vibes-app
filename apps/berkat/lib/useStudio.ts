@@ -58,7 +58,12 @@ export function useMyActiveShow(userId: string | null) {
 export function useCreateShow(userId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { title: string; thumbnailUrl: string | null }): Promise<string> => {
+    mutationFn: async (input: {
+      title: string;
+      thumbnailUrl: string | null;
+      /** Slug aus `berkat_categories`, oder null für „ohne". */
+      category?: string | null;
+    }): Promise<string> => {
       if (!userId) throw new Error('not_authenticated');
       // room_name wird später von LiveKit gebraucht; er muss stabil und
       // eindeutig sein, deshalb schon jetzt vergeben statt nachzurüsten.
@@ -69,7 +74,11 @@ export function useCreateShow(userId: string | null) {
           host_id: userId,
           title: input.title.trim() || 'Berkat-Show',
           status: 'active',
-          category: 'shopping',
+          // Stand bis zum 16.08.2026 fest auf 'shopping'. Das war der Grund,
+          // warum die Kategorie-Leiste auf der Startseite nie mehr als einen
+          // Eintrag hatte — sie filterte über eine Konstante. Die 20 alten
+          // Zeilen hat Migration 20260816120000 auf NULL zurückgesetzt.
+          category: input.category ?? null,
           room_name: roomName,
           thumbnail_url: input.thumbnailUrl,
           // Die Spalte hat DEFAULT 'serlo' (20260814280000) — für eine
@@ -85,6 +94,8 @@ export function useCreateShow(userId: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['berkat', 'my-show', userId] });
       queryClient.invalidateQueries({ queryKey: ['berkat', 'shows'] });
+      // Der Zähler „x live" im Kategorien-Reiter zählt genau diese Zeile mit.
+      queryClient.invalidateQueries({ queryKey: ['berkat', 'categories'] });
     },
   });
 }
