@@ -1673,3 +1673,72 @@ richtig so. Scharf wird es mit dem nächsten `preview`- oder `production`-Build;
 ist nativ und braucht ihn ohnehin.
 
 In Sentry filtert man danach über `environment:berkat` beziehungsweise den Tag `app:berkat`.
+
+---
+
+## 17. Dauerangebote — kaufbar ohne Show (Stand 16.08.2026)
+
+Bis dahin hing **alles** an einer Live-Sendung. Fünf Verkäufer mit je zwei Stunden pro Woche senden
+zusammen 10 von 168 Stunden: Die App ist rund **94 % der Zeit ein leerer Raum**. Der Sendeplan
+(Abschnitt 13) beantwortet „wann passiert wieder was" — nicht „was kann ich JETZT tun".
+
+Whatnot löst das mit zwei Regalen: **Profile Shop** (jederzeit kaufbar) und **Live Shop** (für eine
+Show reserviert). Der Schalter heißt dort „Reserve for Live".
+
+### Ein Listing-Typ, zwei Regale
+
+Genau Hebel 4 der Ausgangsanalyse. Ein Dauerangebot ist **keine neue Tabelle**, sondern eine
+`live_auctions`-Zeile **ohne Session** mit Status `listed`. Damit erbt es ohne eine Zeile
+Zusatzarbeit: Sammelkorb, Versandpauschale, Stripe-Kasse, Webhook, Zuschlag-Benachrichtigung und
+Verkäufer-Bestellliste.
+
+| Wo | Was |
+|---|---|
+| `20260815210000` | `session_id` nullable, Status `listed`, Regal-Invariante, zweite Lese-Policy, `create_standing_listing`, `cancel_standing_listing` |
+| `lib/useStanding.ts` | Liste, Anlegen, Zurückziehen, Kaufen |
+| `components/StandingComposer.tsx` | „Dauerhaft anbieten" im Verkaufen-Reiter — **unabhängig von einer laufenden Show**, das ist der Zweck |
+| `components/StandingShelf.tsx` | „Jetzt kaufbar" auf dem Verkäufer-Profil, über „Zuletzt verkauft" |
+
+### ⚠️ Die Falle, die den Entwurf bestimmt hat
+
+`live_auctions_select` prüft `EXISTS (SELECT 1 FROM live_sessions WHERE s.id =
+live_auctions.session_id …)`. Bei `session_id IS NULL` ist das **FALSE** — ein Dauerangebot wäre
+für niemanden sichtbar, ohne Fehlermeldung.
+
+Es brauchte also eine **zweite** Lese-Policy. Der Kommentar an der ersten warnt ausdrücklich vor
+`USING(true)`: Postgres verknüpft permissive Policies mit ODER, und eine schrankenlose hebelt die
+Frauen-Only-Grenze aus (Fehler vom 16.07.2026). Weil ein Dauerangebot keine Session hat, aus der es
+`women_only` erben könnte, trägt es die Kennzeichnung **selbst** — und nur geprüfte Frauen dürfen
+sie setzen, serverseitig geprüft.
+
+### Zwei Entwurfsdetails mit Grund
+
+- **`start_price_cents` bleibt 100.** Kein Kunstgriff: Wandert der Artikel später doch in eine Show,
+  startet er bei 1 € — genau das Ritual, das die Analyse „die zentrale Erfindung" nennt. Der
+  Festpreis muss deshalb darüber liegen, was die bestehende Spalten-Prüfung ohnehin verlangt.
+- **Kein Bild-Zwang.** Wer abends schnell drei Sachen einstellt, bricht sonst nach dem ersten ab.
+
+### Nebenbefund: der Sofortkauf hatte nie einen Aufrufer
+
+`buy_now_live_auction` existiert serverseitig seit dem 13.08. — und wurde **im Client nirgends
+aufgerufen**. `onBuyNow` ist als Prop an `AuctionPanel`/`BidButton` vorgesehen, wird in
+`app/live/[id].tsx` aber nie übergeben. Der Sofortkauf-Preis lässt sich im Studio eintragen und war
+für Käufer nie erreichbar. Der Dauerangebot-Kauf ist der erste Aufrufer dieser RPC.
+
+### Geprüft am 16.08.2026
+
+Migration eingespielt. Drei Rechte-Proben: Dauerangebote lesbar (200 statt 42501), `women_only`
+filterbar, `create_standing_listing` ohne Anmeldung → 401. Im Simulator angelegt und in der
+Datenbank bestätigt: `status='listed'`, `session_id=null`, `buy_now_cents=2400`,
+`start_price_cents=100`. Das Regal zeigt „Jetzt kaufbar · 1" mit Zurückziehen-Knopf.
+
+**Nicht geprüft:** der **Kauf**. Er braucht das zweite Konto (`seller_cannot_bid`). Kürzester Weg:
+vom iPhone aus das Profil von `berkattest` öffnen und die Kupferkanne kaufen — sie muss danach im
+Sammelkorb unter „Konto" liegen.
+
+### Was bewusst fehlt
+
+- **Verschieben zwischen den Regalen.** Whatnots „Reserve for Live" wäre ein UPDATE auf
+  `session_id` mit eigenen Prüfungen. Später.
+- **Eigener Benachrichtigungstext.** Wer ein Dauerangebot kauft, bekommt „🎉 Zuschlag — du hast
+  gewonnen!". Für einen Festpreis schief, gilt aber schon heute für den Sofortkauf.
