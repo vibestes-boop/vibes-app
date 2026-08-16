@@ -32,6 +32,12 @@ import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSelle
 import { useVouchActions, useVouches, vouchErrorText } from '../../lib/useVouch';
 import { Avatar } from '../../components/Avatar';
 import { VouchPanel } from '../../components/VouchPanel';
+import { StandingShelf } from '../../components/StandingShelf';
+import {
+  standingErrorText,
+  useStandingActions,
+  useStandingListings,
+} from '../../lib/useStanding';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
 
@@ -143,6 +149,10 @@ export default function SellerScreen() {
   const { data: vouches = [] } = useVouches(id, myUserId);
   const vouch = useVouchActions(id, myUserId);
   const [vouchNotice, setVouchNotice] = useState<string | null>(null);
+
+  const { data: standing = [] } = useStandingListings(id);
+  const standingActions = useStandingActions(id, myUserId);
+  const [standingBusyId, setStandingBusyId] = useState<string | null>(null);
   const follow = useFollow(id, myUserId);
 
   const [pulling, setPulling] = useState(false);
@@ -268,6 +278,42 @@ export default function SellerScreen() {
                   label={stats?.sold === 1 ? 'Zuschlag' : 'Zuschläge'}
                 />
               </View>
+
+              {/* Ware vor Beleg: „Jetzt kaufbar" steht über „Zuletzt verkauft"
+                  und über den Bürgen. Wer auf ein Profil kommt, während niemand
+                  sendet, soll etwas TUN können. */}
+              <StandingShelf
+                listings={standing}
+                isOwner={myUserId === id}
+                signedIn={Boolean(myUserId)}
+                busyId={standingBusyId}
+                onBuy={(item) => {
+                  setStandingBusyId(item.id);
+                  void standingActions.buy
+                    .mutateAsync(item.id)
+                    .then(() =>
+                      setVouchNotice('Im Paket. 🎉 Bezahlen kannst du unter „Konto".'),
+                    )
+                    .catch((e: unknown) =>
+                      setVouchNotice(
+                        standingErrorText(e instanceof Error ? e.message : String(e)),
+                      ),
+                    )
+                    .finally(() => setStandingBusyId(null));
+                }}
+                onCancel={(item) => {
+                  setStandingBusyId(item.id);
+                  void standingActions.cancel
+                    .mutateAsync(item.id)
+                    .then(() => setVouchNotice('Zurückgezogen.'))
+                    .catch((e: unknown) =>
+                      setVouchNotice(
+                        standingErrorText(e instanceof Error ? e.message : String(e)),
+                      ),
+                    )
+                    .finally(() => setStandingBusyId(null));
+                }}
+              />
 
               {/* Steht ABSICHTLICH unter den Kacheln: Erst die Institution
                   (Sterne, Versandzeit, Zuschläge), dann die Menschen. Wer die

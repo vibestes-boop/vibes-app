@@ -55,6 +55,13 @@ import {
 import { BerkatMark } from '../../components/BerkatMark';
 import { SchedulePlanner } from '../../components/SchedulePlanner';
 import { SellerOrders } from '../../components/SellerOrders';
+import { StandingComposer } from '../../components/StandingComposer';
+import { StandingShelf } from '../../components/StandingShelf';
+import {
+  standingErrorText,
+  useStandingActions,
+  useStandingListings,
+} from '../../lib/useStanding';
 import { ui, radius, space } from '../../theme/tokens';
 
 const DURATIONS = [20, 30, 60];
@@ -63,6 +70,9 @@ export default function SellScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const myUserId = useSession((s) => s.userId);
+  // Frauen-Only darf nur setzen, wer freigegeben ist — der Server prüft es
+  // ein zweites Mal, das hier blendet den Schalter nur aus.
+  const myProfile = useSession((s) => s.profile);
 
   const { serverNow } = useServerClock();
   const { data: show, isLoading } = useMyActiveShow(myUserId);
@@ -97,6 +107,10 @@ export default function SellScreen() {
 
   const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
   const { plan: planShow, cancel: cancelPlan } = usePlanShow(myUserId);
+
+  const { data: standing = [] } = useStandingListings(myUserId ?? undefined);
+  const standingActions = useStandingActions(myUserId ?? undefined, myUserId);
+  const [standingBusyId, setStandingBusyId] = useState<string | null>(null);
 
   const { data: orders = [] } = useSellerOrders(myUserId);
   const { data: tips = [] } = useReceivedTips(myUserId);
@@ -646,6 +660,38 @@ export default function SellScreen() {
 
         {/* Außerhalb der Show-Bedingung: Bestellungen wollen bearbeitet werden,
             auch wenn gerade keine Show läuft — meistens sogar dann. */}
+        {/* Unabhängig davon, ob gerade gesendet wird — das ist der Zweck. */}
+        <StandingComposer
+          busy={standingActions.create.isPending}
+          canWomenOnly={Boolean(myProfile?.women_only_verified)}
+          onCreate={(input) =>
+            void standingActions.create
+              .mutateAsync(input)
+              .then(() => setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉'))
+              .catch((e: unknown) =>
+                setNotice(standingErrorText(e instanceof Error ? e.message : String(e))),
+              )
+          }
+        />
+
+        <StandingShelf
+          listings={standing}
+          isOwner
+          signedIn
+          busyId={standingBusyId}
+          onBuy={() => {}}
+          onCancel={(item) => {
+            setStandingBusyId(item.id);
+            void standingActions.cancel
+              .mutateAsync(item.id)
+              .then(() => setNotice('Zurückgezogen.'))
+              .catch((e: unknown) =>
+                setNotice(standingErrorText(e instanceof Error ? e.message : String(e))),
+              )
+              .finally(() => setStandingBusyId(null));
+          }}
+        />
+
         <SellerOrders orders={orders} busyId={shippingId} onShip={shipOrder} />
 
         {/* Trinkgeld kommt ohne Bestellung an. Ohne diese Liste wüsste ein

@@ -680,4 +680,8 @@ Bauen ist konkreter und angenehmer, als fünf Leute anzurufen. Das Risiko ist tr
 3. **Markt-Entscheidung** — ✅ erledigt (§ 7.5).
 4. **Die fünf Gespräche.** Angebot: 0 % in der Startphase, fester Sendeplatz mit Erinnerung an alle
    Follower, du bürgst öffentlich, du moderierst die ersten drei Shows mit.
-5. **Nichts Neues bauen**, bis eine dieser fünf Personen zweimal gesendet hat.
+5. ~~**Nichts Neues bauen**, bis eine dieser fünf Personen zweimal gesendet hat.~~
+   **Aufgehoben am 15.08.2026 durch Zaur.** Die Regel stand eine Stunde. Sie war als Schutz vor
+   dem Bauen-statt-Telefonieren gedacht; die Entscheidung, sie nicht anzuwenden, ist seine.
+   Festgehalten, damit später nachvollziehbar ist, dass die Warnung ausgesprochen und bewusst
+   verworfen wurde — nicht übersehen.
