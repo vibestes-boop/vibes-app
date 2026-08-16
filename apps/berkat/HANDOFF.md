@@ -2247,6 +2247,32 @@ Abschluss-Feier. Das Design-Gesetz verlangt Maßhalten; gefeiert werden Peaks
 (erster Zuschlag, erster Verkauf), nicht das Ausfüllen einer Liste. Kein Streak,
 kein Countdown, keine Erinnerung.
 
+### `router.back()` war an dreizehn Stellen unsicher
+
+Am Gerät gemeldet: Auf dem Meldungs-Bildschirm tat der Zurück-Pfeil nichts,
+darunter die Warnung `The action 'GO_BACK' was not handled by any navigator`.
+
+`router.back()` setzt einen Eintrag im Verlauf voraus — und der ist hier nicht
+garantiert. Der strukturelle Grund: Ein Tipp auf eine Meldung springt teilweise
+auf **Reiter-Routen** (`/(tabs)/account`, `/(tabs)/sell`). Expo Router legt
+dafür keinen neuen Eintrag an, sondern wechselt zum vorhandenen
+Reiter-Bildschirm — der Stapel darüber verschwindet. Wer die Meldungen danach
+erneut öffnet, steht auf dem untersten Eintrag, und `back()` hat kein Ziel.
+
+Dasselbe trifft jeden Direktlink (`berkat://tip/<id>`), später jeden Push, der
+eine Seite kalt öffnet, und jeden App-Neustart auf einer tiefen Route.
+
+`lib/nav.ts` → `goBack(fallback)` fragt `router.canGoBack()` und setzt sonst auf
+einen **nahegelegenen** Ort zurück, nicht pauschal auf die Startseite: aus den
+Bestellungen in den Verkaufen-Reiter, aus der Bestell-Detailseite ins Konto, aus
+einer Kategorie in den Kategorien-Reiter. `replace` statt `push` — sonst bläht
+sich der Verlauf auf, bis „zurück" durch Bildschirme führt, die man nie besucht
+hat.
+
+Umgestellt sind alle zehn Kopf-Pfeile. Die vier `router.back()`-Aufrufe in
+`login.tsx` und `live/[id].tsx` stehen in Ablauflogik und sind **nicht**
+angefasst — dort ist der Verlauf durch den jeweiligen Fluss garantiert.
+
 ### Was ungeprüft ist
 
 - **Alles Sichtbare.** Aufklappen der Kategorien, die neuen Profil-Reiter, das Bearbeiten-Blatt,

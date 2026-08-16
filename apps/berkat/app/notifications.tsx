@@ -31,6 +31,7 @@ import {
 } from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
+import { goBack } from '../lib/nav';
 import {
   useBerkatNotifications,
   useMarkAllRead,
@@ -190,7 +191,7 @@ export default function NotificationsScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Meldungen</Text>

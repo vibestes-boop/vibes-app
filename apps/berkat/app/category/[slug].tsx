@@ -30,6 +30,7 @@ import {
   type CategoryListing,
 } from '../../lib/useCategories';
 import { standingErrorText, useStandingActions } from '../../lib/useStanding';
+import { goBack } from '../../lib/nav';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
@@ -133,7 +134,7 @@ export default function CategoryScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/categories')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text numberOfLines={1} style={styles.headerTitle}>

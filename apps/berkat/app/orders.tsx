@@ -17,7 +17,7 @@
 // was ist reingekommen — auch wenn dafür nichts zu packen ist.
 
 import { useCallback, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Gift } from 'lucide-react-native';
@@ -26,6 +26,7 @@ import { useSession } from '../lib/session';
 import { formatEuro, useUsernames } from '../lib/useAuction';
 import { orderErrorText, useMarkShipped, useSellerOrders } from '../lib/useSellerOrders';
 import { useReceivedTips } from '../lib/useTip';
+import { goBack } from '../lib/nav';
 import { SellerOrders } from '../components/SellerOrders';
 import { BerkatMark } from '../components/BerkatMark';
 import { radius, space, ui } from '../theme/tokens';
@@ -84,7 +85,7 @@ export default function OrdersScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/sell')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Bestellungen</Text>

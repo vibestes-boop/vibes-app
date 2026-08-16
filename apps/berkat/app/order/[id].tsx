@@ -26,6 +26,7 @@ import { buyerStatus, useMyOrder } from '../../lib/useMyOrders';
 import { trackingUrl } from '../../lib/useSellerOrders';
 import { useUsernames } from '../../lib/useAuction';
 import { useMyReviews, useOrderReviewActions } from '../../lib/useOrderReview';
+import { goBack } from '../../lib/nav';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { RatingStars } from '../../components/RatingStars';
@@ -102,7 +103,7 @@ export default function OrderScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/account')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Bestellung</Text>

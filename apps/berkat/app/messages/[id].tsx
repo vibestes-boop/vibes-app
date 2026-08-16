@@ -24,6 +24,7 @@ import { ChevronLeft, SendHorizontal } from 'lucide-react-native';
 
 import { useSession } from '../../lib/session';
 import { useProfiles } from '../../lib/useAuction';
+import { goBack } from '../../lib/nav';
 import {
   useConversationWith,
   useMarkMessagesRead,
@@ -77,7 +78,7 @@ export default function ConversationScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/messages')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Pressable

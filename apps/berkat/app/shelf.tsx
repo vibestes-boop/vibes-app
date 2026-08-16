@@ -17,7 +17,7 @@
 // nicht sendet — also 94 % der Zeit (HANDOFF 17).
 
 import { useCallback, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -32,6 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
+import { goBack } from '../lib/nav';
 import {
   standingErrorText,
   useStandingActions,
@@ -73,7 +74,7 @@ export default function ShelfScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/sell')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Dein Regal</Text>

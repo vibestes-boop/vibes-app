@@ -53,6 +53,7 @@ import { REPORT_REASONS, useMyBlocks, useSellerActions } from '../../lib/useSell
 import { reviewWhen, useSellerReviews, type SellerReview } from '../../lib/useSellerReviews';
 import { showWhen, useSellerShows } from '../../lib/useSellerShows';
 import { SITE_URL } from '../../lib/links';
+import { goBack } from '../../lib/nav';
 import { Avatar } from '../../components/Avatar';
 import { ProfileEditSheet } from '../../components/ProfileEditSheet';
 import { RatingStars } from '../../components/RatingStars';
@@ -366,7 +367,7 @@ export default function SellerScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text numberOfLines={1} style={styles.headerTitle}>

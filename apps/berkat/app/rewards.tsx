@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ChevronLeft, Gift, Share2, Sparkles, UserPlus } from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
+import { goBack } from '../lib/nav';
 import {
   rewardErrorText,
   useClaimReferral,
@@ -116,7 +117,7 @@ export default function RewardsScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/account')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Einladen</Text>
