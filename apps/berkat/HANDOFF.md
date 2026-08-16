@@ -30,10 +30,12 @@ was gilt.
 | **Verkäufer-Suche** — findet auch, wer nicht sendet | ✅ (17, Nachtrag) |
 | Fehlerüberwachung (Sentry) | ✅ eingebaut, **scharf erst ab dem nächsten Build** (16) |
 | Meldungen — Glocke, Ziel je Typ | ✅ (17, Nachtrag) |
-| **Fünf Reiter** — Kategorien und Aktivität dazu | ✅ (18) |
-| **Kategorien** — 12 Ober-, 61 Unterkategorien, Aufklappen | ✅ am Datenstand geprüft (18) |
-| **Einladungen** — Verkäufer-Bonus scharf, Käufer-Bonus **aus** | ✅ (18) |
-| **Profil** — Reiter, Bewertungstexte, Banner, Teilen, Sperren | ✅ (18) |
+| **Fünf Reiter** — Kategorien und Aktivität dazu | ✅ am Gerät gesehen (18) |
+| **Kategorien** — 12 Ober-, 61 Unterkategorien, Aufklappen | ✅ am Gerät, Rollup belegt (18) |
+| **Einladungen** — Verkäufer-Bonus scharf, Käufer-Bonus **aus** | ✅ gebaut (18) |
+| **Profil** — Reiter, Bewertungstexte, Banner, Teilen, Sperren | ✅ am Gerät gesehen (18) |
+| **Verkäufer-Bereich** — Bestellungen und Regal als eigene Seiten | ✅ am Gerät gesehen (18) |
+| **Erstnutzung** — „Deine ersten Schritte" | ✅ am Gerät bestätigt (18) |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -42,6 +44,10 @@ was gilt.
 - **Web-Push** — `web_push_subscriptions` ist leer, es hat nie jemand zugestimmt
 - **Echtes Video** — der Simulator hat keine Kamera
 - Die **gesenkte Bitrate** (540p) im echten Stream
+- **Der Bewertungen-Reiter** — es existiert noch kein einziger Text, also war er nie befüllt zu sehen
+- **Die Frauen-Only-Schranke bei Bewertungen** — Gegenprobe steht am Ende von `20260816160000`
+- **Der Käufer-Bonus** — steht ab Werk auf `false`, also nie durchlaufen
+- Drei Bildschirme vom 16.08., die noch niemand geöffnet hat: `/order/[id]`, `/shelf`, `/rewards`
 
 ### Drei Blocker — keiner davon ist Code
 
@@ -67,13 +73,17 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–17 |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–18 |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
 
 ⚠️ **Nicht committet ist nur `deno.lock`** — die Datei war schon vor dem 15.08. geändert und gehört
 nicht zu dieser Arbeit.
+
+**Git, Stand 16.08.2026 abends:** Branch `berkat` ist auf `origin` gepusht und hat jetzt ein
+Upstream (hatte vorher keins — deshalb schlug der erste `git push` fehl; künftig genügt `git push`).
+Der Push vom 16.08. trug 73 Dateien nach, weil der Zweig zwanzig Commits zurücklag.
 
 ---
 
@@ -2281,15 +2291,30 @@ Umgestellt sind alle zehn Kopf-Pfeile. Die vier `router.back()`-Aufrufe in
 `login.tsx` und `live/[id].tsx` stehen in Ablauflogik und sind **nicht**
 angefasst — dort ist der Verlauf durch den jeweiligen Fluss garantiert.
 
-### Was ungeprüft ist
+### Am Gerät bestätigt (16.08.2026 abends)
 
-- **Alles Sichtbare.** Aufklappen der Kategorien, die neuen Profil-Reiter, das Bearbeiten-Blatt,
-  der Banner-Upload, die zwei neuen Verkäufer-Bildschirme und das Reiter-Abzeichen — nichts
-  davon lief auf einem Gerät.
-- **Der Bewertungen-Reiter ist zwangsläufig leer**, es gibt noch keinen einzigen Text.
+Im Simulator durchgegangen und von Zaur bestätigt:
+
+- **Kategorien** — Aufklappen, und der Rollup stimmt: „Beauty & Duft · 1 kaufbar" zählte ein Kind
+  mit, das unter „Parfüm Damen" lag.
+- **Profil** — Kopfbild hochgeladen und gerendert, Anzeigename „Parfueme" über `berkattest`,
+  Bio, „2 Follower · 2 Gefolgt", die drei Reiter, Bearbeiten-Blatt.
+- **Verkäufer-Bereich** — Bestellungen als eigener Bildschirm, Reiter-Abzeichen mit der Zahl der
+  offenen Bestellungen.
+- **„Deine ersten Schritte"** — stand korrekt auf „3 von 4" (Profil ✓, Regal ✓, Show ✓, Termin
+  offen), und die Karte verschwindet vollständig, sobald der vierte Schritt steht.
+- **Der Zurück-Pfeil** — auch über die Kette Meldung antippen → landen → zurück → Meldungen →
+  zurück, die vorher hängenblieb.
+
+### Was ungeprüft bleibt
+
+- **Der Bewertungen-Reiter ist zwangsläufig leer** — es gibt noch keinen einzigen Text. Der Weg
+  dahin braucht zwei Konten: kaufen → versenden → „Ist angekommen" → Sterne → Text.
 - **Die Frauen-Only-Schranke bei den Bewertungen** — die Gegenprobe steht am Ende von
   `20260816160000`.
 - **Der Käufer-Bonus** wurde nie scharf geschaltet, also nie durchlaufen.
+- **Drei Bildschirme hat noch niemand geöffnet:** `/order/[id]` (Bestell-Detail), `/shelf` (eigenes
+  Regal) und `/rewards` (Einladungen).
 
 ### Ein Ärgernis fürs Protokoll
 
