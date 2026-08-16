@@ -1732,9 +1732,13 @@ filterbar, `create_standing_listing` ohne Anmeldung → 401. Im Simulator angele
 Datenbank bestätigt: `status='listed'`, `session_id=null`, `buy_now_cents=2400`,
 `start_price_cents=100`. Das Regal zeigt „Jetzt kaufbar · 1" mit Zurückziehen-Knopf.
 
-**Nicht geprüft:** der **Kauf**. Er braucht das zweite Konto (`seller_cannot_bid`). Kürzester Weg:
-vom iPhone aus das Profil von `berkattest` öffnen und die Kupferkanne kaufen — sie muss danach im
-Sammelkorb unter „Konto" liegen.
+**Der Kauf ist am 16.08.2026 gelaufen.** Vom Konto `zaur` aus auf `berkattest`s Profil gekauft:
+`status='sold'`, `current_bid_cents=2400` (voller Preis), `winner_id` gesetzt, und ein Sammelkorb
+angelegt. Damit ist belegt, was der Entwurf behauptet — der Kauf eines Dauerangebots läuft durch
+DENSELBEN Korb wie ein Zuschlag aus der Show.
+
+Zugleich der **allererste Aufruf von `buy_now_live_auction`** überhaupt; die Funktion lag seit dem
+13.08. ungenutzt im Server.
 
 ### Was bewusst fehlt
 
