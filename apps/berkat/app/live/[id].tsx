@@ -86,6 +86,8 @@ import { FloatingHearts, TapHearts } from '../../components/FloatingHearts';
 import { GiveawayCard } from '../../components/GiveawayCard';
 import { MaxBidSheet } from '../../components/MaxBidSheet';
 import { ShowItemsSheet } from '../../components/ShowItemsSheet';
+import { ViewersSheet } from '../../components/ViewersSheet';
+import { useLiveViewers } from '../../lib/useLiveViewers';
 
 const FILL: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 };
 
@@ -228,11 +230,20 @@ export default function LiveAuctionRoom() {
   const [chatHidden, setChatHidden] = useState(false);
   const [maxOpen, setMaxOpen] = useState(false);
   const [sellerOpen, setSellerOpen] = useState(false);
+  const [viewersOpen, setViewersOpen] = useState(false);
 
   // Wer ist der Mensch da vorne? Die Zahlen holt das Sheet erst, wenn es
   // gebraucht wird — sonst zahlte jeder Zuschauer drei Abfragen für einen
   // Bildschirm, den die meisten nie öffnen.
   const { data: sellerStats } = useSellerStats(sellerOpen ? session?.host_id : undefined);
+  // Läuft nur, solange das Blatt offen ist — und dann mit Takt. Die Begründung
+  // für den Takt steht in `useLiveViewers`: In einem Raum, der offen bleibt,
+  // löst sonst nichts ein Nachladen aus.
+  const {
+    data: viewers,
+    isLoading: viewersLoading,
+    error: viewersError,
+  } = useLiveViewers(id, viewersOpen && isHost);
   const { data: blocked } = useMyBlocks(myUserId);
   const { block, unblock, report } = useSellerActions(myUserId);
   const chatInputRef = useRef<TextInput>(null);
@@ -465,17 +476,27 @@ export default function LiveAuctionRoom() {
 
   const hostName = profiles[session?.host_id ?? '']?.username;
 
-  const mentionHost = useCallback(() => {
-    if (!hostName) return;
+  /**
+   * `@name ` ins Chat-Feld schreiben und das offene Blatt schließen.
+   *
+   * Seit dem 16.08.2026 allgemein statt nur für den Gastgeber: Dieselbe Geste
+   * bedient das Verkäufer-Sheet und die Zuschauerliste. Wer zweimal denselben
+   * Namen anhängt, bekommt ihn nur einmal — sonst steht `@amir32 @amir32` da.
+   */
+  const mentionUser = useCallback((username: string | null | undefined) => {
+    if (!username) return;
     setSellerOpen(false);
+    setViewersOpen(false);
     setDraft((current) => {
-      const tag = `@${hostName} `;
+      const tag = `@${username} `;
       if (current.includes(tag.trim())) return current;
       return current ? `${current.trimEnd()} ${tag}` : tag;
     });
     // Erst schließen lassen, dann Fokus — sonst nimmt das Modal ihn wieder weg.
     setTimeout(() => chatInputRef.current?.focus(), 250);
-  }, [hostName]);
+  }, []);
+
+  const mentionHost = useCallback(() => mentionUser(hostName), [mentionUser, hostName]);
 
   const requireLogin = useCallback(() => {
     if (myUserId) return false;
@@ -701,10 +722,26 @@ export default function LiveAuctionRoom() {
             </Pressable>
           ) : null}
 
-          <View style={styles.viewerPill}>
-            <View style={styles.liveDot} />
-            <Text style={styles.viewerText}>{session.viewer_count ?? 0}</Text>
-          </View>
+          {/* Antippbar NUR für den Gastgeber. Ein Zuschauer bekommt die Liste
+              ohnehin nicht (die RLS gibt ihm genau eine Zeile: sich selbst) —
+              und ein Knopf, der nichts tut, ist schlimmer als kein Knopf. */}
+          {isHost ? (
+            <Pressable
+              style={styles.viewerPill}
+              onPress={() => setViewersOpen(true)}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`${session.viewer_count ?? 0} schauen zu — Liste öffnen`}
+            >
+              <View style={styles.liveDot} />
+              <Text style={styles.viewerText}>{session.viewer_count ?? 0}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.viewerPill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.viewerText}>{session.viewer_count ?? 0}</Text>
+            </View>
+          )}
 
           <Pressable
             onPress={minimize}
@@ -932,6 +969,19 @@ export default function LiveAuctionRoom() {
           onSubmit={(cents) => void submitMaxBid(cents)}
         />
       ) : null}
+
+      <ViewersSheet
+        visible={viewersOpen}
+        viewers={viewers ?? []}
+        loading={viewersLoading}
+        error={viewersError}
+        onClose={() => setViewersOpen(false)}
+        onMention={mentionUser}
+        onOpenProfile={(userId) => {
+          setViewersOpen(false);
+          router.push(`/seller/${userId}`);
+        }}
+      />
 
       <SellerSheet
         visible={sellerOpen}
