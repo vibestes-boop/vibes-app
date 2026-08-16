@@ -65,6 +65,8 @@ import {
 import { BerkatMark } from '../../components/BerkatMark';
 import { SchedulePlanner } from '../../components/SchedulePlanner';
 import { CategoryPicker } from '../../components/CategoryPicker';
+import { SellerStart, useProfileFilled, type StartStep } from '../../components/SellerStart';
+import { useSellerShows } from '../../lib/useSellerShows';
 // Nur noch zum Zählen — bearbeitet wird das Regal auf `/shelf`.
 import { useStandingListings } from '../../lib/useStanding';
 import { ui, radius, space } from '../../theme/tokens';
@@ -121,6 +123,46 @@ export default function SellScreen() {
   // anzuzeigen.
   const { data: standing = [] } = useStandingListings(myUserId ?? undefined);
   const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
+
+  // ── Die ersten Schritte ───────────────────────────────────────────────────
+  // Alle vier Zustände kommen aus Daten, die es ohnehin gibt — keine Tabelle,
+  // kein Fortschritts-Feld, nichts zum Zurücksetzen. Damit kann die Liste auch
+  // nicht mit der Wirklichkeit auseinanderlaufen.
+  const { data: profileFilled = false } = useProfileFilled(myUserId);
+  const { past: pastShows } = useSellerShows(myUserId ?? undefined);
+
+  const startSteps = useMemo(
+    (): StartStep[] => [
+      {
+        key: 'profil',
+        label: 'Profil ausfüllen',
+        hint: 'Ein Foto und ein Satz. Wer dich noch nicht kennt, liest das zuerst.',
+        done: profileFilled,
+        target: myUserId ? `/seller/${myUserId}` : undefined,
+      },
+      {
+        key: 'termin',
+        label: 'Ersten Termin ankündigen',
+        // Kein Ziel: Der Planer steht auf diesem Bildschirm gleich darunter.
+        hint: 'Gleich hier unten. Deine Follower bekommen 15 Minuten vorher eine Erinnerung.',
+        done: plannedShows.length > 0,
+      },
+      {
+        key: 'regal',
+        label: 'Etwas ins Regal legen',
+        hint: 'Damit man bei dir auch dann etwas kaufen kann, wenn du nicht sendest.',
+        done: standing.length > 0,
+        target: '/shelf',
+      },
+      {
+        key: 'show',
+        label: 'Erste Show machen',
+        hint: 'Wenn die drei darüber stehen, lohnt sie sich am meisten.',
+        done: (pastShows.data?.length ?? 0) > 0,
+      },
+    ],
+    [profileFilled, plannedShows.length, standing.length, pastShows.data, myUserId],
+  );
 
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [articleUrl, setArticleUrl] = useState<string | null>(null);
@@ -267,6 +309,16 @@ export default function SellScreen() {
 
         {!show ? (
           <>
+          {/* Steht GANZ OBEN und nur, solange etwas fehlt. Wer mühsam als
+              Verkäufer geworben wurde, sah hier bisher ein Formular und sonst
+              nichts — kein Hinweis, was zuerst dran ist. Bei fünf Leuten, die
+              man einzeln geholt hat, entscheidet das, ob sie ein zweites Mal
+              senden. */}
+          <SellerStart
+            steps={startSteps}
+            onOpen={(target) => router.push(target as never)}
+          />
+
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Mach die Show auf</Text>
             <Text style={styles.cardBody}>

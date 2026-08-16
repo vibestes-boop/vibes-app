@@ -2218,6 +2218,35 @@ Bestellliste im Konto („wo ist mein Zeug") → Wiedererkennung, klein.
 Packliste („welches Ding nehme ich in die Hand") → Auskunft, **56 px**.
 Dieselbe Bestellung unter „Erledigt" → wieder Wiedererkennung, 36 px.
 
+### Erstnutzung für Verkäufer — „Deine ersten Schritte"
+
+Das erste Stück Arbeit, das direkt auf **Phase 0** einzahlt statt daneben.
+
+Wer als Verkäufer geworben wurde und auf „Verkaufen" tippt, sah bisher ein
+Formular und sonst nichts — kein Hinweis, was zuerst dran ist. Bei fünf Leuten,
+die man einzeln überzeugt hat, entscheidet genau das, ob sie ein ZWEITES Mal
+senden.
+
+Eine Karte ganz oben mit vier Schritten, **und die Reihenfolge ist der Rat**:
+
+1. **Profil ausfüllen** — die ersten Zuschauer sehen nach, wer da sendet. Ein
+   leeres Profil kostet Vertrauen, das die Show erst mühsam wieder aufbaut.
+2. **Termin ankündigen** — Hebel Nr. 1 der Analyse. Löst die Erinnerung an alle
+   Follower aus; ohne Ankündigung sendet man vor leerem Raum.
+3. **Etwas ins Regal legen** — was jemand bei dir tun kann, wenn du NICHT
+   sendest, also 94 % der Zeit.
+4. **Erste Show machen** — zuletzt, weil eine Show mit leerem Profil und ohne
+   Ankündigung eine verschenkte Show ist.
+
+**Alle vier Zustände kommen aus Daten, die es ohnehin gibt** — kein
+Fortschritts-Feld, keine Tabelle, nichts zum Zurücksetzen. Damit kann die Liste
+nicht mit der Wirklichkeit auseinanderlaufen.
+
+**Kein Mahner:** Die Karte verschwindet restlos, sobald alle vier stehen — ohne
+Abschluss-Feier. Das Design-Gesetz verlangt Maßhalten; gefeiert werden Peaks
+(erster Zuschlag, erster Verkauf), nicht das Ausfüllen einer Liste. Kein Streak,
+kein Countdown, keine Erinnerung.
+
 ### Was ungeprüft ist
 
 - **Alles Sichtbare.** Aufklappen der Kategorien, die neuen Profil-Reiter, das Bearbeiten-Blatt,
