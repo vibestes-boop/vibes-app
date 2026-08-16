@@ -1,14 +1,75 @@
 # Berkat — Übergabe
 
-**Stand: 15.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 16.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
-ein Phasenplan mit Abbruchkriterien. **Phase 1 ist bis auf einen Punkt gebaut** (Abschnitt 8).
+ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen** — siehe unten.
 
 > **Wer nicht lesen, sondern arbeiten will:** [`LEITFADEN.md`](LEITFADEN.md) — was nach einer
 > Änderung zu tun ist, welche Befehle, welche Verdächtigen bei welchem Fehler, und was man nie tut.
 > Dieses Dokument hier ist der Zustandsbericht; der Leitfaden ist die Bedienungsanleitung.
+
+---
+
+## 0. Wo du gerade stehst — 16.08.2026
+
+Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
+was gilt.
+
+### Gebaut und am echten Datenstand geprüft
+
+| Bereich | Stand |
+|---|---|
+| Auktion, Gebote, Anti-Snipe, Zuschlag, Sammelkorb | ✅ |
+| Kasse — öffnet **in der App**, bezahlen am Show-Ende | ✅ (Abschnitt 11) |
+| Versand — Zonen-Pauschale pro Paket, bis in die Datenbank | ✅ `shipping_cents 490` belegt (14) |
+| Sendeplan — Termine, wöchentliche Reihen, Erinnerungs-Push | ✅ bis auf den Sperrbildschirm (13) |
+| Bürgen — Vertrauen mit Namen statt Sterne | ✅ (15) |
+| **Dauerangebote** — kaufbar ohne laufende Show | ✅ Kauf gelaufen (17) |
+| **Verkäufer-Suche** — findet auch, wer nicht sendet | ✅ (17, Nachtrag) |
+| Fehlerüberwachung (Sentry) | ✅ eingebaut, **scharf erst ab dem nächsten Build** (16) |
+| Meldungen — Glocke, Ziel je Typ | ✅ (17, Nachtrag) |
+
+### Was ausdrücklich NICHT geprüft ist
+
+- Der **Unterdeckungs-Hinweis** beim Versand (feuert nur, wenn jemand DE zahlt und in die CH liefert)
+- **Push auf Android** — nie auf einem echten Gerät gesehen
+- **Web-Push** — `web_push_subscriptions` ist leer, es hat nie jemand zugestimmt
+- **Echtes Video** — der Simulator hat keine Kamera
+- Die **gesenkte Bitrate** (540p) im echten Stream
+
+### Drei Blocker — keiner davon ist Code
+
+1. **Kein Store-Eintrag.** Berkat ist in keinem Store. Verkäufer und Publikum **können die App nicht
+   installieren**; alles Gebaute ist für genau eine Person erreichbar. TestFlight braucht Apples
+   Anmeldung mit Zwei-Faktor — das kann nur Zaur.
+2. **Stripe-Zugang.** Konto ist `acct_1Tk85WDimgI7k5Md` („brandwerkx"), die Wiederherstellung läuft
+   per Ausweis. Alles ist **Testbetrieb** (`cs_test_`, nie echtes Geld). Danach zuerst: Klarna,
+   Billie und Scalapay abschalten — **in Test- UND Live-Modus getrennt** (Riba, Analyse § B3).
+3. **Phase 0 ist nie begonnen.** Fünf Verkäufer, acht Wochen, wöchentlich zwei Stunden. Das Werkzeug
+   dafür steht seit dem 15.08. vollständig; die Menschen fehlen.
+
+### Entscheidungen, die feststehen
+
+- **Markt:** erst die tschetschenische Community, **danach russischsprachige Kaukasier**. Daraus
+  folgt: **Russisch wird die zweite Sprache der App**, nicht Englisch (Strategie § 7.5).
+- **Provision trägt bei dieser Größe nicht.** Break-even inkl. Arbeitszeit liegt bei ~8.000 €
+  Umsatz im Monat; das Geld liegt in der eigenen Marge (Strategie § 6, § 7.1).
+- **Bitrate gedeckelt** auf 540p, bis Berkat die Rechnung trägt (`lib/videoQuality.ts`).
+- Die Regel „nichts Neues bauen, bis Phase 0 läuft" wurde am 15.08. **von Zaur aufgehoben**.
+
+### Wo was steht
+
+| Datei | Wofür |
+|---|---|
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–17 |
+| [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
+| [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
+| [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
+
+⚠️ **Nicht committet ist nur `deno.lock`** — die Datei war schon vor dem 15.08. geändert und gehört
+nicht zu dieser Arbeit.
 
 ---
 
