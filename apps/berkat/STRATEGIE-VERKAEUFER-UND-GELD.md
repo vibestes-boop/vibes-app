@@ -596,3 +596,88 @@ bestätigt § 0 noch einmal: Der Weg dorthin führt über die eigene Marge, nich
 ⚠️ Die Stripe- und LiveKit-Zahlen stammen teils aus Vergleichsseiten Dritter. **Vor einer
 Entscheidung an der Quelle prüfen** — das ist keine Floskel, die Chargeback-Gebühr allein streute
 zwischen 15 und 20 €.
+
+---
+
+## 7. Schlüsse und Entscheidungen — 15.08.2026
+
+Aus §0 und §6 zusammen folgen fünf Sätze. Die ersten drei sind Deutungen, die letzten zwei
+Messungen.
+
+### 7.1 Berkat ist ein Verkaufskanal, keine Maut
+
+Der Marktplatz-Gedanke trägt bei erreichbarer Größe nicht — nicht knapp, sondern um den Faktor
+sieben. Selbst bei 100 Zuschauern deckt die Provision gerade die Videorechnung.
+
+Das entwertet nichts vom Gebauten. Es dreht die Frage um: **nicht „wie verdiene ich an den
+Verkäufern", sondern „was bringen sie mir, das mehr wert ist als Geld".**
+
+### 7.2 Die fünf Verkäufer sind Publikum, nicht Umsatz
+
+Wenn Verkäufer keine Einnahmequelle sind, sondern Publikums-Infrastruktur, ändert sich das
+Auswahlkriterium:
+
+> **Nicht „wer hat die beste Ware", sondern „wer bringt eigene Leute mit".**
+
+Eine Verkäuferin mit 800 Followern, die dreimal auftritt, ist wertvoller als ein perfekter Händler
+ohne Anhang. Und 0 % ist dann keine Großzügigkeit, sondern **der korrekte Preis für einen
+Marketing-Kanal** — man zahlt auch nicht dafür, Werbung schalten zu dürfen.
+
+### 7.3 Der Engpass ist der Store-Zugang, kein Feature
+
+Berkat ist in keinem Store. Verkäufer und Publikum **können die App nicht installieren**. Alles
+Gebaute ist für genau eine Person erreichbar. Phase 0 ist damit nicht „noch nicht begonnen",
+sondern **physisch unmöglich** — TestFlight ist die Voraussetzung, nicht ein späterer Schritt.
+
+### 7.4 ✅ Entscheidung: Bitrate runter, später hoch
+
+**Getroffen am 15.08.2026.** Gesendet wird ab sofort mit **960×540 bei 24 fps und höchstens
+800 kbit/s** statt LiveKits 720p-Voreinstellung — rund die Hälfte der Bandbreite.
+
+Begründung, Rechnung und die eine Stelle zum Hochsetzen: `lib/videoQuality.ts`. **Hochgesetzt wird
+erst, wenn Berkat die Rechnung trägt** — die Bitrate ist die einzige Ausgabe, die mit dem *Erfolg*
+wächst statt mit dem Umsatz.
+
+`adaptiveStream` und `dynacast` waren bereits an und bleiben es.
+
+### 7.5 ✅ Entscheidung: erst Tschetschenen, dann russischsprachige Kaukasier
+
+**Getroffen am 15.08.2026.** Die Ausgangsanalyse empfahl, sofort auf „muslimische Diaspora im
+deutschsprachigen Raum" zu gehen. Die Entscheidung ist enger und **zweistufig**:
+
+1. **Startzelle: tschetschenische Community.** Dort ist das Vertrauen, ohne das kein Fremder Geld
+   schickt — und Vertrauen ist bei diesem Format die knappere Ressource als Reichweite.
+2. **Danach: russischsprachige Kaukasier.** Dieselben Bedürfnisse, dieselben Rituale, und mit
+   **Russisch eine echte gemeinsame Sprache** statt einer konstruierten Klammer.
+
+Was daraus folgt — und noch nicht gebaut ist:
+
+- **Russisch wird die zweite Sprache der App**, nicht Englisch. Berkat ist heute rein deutsch;
+  Serlo hat DE/EN/RU bereits. Das ist der konkrete Bau-Auftrag für Stufe 2.
+- **Der Bürgen-Mechanismus wird über die Stufen hinweg wichtiger**, nicht unwichtiger: Zwischen
+  Gemeinschaften trägt eine Bürgschaft weiter als jede Bewertung.
+- **Frauen-Only bleibt der Türöffner** — er gilt in allen diesen Gemeinschaften gleich.
+
+⚠️ **Die Warnung aus der Analyse bleibt gültig:** Die tschetschenische Community allein trägt die
+Rechnung aus § 6.7 arithmetisch kaum. Stufe 2 ist damit **kein Ausbau, sondern Teil des Plans** —
+und der Zeitpunkt dafür ist erreicht, wenn Stufe 1 fünf sendende Verkäufer hat, nicht wenn sie
+erschöpft ist.
+
+### 7.6 Der unbequeme Satz
+
+Am 15.08.2026 wurde einen ganzen Tag lang gebaut — Kasse, Sendeplan, Versand, Bürgen,
+Fehlerüberwachung. Gute Arbeit, alles geprüft. Und Phase 0 ist unverändert **nicht begonnen**.
+
+Bauen ist konkreter und angenehmer, als fünf Leute anzurufen. Das Risiko ist trotzdem real:
+
+> **Eine perfekte App, die niemand benutzt, ist teurer als eine unfertige, die fünf Leute jede
+> Woche öffnen.**
+
+### 7.7 Die Reihenfolge, die daraus folgt
+
+1. **TestFlight** — ohne Store-Zugang ist alles andere Theorie. Braucht Apple-Anmeldung.
+2. **Bitrate** — ✅ erledigt.
+3. **Markt-Entscheidung** — ✅ erledigt (§ 7.5).
+4. **Die fünf Gespräche.** Angebot: 0 % in der Startphase, fester Sendeplatz mit Erinnerung an alle
+   Follower, du bürgst öffentlich, du moderierst die ersten drei Shows mit.
+5. **Nichts Neues bauen**, bis eine dieser fünf Personen zweimal gesendet hat.

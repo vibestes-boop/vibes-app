@@ -16,6 +16,7 @@ import { AudioSession, LiveKitRoom, VideoTrack, useTracks } from '@livekit/react
 import { Track } from 'livekit-client';
 import { useLivePlayer } from '../lib/livePlayer';
 import { useLiveAccess } from '../lib/useLiveVideo';
+import { VIDEO_QUALITY } from '../lib/videoQuality';
 
 export { HostControls } from './HostControls';
 export { GoLiveGate } from './GoLiveGate';
@@ -80,7 +81,34 @@ export function LiveRoomProvider({ children }: { children: ReactNode }) {
       connect={active}
       audio={publishes}
       video={publishes}
-      options={{ adaptiveStream: true, dynacast: true }}
+      options={{
+        // `adaptiveStream` drosselt je Zuschauer nach Fenstergröße und pausiert
+        // Unsichtbares; `dynacast` stellt Qualitätsstufen ein, die niemand
+        // abonniert hat. Beide sparen abwärtsgerichtete Bandbreite — und die
+        // ist der Posten, der mit Erfolg wächst statt mit Umsatz.
+        adaptiveStream: true,
+        dynacast: true,
+        // Die Obergrenze. Ohne sie nimmt LiveKit 720p als Voreinstellung, und
+        // kein Zuschauer bekommt weniger, als der Gastgeber anbietet.
+        // Begründung und Rechnung: `lib/videoQuality.ts`.
+        videoCaptureDefaults: {
+          resolution: {
+            width: VIDEO_QUALITY.width,
+            height: VIDEO_QUALITY.height,
+            frameRate: VIDEO_QUALITY.frameRate,
+          },
+        },
+        publishDefaults: {
+          videoEncoding: {
+            maxBitrate: VIDEO_QUALITY.maxBitrate,
+            maxFramerate: VIDEO_QUALITY.frameRate,
+          },
+          // Bleibt an: Simulcast kostet nur AUFWÄRTS (frei) und erlaubt es
+          // `dynacast`, schwächeren Zuschauern eine kleinere Stufe zu geben,
+          // statt allen die größte zu schicken.
+          simulcast: true,
+        },
+      }}
     >
       {children}
     </LiveKitRoom>
