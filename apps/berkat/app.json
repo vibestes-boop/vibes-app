@@ -2,7 +2,7 @@
   "expo": {
     "name": "Berkat",
     "slug": "berkat",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "scheme": "berkat",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.berkat.app",
-      "buildNumber": "4",
+      "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
