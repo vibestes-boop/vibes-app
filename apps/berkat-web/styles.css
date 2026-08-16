@@ -158,12 +158,82 @@ h1 em {
   color: var(--muted);
 }
 
+/* Rechtstexte. Breiter als die Startseite (34rem sind für Fließtext zu schmal,
+   sobald er über zwei Bildschirme geht) und mit Haarlinien zwischen den
+   Abschnitten statt Kacheln — dieselbe Sprache wie die nummerierten Zeilen. */
+.legal {
+  max-width: 42rem;
+}
+
+.legal h2 {
+  margin: 2.5rem 0 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.legal h3 {
+  margin: 1.5rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.legal p,
+.legal li {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.legal p {
+  margin: 0.6rem 0 0;
+}
+
+.legal ul {
+  margin: 0.6rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.legal li {
+  margin: 0.3rem 0;
+}
+
+.legal strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Felder, die Zaur ausfüllen muss, bevor die Seite online geht. Auffällig mit
+   Absicht: Ein vergessener Platzhalter in einem Impressum ist teurer als eine
+   hässliche Markierung. */
+.fill {
+  background: var(--gold);
+  color: var(--gold-ink);
+  padding: 0.05em 0.35em;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.legal .updated {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+}
+
 footer {
   border-top: 1px solid var(--line);
   padding: 1.5rem;
   font-size: 0.8rem;
   color: var(--muted);
   text-align: center;
+}
+
+footer nav {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 footer a {
