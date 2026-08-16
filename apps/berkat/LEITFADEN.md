@@ -56,6 +56,23 @@ und der Dev-Client meldet dann nur „failed to connect":
 lsof -nP -iTCP -sTCP:LISTEN | grep 808
 ```
 
+### Nach jedem Netzwechsel: neue Adresse, kein Neustart
+
+Wechselt der Mac das Netz (WLAN ↔ Hotspot), **reißt die Verbindung des Telefons** — neuer Code
+kommt dann schlicht nicht an, und man sucht ihn im Quelltext statt im Netz. Am 15./16.08.2026
+dreimal passiert.
+
+Metro selbst muss **nicht** neu gestartet werden: Es lauscht auf `*:8081`, also auf allen
+Schnittstellen, und ist unter der neuen Adresse sofort erreichbar. Nur das Telefon muss im
+Dev-Client den Eintrag wechseln.
+
+```bash
+ipconfig getifaddr en0
+```
+
+Das ist die Adresse, die im Dev-Client stehen muss — mit `:8081` dahinter. Der Simulator merkt
+davon nichts, er geht über `localhost`.
+
 ---
 
 ## 3. Vor jeder Übergabe: zwei Prüfungen
