@@ -10,11 +10,42 @@ davon decken — was nur eine Seite betrifft, ist markiert.
 
 ---
 
-## 0. Was noch fehlt, bevor eingereicht werden kann
+## 0. Entscheidungen und offene Punkte
+
+### Am 16.08.2026 entschieden
+
+| | |
+|---|---|
+| Anbieter | Zaur Hatuev, Steiner Ring 64, **PLZ/Ort fehlt noch** |
+| Kontakt | brandwerkx@gmail.com |
+| Steuer | **Kleinunternehmer § 19 UStG** — keine USt-IdNr., der Abschnitt im Impressum ist gestrichen |
+| Aufsichtsbehörde | BayLDA (Bayern) |
+| Datenlage | Supabase **eu-west-1, West EU (Irland)** — innerhalb der EU, kein Drittlandtransfer für die Hauptdatenbank |
+| Geschäftsmodell | **Marktplatz.** Verkäufer treten im eigenen Namen und auf eigene Rechnung auf |
+
+⚠️ **Was die Marktplatz-Entscheidung auslöst — und wann.**
+Die Pflichten hängen nicht an der Absicht, sondern am **ersten Verkauf eines Dritten**. Solange
+Zaur der einzige Verkäufer ist, ist Berkat ein Shop mit Auktionsformat. Ab dem ersten fremden
+Verkäufer gilt:
+
+- **Stripe Connect ist zwingend, nicht optional.** Läuft das Geld eines fremden Verkäufers über
+  Zaurs Konto, ist das Finanztransfergeschäft und nach ZAG erlaubnispflichtig. Connect (Express)
+  rückt damit **vor** den ersten Drittverkäufer — nicht dahinter.
+- **DAC7 / PStTG:** Verkäuferdaten erheben und jährlich ans BZSt melden, ab 30 Verkäufen oder
+  2.000 € im Jahr. Bußgeld bis 50.000 €.
+- **§ 25e UStG:** USt-ID als Pflichtfeld beim Verkäufer, sonst haftet der Marktplatz.
+- **LUCID:** Verkäufer ohne Verpackungsregister-Registrierung dürfen nicht gelistet werden.
+- **GPSR:** Herstellerangaben als Pflichtfeld am Angebot.
+
+Für die **Store-Einreichung** ändert das nichts. Für die Reihenfolge danach alles: Phase 0 mit
+fünf fremden Verkäufern setzt Connect voraus.
+
+### Was noch fehlt, bevor eingereicht werden kann
 
 | Was | Wer | Warum es blockiert |
 |---|---|---|
-| Goldene Platzhalter in `impressum.html` und `datenschutz.html` füllen | Zaur | Pflichtfeld beider Stores, und die Seite ist sonst abmahnfähig |
+| **PLZ und Ort** in `impressum.html` und `datenschutz.html` | Zaur | Die Anschrift muss ladungsfähig sein; „Steiner Ring 64" allein ist es nicht |
+| Veröffentlichungsdatum in beiden Rechtstexten | Zaur | letzter Platzhalter |
 | Website neu veröffentlichen (`wrangler pages deploy`) | Zaur | siehe oben |
 | App-Eintrag in App Store Connect anlegen (`com.berkat.app`) | Zaur | Apple-Anmeldung mit Zwei-Faktor |
 | `ascAppId` aus dem neuen Eintrag in `eas.json` eintragen | dann ich | `eas submit` weiß sonst nicht wohin |
