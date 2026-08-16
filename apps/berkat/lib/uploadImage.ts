@@ -11,8 +11,29 @@
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './supabase';
 
-/** `products/images` und `thumbnails` sind in r2-sign als Bild-Präfixe erlaubt. */
+/**
+ * WO das Bild liegt. `products/images` und `thumbnails` sind in r2-sign als
+ * Bild-Präfixe erlaubt.
+ *
+ * ⚠️ Sagt NICHTS über den Zuschnitt — dafür gibt es `CropShape`. Die beiden
+ * waren bis zum 16.08.2026 dasselbe Feld, und das war der Fehler: `'cover'`
+ * bedeutete gleichzeitig „liegt unter thumbnails/" UND „wird 3:4 hochkant
+ * zugeschnitten". Unter `thumbnails/` liegen aber drei völlig verschiedene
+ * Flächen — Show-Cover (quadratisch angezeigt), Termin-Bild (quadratisch) und
+ * das Profil-Banner (Höhe 116 auf voller Breite, also rund 3:1). Der hochkant-
+ * Zuschnitt passte zu keiner einzigen davon.
+ */
 export type ImageKind = 'article' | 'cover';
+
+/**
+ * WIE zugeschnitten wird. Das ist eine Frage der ANZEIGE, nicht des Speicherorts.
+ *
+ * Faustregel: Die Form hier muss der Form entsprechen, in der das Bild später
+ * gezeichnet wird. Sonst schneidet der Verkäufer sorgfältig zu und sieht danach
+ * einen anderen Ausschnitt — bei quadratischer Anzeige eines 3:4-Bildes fällt
+ * ein Viertel der Höhe weg, und zwar oben und unten.
+ */
+export type CropShape = 'square' | 'wide';
 
 const PREFIX: Record<ImageKind, string> = {
   article: 'products/images',
@@ -43,14 +64,29 @@ function extensionFor(mimeType: string, uri: string): string {
  * Öffnet die Fotoauswahl. Gibt null zurück, wenn abgebrochen wurde oder die
  * Erlaubnis fehlt — beides ist kein Fehler, sondern eine Entscheidung.
  */
-export async function pickImage(square: boolean): Promise<PickedImage | null> {
+export async function pickImage(shape: CropShape): Promise<PickedImage | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    allowsEditing: true,
-    aspect: square ? [1, 1] : [3, 4],
+    // ⚠️ `aspect` wirkt NUR auf Android. Auf iOS ist der Zuschnitt-Rahmen bei
+    // `allowsEditing` immer quadratisch, egal was hier steht — das ist so
+    // dokumentiert und nicht abstellbar.
+    //
+    // Daraus folgt die Aufteilung: Für eine quadratische Fläche ist
+    // `allowsEditing` genau richtig und liefert auf BEIDEN Plattformen
+    // dasselbe. Für eine breite Fläche wäre ein Zuschnitt-Rahmen ein
+    // Versprechen, das iOS nicht halten kann — der Verkäufer zöge ein Quadrat
+    // und bekäme einen breiten Streifen daraus. Deshalb dort gar kein
+    // Zuschnitt: Das ganze Bild wird geladen, und `contentFit="cover"` wählt
+    // beim Zeichnen den Ausschnitt. Gleiches Ergebnis auf iOS und Android.
+    allowsEditing: shape === 'square',
+    aspect: [1, 1],
+    // Gilt auch ohne Zuschnitt-Rahmen: Das Bild wird neu kodiert. Ein
+    // ungeschnittenes Handyfoto liegt damit über den 250–330 KB, die am
+    // 16.08.2026 für zugeschnittene gemessen wurden, aber deutlich unter der
+    // 8-MB-Grenze weiter unten.
     quality: 0.85,
   });
   if (result.canceled || !result.assets?.[0]) return null;
@@ -110,9 +146,19 @@ export async function uploadImage(image: PickedImage, kind: ImageKind): Promise<
   return signed.publicUrl;
 }
 
-/** Auswählen und hochladen in einem Schritt. Null = abgebrochen. */
-export async function pickAndUpload(kind: ImageKind): Promise<string | null> {
-  const picked = await pickImage(kind === 'article');
+/**
+ * Auswählen und hochladen in einem Schritt. Null = abgebrochen.
+ *
+ * `shape` ist bewusst ein eigener, PFLICHT-Parameter und wird nicht aus `kind`
+ * abgeleitet. Jede Aufrufstelle weiß, in welcher Form sie das Bild später
+ * zeichnet — und nur sie weiß es. Eine Voreinstellung hier hätte genau den
+ * Fehler zurückgebracht, den die Trennung behebt.
+ */
+export async function pickAndUpload(
+  kind: ImageKind,
+  shape: CropShape,
+): Promise<string | null> {
+  const picked = await pickImage(shape);
   if (!picked) return null;
   return uploadImage(picked, kind);
 }

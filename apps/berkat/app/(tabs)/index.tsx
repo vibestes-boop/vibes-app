@@ -338,7 +338,10 @@ export default function HomeScreen() {
           ) : search || filter !== ALL ? null : (
             <UpcomingStrip
               shows={upcoming}
-              onSelect={(hostId) => router.push(`/seller/${hostId}`)}
+              // `?tab=shows`: Wer auf einen TERMIN tippt, will den Termin sehen
+              // — nicht das Regal. Ohne den Parameter öffnet das Profil auf
+              // „Shop", und die Ankündigung liegt hinter dem dritten Reiter.
+              onSelect={(hostId) => router.push(`/seller/${hostId}?tab=shows`)}
             />
           )
         }

@@ -172,7 +172,10 @@ export default function SellScreen() {
   const chooseImage = async (kind: ImageKind, apply: (url: string) => void) => {
     setUploading(kind);
     try {
-      const url = await pickAndUpload(kind);
+      // Beide Sorten von hier werden quadratisch gezeichnet: das Show-Cover auf
+      // der Startseite und im Kategorien-Reiter, der Artikel in der
+      // Warteschlange und im Regal.
+      const url = await pickAndUpload(kind, 'square');
       if (url) apply(url);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Das Bild kam nicht durch.');

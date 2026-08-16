@@ -11,10 +11,12 @@
 // Termin-Seite hätte einen Knopf gebraucht, den es nicht gibt.
 
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { CalendarClock, Lock, Repeat } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { formatSlot, formatUntil, nextPerSeries, type PlannedShow } from '../lib/useSchedule';
 import { Avatar } from './Avatar';
+import { BerkatMark } from './BerkatMark';
 
 type Props = {
   shows: PlannedShow[];
@@ -58,6 +60,31 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
                 {show.host?.username ?? 'Verkäufer'}
               </Text>
               {show.women_only ? <Lock size={12} color={ui.success} /> : null}
+            </View>
+
+            {/* Das Bild steht zwischen Kopf und Titel — dieselbe Reihenfolge
+                wie auf den Live-Karten darunter (Verkäufer, Bild, Name), und
+                derselbe quadratische Zuschnitt. Zwei Bildsprachen auf einer
+                Startseite wären eine zu viel.
+
+                Kein Text darüber: Der Kontrast über einem fremden Foto ist die
+                einzige Stelle, an der Berkats zwei feste Flächen nicht greifen
+                (§ 8) — und für einen Termin gibt es nichts, das dort stehen
+                müsste. */}
+            <View style={s.thumb}>
+              {show.cover_url ? (
+                <Image
+                  source={{ uri: show.cover_url }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  transition={140}
+                />
+              ) : (
+                // Kein Platzhalter-Foto, nur eine ruhige Fläche mit der Ähre.
+                // Ein Standardbild für alle sähe aus wie ein Fehler — und die
+                // Karten im Streifen behalten so trotzdem dieselbe Höhe.
+                <BerkatMark size={34} color={ui.lineStrong} />
+              )}
             </View>
 
             <Text numberOfLines={2} style={s.title}>
@@ -108,6 +135,16 @@ const s = StyleSheet.create({
   },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   host: { flex: 1, minWidth: 0, fontSize: 12, fontWeight: '600', color: ui.textMuted },
+
+  thumb: {
+    aspectRatio: 1,
+    marginTop: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   title: {
     fontSize: 14,

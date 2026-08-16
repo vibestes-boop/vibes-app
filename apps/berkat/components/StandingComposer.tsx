@@ -80,7 +80,7 @@ export function StandingComposer({ busy, canWomenOnly, onCreate }: Props) {
           onPress={() => {
             setUploading(true);
             setUploadError(null);
-            void pickAndUpload('article')
+            void pickAndUpload('article', 'square')
               .then((url) => {
                 if (url) setImageUrl(url);
               })

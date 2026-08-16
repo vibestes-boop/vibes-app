@@ -11,9 +11,19 @@
 // nicht.
 
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { CalendarClock, X } from 'lucide-react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { CalendarClock, ImagePlus, X } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
+import { pickAndUpload } from '../lib/uploadImage';
 import { formatSlot, formatUntil, MAX_WEEKS, type PlannedShow } from '../lib/useSchedule';
 
 /** Abendplätze. Live-Auktionen laufen, wenn die Leute zu Hause sind. */
@@ -42,12 +52,20 @@ const DAY_LABELS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 type Props = {
   plans: PlannedShow[];
   busy: boolean;
-  onPlan: (input: { title: string; at: Date; weeks: number }) => void;
+  onPlan: (input: {
+    title: string;
+    at: Date;
+    weeks: number;
+    coverUrl: string | null;
+  }) => void;
   onCancel: (id: string) => void;
 };
 
 export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
   const [title, setTitle] = useState('');
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [dayOffset, setDayOffset] = useState(0);
   const [hour, setHour] = useState(20);
   // Wöchentlich ist die Voreinstellung, nicht die Ausnahme. Die Analyse verlangt
@@ -114,7 +132,9 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
   // Der Server lehnt alles unter fünf Minuten ab. Das hier vorher zu sagen ist
   // freundlicher, als es sich als Fehlermeldung abzuholen.
   const tooSoon = target.getTime() <= Date.now() + 5 * 60_000;
-  const canPlan = title.trim().length > 0 && !tooSoon && !busy;
+  // `uploading` blockiert mit: Wer währenddessen einträgt, verlöre das Bild —
+  // `coverUrl` wird erst nach dem Hochladen gesetzt.
+  const canPlan = title.trim().length > 0 && !tooSoon && !busy && !uploading;
 
   return (
     <View style={s.card}>
@@ -127,14 +147,70 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
         Abend bringt die Leute wieder — mehr als jede einzelne gute Show.
       </Text>
 
-      <TextInput
-        value={title}
-        onChangeText={setTitle}
-        placeholder="Parfüm-Abend ab 1 €"
-        placeholderTextColor={ui.textMuted}
-        style={s.input}
-        maxLength={80}
-      />
+      {/* Bild links, Titel rechts — dieselbe Anordnung wie bei „Artikel
+          auflegen" und „Dauerhaft anbieten". Drei Formulare im selben Reiter,
+          die unterschiedlich aussehen, sind der Grund, warum am 16.08.2026
+          niemand fand, wo ein Dauerangebot sein Foto bekommt. */}
+      <View style={s.titleRow}>
+        <Pressable
+          style={s.picker}
+          disabled={uploading}
+          onPress={() => {
+            setUploading(true);
+            setUploadError(null);
+            // `cover` = Speicherort (`thumbnails/`), `square` = Form: Die Karte
+            // im „Demnächst"-Streifen zeichnet quadratisch, genau wie die
+            // Live-Karten darunter.
+            void pickAndUpload('cover', 'square')
+              .then((url) => {
+                if (url) setCoverUrl(url);
+              })
+              .catch((error: unknown) =>
+                setUploadError(
+                  error instanceof Error ? error.message : 'Das Bild kam nicht durch.',
+                ),
+              )
+              .finally(() => setUploading(false));
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={coverUrl ? 'Bild ändern' : 'Bild wählen'}
+        >
+          {coverUrl ? (
+            <Image
+              source={{ uri: coverUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={120}
+            />
+          ) : null}
+          {uploading ? (
+            <ActivityIndicator color={ui.brand} />
+          ) : coverUrl ? null : (
+            <ImagePlus size={20} color={ui.textMuted} />
+          )}
+        </Pressable>
+
+        <TextInput
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Parfüm-Abend ab 1 €"
+          placeholderTextColor={ui.textMuted}
+          style={[s.input, s.titleInput]}
+          maxLength={80}
+        />
+      </View>
+
+      {/* Kein Zwang, aber gesagt werden muss es: Ein Termin ist das einzige
+          Ding in Berkat, das ganz ohne Kamera auskommen muss. Wer kein Bild
+          wählt, bekommt serverseitig das Cover seiner letzten Show — deshalb
+          steht hier „meistens", nicht „immer". */}
+      {!coverUrl && !uploading ? (
+        <Text style={s.photoHint}>
+          Ohne Bild nehmen wir das Cover deiner letzten Show. Hast du noch keine, steht dein
+          Abend nur als Text auf der Startseite.
+        </Text>
+      ) : null}
+      {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
 
       <Text style={s.label}>Wann?</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row}>
@@ -232,8 +308,10 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
         style={[s.primary, !canPlan && s.primaryOff]}
         disabled={!canPlan}
         onPress={() => {
-          onPlan({ title, at: buildTarget(), weeks: weekly ? MAX_WEEKS : 1 });
+          onPlan({ title, at: buildTarget(), weeks: weekly ? MAX_WEEKS : 1, coverUrl });
           setTitle('');
+          setCoverUrl(null);
+          setUploadError(null);
         }}
         accessibilityRole="button"
         accessibilityLabel="Termin eintragen"
@@ -259,6 +337,18 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
         <View style={s.list}>
           {plans.map((plan) => (
             <View key={plan.id} style={s.planRow}>
+              {/* Klein mit Absicht: Die eigene Terminliste ist eine
+                  Arbeitsfläche — das Bild beantwortet hier „welchen meine ich",
+                  nicht „was schaue ich mir an". Groß ist es auf der Startseite,
+                  wo gestöbert wird (HANDOFF § 18, Bildgrößen-Regel). */}
+              {plan.cover_url ? (
+                <Image
+                  source={{ uri: plan.cover_url }}
+                  style={s.planThumb}
+                  contentFit="cover"
+                  transition={120}
+                />
+              ) : null}
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text numberOfLines={1} style={s.planTitle}>
                   {plan.title}
@@ -306,6 +396,26 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: ui.text,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'stretch', gap: space.sm },
+  titleInput: { flex: 1, minHeight: 64 },
+  // 64 statt der 76 im `StandingComposer`: Dort steht daneben ein mehrzeiliges
+  // Feld, hier ein einzeiliger Titel. Die Position ist dieselbe, die Höhe folgt
+  // dem Nachbarn.
+  picker: {
+    width: 64,
+    minHeight: 64,
+    marginTop: space.md,
+    borderRadius: radius.md,
+    backgroundColor: ui.sunken,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: ui.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  photoHint: { fontSize: 11, color: ui.textMuted, marginTop: space.sm, lineHeight: 16 },
+  warn: { fontSize: 12, color: ui.live, marginTop: space.sm },
 
   label: { fontSize: 12, color: ui.textMuted, marginTop: space.md },
   row: { marginTop: space.sm },
@@ -377,6 +487,7 @@ const s = StyleSheet.create({
     gap: space.md,
     paddingVertical: space.sm,
   },
+  planThumb: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: ui.sunken },
   planTitle: { fontSize: 14, fontWeight: '600', color: ui.text },
   planWhen: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
   cancel: {

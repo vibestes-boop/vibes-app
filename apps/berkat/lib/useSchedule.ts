@@ -26,8 +26,24 @@ export type PlannedShow = {
   status: 'scheduled' | 'reminded' | 'live' | 'cancelled' | 'expired';
   women_only: boolean;
   session_id: string | null;
+  /**
+   * Vorschaubild des Termins.
+   *
+   * ⚠️ Steht hier UND in beiden `.select()`-Ketten unten. Genau diese Doppelung
+   * ist am 16.08.2026 schiefgegangen: `useSellerShows` selektierte
+   * `thumbnail_url` von Anfang an, der Zeilentyp trug das Feld nicht — das Bild
+   * wurde geholt und weggeworfen, und eine gelaufene Show stand als grauer
+   * Kreis da, obwohl ihr Cover vorlag. Wer hier ein Feld ergänzt, muss beide
+   * Abfragen mit ergänzen.
+   */
+  cover_url: string | null;
   host: { username: string | null; avatar_url: string | null } | null;
 };
+
+/** Die Spalten für beide Abfragen — einmal, damit sie nicht auseinanderlaufen. */
+const COLUMNS =
+  'id, host_id, title, scheduled_at, status, women_only, session_id, cover_url, ' +
+  'profiles!host_id(username, avatar_url)';
 
 const UPCOMING: PlannedShow['status'][] = ['scheduled', 'reminded'];
 
@@ -89,9 +105,7 @@ export function useUpcomingShows(limit = 12) {
     queryFn: async (): Promise<PlannedShow[]> => {
       const { data, error } = await supabase
         .from('scheduled_lives')
-        .select(
-          'id, host_id, title, scheduled_at, status, women_only, session_id, profiles!host_id(username, avatar_url)',
-        )
+        .select(COLUMNS)
         // Ohne diesen Filter stünden Serlos geplante Lives in Berkats Liste.
         .eq('app', 'berkat')
         .in('status', UPCOMING)
@@ -113,9 +127,7 @@ export function useMyPlannedShows(userId: string | null) {
     queryFn: async (): Promise<PlannedShow[]> => {
       const { data, error } = await supabase
         .from('scheduled_lives')
-        .select(
-          'id, host_id, title, scheduled_at, status, women_only, session_id, profiles!host_id(username, avatar_url)',
-        )
+        .select(COLUMNS)
         .eq('app', 'berkat')
         .eq('host_id', userId!)
         .in('status', UPCOMING)
@@ -146,6 +158,16 @@ export function usePlanShow(userId: string | null) {
   const invalidate = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'my-planned-shows', userId] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows'] });
+    // Der dritte Ort, an dem derselbe Termin steht: der Reiter „Termine & Shows"
+    // auf dem Verkäufer-Profil (`useSellerShows`). Er fehlte hier bis zum
+    // 16.08.2026 — wer einen Termin eintrug und danach sein eigenes Profil
+    // öffnete, sah ihn dort nicht.
+    //
+    // Dieselbe Regel wie beim zurückgezogenen Dauerangebot (HANDOFF 18): Wer
+    // etwas an drei Orten anzeigt, muss an allen drei zurücksetzen.
+    void queryClient.invalidateQueries({
+      queryKey: ['berkat', 'seller-announced-shows', userId],
+    });
   }, [queryClient, userId]);
 
   /**
@@ -166,6 +188,12 @@ export function usePlanShow(userId: string | null) {
       at: Date;
       weeks?: number;
       womenOnly?: boolean;
+      /**
+       * Freiwillig. Bleibt es leer, setzt der Server das Cover der letzten
+       * eigenen Berkat-Show ein (`20260816180000`) — der Client muss dafür
+       * nichts nachschlagen und kann es auch nicht besser wissen.
+       */
+      coverUrl?: string | null;
     }): Promise<{ created: number; total: number }> => {
       const total = Math.max(1, Math.min(MAX_WEEKS, Math.floor(input.weeks ?? 1)));
       const title = input.title.trim();
@@ -179,10 +207,13 @@ export function usePlanShow(userId: string | null) {
         const at = new Date(input.at);
         at.setDate(at.getDate() + week * 7);
 
+        // Alle Termine einer Reihe tragen dasselbe Bild — es ist derselbe Abend,
+        // nur vier Wochen lang.
         const { data, error } = await supabase.rpc('schedule_berkat_show', {
           p_scheduled_at: at.toISOString(),
           p_title: title,
           p_women_only: input.womenOnly ?? false,
+          p_cover_url: input.coverUrl ?? null,
         });
         if (error) {
           firstError = error.message;

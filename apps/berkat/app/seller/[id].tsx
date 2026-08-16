@@ -109,7 +109,11 @@ type ProfileTab = 'shop' | 'reviews' | 'shows';
 const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'shop', label: 'Shop' },
   { key: 'reviews', label: 'Bewertungen' },
-  { key: 'shows', label: 'Live-Shows' },
+  // Nicht „Live-Shows": Der Reiter zeigt ZUERST die angekündigten Termine und
+  // erst darunter die gelaufenen Sendungen. „Live-Shows" las sich wie ein
+  // Archiv — wer wissen wollte, wann der Verkäufer wiederkommt, tippte dort
+  // zuletzt.
+  { key: 'shows', label: 'Termine & Shows' },
 ];
 
 /** Angekündigte und vergangene Sendungen in einer Liste. */
@@ -217,7 +221,7 @@ function useSellerSoldItems(id: string | undefined) {
 }
 
 export default function SellerScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: wantedTab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
 
@@ -241,7 +245,18 @@ export default function SellerScreen() {
   const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [bioOpen, setBioOpen] = useState(false);
-  const [tab, setTab] = useState<ProfileTab>('shop');
+  /**
+   * „Shop" ist die richtige Voreinstellung: Sie zeigt, was jemand SOFORT tun
+   * kann. Nur wer ausdrücklich wegen eines Termins herkommt, will etwas
+   * anderes — und der bringt das per `?tab=` mit.
+   *
+   * Als Anfangswert, nicht als Effekt: Ein `useEffect`, der den Reiter
+   * nachträglich setzt, würde ihn auch dann zurückstellen, wenn der Besucher
+   * inzwischen selbst weitergetippt hat.
+   */
+  const [tab, setTab] = useState<ProfileTab>(() =>
+    wantedTab === 'shows' || wantedTab === 'reviews' ? wantedTab : 'shop',
+  );
   // Das Banner wird beim Auswählen sofort hochgeladen, aber erst beim
   // Speichern in die Datenbank geschrieben. Deshalb liegt der Zwischenstand
   // hier und nicht im Blatt — ein Blatt, das sich neu aufbaut, verlöre ihn.
@@ -295,6 +310,12 @@ export default function SellerScreen() {
         refetchVouches(),
         refetchCounts(),
         refetchProfile(),
+        // Am 16.08.2026 nachgetragen — die beiden fehlten, obwohl der Absatz
+        // darüber „ALLES nachladen" verspricht. Wer einen Termin ankündigt und
+        // danach sein Profil öffnet, sah ihn sonst bis zu einer Minute nicht:
+        // Ziehen-zum-Aktualisieren rührte die Show-Abfragen gar nicht an.
+        announced.refetch(),
+        pastShows.refetch(),
       ]),
     [
       refetchLive,
@@ -304,6 +325,8 @@ export default function SellerScreen() {
       refetchVouches,
       refetchCounts,
       refetchProfile,
+      announced.refetch,
+      pastShows.refetch,
     ],
   );
 
@@ -336,6 +359,10 @@ export default function SellerScreen() {
     }));
     return [...soon, ...done];
   }, [announced.data, pastShows.data]);
+
+  // Der nächste angekündigte Termin — die Abfrage sortiert bereits aufsteigend
+  // und filtert die Vergangenheit weg, der erste Eintrag IST also der nächste.
+  const nextPlanned = announced.data?.[0] ?? null;
 
   const listData = useMemo(
     (): TabItem[] =>
@@ -566,6 +593,39 @@ export default function SellerScreen() {
                     {liveShow.title ?? 'Sendet gerade'}
                   </Text>
                   <Radio size={15} color={ui.liveInk} />
+                </Pressable>
+              ) : null}
+
+              {/* Dieselbe Fläche, zwei Zustände — wie bei der Live-Vorschau auf
+                  den Show-Karten (Abschnitt 8): Sendet er, steht hier der rote
+                  Streifen. Sendet er nicht und hat einen Termin angekündigt,
+                  steht hier der Termin.
+
+                  Er steht ÜBER den Reitern, weil „wann kommt der wieder?" die
+                  Frage ist, die den ganzen Sendeplan wertvoll macht — und weil
+                  der Folgen-Knopf direkt darüber die einzige Handlung ist, die
+                  daraus etwas macht. Bis zum 16.08.2026 lag die Antwort hinter
+                  dem dritten Reiter: Wer auf der Startseite eine Termin-Karte
+                  antippte, landete auf einer Seite voller Produkte und sah
+                  ausgerechnet das nicht, wofür er gekommen war.
+
+                  Live schlägt Termin. Beides gleichzeitig wäre zwar möglich
+                  (heute senden, morgen wieder), aber wer JETZT senden kann,
+                  soll nicht auf morgen verwiesen werden. */}
+              {!liveShow && nextPlanned ? (
+                <Pressable
+                  style={styles.soonBanner}
+                  onPress={() => setTab('shows')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Nächster Termin: ${nextPlanned.title ?? 'Show'} ${showWhen(
+                    nextPlanned.scheduled_at,
+                  )}. Alle Termine anzeigen.`}
+                >
+                  <CalendarClock size={15} color={ui.text} />
+                  <Text numberOfLines={1} style={styles.soonText}>
+                    {nextPlanned.title ?? 'Nächste Show'}
+                  </Text>
+                  <Text style={styles.soonWhen}>{showWhen(nextPlanned.scheduled_at)}</Text>
                 </Pressable>
               ) : null}
 
@@ -909,9 +969,11 @@ export default function SellerScreen() {
         busy={updateProfile.isPending}
         onPickBanner={() => {
           setBannerUploading(true);
-          // `cover` statt `article`: Das Banner ist breit, kein Quadrat —
-          // `pickImage` schneidet bei `article` auf 1:1 zu.
-          void pickAndUpload('cover')
+          // `cover` = Speicherort (`thumbnails/`), `wide` = Form. Das Banner
+          // ist rund 3:1 — ein Zuschnitt-Rahmen hilft ihm nicht, weil iOS nur
+          // quadratisch zuschneiden kann. Also volles Bild laden und den
+          // Ausschnitt beim Zeichnen wählen.
+          void pickAndUpload('cover', 'wide')
             .then((url) => {
               if (url) setBannerDraft(url);
             })
@@ -1124,6 +1186,24 @@ const styles = StyleSheet.create({
   },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ui.liveInk },
   liveText: { flex: 1, fontSize: 14, fontWeight: '700', color: ui.liveInk },
+
+  /* Bewusst NICHT rot und nicht gold: Rot ist in Berkat die laufende Uhr (live,
+     überboten), Gold der Kauf. Ein Termin ist beides nicht — er ist eine
+     Einladung. Deshalb dieselbe ruhige Fläche und dasselbe Marken-Grün für die
+     Zeit wie auf der „Demnächst"-Karte der Startseite: Dieselbe Auskunft soll
+     an beiden Orten gleich aussehen. */
+  soonBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: ui.sunken,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 11,
+    marginBottom: space.md,
+  },
+  soonText: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '700', color: ui.text },
+  soonWhen: { fontSize: 13, fontWeight: '700', color: ui.brand },
 
   tiles: { flexDirection: 'row', gap: space.sm },
   tile: {
