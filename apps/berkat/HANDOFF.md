@@ -43,8 +43,8 @@ was gilt.
 - Der **Unterdeckungs-Hinweis** beim Versand (feuert nur, wenn jemand DE zahlt und in die CH liefert)
 - **Push auf Android** — nie auf einem echten Gerät gesehen
 - **Web-Push** — `web_push_subscriptions` ist leer, es hat nie jemand zugestimmt
-- **Echtes Video** — der Simulator hat keine Kamera
-- Die **gesenkte Bitrate** (540p) im echten Stream
+- Die **gesenkte Bitrate** (540p) im echten Stream — das Bild kam am 16.08. an, gemessen wurde es
+  nicht
 - **Der Bewertungen-Reiter** — es existiert noch kein einziger Text, also war er nie befüllt zu sehen
 - **Die Frauen-Only-Schranke bei Bewertungen** — Gegenprobe steht am Ende von `20260816160000`
 - **Der Käufer-Bonus** — steht ab Werk auf `false`, also nie durchlaufen
@@ -477,6 +477,16 @@ Abfragen auf einem Reiter, die auf Ereignisse von außen reagieren müssen, brau
 `useFocusEffect` aus `expo-router` plus `refetch()` — oder einen Takt. `refetchOnWindowFocus`
 allein genügt **nicht**: Das feuert nur beim Wechsel aus dem Hintergrund der ganzen App, nicht
 beim Reiter-Wechsel.
+
+**Die dritte Ausprägung, gefunden am 16.08.2026: ein Bildschirm, der gar nicht verlassen wird.**
+Beim Reiter und beim Stapel heilt wenigstens der nächste Aufbau. Im Live-Raum sitzt jemand eine
+Stunde am Stück — dort feuert **überhaupt kein** Auslöser: kein Aufbau, kein Fokuswechsel, kein
+Reiter-Wechsel. `useCart` hatte weder Takt noch Invalidierung, und deshalb blieb die
+Sammelkorb-Leiste stumm, während der Käufer drei Artikel gewann (Abschnitt 19).
+
+Merksatz für alle drei: **Frag nicht „lädt es beim Öffnen?", sondern „was genau löst das
+Nachladen aus, während der Nutzer schon dasitzt?"** Gibt es darauf keine Antwort, ist die Antwort
+„nichts".
 
 ### `refreshing={isRefetching}` lässt Listen hängen aussehen
 
@@ -1126,12 +1136,13 @@ Konto. Ein zweites Gerät braucht es also nicht.
 
 ### Was am Durchlauf noch ungeprüft ist
 
-- **Echtes Video** — der Simulator hat keine Kamera, das Bild blieb schwarz
 - **Ob ein Herz aus der Serlo-App in Berkat ankommt** — der Broadcast-Vertrag ist gebaut, aber nie
   über beide Apps gemessen
-- **Max-Gebot und Anti-Snipe** unter echtem Gegendruck (zwei Menschen, die gleichzeitig bieten)
-- **Der Vorschau-Zustand „gerade zugeschlagen"** — braucht ein Gebot vom zweiten Konto. Der
-  Kontrast über echtem Foto ist am 15.08. gemessen und behoben (Abschnitt 8).
+- **Das Max-Gebot** unter echtem Gegendruck. Anti-Snipe ist am 16.08. belegt (Abschnitt 19), das
+  Stellvertreter-Bieten nicht — dafür müssten zwei Menschen gleichzeitig bieten.
+
+Erledigt am 16.08.2026 in einer echten Sendung, siehe Abschnitt 19: **echtes Video**, **Anti-Snipe
+unter echtem Gegendruck** und der **Vorschau-Zustand „gerade zugeschlagen"**.
 
 ---
 
@@ -2537,3 +2548,113 @@ Im Simulator durchgegangen und von Zaur bestätigt:
 LiveKit-`registerGlobals`-Blocks, den nur `index.ts` lädt — und `index.ts` ist laut
 `package.json` der richtige Einstieg. Beide Läufe sind fehlerfrei, die Ursache ist ungeklärt.
 Ob `eas update` davon betroffen ist, wurde **nicht** geprüft.
+
+---
+
+## 19. Die erste echte Sendung (16.08.2026, abends)
+
+Zwanzig Minuten, in denen Zaur vom iPhone gesendet und ich vom Simulator aus mitgeboten habe.
+Der Ertrag ist größer als jede Woche Bauen davor — nicht wegen des Codes, sondern weil **sechs
+Dinge zum ersten Mal wirklich passiert sind** statt nur zu existieren.
+
+### Was damit belegt ist
+
+| | Beleg |
+|---|---|
+| **Echtes Video** | Bild kam an, im Raum und im kleinen Fenster. Der Simulator hat keine Kamera — das ging vorher grundsätzlich nicht |
+| **Anti-Snipe unter echtem Gegendruck** | dreimal ausgelöst: „Verlängert — jemand hat kurz vor Schluss geboten", Uhr sprang zurück auf 00:05 |
+| **Live-Vorschau, alle drei Zustände** | „Läuft aktuell", „Als Nächstes", und endlich **„Verkauft"** in Rot |
+| **Zuschauerzahl** | sprang auf 1, `join_live_session` greift |
+| **Zuschlag-Push** | Glocke ging auf 6 |
+| **Gewinnspiel** | Teilnahme bestätigt („Du bist dabei") |
+
+⚠️ **Der Zustand „Verkauft" ist im Normalbetrieb fast unerreichbar.** Die Vorrangregel lautet
+*läuft → nächster geplanter → gerade zugeschlagen*. Solange auch nur ein Artikel in der
+Warteschlange steht, gewinnt „Als Nächstes". Er erschien erst, als die Warteschlange leer war.
+Das ist kein Fehler, aber es heißt: Der Zustand, der am meisten Schwung zeigt („Verkauft für
+12 €"), ist der, den fast niemand sieht. Wer ihn nach vorne holen will, muss die Reihenfolge
+ändern — bewusst und mit dem Wissen, dass „Als Nächstes" dafür verschwindet.
+
+### Fund 1: Der Sammelkorb blieb stumm, während man gewinnt
+
+Drei Artikel gewonnen, und die Sammelkorb-Leiste im Raum erschien nicht. Die Datenbank war die
+ganze Zeit richtig; erst nach Verlassen und Neubetreten stand „3 Artikel · 1 Paket · noch 23 h"
+da.
+
+Ursache: `useCart` hatte **weder `refetchInterval` noch eine Invalidierung**. Das Einzige, was die
+Abfrage je verwarf, war der Bezahlvorgang (`payBrowser.ts`). In einem Bildschirm, der eine Stunde
+offen steht, feuert davon nichts.
+
+Das trifft genau den Moment, den Abschnitt 11 „die teuerste Sekunde, die Berkat hat" nennt.
+
+Behoben über das **bestehende** Realtime-Abo auf `live_auctions` — und ausdrücklich **nur bei
+`sold`**. Ein Gebot verändert den Korb nicht; eine Show mit zwanzig Artikeln erzeugte sonst
+hunderte überflüssige Abfragen. Gegenprobe am Gerät: 3 Artikel → vierter Zuschlag → Leiste sprang
+auf 4, ohne den Raum zu verlassen.
+
+### Fund 2: Ein Gebot war ein Tipper — mit einem Pfeil darauf, der Ziehen versprach
+
+Zaurs Beobachtung an der Whatnot-App: Dort ist der Gebots-Knopf eine **Ziehbahn**, damit niemand
+versehentlich bietet.
+
+Bei uns trug der Knopf seit dem 13.08. ein `»`-Symbol und hörte trotzdem nur auf ein Antippen.
+Die Form versprach eine Geste, die es nicht gab — und ein Gebot ist eine bindende
+Willenserklärung über echtes Geld. Der Knopf sitzt am unteren Rand, wo der Daumen beim Halten
+ohnehin liegt, und **darüber läuft ein Video, auf das man tippt, um ein Herz zu schicken**. Ein
+Bildschirm, auf dem Tippen die normale Geste ist, darf keinen Kauf mit demselben Tippen auslösen.
+
+Jetzt 60 % des Weges ziehen. Weniger wäre wieder versehentlich auslösbar, mehr fühlt sich nach
+Arbeit an — und in den letzten Sekunden zählt jede Zehntelsekunde.
+
+- **Kein neues Paket, kein Build.** `PanResponder` und `Animated` kommen aus React Native selbst.
+  `react-native-gesture-handler` liegt zwar in der `package.json`, wird aber **nirgends benutzt**
+  und bräuchte einen `GestureHandlerRootView` im Wurzel-Layout; Reanimated hat Berkat gar nicht.
+- **Die Geste greift erst ab vier Punkten waagerechter Bewegung.** Ohne das schluckt der Griff
+  jedes Antippen, und ein senkrechtes Wischen darüber erreicht die Liste nicht mehr — dieselbe
+  Familie wie die Berührungs-Ebenen in Abschnitt 3.
+- **Für VoiceOver bleibt es ein Tippen** (`onAccessibilityTap`). Eine Wischgeste ist dort
+  feindlich, und wer den Bildschirm nicht sieht, tippt nicht versehentlich auf eine Stelle, die er
+  nicht kennt.
+
+**In zwei Auktionen belegt:** Ziehen bietet („Du führst · 1 €"). Drei feste Tipper auf Griff,
+Mitte und rechtes Ende **während einer laufenden Auktion** erzeugen **kein** Gebot — die Abfrage
+direkt danach zeigte die Auktion noch als `running`, `current_bid_cents` weiter `null` und
+`live_bids` leer.
+
+⚠️ **Offen: Wie es sich bei einem Bieterkampf anfühlt.** Wenn zwei Leute in zwanzig Sekunden
+fünfmal überbieten, ist fünfmal Ziehen zäh. Eine Möglichkeit wäre „einmal ziehen, danach tippen" —
+der Schutz gilt dem *ersten*, unbeabsichtigten Gebot, und wer bereits bewusst gezogen hat, ist
+erkennbar dabei. Bewusst **nicht** vorab gebaut: erst fühlen, dann optimieren.
+
+### Was die Sendung über Whatnot beantwortet hat
+
+Ein Tipp auf die **Zuschauerzahl** öffnet bei Whatnot eine Liste — aber nur für Gastgeber,
+Co-Hosts und Moderatoren, mit den Reitern „Watching" und „Activity". Normale Zuschauer sehen
+darin **nur ihre Freunde**, nicht alle Anwesenden.
+
+Bei Berkat ist die Pille (`app/live/[id].tsx`) heute ein reines `<View>` ohne Funktion. Die
+Serverseite steht dagegen vollständig und mit **exakt derselben Regel**:
+
+```sql
+lsv_select_host  -- der Gastgeber darf die Liste lesen
+lsv_select_self  -- jeder darf seine eigene Zeile lesen
+```
+
+`leave_live_session` löscht die Zeile wieder, ein Trigger räumt beim Sendungsende auf — die
+Tabelle ist also „wer schaut gerade", nicht „wer war mal da". Eine Zuschauerliste wäre damit
+**eine Abfrage und ein Blatt, ohne Migration**.
+
+⚠️ **Die Zuschauer-Sicht darf es trotzdem nicht geben.** Jede für Zuschauer sichtbare
+Teilnehmerliste öffnet das Loch wieder, das am 14.08. mit `live_reactions_rls` geschlossen wurde —
+bei einer Frauen-Only-Sendung wäre sie ein Verrat am Kernversprechen. Und wer die App abwürgt,
+statt den Raum zu verlassen, hinterlässt eine Zeile; die Liste zeigt dann jemanden, der längst weg
+ist (dieselbe Familie wie die Zombie-Sessions).
+
+### Die Lehre, die über diesen Abend hinausgeht
+
+Beide Funde waren **im Simulator allein nicht auffindbar**. Der eine brauchte eine Kamera, der
+andere zwei Konten und eine Uhr, die wirklich läuft. Zwei Wochen Bauen haben sie nicht gezeigt,
+zwanzig Minuten Senden schon.
+
+**Vor jeder weiteren größeren Änderung am Live-Weg gehört eine echte Sendung** — nicht als
+Abnahme, sondern als Fehlersuche.
