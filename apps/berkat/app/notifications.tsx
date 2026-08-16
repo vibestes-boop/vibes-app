@@ -19,7 +19,16 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Bell, ChevronLeft, Hourglass, PartyPopper, Truck } from 'lucide-react-native';
+import {
+  Bell,
+  CalendarClock,
+  ChevronLeft,
+  Hourglass,
+  PackageCheck,
+  PartyPopper,
+  Radio,
+  Truck,
+} from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
 import {
@@ -39,6 +48,20 @@ function present(type: string): { Icon: typeof Bell; title: string; tint: string
       return { Icon: Hourglass, title: 'Dein Sammelkorb wartet', tint: ui.gold };
     case 'order_shipped':
       return { Icon: Truck, title: 'Unterwegs zu dir', tint: ui.success };
+    // ── Ab hier VERKÄUFER-Ereignisse ────────────────────────────────────────
+    // Bis zum 16.08.2026 fielen sie in den Standard-Zweig und hießen „Neu bei
+    // Berkat" — für eine Meldung, die „pack das Paket" bedeutet, ist das keine
+    // Auskunft.
+    case 'order_paid':
+      return { Icon: PackageCheck, title: 'Bezahlt — bitte packen', tint: ui.success };
+    case 'new_order':
+      return { Icon: PackageCheck, title: 'Neue Bestellung', tint: ui.gold };
+    case 'order_review':
+      return { Icon: PartyPopper, title: 'Neue Bewertung', tint: ui.gold };
+    case 'scheduled_live_reminder':
+      return { Icon: CalendarClock, title: 'Gleich live', tint: ui.gold };
+    case 'live':
+      return { Icon: Radio, title: 'Sendet jetzt', tint: ui.live };
     default:
       return { Icon: Bell, title: 'Neu bei Berkat', tint: ui.textMuted };
   }
@@ -56,16 +79,42 @@ function whenLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 }
 
+/**
+ * Wohin ein Antippen führt.
+ *
+ * Bis zum 16.08.2026 landete **jede** Meldung im Konto. Das stimmte, solange es
+ * nur die drei Käufer-Ereignisse gab — inzwischen bekommt auch der VERKÄUFER
+ * Meldungen, und „Bezahlt — bitte packen" schickte ihn in den Käufer-Bereich,
+ * wo es kein Feld für die Sendungsnummer gibt. Genau so gemeldet.
+ *
+ * Regel: Das Ziel ist der Ort, an dem man das TUN kann, was die Meldung sagt.
+ */
+function targetFor(item: BerkatNotification): string {
+  switch (item.type) {
+    // Der Verkäufer packt und trägt die Sendungsnummer ein — beides im
+    // Verkaufen-Reiter, nicht im Konto.
+    case 'order_paid':
+    case 'new_order':
+      return '/(tabs)/sell';
+    case 'live':
+      return item.session_id ? `/live/${item.session_id}` : '/(tabs)/';
+    // Zur Erinnerung an einen Termin gibt es noch keine Show — der einzige
+    // sinnvolle Ort ist der Verkäufer, der ihn angekündigt hat.
+    case 'scheduled_live_reminder':
+      return item.sender_id ? `/seller/${item.sender_id}` : '/(tabs)/';
+    // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
+    default:
+      return '/(tabs)/account';
+  }
+}
+
 function Row({ item }: { item: BerkatNotification }) {
   const { Icon, title, tint } = present(item.type);
 
   return (
     <Pressable
       style={[styles.row, !item.read && styles.rowUnread]}
-      // Alle drei Ereignisse enden im Konto: Dort wird bezahlt und die Sendung
-      // verfolgt. Ein eigenes Ziel je Typ wäre erst sinnvoll, wenn es getrennte
-      // Bildschirme dafür gäbe.
-      onPress={() => router.push('/(tabs)/account')}
+      onPress={() => router.push(targetFor(item) as never)}
     >
       <View style={[styles.iconWrap, { backgroundColor: `${tint}22` }]}>
         <Icon size={19} color={tint} />

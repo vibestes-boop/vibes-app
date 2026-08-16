@@ -138,6 +138,9 @@ export default function HomeScreen() {
       // Auch der Sendeplan: Wer gerade im Verkaufen-Reiter einen Termin
       // eingetragen hat, soll ihn beim Zurückwechseln sofort oben stehen sehen.
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows'] });
+      // Und die Glocke. Sie hing sonst bis zu 30 Sekunden hinterher, weil
+      // Meldungen serverseitig entstehen und der Reiter im Speicher bleibt.
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'notifications-unread'] });
     }, [queryClient]),
   );
 

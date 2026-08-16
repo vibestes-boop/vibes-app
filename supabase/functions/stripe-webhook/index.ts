@@ -405,7 +405,12 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     recipient_id: row.seller_id,
     sender_id: row.buyer_id,
     type: 'order_paid',
-    comment_text: 'Eine Bestellung wurde bezahlt — bitte versenden 📦',
+    // Ohne Emoji. Am 16.08.2026 kam das frühere „… versenden 📦" in der App als
+    // Ersatzzeichen an (Kästchen mit Fragezeichen) — dasselbe Muster, das in
+    // diesem Projekt schon einmal Mojibake in die Produktiv-Datenbank
+    // geschrieben hat. In der Meldungsliste trägt ohnehin das Symbol daneben
+    // die Bedeutung; der Satz braucht das Zeichen nicht.
+    comment_text: 'Eine Bestellung wurde bezahlt — bitte versenden',
     app: row.cart_id ? 'berkat' : 'serlo',
   });
 }

@@ -36,6 +36,12 @@ export type BerkatNotification = {
   created_at: string;
   /** Absender-Name, für „von wem" — separat geholt, siehe unten. */
   sender_name: string | null;
+  /**
+   * Wird gebraucht, um beim Antippen zum richtigen Ort zu springen: Bei einer
+   * Termin-Erinnerung gibt es noch keine Show, nur den Menschen, der sie
+   * angekündigt hat. Wurde bis zum 16.08.2026 beim Umbau weggeworfen.
+   */
+  sender_id: string | null;
 };
 
 export function useBerkatNotifications(userId: string | null) {
@@ -58,9 +64,7 @@ export function useBerkatNotifications(userId: string | null) {
         throw error;
       }
 
-      const rows = (data ?? []) as (Omit<BerkatNotification, 'sender_name'> & {
-        sender_id: string | null;
-      })[];
+      const rows = (data ?? []) as Omit<BerkatNotification, 'sender_name'>[];
       if (rows.length === 0) return [];
 
       // Absender-Namen separat holen, NICHT als eingebettete Beziehung:
@@ -80,9 +84,9 @@ export function useBerkatNotifications(userId: string | null) {
         }
       }
 
-      return rows.map(({ sender_id, ...rest }) => ({
-        ...rest,
-        sender_name: sender_id ? names.get(sender_id) ?? null : null,
+      return rows.map((row) => ({
+        ...row,
+        sender_name: row.sender_id ? names.get(row.sender_id) ?? null : null,
       }));
     },
   });
@@ -95,6 +99,11 @@ export function useUnreadCount(userId: string | null) {
     enabled: Boolean(userId),
     staleTime: 15_000,
     refetchOnWindowFocus: true,
+    // Meldungen entstehen SERVERSEITIG (Trigger, pg_cron, Webhook) — die App
+    // erfährt davon nichts von selbst. Ohne diesen Takt erschien das Abzeichen
+    // erst, wenn zufällig etwas anderes ein Nachladen auslöste; am 16.08.2026
+    // genau so gemeldet: bezahlt, aber die Glocke blieb leer.
+    refetchInterval: 30_000,
     queryFn: async (): Promise<number> => {
       const { count, error } = await supabase
         .from('notifications')

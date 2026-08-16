@@ -177,6 +177,9 @@ berkat://messages/<empfänger-id>
 | **Gastgeber landet beim Live-Gehen auf der Startseite** | `LiveRoomProvider` rendert nicht mehr durchgehend. |
 | **Kasse antwortet nur „ging nicht"** | Status auslesen, nicht raten — `lib/functionError.ts`. 500 heißt: die Function warf, kein Stripe-Problem. |
 | **`npm install` bricht ab** | `legacy-peer-deps` fehlt. Muss in `.npmrc` bleiben. |
+| **Glocke zeigt keine Zahl**, obwohl die Meldung in der Liste steht | Meldungen entstehen SERVERSEITIG (Trigger, pg_cron, Webhook) — die App erfährt davon nichts von selbst. Braucht Takt + Nachladen beim Reiter-Wechsel. |
+| **Antippen führt an den falschen Ort** | `app/notifications.tsx` → `targetFor()`. Ein neuer Meldungstyp landet sonst im Standard-Zweig und damit im Konto — auch wenn er den VERKÄUFER meint. |
+| **Kästchen mit Fragezeichen im Text** | Ein Emoji ist unterwegs zum Ersatzzeichen geworden. In diesem Projekt schon mehrfach passiert; im Zweifel das Zeichen weglassen statt es zu reparieren. |
 
 Ausführlich mit Vorgeschichte: `HANDOFF.md` Abschnitt 3.
 
