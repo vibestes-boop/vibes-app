@@ -25,6 +25,7 @@ was gilt.
 | Kasse — öffnet **in der App**, bezahlen am Show-Ende | ✅ (Abschnitt 11) |
 | Versand — Zonen-Pauschale pro Paket, bis in die Datenbank | ✅ `shipping_cents 490` belegt (14) |
 | Sendeplan — Termine, wöchentliche Reihen, Erinnerungs-Push | ✅ bis auf den Sperrbildschirm (13) |
+| **Termin-Bild** — Vorschaubild auf der „Demnächst"-Karte, Rückfall aufs letzte Show-Cover | ✅ am Gerät durchgespielt, Rückfall belegt (13) |
 | Bürgen — Vertrauen mit Namen statt Sterne | ✅ (15) |
 | **Dauerangebote** — kaufbar ohne laufende Show | ✅ Kauf gelaufen (17) |
 | **Verkäufer-Suche** — findet auch, wer nicht sendet | ✅ (17, Nachtrag) |
@@ -48,6 +49,11 @@ was gilt.
 - **Die Frauen-Only-Schranke bei Bewertungen** — Gegenprobe steht am Ende von `20260816160000`
 - **Der Käufer-Bonus** — steht ab Werk auf `false`, also nie durchlaufen
 - Drei Bildschirme vom 16.08., die noch niemand geöffnet hat: `/order/[id]`, `/shelf`, `/rewards`
+- **Die Frauen-Only-Schranke im Bild-Rückfall** — braucht ein geprüftes Frauenkonto, das eine
+  WOZ-Show mit Cover hat und keine öffentliche; Gegenprobe am Ende von `20260816190000`
+- **Der neue Zuschnitt** (`CropShape`) — vier Aufrufstellen umgestellt, `tsc` und Export sind
+  sauber, aber seither wurde kein Bild tatsächlich ausgewählt; besonders offen ist das **Banner**
+  (`'wide'` lädt jetzt ohne Zuschnitt-Rahmen)
 
 ### Drei Blocker — keiner davon ist Code
 
@@ -266,6 +272,79 @@ Lese-Policy für die Beteiligten, braucht es eine Funktion — und wenn sie öff
 die **nur das Aggregat** herausgibt. Die Policy aufzuweichen ist der falsche Reflex: Bei
 `order_reviews` hätte ein `USING(true)` jeden Kommentar und jede Käufer-Verkäufer-Beziehung
 freigegeben.
+
+### Eine SECURITY-DEFINER-Funktion geht an der Frauen-Only-Grenze vorbei
+
+Am 16.08.2026 beim Termin-Bild eingebaut und im Audit noch am selben Abend gefunden — die Zeile
+war nie draußen, aber der Ablauf ist lehrreich genug für diese Liste.
+
+Der Bild-Rückfall (`schedule_berkat_show`) sucht das Cover der letzten eigenen Show:
+
+```sql
+SELECT s.thumbnail_url FROM live_sessions s
+ WHERE s.host_id = auth.uid() AND s.app = 'berkat' …
+```
+
+Richtig aussehend, und trotzdem ein Leck. `live_sessions` trägt die Policy
+`live_sessions_select_with_women_only` — eine Frauen-Only-Show ist für die Öffentlichkeit
+unsichtbar, ihr Cover eingeschlossen. **In einer `SECURITY DEFINER`-Funktion gilt die Policy
+nicht:** Sie läuft als Eigentümer und sieht alles. Das Ergebnis landete in `scheduled_lives` —
+und die liest jeder ohne Konto, denn der „Demnächst"-Streifen ist öffentlich.
+
+Der Ablauf, der gereicht hätte: Verkäuferin sendet Frauen-Only mit Cover → kündigt danach einen
+normalen Abend an → wählt kein Bild → ihr Frauen-Only-Cover steht auf der öffentlichen Startseite.
+**Sie hat dem nie zugestimmt, sie hat nur „kein Bild" gewählt.**
+
+Die Regel daraus: **Wer in einer `SECURITY DEFINER`-Funktion aus einer geschützten Tabelle liest
+und das Ergebnis in eine offene schreibt, muss die Schranke von Hand mitschreiben.** RLS ist dort
+kein Netz. Behoben mit `20260816190000` — eine Zeile `AND s.women_only = false`.
+
+Das *selbst gewählte* Bild bleibt frei: Wer sein WOZ-Cover bewusst auf einen öffentlichen Termin
+legen will, darf das. Der Unterschied ist die Absicht — ein Rückfall trifft eine Entscheidung, die
+niemand getroffen hat.
+
+### Serlo zieht jede neue Spalte von `scheduled_lives` automatisch mit
+
+Alle vier Serlo-Lesepfade selektieren `*`, nicht eine Spaltenliste:
+`apps/web/lib/data/live-host.ts:307` und `:328`, `lib/useScheduledLives.ts:130` und `:284`.
+
+Die Trennung der beiden Apps läuft über `app` in der **WHERE-Bedingung**, nicht über die
+Spaltenauswahl. Heute ist das folgenlos — Serlo rendert `cover_url` nirgends, und ein unbekanntes
+Feld im Ergebnisobjekt stört keinen Client. Wer hier aber je eine Spalte anlegt, die etwas
+Vertrauliches trägt, legt sie damit in Serlos Antwort, und zwar auf ausgelieferten Versionen.
+
+Beim Schreiben der Migration stand zuerst das Gegenteil im Kommentar („Serlos Lesepfade nennen sie
+nicht"). Der Satz war falsch und hätte einen späteren Leser zu „hier kann ich frei ändern"
+verleitet — deshalb steht er jetzt richtig in `20260816180000`.
+
+### `aspect` beim Bild-Wähler wirkt nur auf Android
+
+`expo-image-picker` nimmt `aspect: [x, y]` entgegen, aber **auf iOS ist der Zuschnitt-Rahmen bei
+`allowsEditing` immer quadratisch**. Der Wert wird dort schlicht ignoriert, ohne Warnung.
+
+Das hatte sich bis zum 16.08.2026 zu einem stillen Dreifach-Fehler ausgewachsen: `pickAndUpload`
+leitete die Zuschnitt-Form aus dem **Speicherort** ab (`'cover'` → `thumbnails/` → 3:4 hochkant).
+Unter `thumbnails/` liegen aber drei völlig verschiedene Flächen:
+
+| Fläche | wird gezeichnet | wurde zugeschnitten |
+|---|---|---|
+| Show-Cover | quadratisch | 3:4 hochkant (Android) / Quadrat (iOS) |
+| Termin-Bild | quadratisch | dito |
+| Profil-Banner | Höhe 116 auf voller Breite, rund **3:1** | dito |
+
+Der hochkant-Zuschnitt passte zu **keiner einzigen**. Auf Android verlor ein Show-Cover ein Viertel
+der Höhe, das Banner noch mehr; auf iOS bekam das Banner ein Quadrat, aus dem ein breiter Streifen
+geschnitten wurde. Niemandem fiel es auf, weil der Verkäufer den Zuschnitt-Rahmen sieht und das
+Ergebnis erst später woanders.
+
+Behoben durch Trennung: `ImageKind` sagt **wo** es liegt, `CropShape` sagt **wie** zugeschnitten
+wird, und `shape` ist ein Pflicht-Parameter ohne Voreinstellung — jede Aufrufstelle weiß, in
+welcher Form sie zeichnet, und nur sie weiß es. Für breite Flächen gibt es bewusst **gar keinen**
+Zuschnitt-Rahmen (`allowsEditing: false`), weil iOS ihn nicht in der richtigen Form anbieten kann;
+dort wählt `contentFit="cover"` den Ausschnitt beim Zeichnen. Gleiches Ergebnis auf beiden
+Plattformen.
+
+**Wer eine neue Bild-Fläche baut, gibt die Form der Anzeige an — nicht die des Ordners.**
 
 ### `create-checkout-session`: `stripeKey` steht nicht dort, wo man ihn vermutet
 
@@ -518,8 +597,15 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Vierzehn Migrationen, **alle eingespielt und verzeichnet** (Stand 15.08.2026). Der Weg bleibt: SQL
-im Editor ausführen, danach `supabase migration repair --status applied <version>`.
+Siebenundzwanzig Migrationen, **alle eingespielt und verzeichnet** — `supabase migration list`
+zeigt am 16.08.2026 keine Lücke. Die Tabelle war bis dahin sechs Einträge im Rückstand (`20260815180000`
+bis `20260816090000` fehlten, obwohl die Abschnitte 14, 15 und 17 sie beschreiben); das ist
+nachgetragen.
+
+Der Weg bleibt: SQL im Editor ausführen, danach
+`supabase migration repair --status applied <version>`. Seit dem 16.08.2026 ist **`supabase db push`
+die bequemere Alternative** und einmal erfolgreich gelaufen — Voraussetzung ist, dass `migration
+list` keine Lücke zeigt (siehe Abschnitt 3).
 
 | Datei | Inhalt |
 |---|---|
@@ -537,11 +623,19 @@ im Editor ausführen, danach `supabase migration repair --status applied <versio
 | `20260814300000_berkat_tips.sql` | `berkat_tips` + `create_berkat_tip` — Trinkgeld in echtem Geld, **nicht** in Coins |
 | `20260814310000_seller_rating_public.sql` | `get_seller_rating` — nur Schnitt und Anzahl, die einzelnen Bewertungen bleiben privat |
 | `20260815120000_berkat_scheduled_shows.sql` | **Serlo-weit:** `scheduled_lives.app` + Index; die Erinnerung vererbt die App an `notifications.app`; `schedule_berkat_show` als Berkat-Eingang — Abschnitt 13 |
+| `20260815180000_berkat_shipping_rates.sql` | `berkat_shipping_rates`, `get_cart_shipping_options`, `product_orders.shipping_cents` — Abschnitt 14 |
+| `20260815190000_shipping_options_service_role.sql` | EXECUTE für `service_role` — ohne das wirft die Kasse zur Laufzeit `42501` |
+| `20260815200000_berkat_vouches.sql` | `berkat_vouches` (unique je Paar, kein Selbst-Bürgen), `get_vouch_weights` — Abschnitt 15 |
+| `20260815210000_berkat_standing_listings.sql` | Dauerangebote: `session_id` nullable, Status `listed`, zweite Lese-Policy, `create_standing_listing` — Abschnitt 17 |
+| `20260815220000_standing_listing_insert_policy.sql` | INSERT-Policy für Dauerangebote |
+| `20260816090000_berkat_seller_search.sql` | `search_berkat_sellers` — findet auch, wer gerade nicht sendet — Abschnitt 17 |
 | `20260816120000_berkat_categories.sql` | `berkat_categories`, `live_auctions.category`, `get_berkat_category_counts`, `create_standing_listing` mit Kategorie (DROP+CREATE) — Abschnitt 18 |
 | `20260816130000_berkat_rewards.sql` | Einladungen, Versand-Gutschriften, Verkäufer-Vergünstigungen, `berkat_reward_policy` (Käufer-Bonus ab Werk **aus**) — Abschnitt 18 |
 | `20260816150000_berkat_category_tree.sql` | `parent_slug` + Wächter gegen die dritte Ebene, 12 Eltern / 61 Kinder, Zähler mit Aufrollen — Abschnitt 18 |
 | `20260816160000_berkat_seller_reviews_public.sql` | `get_seller_reviews` — Bewertungstexte öffentlich, nur Berkat-Bestellungen, Frauen-Only geschützt — Abschnitt 18 |
 | `20260816170000_profiles_banner.sql` | **Serlo-weit:** `profiles.banner_url` + **`GRANT SELECT`** — ohne das wäre die Spalte für alle Clients unsichtbar, siehe unten |
+| `20260816180000_berkat_scheduled_cover.sql` | **Serlo-weit:** `scheduled_lives.cover_url`; `schedule_berkat_show` mit viertem Parameter + Rückfall aufs letzte Show-Cover — Abschnitt 13. **Kein `GRANT` nötig**, `scheduled_lives` hat keine eingefrorene Spaltenliste |
+| `20260816190000_berkat_scheduled_cover_woz.sql` | `AND s.women_only = false` im Rückfall — ohne das hebt eine `SECURITY DEFINER`-Funktion ein geschütztes Cover in eine öffentliche Zeile, siehe Abschnitt 3 |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -1581,6 +1675,126 @@ Geräte"). Solange auf dem Telefon kein Serlo-Token liegt, führen beide Wege na
 `push_tokens` ist für einen Client nicht lesbar. Praktisch ist das heute folgenlos — relevant wird
 es erst, wenn **beide Apps auf demselben Gerät** installiert sind. Wer das prüfen will, braucht
 genau diesen Fall.
+
+### Nachtrag 16.08.2026: das Kärtchen hatte einen Namen und eine Uhrzeit — sonst nichts
+
+Aufgefallen beim Ansehen der Startseite: Der „Demnächst"-Streifen zeigte „berkattest · Fahrrad ·
+Morgen 18:00" als reinen Text, und darunter füllte „Gerade ist niemand live" den halben Bildschirm.
+
+Das ist dieselbe Lücke wie bei den Dauerangeboten (Abschnitt 18), nur einen Bildschirm weiter. In
+einer laufenden Show hält der Verkäufer den Artikel in die Kamera — das Vorschaubild ist Zugabe.
+Eine **Ankündigung** hat keine Kamera, keine Ware und keinen Preis. Und sie steht ausgerechnet
+dann da, wenn sonst nichts da ist: Solange niemand sendet — rund 94 % der Zeit — **ist der
+Streifen die Startseite**.
+
+Whatnot macht es genauso: Beim Planen füllt ein Verkäufer Titel, **Thumbnail** und Kategorie aus.
+Wie zentral das Bild dort ist, sieht man am Drumherum — offizielle Thumbnail-Vorlage, dokumentierte
+Safe Zones in der Seller Academy, und gestartet wird die Show später, indem man **auf ihr Thumbnail
+tippt**.
+
+**Rückfall statt Zwang.** Wer kein Bild wählt, bekommt das Cover seiner letzten eigenen
+öffentlichen Berkat-Show. Dasselbe Muster wie beim Zusteller in den Bestellungen (Abschnitt 18):
+Die Vorbelegung kommt aus dem, was der Verkäufer **tatsächlich zuletzt getan hat**, nicht aus einer
+Einstellung, die jemand einmal gesetzt hat und die danach veraltet. Kein neuer Speicher, keine
+zweite Wahrheit.
+
+Ein Bild-Zwang wäre der falsche Preis: Genau der Verkäufer, der abends schnell einen Termin
+einträgt, bricht sonst ab — und ein angekündigter Abend ohne Bild ist immer noch unendlich viel
+besser als kein angekündigter Abend.
+
+| Wo | Was |
+|---|---|
+| `20260816180000` | `scheduled_lives.cover_url`, `schedule_berkat_show` mit `p_cover_url`, Rückfall |
+| `20260816190000` | die Frauen-Only-Schranke im Rückfall — Abschnitt 3 |
+| `lib/useSchedule.ts` | `cover_url` im Typ **und** in einer geteilten `COLUMNS`-Konstante |
+| `components/SchedulePlanner.tsx` | Bild-Wähler links vom Titel, kleine Vorschau in der eigenen Terminliste |
+| `components/UpcomingStrip.tsx` | quadratisches Bild zwischen Kopf und Titel |
+
+Entscheidungen, die nicht offensichtlich sind:
+
+- **Der Rückfall läuft auf dem Server, nicht im Client.** Der Client kann nicht besser wissen,
+  welche Show die letzte war, und müsste dafür `live_sessions` abfragen. Der Filter auf `app` ist
+  dabei nicht kosmetisch: Ohne ihn bekäme jemand, der beide Apps benutzt, das Cover seines letzten
+  **Serlo**-Streams auf einen Berkat-Auktionsabend.
+- **Eine `COLUMNS`-Konstante statt zwei Zeichenketten.** Am 16.08. war derselbe Fehler schon einmal
+  da: `useSellerShows` selektierte `thumbnail_url`, der Zeilentyp trug es nicht, das Bild wurde
+  geholt und weggeworfen. Zwei Abfragen, die dieselben Spalten brauchen, dürfen sie nicht zweimal
+  buchstabieren.
+- **Alle Termine einer Reihe tragen dasselbe Bild.** Es ist derselbe Abend, nur vier Wochen lang.
+- **Kein Text über dem Foto.** Die „jede Woche"-Pille hätte gut auf dem Bild gesessen — dann aber
+  mit `ui.overlay*`, und das ist die einzige Stelle in Berkat, an der Kontrast nachgemessen werden
+  muss (Abschnitt 8). Ohne Text kein Risiko.
+- **Ohne Bild bleibt die Karte gleich hoch** und zeigt die Ähre in `ui.lineStrong` auf `ui.sunken`.
+  Nachgerechnet: **1,43:1**. Das klingt nach zu wenig, ist aber Absicht — die vorhandene Ähre im
+  Leerzustand darunter steht bei **1,12:1**. Kein Platzhalter-Foto: Ein Standardbild für alle sähe
+  aus wie ein Fehler, dieselbe Begründung wie bei `profiles.banner_url`.
+- **Das Bild steht zwischen Kopf und Titel**, quadratisch — dieselbe Reihenfolge und derselbe
+  Zuschnitt wie die Live-Karten darunter. Zwei Bildsprachen auf einer Startseite wären eine zu viel.
+
+**Am Gerät durchgespielt (16.08.2026, 20:12).** Ein Termin ohne Bild angelegt — der Server hat das
+Cover der letzten öffentlichen Show eingesetzt, zeichengenau dieselbe URL
+(`…/thumbnails/7760a71b…/msvrtggp-jgozzo59.jpg`, Show vom 16.08. 12:23). Auf der Startseite standen
+danach beide Zustände nebeneinander: links „Fahrrad" mit der Ähre, rechts der geerbte Cover — der
+Unterschied in der Anziehung ist der eigentliche Beleg für dieses Feature. Die Karte erschien ohne
+manuelles Nachladen, die Invalidierung greift also. Die Testzeile ist danach wieder abgesagt.
+
+**Was noch fehlt:** Das Verkäufer-Profil zeigt bei angekündigten Shows weiterhin kein Bild —
+`useSellerShows` zieht `cover_url` nicht mit und `app/seller/[id].tsx` setzt für `kind: 'announced'`
+hart `thumbnail: null`. Keine Regression (dort hatte eine Ankündigung nie ein Bild), aber drei
+Zeilen, wenn es jemanden stört.
+
+### Nachtrag 16.08.2026: die Antwort lag hinter dem dritten Reiter
+
+Frage aus dem Gebrauch: „Warum werden die Demnächst-Termine auf dem Profil nicht angezeigt?"
+
+Sie wurden angezeigt. Das Profil öffnet nur **immer** auf dem Reiter „Shop"
+(`useState<ProfileTab>('shop')`), und die Termine lagen im dritten. Datenbank, RLS
+(`scheduled_lives_select_public`), Abfrage und Darstellung waren alle in Ordnung — nachgeprüft,
+Glied für Glied.
+
+Das Ärgerliche war der Weg dorthin: Der Tipp auf eine „Demnächst"-Karte führt aufs Profil
+(Abschnitt 13 begründet das mit dem Folgen-Knopf). Man tippte also auf **„Fahrrad · Morgen 18:00"**
+und landete auf einer Seite voller **Produkte** — das Einzige, wofür man gekommen war, war das
+Einzige, was nicht zu sehen war.
+
+Drei Änderungen, jede an ihrer Ursache:
+
+- **Der nächste Termin steht jetzt ÜBER den Reitern**, im selben Slot wie „sendet gerade" —
+  eine Fläche, zwei Zustände, wie bei der Live-Vorschau (Abschnitt 8). Live schlägt Termin: Wer
+  jetzt senden kann, wird nicht auf morgen verwiesen. Antippen öffnet den Reiter mit allen
+  Terminen. Ruhige Fläche mit der Zeit in Marken-Grün, **nicht** rot und **nicht** gold — rot ist
+  in Berkat die laufende Uhr, gold der Kauf, ein Termin ist eine Einladung. Dieselbe Auskunft
+  sieht damit auf Startseite und Profil gleich aus.
+- **Der Tipp auf eine Termin-Karte bringt den Reiter mit** (`/seller/<id>?tab=shows`). Als
+  `useState`-Anfangswert, nicht als Effekt: Ein Effekt hätte den Reiter auch dann zurückgestellt,
+  wenn der Besucher inzwischen selbst weitergetippt hat.
+- **„Live-Shows" heißt jetzt „Termine & Shows".** Der Reiter zeigt zuerst Angekündigtes und erst
+  darunter Gelaufenes; die alte Beschriftung las sich wie ein Archiv.
+
+⚠️ **Zwei Nachladepfade fehlten** und wären beim ersten Ausprobieren aufgefallen:
+`usePlanShow` verwarf nach dem Eintragen nur die Startseite und die eigene Terminliste, nicht die
+Profil-Abfrage — und `refreshAll` auf dem Profil rührte die Show-Abfragen gar nicht an, obwohl der
+Kommentar darüber „ALLES nachladen" verspricht. Beides nachgetragen. Es ist dieselbe Regel wie beim
+zurückgezogenen Dauerangebot: **Wer etwas an drei Orten anzeigt, muss an allen drei zurücksetzen.**
+
+### Falle: eine eingespielte Migration ein zweites Mal laufen lassen
+
+`20260816180000` löschte zunächst nur die **alte** Drei-Parameter-Signatur von
+`schedule_berkat_show`. Beim zweiten Lauf greift dieser `DROP` ins Leere — die Fassung ist ja weg —
+und `CREATE` stolpert über die Vier-Parameter-Fassung, die derselbe Lauf beim ersten Mal angelegt
+hat:
+
+```
+ERROR: 42723: function "schedule_berkat_show" already exists with same argument types
+```
+
+Die Meldung sieht aus wie ein Konflikt, heißt aber „schon erledigt". Beide Migrationen löschen
+deshalb jetzt **beide** Signaturen, bevor sie anlegen. Das macht sie wiederholbar und ist zugleich
+die Selbstheilung gegen den Fall, dass je zwei Überladungen im Katalog stehen — die wären für
+PostgREST mehrdeutig (HTTP 300).
+
+`CLAUDE.md` Regel 7 verlangt `IF NOT EXISTS`; bei Funktionen heißt das: **jede Signatur, die es je
+gab, muss im `DROP` stehen.**
 
 ---
 
