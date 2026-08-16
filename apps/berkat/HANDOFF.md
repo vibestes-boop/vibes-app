@@ -149,6 +149,14 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx expo export --platform ios --o
 Der Export ist der ehrlichere Test: Er baut das komplette Bundle und findet Auflösungsfehler, die
 `tsc` nicht sieht. Aktueller Stand: **3173 Module, fehlerfrei**.
 
+### Neu laden — NICHT ⌘R
+
+`⌘R` startet im Simulator eine **Bildschirmaufnahme**, seit Apple den Kurzbefehl
+belegt hat. Zum Neuladen des Bündels:
+
+- **`r` im Metro-Terminal** — der zuverlässige Weg
+- `⌃⌘Z` im Simulator öffnet das Entwickler-Menü, dort „Reload"
+
 ### Im Simulator laufen lassen
 
 Berkat läuft als vollwertiger Build im iOS-Simulator — damit gibt es ein zweites Gerät, ohne eins
