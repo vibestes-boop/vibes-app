@@ -39,6 +39,7 @@ import {
   useStandingListings,
 } from '../lib/useStanding';
 import { StandingComposer } from '../components/StandingComposer';
+import { useBerkatSeller, useDeclareSellerKind } from '../lib/useBerkatSeller';
 import { StandingShelf } from '../components/StandingShelf';
 import { radius, space, ui } from '../theme/tokens';
 
@@ -49,6 +50,8 @@ export default function ShelfScreen() {
 
   const { data: standing = [], refetch } = useStandingListings(myUserId ?? undefined);
   const actions = useStandingActions(myUserId ?? undefined, myUserId);
+  const { data: seller } = useBerkatSeller(myUserId);
+  const declareKind = useDeclareSellerKind(myUserId);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pulling, setPulling] = useState(false);
@@ -100,6 +103,19 @@ export default function ShelfScreen() {
         <StandingComposer
           busy={actions.create.isPending}
           canWomenOnly={Boolean(myProfile?.women_only_verified)}
+          sellerKind={seller?.kind ?? null}
+          onDeclareKind={(kind) =>
+            void declareKind
+              .mutateAsync({ kind })
+              .then(() =>
+                setNotice(
+                  kind === 'business'
+                    ? 'Als gewerblich eingetragen. Trag deine Anbieterangaben im Konto nach — sie stehen an jedem Angebot.'
+                    : 'Als Privatperson eingetragen.',
+                ),
+              )
+              .catch(() => setNotice('Das ließ sich gerade nicht speichern.'))
+          }
           onCreate={(input) =>
             void actions.create
               .mutateAsync(input)
@@ -115,6 +131,11 @@ export default function ShelfScreen() {
           isOwner
           signedIn
           busyId={busyId}
+          // Auf dem eigenen Regal erscheint weder Kauf- noch Kontakt-Knopf —
+          // `isOwner` blendet beide aus. Die Zeile steht trotzdem da, weil die
+          // Eigenschaft verlangt wird und ein Platzhalter ehrlicher ist als
+          // eine erfundene Handlung.
+          onContact={() => {}}
           // Auf dem eigenen Regal gibt es nichts zu kaufen — der Server ließe
           // es ohnehin nicht zu (`seller_cannot_bid`).
           onBuy={() => {}}

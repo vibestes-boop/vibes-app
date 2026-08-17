@@ -10,7 +10,7 @@
 
 import { Image } from 'expo-image';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Lock, ShoppingBag } from 'lucide-react-native';
+import { Lock, ShoppingBag, MessageCircle } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { formatEuro } from '../lib/useAuction';
 import type { StandingListing } from '../lib/useStanding';
@@ -22,6 +22,16 @@ type Props = {
   signedIn: boolean;
   busyId: string | null;
   onBuy: (listing: StandingListing) => void;
+  /**
+   * Kontakt statt Kasse.
+   *
+   * Ein Privatverkäufer kann ohne Stripe Connect gar kein Geld über die
+   * Plattform bekommen — läuft es über das Konto des Betreibers, ist das nach
+   * ZAG erlaubnispflichtig. Sein Angebot bekommt deshalb keinen Kaufknopf,
+   * sondern einen Weg zu ihm. Der Server weist einen Kaufversuch zusätzlich mit
+   * `contact_seller` ab; das hier ist die Oberfläche dazu, nicht die Schranke.
+   */
+  onContact: (listing: StandingListing) => void;
   onCancel: (listing: StandingListing) => void;
   /**
    * Was bei einem leeren Regal stehen soll. Ohne diesen Text bleibt die
@@ -58,6 +68,7 @@ export function StandingShelf({
   signedIn,
   busyId,
   onBuy,
+  onContact,
   onCancel,
   emptyText,
   layout = 'list',
@@ -123,6 +134,17 @@ export function StandingShelf({
                       <Text style={s.ghostText}>Zurückziehen</Text>
                     )}
                   </Pressable>
+                ) : item.seller_kind === 'private' ? (
+                  <Pressable
+                    style={[s.cellContact, !signedIn && s.buyOff]}
+                    disabled={!signedIn}
+                    onPress={() => onContact(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.title} — Verkäufer anschreiben`}
+                  >
+                    <MessageCircle size={15} color={ui.text} />
+                    <Text style={s.contactText}>Nachricht</Text>
+                  </Pressable>
                 ) : (
                   <Pressable
                     style={[s.cellBuy, (busy || !signedIn) && s.buyOff]}
@@ -183,6 +205,17 @@ export function StandingShelf({
                 ) : (
                   <Text style={s.ghostText}>Zurückziehen</Text>
                 )}
+              </Pressable>
+            ) : item.seller_kind === 'private' ? (
+              <Pressable
+                style={[s.contact, !signedIn && s.buyOff]}
+                disabled={!signedIn}
+                onPress={() => onContact(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.title} — Verkäufer anschreiben`}
+              >
+                <MessageCircle size={15} color={ui.text} />
+                <Text style={s.contactText}>Nachricht</Text>
               </Pressable>
             ) : (
               <Pressable
@@ -250,6 +283,33 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   buyOff: { opacity: 0.45 },
+  /* Kontakt ist KEIN Kauf — deshalb nicht gold. Gold ist in Berkat der
+     Kaufweg (Gebot, Preis, Zuschlag); ein „schreib ihm mal" ist eine ruhige
+     Handlung und sieht auch so aus. */
+  contact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 38,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+  },
+  cellContact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 36,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+    marginTop: space.sm,
+  },
+  contactText: { fontSize: 13, fontWeight: '700', color: ui.text },
+
   buyText: { fontSize: 14, fontWeight: '700', color: ui.goldInk },
 
   ghost: {

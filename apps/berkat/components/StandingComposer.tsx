@@ -13,6 +13,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -25,21 +26,36 @@ import { ui, radius, space } from '../theme/tokens';
 import { euroToCents } from '../lib/useStudio';
 import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
+import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
 
 type Props = {
   busy: boolean;
   /** Nur geprüfte Frauen dürfen Frauen-Only setzen — der Server prüft es nochmal. */
   canWomenOnly: boolean;
+  /** Was der Verkäufer bisher erklärt hat. `null` = noch nie gefragt worden. */
+  sellerKind: SellerKind | null;
+  /** Wird nur gerufen, wenn sich der Typ tatsächlich ändert. */
+  onDeclareKind: (kind: SellerKind) => void;
   onCreate: (input: {
     title: string;
     priceCents: number;
     womenOnly: boolean;
     category: string | null;
     imageUrl: string | null;
+    description: string | null;
+    condition: string | null;
+    postalCode: string | null;
+    city: string | null;
   }) => void;
 };
 
-export function StandingComposer({ busy, canWomenOnly, onCreate }: Props) {
+export function StandingComposer({
+  busy,
+  canWomenOnly,
+  sellerKind,
+  onDeclareKind,
+  onCreate,
+}: Props) {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [womenOnly, setWomenOnly] = useState(false);
@@ -48,6 +64,24 @@ export function StandingComposer({ busy, canWomenOnly, onCreate }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const [condition, setCondition] = useState<string | null>(null);
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+  const [description, setDescription] = useState('');
+  // Die Beschreibung ist das einzige Feld, das echte Arbeit kostet. Sie liegt
+  // deshalb hinter einem Tipp — der schnelle Weg bleibt schnell, und wer
+  // erzählen will, kann.
+  const [descOpen, setDescOpen] = useState(false);
+
+  /**
+   * ⚠️ Vorgabe „privat", und zwar nicht aus Bequemlichkeit.
+   * Unternehmereigenschaft nach § 14 BGB muss man annehmen, nicht unterstellen —
+   * wer nichts erklärt, ist kein Unternehmer. Die Angabe ist trotzdem sichtbar
+   * und mit einem Tipp änderbar, weil Art. 246d § 1 EGBGB verlangt, dass der
+   * Käufer sie VOR seiner Vertragserklärung kennt.
+   */
+  const kind: SellerKind = sellerKind ?? 'private';
 
   const cents = price.trim() ? euroToCents(price) : null;
   // Der Server lehnt alles bis 1 € ab. Das vorher zu sagen ist freundlicher,
@@ -151,6 +185,64 @@ export function StandingComposer({ busy, canWomenOnly, onCreate }: Props) {
         <Text style={s.warn}>Über 1 € — darunter lohnt sich der Versand für niemanden.</Text>
       ) : null}
 
+      {/* Ein Tipp, und rechtlich der Träger: Beim Privatverkauf ist der
+          angegebene Zustand das, woran der Verkäufer sich messen lassen muss. */}
+      <Text style={s.label}>Zustand</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipRow}>
+        {CONDITIONS.map((c) => {
+          const on = condition === c.slug;
+          return (
+            <Pressable
+              key={c.slug}
+              onPress={() => setCondition(on ? null : c.slug)}
+              style={[s.chip, on && s.chipOn]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+            >
+              <Text style={[s.chipText, on && s.chipTextOn]}>{c.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Nur PLZ und Ort, keine Straße: Für „ist das in meiner Nähe" reicht das,
+          und eine genaue Adresse in einem öffentlich lesbaren Angebot wäre
+          nicht zu rechtfertigen. */}
+      <View style={s.row}>
+        <TextInput
+          value={postalCode}
+          onChangeText={(t) => setPostalCode(t.replace(/[^0-9]/g, '').slice(0, 5))}
+          placeholder="PLZ"
+          placeholderTextColor={ui.textMuted}
+          keyboardType="number-pad"
+          style={[s.input, { width: 96, marginTop: 0 }]}
+        />
+        <TextInput
+          value={city}
+          onChangeText={setCity}
+          placeholder="Ort (freiwillig)"
+          placeholderTextColor={ui.textMuted}
+          style={[s.input, { flex: 1, marginTop: 0 }]}
+          maxLength={80}
+        />
+      </View>
+
+      {descOpen ? (
+        <TextInput
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Was sollte man wissen? Marke, Größe, Mängel …"
+          placeholderTextColor={ui.textMuted}
+          style={[s.input, { minHeight: 90 }]}
+          maxLength={2000}
+          multiline
+        />
+      ) : (
+        <Pressable onPress={() => setDescOpen(true)} style={s.descOpener}>
+          <Text style={s.descOpenerText}>+ Beschreibung hinzufügen</Text>
+        </Pressable>
+      )}
+
       {/* Kategorie ist freiwillig, aber der einzige Weg in den Kategorien-
           Reiter. Ohne sie liegt der Artikel nur auf dem eigenen Profil — und
           wer den Verkäufer noch nicht kennt, findet ihn dort nie. */}
@@ -161,11 +253,53 @@ export function StandingComposer({ busy, canWomenOnly, onCreate }: Props) {
         onOpenParent={setOpenParent}
       />
 
+      {/* Die Rechtsangabe steht direkt über dem Knopf, weil sie zur Handlung
+          gehört — nicht in einer Einstellung, die niemand findet. Kein Riegel:
+          Ein Rechtsfeld, das beim letzten Handgriff aussperrt, holt niemanden
+          herüber. Wer nichts anfasst, verkauft privat. */}
+      <Text style={s.label}>Du verkaufst als</Text>
+      <View style={s.kindRow}>
+        {([
+          { value: 'private' as const, label: 'Privatperson' },
+          { value: 'business' as const, label: 'Gewerblich' },
+        ]).map((option) => {
+          const on = kind === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => {
+                if (kind !== option.value) onDeclareKind(option.value);
+              }}
+              style={[s.kindTile, on && s.kindTileOn]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+            >
+              <Text style={[s.kindLabel, on && s.kindLabelOn]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={s.kindNote}>
+        {kind === 'business'
+          ? 'Käufer haben Widerrufsrecht und Gewährleistung. Deine Anbieterangaben stehen an jedem Angebot — trag sie im Konto nach, falls noch nicht geschehen.'
+          : 'Beim Privatverkauf gibt es kein Widerrufsrecht. Beschreibe den Zustand ehrlich — daran wirst du gemessen.'}
+      </Text>
+
       <Pressable
         style={[s.primary, !canCreate && s.primaryOff]}
         disabled={!canCreate}
         onPress={() => {
-          onCreate({ title, priceCents: cents!, womenOnly, category, imageUrl });
+          onCreate({
+            title,
+            priceCents: cents!,
+            womenOnly,
+            category,
+            imageUrl,
+            description: description.trim() || null,
+            condition,
+            postalCode: postalCode.trim() || null,
+            city: city.trim() || null,
+          });
           setTitle('');
           setPrice('');
           setWomenOnly(false);
@@ -173,6 +307,11 @@ export function StandingComposer({ busy, canWomenOnly, onCreate }: Props) {
           setOpenParent(null);
           setImageUrl(null);
           setUploadError(null);
+          setCondition(null);
+          setDescription('');
+          setDescOpen(false);
+          // PLZ und Ort bleiben ABSICHTLICH stehen: Wer abends fünf Sachen
+          // einstellt, wohnt bei allen fünf am selben Ort.
         }}
         accessibilityRole="button"
         accessibilityLabel="Artikel dauerhaft anbieten"
@@ -226,6 +365,36 @@ const s = StyleSheet.create({
   switchLabel: { fontSize: 11, color: ui.textMuted },
 
   warn: { fontSize: 12, color: ui.live, marginTop: space.sm },
+
+  label: { fontSize: 12, color: ui.textMuted, marginTop: space.md },
+  chipRow: { marginTop: space.sm },
+  chip: {
+    borderRadius: radius.pill,
+    backgroundColor: ui.sunken,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+    marginRight: space.sm,
+  },
+  chipOn: { backgroundColor: ui.brand },
+  chipText: { fontSize: 13, fontWeight: '600', color: ui.text },
+  chipTextOn: { color: ui.bg },
+
+  descOpener: { marginTop: space.md, paddingVertical: space.sm },
+  descOpenerText: { fontSize: 14, fontWeight: '600', color: ui.brand },
+
+  kindRow: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
+  kindTile: {
+    flex: 1,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.line,
+    paddingVertical: space.sm + 2,
+    alignItems: 'center',
+  },
+  kindTileOn: { borderColor: ui.brand, backgroundColor: ui.sunken },
+  kindLabel: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
+  kindLabelOn: { color: ui.text },
+  kindNote: { fontSize: 11, color: ui.textMuted, marginTop: space.sm, lineHeight: 16 },
 
   primary: {
     marginTop: space.lg,

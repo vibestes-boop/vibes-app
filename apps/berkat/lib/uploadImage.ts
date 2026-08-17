@@ -8,6 +8,7 @@
 // Bewusst schlanker als lib/uploadMedia.ts in Serlo: hier gibt es nur Bilder,
 // keine Videos, also keine Fast-Start-Prüfung und keine Komprimierung.
 
+import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './supabase';
 
@@ -60,15 +61,57 @@ function extensionFor(mimeType: string, uri: string): string {
   return fromUri && /^[a-z0-9]{3,4}$/.test(fromUri) ? fromUri : 'jpg';
 }
 
+/** Woher das Bild kommt. */
+export type ImageSource = 'camera' | 'library';
+
 /**
- * Öffnet die Fotoauswahl. Gibt null zurück, wenn abgebrochen wurde oder die
- * Erlaubnis fehlt — beides ist kein Fehler, sondern eine Entscheidung.
+ * Fragt, ob fotografiert oder ausgewählt werden soll.
+ *
+ * ⚠️ WARUM DIE KAMERA ÜBERHAUPT DAZUKOMMT
+ * Bis zum 17.08.2026 rief die App ausschließlich die Mediathek auf — man konnte
+ * ein vorhandenes Foto wählen, aber keines MACHEN. Für jemanden, der heute in
+ * einer WhatsApp-Gruppe verkauft, ist das der erste Handgriff überhaupt: Artikel
+ * hinlegen, abfotografieren, einstellen. Wer dafür erst die Kamera-App
+ * verlassen, zurückwechseln und dann suchen muss, stellt seltener ein.
+ *
+ * `Alert.alert` statt eines eigenen Blattes: Es ist auf beiden Plattformen
+ * nativ und braucht kein Modul. (`Alert.prompt` wäre iOS-only — das hier nicht.)
  */
-export async function pickImage(shape: CropShape): Promise<PickedImage | null> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+export function askImageSource(): Promise<ImageSource | null> {
+  return new Promise((resolve) => {
+    Alert.alert('Bild hinzufügen', undefined, [
+      { text: 'Foto aufnehmen', onPress: () => resolve('camera') },
+      { text: 'Aus der Mediathek', onPress: () => resolve('library') },
+      // `onDismiss` deckt das Wegtippen daneben auf Android ab; ohne das
+      // bliebe das Versprechen offen und der Aufrufer wartete ewig.
+      { text: 'Abbrechen', style: 'cancel', onPress: () => resolve(null) },
+    ], { onDismiss: () => resolve(null) });
+  });
+}
+
+/**
+ * Öffnet Kamera oder Fotoauswahl. Gibt null zurück, wenn abgebrochen wurde oder
+ * die Erlaubnis fehlt — beides ist kein Fehler, sondern eine Entscheidung.
+ */
+export async function pickImage(
+  shape: CropShape,
+  source: ImageSource = 'library',
+): Promise<PickedImage | null> {
+  // Zwei verschiedene Berechtigungen. Die Kamera-Erlaubnis steht in der
+  // app.json bereits für LiveKit (`NSCameraUsageDescription`) — deshalb kostet
+  // die Kamera hier keinen neuen Build.
+  const permission =
+    source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
 
-  const result = await ImagePicker.launchImageLibraryAsync({
+  const launch =
+    source === 'camera'
+      ? ImagePicker.launchCameraAsync
+      : ImagePicker.launchImageLibraryAsync;
+
+  const result = await launch({
     mediaTypes: ['images'],
     // ⚠️ `aspect` wirkt NUR auf Android. Auf iOS ist der Zuschnitt-Rahmen bei
     // `allowsEditing` immer quadratisch, egal was hier steht — das ist so
@@ -158,7 +201,9 @@ export async function pickAndUpload(
   kind: ImageKind,
   shape: CropShape,
 ): Promise<string | null> {
-  const picked = await pickImage(shape);
+  const source = await askImageSource();
+  if (!source) return null;
+  const picked = await pickImage(shape, source);
   if (!picked) return null;
   return uploadImage(picked, kind);
 }

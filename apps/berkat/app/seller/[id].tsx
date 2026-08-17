@@ -727,6 +727,17 @@ export default function SellerScreen() {
                     : null
                 }
                 busyId={standingBusyId}
+                // Kontakt statt Kasse — mit Kleinanzeigens meistgetipptem Satz
+                // als Anfang. Der Artikelname steht darin, damit der Verkäufer
+                // ohne Rückfrage weiß, worum es geht (Berkats Antwort auf
+                // Serlos Muster, den Artikel in den Nachrichtentext zu legen).
+                onContact={(item) =>
+                  router.push(
+                    `/messages/${id}?draft=${encodeURIComponent(
+                      `Hallo! Ist „${item.title}" noch da?`,
+                    )}`,
+                  )
+                }
                 onBuy={(item) => {
                   setStandingBusyId(item.id);
                   void standingActions.buy

@@ -40,7 +40,18 @@ function timeLabel(iso: string): string {
 }
 
 export default function ConversationScreen() {
-  const { id: otherId } = useLocalSearchParams<{ id: string }>();
+  const { id: otherId, draft: presetDraft } = useLocalSearchParams<{
+    id: string;
+    /**
+     * Vorformulierter erster Satz, z. B. aus einem Angebot heraus.
+     *
+     * Kleinanzeigens „Ist das noch verfügbar?" ist der meistgetippte Satz im
+     * deutschen Gebrauchtmarkt — ihn vorzuschreiben nimmt dem Erstkontakt die
+     * Hürde. Als Anfangswert, NICHT als Effekt: Sonst überschriebe er, was der
+     * Käufer inzwischen selbst getippt hat.
+     */
+    draft?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
 
@@ -52,7 +63,7 @@ export default function ConversationScreen() {
   const profiles = useProfiles(otherId ? [otherId] : []);
   const other = profiles[otherId ?? ''];
 
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(() => presetDraft ?? '');
   const [notice, setNotice] = useState<string | null>(null);
   const listRef = useRef<FlatList<DirectMessage>>(null);
 
