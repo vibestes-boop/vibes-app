@@ -38,6 +38,7 @@ was gilt.
 | **Verkäufer-Bereich** — Bestellungen und Regal als eigene Seiten | ✅ am Gerät gesehen (18) |
 | **Erstnutzung** — „Deine ersten Schritte" | ✅ am Gerät bestätigt (18) |
 | **Marktplatz** — Privat- und Gewerbeverkäufer, Shop-Seite, Orte | ⚠️ gebaut, **eine Migration steht noch offen** (20) |
+| **Artikelseite** — jedes Angebot hat eine eigene Seite, eine Karte für alle Flächen | ✅ am Gerät durchgespielt, Beschreibung erstmals sichtbar (21) |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -57,10 +58,17 @@ was gilt.
   (`'wide'` lädt jetzt ohne Zuschnitt-Rahmen)
 - **Die Kamera** — der Wähler fragt jetzt „aufnehmen oder auswählen", aber im Simulator gibt es
   keine Kamera; am echten Gerät nie ausprobiert
-- **Der Marktplatz-Weg von vorne** — Anbietertyp erklären, Angebot mit Zustand und Ort einstellen,
-  Kennzeichnung in allen drei Ansichten sehen. Braucht `20260816220000` (Abschnitt 20)
+- ~~**Der Marktplatz-Weg von vorne**~~ — am 17.08.2026 durchgespielt, nachdem `20260816220000`
+  eingespielt war: Angebot mit Zustand und Ort eingestellt, „Privatverkauf" stand an der Zeile,
+  der Rechtsfolge-Kasten auf der Artikelseite (Abschnitt 21)
 - **„Nachricht" statt „Kaufen"** — sichtbar nur an einem FREMDEN Privatangebot; es gibt heute
   keins, weil beide Dauerangebote dem Betreiber gehören
+- ~~**Der Anbieter-Block auf der Artikelseite**~~ — am 17.08.2026 gesehen, „Privatverkauf · kein
+  Widerrufsrecht" samt Erklärsatz. Die **gewerbliche** Fassung und der Impressumsblock sind
+  weiterhin ungeprüft: Es gibt kein Konto mit `kind = 'business'` (21)
+- **Der Kaufknopf auf der Artikelseite** — braucht ein fremdes Angebot, also das zweite Konto. Der
+  Weg daneben ist belegt: Zurückziehen lief, und die Leiste sprang danach live auf
+  „Zurückgezogen" (21)
 
 ### Drei Blocker — keiner davon ist Code
 
@@ -132,7 +140,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | 13 Stück, alle eingespielt — Abschnitt 5 |
+| Migrationen | 30 Stück, 29 eingespielt — Abschnitt 5 |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -368,6 +376,29 @@ Art. 246d § 1 EGBGB an jedem Angebot verlangt.
 Abschicken auch festhalten; sonst weichen Bildschirm und Datenbank an genau der Stelle
 voneinander ab, an der es zählt. Behoben serverseitig (`20260816220000`) statt im Client, weil
 sonst zwei Rufe und ein Wettlauf daraus würden.
+
+### Ein Feld, das geschrieben und nie gelesen wird
+
+Der Gegenfall zum vorigen, gefunden am 17.08.2026 — und er hielt zwei Tage.
+
+`20260816210000` legte `description` an. Der Composer bekam ein Feld dafür, die RPC einen
+Parameter, `useStanding` reichte ihn durch, der Zeilentyp trug ihn, die Abfrage holte ihn.
+**Kein einziger Bildschirm zeigte ihn an.** Ein Verkäufer tippte drei Sätze über den Zustand
+seiner Ware, und niemand konnte sie je sehen. Bei einem Dauerangebot ist das nicht irgendein
+Feld: In einer Show erzählt der Verkäufer, hier ist der getippte Text die **einzige**
+Beschreibung, die es je geben wird.
+
+Warum es niemandem auffiel: Die Kette war an jedem einzelnen Glied vollständig. Ein `grep` nach
+`description` liefert acht Treffer und sieht gesund aus — sieben davon sind Eingang, Durchreiche
+und Typ, und genau einer fehlt. Dasselbe gilt für `sellerKindNote()`: eine fertige, richtig
+formulierte Funktion in `useBerkatSeller.ts`, **ohne einen einzigen Aufrufer**.
+
+Die Probe, die das findet, ist eine andere als „steht die Spalte im Typ":
+
+> **Zeig mir den Bildschirm, auf dem dieser Wert steht.**
+
+Gibt es ihn nicht, ist das Feld tot — egal wie sauber alles davor aussieht. Für jede neue Spalte
+gehört diese Frage in dieselbe Migration, in der sie angelegt wird.
 
 ### `create-checkout-session`: `stripeKey` steht nicht dort, wo man ihn vermutet
 
@@ -630,8 +661,8 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Dreißig Migrationen, **neunundzwanzig eingespielt und verzeichnet** — `supabase migration list`
-zeigt am 16.08.2026 keine Lücke. Die Tabelle war bis dahin sechs Einträge im Rückstand (`20260815180000`
+Zweiunddreißig Migrationen, **alle eingespielt und verzeichnet** — `supabase migration list`
+zeigt am 17.08.2026 keine Lücke. Die Tabelle war bis dahin sechs Einträge im Rückstand (`20260815180000`
 bis `20260816090000` fehlten, obwohl die Abschnitte 14, 15 und 17 sie beschreiben); das ist
 nachgetragen.
 
@@ -671,7 +702,9 @@ list` keine Lücke zeigt (siehe Abschnitt 3).
 | `20260816190000_berkat_scheduled_cover_woz.sql` | `AND s.women_only = false` im Rückfall — ohne das hebt eine `SECURITY DEFINER`-Funktion ein geschütztes Cover in eine öffentliche Zeile, siehe Abschnitt 3 |
 | `20260816200000_berkat_sellers.sql` | `berkat_sellers` (Anbietertyp, Impressumsangaben, `checkout_enabled`), `live_auctions.seller_kind`, `set_berkat_seller_kind` — Abschnitt 20 |
 | `20260816210000_berkat_listing_fields.sql` | Beschreibung, Zustand, PLZ, Ort; `create_standing_listing` neu; **zwei Lücken in `buy_now_live_auction`** (Frauen-Only, ZAG-Schranke) — Abschnitt 20 |
-| `20260816220000_berkat_default_private.sql` | ⚠️ **NOCH NICHT EINGESPIELT.** Wer die Vorgabe „Privatperson" stehen lässt, bekommt sie auch gespeichert — sonst zeigt die App eine Angabe, die die Datenbank nicht hat |
+| `20260816220000_berkat_default_private.sql` | Wer die Vorgabe „Privatperson" stehen lässt, bekommt sie auch gespeichert — sonst zeigt die App eine Angabe, die die Datenbank nicht hat. **Eingespielt am 17.08.2026** per `supabase db push`, am Gerät gegengeprüft (Abschnitt 21). ⚠️ Hat dabei die ZAG-Schranke für alle zuschnappen lassen — siehe die nächste Zeile |
+| `20260817120000_berkat_checkout_gate.sql` | `checkout_enabled` ist die **einzige** Wahrheit für den Kaufweg: Bestandsschutz für den Betreiber + `IS DISTINCT FROM true` im Wächter, damit auch „keine Zeile" sperrt — Abschnitt 22 |
+| `20260817130000_berkat_live_seller_kind.sql` | `create_live_auction` stempelt `seller_kind` (nur lesen, nie anlegen); `set_berkat_seller_kind` schreibt die Impressumsfelder per `COALESCE`, damit ein Typwechsel sie nicht löscht — Abschnitt 22 |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -1068,6 +1101,9 @@ Nachladetakt für den Zustandswechsel, ohne dass die Uhr ruckelt.
 Das Widget liegt auf einem **Bild**, und Bilder sind mal hell, mal dunkel. Berkats Design-Gesetz
 kennt bewusst nur zwei feste Flächen (`ui` hell, `stage` dunkel), genau um diesen Fall
 auszuschließen — Text auf fremdem Bildinhalt ist die einzige Ausnahme in der ganzen App.
+Seit dem 17.08.2026 gibt es davon **zwei** Fundstellen: dieses Widget und die „Deins"-Pille auf
+der Angebots-Karte (`components/ListingCard.tsx`). Der Bestand steht an `ui.overlay` in
+`theme/tokens.ts` — wer eine dritte anlegt, trägt sie dort ein.
 
 Gelöst wie bei Whatnot: eine **milchige, fast deckende** Fläche, nicht zartes Glas. Sie steht als
 `ui.overlay` in `theme/tokens.ts`, damit niemand sie beim nächsten Mal „dezenter" macht. Wer hier
@@ -1759,8 +1795,8 @@ Entscheidungen, die nicht offensichtlich sind:
   buchstabieren.
 - **Alle Termine einer Reihe tragen dasselbe Bild.** Es ist derselbe Abend, nur vier Wochen lang.
 - **Kein Text über dem Foto.** Die „jede Woche"-Pille hätte gut auf dem Bild gesessen — dann aber
-  mit `ui.overlay*`, und das ist die einzige Stelle in Berkat, an der Kontrast nachgemessen werden
-  muss (Abschnitt 8). Ohne Text kein Risiko.
+  mit `ui.overlay*`, und das sind die einzigen Stellen in Berkat, an denen Kontrast nachgemessen
+  werden muss (Abschnitt 8; seit dem 17.08.2026 zwei). Ohne Text kein Risiko.
 - **Ohne Bild bleibt die Karte gleich hoch** und zeigt die Ähre in `ui.lineStrong` auf `ui.sunken`.
   Nachgerechnet: **1,43:1**. Das klingt nach zu wenig, ist aber Absicht — die vorhandene Ähre im
   Leerzustand darunter steht bei **1,12:1**. Kein Platzhalter-Foto: Ein Standardbild für alle sähe
@@ -2730,7 +2766,7 @@ nur eine Zeile, die ausdrücklich `false` sagt, schrankt.
 |---|---|
 | `20260816200000` | `berkat_sellers` (Anbietertyp, Impressumsangaben, `checkout_enabled`), `live_auctions.seller_kind`, `set_berkat_seller_kind` |
 | `20260816210000` | Beschreibung, Zustand, PLZ, Ort; `create_standing_listing` neu; zwei Lücken in `buy_now_live_auction` |
-| `20260816220000` | ⚠️ **offen** — die Vorgabe „privat" wird auch gespeichert (siehe Abschnitt 3) |
+| `20260816220000` | die Vorgabe „privat" wird auch gespeichert (siehe Abschnitt 3) — **eingespielt 17.08.2026** |
 | `lib/useBerkatSeller.ts` | Typ lesen und erklären, die sechs Zustände, der Satz fürs Angebot |
 | `lib/useShop.ts` + `app/shop.tsx` | alles Kaufbare über alle Verkäufer, ohne Filter |
 | `lib/uploadImage.ts` | **die Kamera** |
@@ -2805,11 +2841,324 @@ LiveKit ohnehin in der `app.json`.
 
 ### Was als Nächstes fehlt
 
-1. `20260816220000` einspielen — sonst trägt kein neues Angebot eine Kennzeichnung.
+1. ~~`20260816220000` einspielen~~ — **erledigt am 17.08.2026.** `supabase db push` trug genau
+   diese eine Datei nach (davor keine Lücke, danach 30/30). Die zwei `NOTICE …does not exist,
+   skipping` beim Lauf sind erwartet: Die beiden Altsignaturen hatte `20260816210000` schon
+   entfernt, und die Datei löscht bewusst **alle drei**, damit sie wiederholbar bleibt.
 2. Den Weg von vorne am Gerät durchspielen: Typ erklären, Angebot mit Zustand und Ort einstellen,
    Kennzeichnung in Regal, Kategorie-Seite und Shop-Seite sehen.
 3. **Ein zweites Konto als Privatverkäufer**, damit „Nachricht" statt „Kaufen" überhaupt sichtbar
    wird — an eigenen Angeboten erscheint immer „Zurückziehen".
-4. Die Impressumsangaben gewerblicher Verkäufer haben noch keine Oberfläche: Die Spalten stehen,
-   das Formular im Konto fehlt, und der Hinweis-Streifen am Angebot („Anbieterangaben
-   unvollständig") ist nicht gebaut.
+4. ~~Die Impressumsangaben gewerblicher Verkäufer haben noch keine Oberfläche~~ — der
+   **Hinweis-Streifen am Angebot ist am 17.08.2026 gebaut** (Abschnitt 21). Das Formular im Konto
+   fehlt weiterhin.
+
+---
+
+## 21. Jedes Angebot hat eine eigene Seite (17.08.2026)
+
+Zaur: *„Die Umsetzung des Kleinanzeigen-Shops ist nicht gut. Denk dir eine bessere Struktur aus,
+und jedes Produkt muss eine eigene Seite haben."*
+
+Der Befund war schlimmer als die Beschwerde. Ein Marktplatz ohne Artikelseite ist kein Marktplatz
+mit einem fehlenden Bildschirm — er ist ein Schaufenster ohne Laden dahinter.
+
+### Was nicht stimmte
+
+**1. Es gab keine Artikelseite, und der Code behauptete, es gäbe eine.** Der Kommentar in
+`StandingShelf.tsx` schrieb wörtlich: *„…er hat nur andere Rechte, und das steht ausführlich auf
+der Artikelseite."* Jeder Tipp auf ein Angebot führte auf `/seller/<id>`, also aufs Profil des
+Verkäufers. Man tippte auf „Silberring" und landete auf einer Seite voller anderer Produkte —
+derselbe Fehler wie bei den Terminen in Abschnitt 13, und dort steht der Satz dazu schon:
+*„Das Einzige, wofür man gekommen war, war das Einzige, was nicht zu sehen war."* Im Regal auf dem
+Profil war die Karte sogar **überhaupt nicht antippbar**: Man konnte einen Artikel kaufen, aber
+nicht ansehen.
+
+**2. Die Beschreibung war unsichtbar** — siehe die neue Falle in Abschnitt 3.
+
+**3. Die Rechtsfolge der Anbieterkennzeichnung stand nirgends.** Die Karten zeigten „Privatverkauf"
+als nacktes Etikett. `sellerKindNote()` — die fertige Funktion mit dem richtigen Satz — hatte
+keinen Aufrufer. Art. 246d § 1 EGBGB verlangt aber nicht das Etikett, sondern die Auskunft, und
+zwar **vor** der Vertragserklärung.
+
+**4. Der Kauf lag im Stöber-Raster.** Ein goldener „Kaufen"-Knopf zwischen Stöber-Karten, ohne
+Beschreibung, ohne Versandkosten, ohne Rechtsfolge, einen Fingerbreit neben dem Tipp aufs Bild.
+Das steht im direkten Widerspruch zu der Regel, die dieselbe App am 16.08. für das *Gebot*
+aufgestellt hat (Abschnitt 19): *„Ein Bildschirm, auf dem Tippen die normale Geste ist, darf
+keinen Kauf mit demselben Tippen auslösen."* Ein Sofortkauf ist verbindlicher als ein Gebot — er
+schließt den Vertrag sofort.
+
+**5. Dieselbe Karte war viermal abgeschrieben** (Marktplatz, Kategorie, Regal-Raster,
+Regal-Liste) und schon auseinandergelaufen: drei zeigten den Verkäufernamen, eine nicht; „Deins"
+gegen „von dir" gegen einen Zurückziehen-Knopf; die Kategorie-Seite baute ihre Meta-Zeile zweimal
+im selben JSX. Der Kopf des alten `useShop.ts` **beschrieb die Gefahr sogar** („wer hier eine
+Spalte ergänzt, muss sie dort mit ergänzen"), statt sie abzuschaffen. Eine Warnung ist kein Riegel.
+
+**6. Zwei Typen für dieselbe Zeile.** `StandingListing` trug die Beschreibung, aber keine
+`seller_id`; `CategoryListing` trug die `seller_id`, aber nicht die Beschreibung. Beide
+unvollständig, an verschiedenen Stellen — und genau das war die technische Ursache für 1 und 2:
+Das Regal konnte nicht verlinken, die Kategorie konnte nichts anzeigen.
+
+### Die neue Struktur
+
+| Datei | Rolle |
+|---|---|
+| `lib/useListings.ts` | **neu** — ein Typ `Listing`, eine `LISTING_COLUMNS`, vier Abfragen darauf (Marktplatz, Kategorie, Verkäufer, Einzelstück) |
+| `components/ListingCard.tsx` | **neu** — die eine Karte, `grid` zum Stöbern und `row` zum Arbeiten. **Ohne Kaufknopf** |
+| `app/listing/[id].tsx` | **neu** — die Artikelseite und die einzige Fläche mit einem Kaufweg |
+| `lib/useStanding.ts` | nur noch die Aktionen (anlegen, zurückziehen, kaufen) und die Fehlertexte |
+| `lib/useCategories.ts` | eigener Zeilentyp und eigene Spaltenliste raus |
+| `lib/useShop.ts` | **gelöscht** — ging in `useListings.ts` auf |
+
+Die Artikelseite von oben nach unten: Bild quadratisch über die volle Breite · Preis · Titel ·
+Zustand und Ort als Chips · wann eingestellt · **Anbieterkennzeichnung mit Rechtsfolge** ·
+**Beschreibung** · Verkäuferkarte mit Bewertung (führt aufs Profil) · Versandsatz mit dem echten
+Satz aus `berkat_shipping_rates` · bei gewerblichen Verkäufern die Anbieterangaben · unten eine
+feste Leiste mit **einer** Handlung.
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Der Kaufknopf ist aus allen Rastern verschwunden.** Das ist die eigentliche Änderung, nicht
+  die neue Seite. Eine Karte ist ab jetzt ein Weg zum Artikel und sonst nichts. Dass der Ort der
+  Vertragserklärung derselbe ist wie der Ort der Pflichtangabe, ist kein Nebeneffekt — es ist der
+  Grund, warum die Kennzeichnung auf der kleinen Karte ein Etikett bleiben darf.
+- **Kein zusätzlicher Bestätigungs-Dialog.** Die Seite IST der Schritt, der vorher fehlte; ein
+  Blatt darüber wäre die Überdosis, vor der Design-Gesetz 3 warnt. Der Knopf sagt stattdessen,
+  was er tut: „Kaufen · 24 €".
+- **Ein verkaufter Artikel bleibt lesbar.** `live_auctions_select_standing` filtert nicht auf den
+  Status, und das wird hier zum Vorteil: Wer aus einer Nachricht auf etwas kommt, das vor zehn
+  Minuten weg ging, liest „Schon verkauft" statt einer Fehlerseite. Ein Frauen-Only-Artikel ohne
+  Zugang bekommt bewusst **denselben** Text wie ein gelöschter — sonst sickerte die Existenz eines
+  geschützten Raums über die Antwort durch, genau wie bei `buy_now_live_auction`.
+- **Zurückziehen bleibt im Regal.** Es ist der häufige Handgriff des Verkäufers; ihn erst eine
+  Seite tiefer anzubieten hieße, fünf Artikel fünfmal zu öffnen. Der Knopf sitzt deshalb **neben**
+  der Fläche, die zum Artikel führt, nicht darin.
+- **Kein Teilen-Knopf.** `SITE_URL` kennt nur `/live` — ein geteilter Artikel-Link ginge ins Leere
+  (Abschnitt 8). Kommt eine Artikelseite im Netz dazu, gehört er hierher.
+- **Weiterhin keine Filter und keine Suche** auf der Marktplatz-Seite. Es liegen drei Angebote in
+  der Datenbank. Die Entscheidung aus Abschnitt 20 steht.
+
+### Am Gerät durchgespielt (17.08.2026, 20:38–20:44)
+
+Im Simulator, gegen die echte Datenbank:
+
+- **Marktplatz** — „Alle Angebote · 2 Artikel · rund um die Uhr", zwei Karten mit „Deins",
+  Verkäufername, Preis. **Kein Kaufknopf im Raster.**
+- **Artikelseite** — Tipp auf „Kaffeetasse": Bild über die volle Breite, „64 €", Verkäuferkarte
+  („berkattest · Noch keine Bewertung · 5 Zuschläge"), und der Versandsatz mit dem **echten** Satz
+  aus der Datenbank: „zzgl. Versand ab 4,90 €".
+- **Die Beschreibung, zum ersten Mal.** Testangebot mit Zustand, PLZ, Ort und drei Sätzen Text
+  angelegt — auf der Artikelseite standen die Chips „Sehr gut" und „80331 …", darunter
+  „heute eingestellt" und der vollständige Beschreibungstext.
+- **Zurückziehen von der Artikelseite** lief, und die Leiste sprang **ohne Neuladen** von
+  „Zurückziehen" auf „Zurückgezogen" — der Beleg, dass die neue Invalidierung auf
+  `['berkat','listing']` greift.
+- **Alle vier Flächen** zeigen dieselbe Karte: Marktplatz-Raster, Kategorie-Raster, Profil-Raster
+  („Jetzt kaufbar · 2") und die Regal-Liste mit der Meta-Zeile „Sehr gut · 80331 …".
+- Die Testzeile ist danach wieder abgesagt, der Datenstand ist unverändert.
+
+`npx tsc --noEmit` fehlerfrei, `npx expo export --platform ios` fehlerfrei (3683 Module).
+
+### Die Kennzeichnung, nachgereicht am selben Abend (20:58)
+
+Der Anbieter-Block blieb zunächst leer — nicht wegen des Umbaus, sondern weil
+`20260816220000` noch nicht eingespielt war und `seller_kind` deshalb auf allen Angeboten NULL
+stand. Die Migration ist jetzt drin (siehe Abschnitt 20), und damit ist die Kette zum ersten Mal
+vollständig gesehen worden:
+
+- Angebot ohne Antippen des Anbietertyps eingestellt — also mit der bloßen **Vorgabe**
+- an der Regal-Zeile stand danach **„Privatverkauf"**
+- auf der Artikelseite der Kasten **„Privatverkauf · kein Widerrufsrecht"** samt Erklärsatz
+
+Das ist zugleich die erste Gegenprobe aus dem Dateikopf der Migration: Lägen zwei Überladungen
+von `create_standing_listing` im Katalog, hätte PostgREST mit **HTTP 300** geantwortet und das
+Einstellen wäre gescheitert. Es lief — also gibt es genau eine Fassung.
+
+⚠️ **Nebenwirkung, die man wissen muss:** Durch diesen Testlauf hat `berkattest` jetzt eine Zeile
+in `berkat_sellers` mit `kind = 'private'`. Das ist das gewollte Verhalten der Migration, aber es
+bedeutet: Wer als Betreiber **gewerblich** verkauft, muss im Composer einmal auf „Gewerblich"
+tippen. `set_berkat_seller_kind` zieht dabei alle noch offenen eigenen Angebote nach — auch die
+zwei alten mit NULL, die die Migration bewusst nicht angefasst hat.
+
+### Was daran noch offen ist
+
+1. **Die gewerbliche Fassung** des Anbieter-Blocks und der Impressumsblock darunter sind
+   ungeprüft — es gibt kein Konto mit `kind = 'business'`. Der Weg dahin ist ein Tipp auf
+   „Gewerblich" im Composer, ändert aber die Anbieterlage aller offenen Angebote dieses Kontos.
+2. **Der Kaufknopf** braucht ein fremdes Angebot, also das zweite Konto.
+3. **Die Suche** findet weiterhin nur Verkäufer, keine Artikel (Abschnitt 17). Mit einer
+   Artikelseite je Angebot wäre eine Artikelsuche jetzt sinnvoll — sie hätte ein Ziel.
+4. ~~**`/shop` hängt an einer einzigen Zeile** im Kategorien-Reiter~~ — **behoben, siehe unten.**
+
+### Der Leerzustand der Startseite verwies ins Leere — dieselbe Regel, drittes Mal
+
+Abschnitt 13 hat sie schon einmal aufgeschrieben: *„‚Komm später mal wieder, vielleicht' ist die
+falsche Auskunft, wenn es eine Antwort gibt."* Damals galt sie für angekündigte Termine, und der
+Leerzustand bekam einen Verweis nach oben.
+
+Für **Angebote** galt sie noch nicht. Wer die App öffnete, während niemand sendete — rund 94 % der
+Zeit — las „Schau später wieder rein", obwohl zwei Bildschirme entfernt kaufbare Ware lag. Der
+einzige Weg dorthin war die Zeile „Alles ansehen" im Kategorien-Reiter: **drei Tipps**, und man
+musste wissen, dass sie da ist.
+
+Jetzt steht im Leerzustand ein Knopf **„N Angebote ansehen"** → `/shop`. Ein Tipp.
+
+- **`useShopCount()`** (`lib/useListings.ts`) zählt mit `head: true` — **keine einzige Zeile**
+  wird übertragen. Dasselbe Muster wie beim Bestell-Abzeichen am Verkaufen-Reiter, und aus
+  demselben Grund: Die Startseite ist der Bildschirm, den jeder als Ersten sieht, und sie soll
+  nicht sechzig Zeilen laden, um einen Satz zu formulieren.
+- Der Zähler hängt in `useStandingActions.invalidate()` — sonst stünde nach dem Zurückziehen des
+  letzten Angebots weiter „1 Angebot ansehen" auf einem leeren Regal.
+- **Kontur statt Gold.** Gold ist in Berkat der Kaufweg; „sieh dir das Regal an" ist eine
+  Einladung zum Stöbern.
+- Der Knopf erscheint **unabhängig vom Text**: Auch wer gerade auf einen Termin verwiesen wird,
+  darf jetzt etwas kaufen. Bei aktiver Suche oder gesetztem Kategorie-Filter bleibt er weg —
+  dort ist „nichts gefunden" die richtige und vollständige Auskunft.
+
+Am Gerät gesehen (17.08.2026, 21:02): „Gerade ist niemand live · Aber es liegt etwas im Regal —
+rund um die Uhr kaufbar, auch ohne Sendung" mit dem Knopf **„2 Angebote ansehen"**; die Zahl
+stimmte mit dem Datenstand nach dem Zurückziehen der Testzeile überein.
+
+---
+
+## 22. Der Audit — und was er im eigenen Bau fand (17.08.2026, abends)
+
+Nach dem Umbau lief ein Prüf-Fächer über ihn: fünf Blickwinkel (Korrektheit, Recht, Lücken,
+Auffindbarkeit, Hausregeln), und **jeder einzelne Fund musste einen Skeptiker überleben**, dessen
+Auftrag es war, ihn zu widerlegen. Ergebnis: **45 Funde, 19 bestätigt, 26 verworfen.**
+
+Die Quote ist die eigentliche Nachricht. Über die Hälfte der Funde hielt der Gegenprobe nicht
+stand — teils weil das Verhalten anderswo abgefangen wird, teils weil es bewusste, hier
+dokumentierte Entscheidungen sind. Wer solche Listen ohne Gegenprobe abarbeitet, baut an
+Baustellen, die keine sind.
+
+### ⚠️ Der teuerste Fund war eine Regression von zwanzig Minuten vorher
+
+`buy_now_live_auction` sperrt einen Regal-Kauf so:
+
+```sql
+SELECT checkout_enabled INTO v_ok FROM berkat_sellers WHERE user_id = a.seller_id;
+IF v_ok IS NOT NULL AND v_ok = false THEN RAISE 'contact_seller';
+```
+
+**„Keine Zeile" hieß also erlaubt.** Genau darauf beruhte der Satz aus Abschnitt 20: *„In der
+gebauten Fassung heißt ‚keine Zeile' deshalb wie bisher, nicht ‚gesperrt'."* Das stimmte — solange
+niemand eine Zeile hatte.
+
+`20260816220000`, am selben Abend eingespielt, legt bei **jedem** `create_standing_listing` eine
+Zeile an, und `checkout_enabled` steht dabei auf seiner Vorgabe `false`. Belegt: Vor dem Einspielen
+hatte `berkat_sellers` **null** Zeilen, danach genau eine — `kind = 'private'`,
+`checkout_enabled = false`. Der am 16.08. durchgespielte Kauf eines Dauerangebots wäre ab diesem
+Moment mit `contact_seller` gescheitert.
+
+Das ist wörtlich die Falle, die die drei Skeptiker beim ersten Entwurf von Abschnitt 20 abgelehnt
+hatten: **„Ein Riegel mit Vorgabe `false` und ohne Backfill ist kein Riegel, sondern ein
+Ausfall."** Er kam durch die Seitentür einer Migration zurück, die ihn gar nicht anfassen wollte.
+
+**Die Lehre, die über diesen Fall hinausgeht:** Eine Migration, die eine Zeile ANLEGT, ändert jede
+Bedingung, die anderswo auf „Zeile vorhanden?" prüft. Wer eine `ON CONFLICT DO NOTHING`-Einfügung
+schreibt, muss sie nicht nur gegen ihre eigene Tabelle lesen, sondern gegen jeden Wächter, der die
+Existenz dieser Zeile als Signal benutzt — `grep` nach dem Tabellennamen genügt.
+
+Und die zweite: **„Kein Eintrag = erlaubt" ist für eine erlaubnisrechtliche Schranke immer die
+falsche Polarität.** Sie sah nur richtig aus, weil genau ein Mensch keinen Eintrag hatte.
+
+Behoben mit `20260817120000_berkat_checkout_gate.sql` — Bestandsschutz für den Betreiber
+(datengestützt: wer schon über die Plattform bezahlt wurde) plus `IS DISTINCT FROM true` im
+Wächter, damit `checkout_enabled` die **einzige** Wahrheit ist.
+
+**Eingespielt am 17.08.2026, 22:5x.** Der Lauf meldete `Kassen-Freigabe steht jetzt bei 1
+Verkäufer(n)` — der Bestandsschutz hat also genau einen erfasst und keinen zweiten. Danach steht
+in `berkat_sellers` eine Zeile mit `checkout_enabled = true`. Rauchprobe auf die ersetzte Funktion:
+Aufruf ohne Anmeldung antwortet mit **HTTP 401 / `42501 permission denied for function`** — also
+weder ein Syntaxfehler noch, und das ist der eigentliche Punkt, **HTTP 300**: Es liegt genau eine
+Signatur im Katalog.
+
+⚠️ **`declared_at` taugt NICHT zur Unterscheidung.** Beim Nachsehen aufgefallen: Die Spalte trägt
+auch an der automatisch entstandenen Zeile einen Zeitstempel, weil sie einen Spalten-Default hat.
+Wer „ausdrücklich erklärt" von „per Vorgabe entstanden" unterscheiden will, braucht ein eigenes
+Merkmal — der naheliegende Griff nach `declared_at` geht ins Leere.
+
+### Zwei Spalten für dieselbe Frage
+
+Der zweite Kern desselben Fundes, und er war unabhängig davon falsch: Die Oberfläche entschied
+„privat → Nachricht, sonst Kaufen" an `seller_kind`, der Server an `checkout_enabled`.
+
+`set_berkat_seller_kind` fasst `checkout_enabled` ausdrücklich nicht an, und jede neue Zeile trägt
+`false` — ein gewerblicher Verkäufer hatte damit **per Konstruktion** `kind = 'business'` UND
+`checkout_enabled = false`. Die App zeigte ihm den goldenen Kaufknopf, den der Server garantiert
+verweigert. Dasselbe galt für `seller_kind = NULL`: `isPrivate` war eine zweiwertige Prüfung auf
+einer dreiwertigen Spalte.
+
+Jetzt entscheidet **`checkout_enabled` den Knopf, `seller_kind` den Text.** Solange die Freigabe
+noch geladen wird, steht in der Leiste eine Wartefläche und kein beschrifteter Knopf — ein Etikett,
+das eine Zehntelsekunde später von „Nachricht" auf „Kaufen" springt, ist auf einem Geldweg
+schlimmer als eine kurze Pause.
+
+### Was sonst behoben wurde
+
+| Fund | Was war | Datei |
+|---|---|---|
+| Sackgasse ohne Anmeldung | Kauf- und Kontakt-Knopf waren `disabled`, also **grau ohne Erklärung** — und der freundliche Satz im Handler („Melde dich an…") war toter Code, weil ein deaktiviertes `Pressable` nie `onPress` ruft | `app/listing/[id].tsx` |
+| Leeres Impressum als „vollständig" | `missingBusinessFields` gibt für „ich weiß nichts" (`null`) dasselbe `[]` zurück wie für „alles da" — die Seite zeigte die Überschrift „Anbieterangaben" über einem leeren `join` | dito |
+| Kein Weg nach dem Kauf | Der teuerste Moment der App endete in einem Satz („Bezahlen kannst du unter ‚Konto'"), nicht in einem Knopf. Jetzt: Erfolgs-Haptik + **„Zum Sammelkorb"** | dito |
+| Falsches Polster | `paddingBottom: insets.bottom + 96` mit der Begründung „sonst verdeckt die Leiste den Inhalt" — die Leiste ist aber ein normales Flex-Geschwister und verdeckt gar nichts. Vierfacher Hauswert mit falschem Grund | dito |
+| Aktivität führte aufs Profil | „Neu im Angebot" trug Artikelbild und Artikelnamen und landete auf `/seller/<id>` — die **letzte** Aufrufstelle des Musters, das der Umbau an vier Flächen beseitigt hatte | `lib/useActivity.ts` |
+| Suche log Nicht-Angemeldete an | `search_berkat_sellers` ist für `anon` gesperrt (42501). Der Fehler wurde als leere Trefferliste gerendert: „Niemand mit ‚x' gefunden. Achte auf die Schreibweise" — falsch, der Name war richtig | `components/SellerResults.tsx` |
+| Vier stale Behauptungen | „die einzige Stelle, an der Berkat Text auf Bild setzt" stand an vier Orten (Token, Karte, HANDOFF 8, HANDOFF 13) — seit dem Umbau sind es **zwei** Stellen | `theme/tokens.ts` u. a. |
+| No-Op-Ternary | `n === 1 ? 'Artikel' : 'Artikel'` an drei Stellen | `shop.tsx`, `account.tsx`, `live/[id].tsx` |
+
+### Was bewusst NICHT behoben wurde
+
+- **Kein Bearbeiten eines Angebots**, kein Melden am Angebot, keine weiteren Artikel desselben
+  Verkäufers am Seitenende, nur ein Bild je Angebot. Alles echte Lücken gegenüber Kleinanzeigen,
+  aber es liegen zwei Angebote in der Datenbank — das ist Arbeit am falschen Ende.
+
+### Ungeprüft geblieben
+
+Der Kaufweg selbst. `seller_cannot_bid` greift vor der ZAG-Schranke, ein Kauf am eigenen Artikel
+ist also unmöglich — die neue Kauf/Kontakt-Weiche und `20260817120000` brauchen beide **das zweite
+Konto**. Das ist derselbe offene Punkt wie in Abschnitt 21 und inzwischen der einzige, der noch
+zwischen dem Marktplatz und einem belegten Durchlauf steht.
+
+### Nachtrag am selben Abend: der Live-Weg trägt jetzt auch eine Kennzeichnung
+
+Die zwei Punkte aus „Was bewusst NICHT behoben wurde" sind mit
+`20260817130000_berkat_live_seller_kind.sql` doch noch gefallen.
+
+**`create_live_auction` stempelt `seller_kind`** — und zwar durch **Lesen, nicht Anlegen**. Das ist
+der ganze Unterschied zu `20260816220000`: Dort darf die Vorgabe „privat" festgehalten werden, weil
+sie im Composer sichtbar über dem Knopf steht; wer drückt, erklärt sie. Im Live-Studio steht sie
+nirgends. Ein `ON CONFLICT DO NOTHING` an dieser Stelle wäre derselbe Fehler in Grün gewesen —
+diesmal hätte die **Datenbank** eine Angabe, die die Oberfläche nicht zeigt.
+
+Wer noch nichts erklärt hat, bekommt also NULL, und im Live-Raum steht dann nichts. Dass das selten
+vorkommt, ist kein Zufall, sondern schon gebaut: **„Deine ersten Schritte" stellt Regal vor Show**
+(Abschnitt 18), und das Einstellen ins Regal erklärt den Typ. Wer der empfohlenen Reihenfolge
+folgt, hat seine Kennzeichnung, bevor er zum ersten Mal sendet.
+
+Die Client-Hälfte gehört dazu, sonst wäre der Stempel unsichtbar: `seller_kind` steht jetzt im
+`Auction`-Typ **und** in `AUCTION_COLUMNS` (`lib/useAuction.ts`), und `AuctionPanel` zeigt den Satz
+unter dem Versandhinweis — **direkt über dem Gebots-Knopf**. „Vor der Vertragserklärung" heißt im
+Blickfeld, nicht einen Tipp entfernt in einem Sheet.
+
+**Der Typwechsel löscht nichts mehr:** `set_berkat_seller_kind` schreibt die acht Impressumsfelder
+per `COALESCE(EXCLUDED.<feld>, s.<feld>)`. `kind` bleibt bewusst ohne — der Typ IST der Zweck des
+Aufrufs und wird vorher gegen `('private','business')` geprüft, kann also nie NULL sein.
+
+**Rauchprobe nach dem Einspielen:** Alle drei an diesem Abend ersetzten Funktionen
+(`buy_now_live_auction`, `create_live_auction`, `set_berkat_seller_kind`) antworten ohne Anmeldung
+mit **HTTP 401 / `42501 permission denied for function`** — je genau eine auflösbare Signatur, kein
+**HTTP 300**, und alle drei weiterhin für `anon` gesperrt.
+
+**Der Backfill hat sich von selbst erledigt:** Beim Gegenprüfen um 23:0x trugen beide
+Altangebote (Kaffeetasse, Parfüme) bereits `seller_kind = 'private'` — irgendwann zwischendurch
+ist `set_berkat_seller_kind` gelaufen (der Umschalter im Composer ruft sie bei jedem Typwechsel),
+und ihr UPDATE zieht offene Angebote seit `20260816200000` nach. Die um 21:0x noch geplante
+Nachzieh-Migration ist damit gegenstandslos. Merkposten daraus: **Der Datenstand dieser zwei
+Zeilen ist eine Momentaufnahme, keine Invariante** — wer hier prüft, fragt die Datenbank, nicht
+die Übergabe.
+
+**Ungeprüft:** die Anzeige im Live-Raum selbst. Sie bräuchte eine laufende Sendung, und ein Start
+löst über `follows` Benachrichtigungen an echte Geräte aus — das gehört nicht in einen Testlauf,
+den niemand erwartet.
