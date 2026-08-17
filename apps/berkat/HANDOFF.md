@@ -37,6 +37,7 @@ was gilt.
 | **Profil** — Reiter, Bewertungstexte, Banner, Teilen, Sperren | ✅ am Gerät gesehen (18) |
 | **Verkäufer-Bereich** — Bestellungen und Regal als eigene Seiten | ✅ am Gerät gesehen (18) |
 | **Erstnutzung** — „Deine ersten Schritte" | ✅ am Gerät bestätigt (18) |
+| **Marktplatz** — Privat- und Gewerbeverkäufer, Shop-Seite, Orte | ⚠️ gebaut, **eine Migration steht noch offen** (20) |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -54,6 +55,12 @@ was gilt.
 - **Der neue Zuschnitt** (`CropShape`) — vier Aufrufstellen umgestellt, `tsc` und Export sind
   sauber, aber seither wurde kein Bild tatsächlich ausgewählt; besonders offen ist das **Banner**
   (`'wide'` lädt jetzt ohne Zuschnitt-Rahmen)
+- **Die Kamera** — der Wähler fragt jetzt „aufnehmen oder auswählen", aber im Simulator gibt es
+  keine Kamera; am echten Gerät nie ausprobiert
+- **Der Marktplatz-Weg von vorne** — Anbietertyp erklären, Angebot mit Zustand und Ort einstellen,
+  Kennzeichnung in allen drei Ansichten sehen. Braucht `20260816220000` (Abschnitt 20)
+- **„Nachricht" statt „Kaufen"** — sichtbar nur an einem FREMDEN Privatangebot; es gibt heute
+  keins, weil beide Dauerangebote dem Betreiber gehören
 
 ### Drei Blocker — keiner davon ist Code
 
@@ -346,6 +353,22 @@ Plattformen.
 
 **Wer eine neue Bild-Fläche baut, gibt die Form der Anzeige an — nicht die des Ordners.**
 
+### Eine Vorgabe anzeigen und nicht speichern
+
+Am 17.08.2026 im eigenen Bau gefunden, bevor jemand darüber stolperte. Der Composer zeigt
+**„Du verkaufst als: Privatperson"** als Vorgabe, mit der Rechtsfolge daneben. Der Knopf ruft die
+Erklärungs-RPC aber nur, **wenn sich der Typ ändert** — wer die Vorgabe stehen lässt, also der
+Normalfall, erzeugt keine Zeile. Das Angebot trug danach `seller_kind = NULL`, und die
+Anbieterkennzeichnung fehlte.
+
+Die Oberfläche zeigte damit eine Angabe, die die Datenbank nicht hatte — ausgerechnet die, die
+Art. 246d § 1 EGBGB an jedem Angebot verlangt.
+
+**Die Regel daraus: Eine sichtbare Vorgabe ist eine Aussage.** Wer sie anzeigt, muss sie beim
+Abschicken auch festhalten; sonst weichen Bildschirm und Datenbank an genau der Stelle
+voneinander ab, an der es zählt. Behoben serverseitig (`20260816220000`) statt im Client, weil
+sonst zwei Rufe und ein Wettlauf daraus würden.
+
 ### `create-checkout-session`: `stripeKey` steht nicht dort, wo man ihn vermutet
 
 Am 15.08.2026 gekostet: Der Trinkgeld-Knopf endete in „Die Kasse ließ sich nicht öffnen", die
@@ -607,7 +630,7 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Siebenundzwanzig Migrationen, **alle eingespielt und verzeichnet** — `supabase migration list`
+Dreißig Migrationen, **neunundzwanzig eingespielt und verzeichnet** — `supabase migration list`
 zeigt am 16.08.2026 keine Lücke. Die Tabelle war bis dahin sechs Einträge im Rückstand (`20260815180000`
 bis `20260816090000` fehlten, obwohl die Abschnitte 14, 15 und 17 sie beschreiben); das ist
 nachgetragen.
@@ -646,6 +669,9 @@ list` keine Lücke zeigt (siehe Abschnitt 3).
 | `20260816170000_profiles_banner.sql` | **Serlo-weit:** `profiles.banner_url` + **`GRANT SELECT`** — ohne das wäre die Spalte für alle Clients unsichtbar, siehe unten |
 | `20260816180000_berkat_scheduled_cover.sql` | **Serlo-weit:** `scheduled_lives.cover_url`; `schedule_berkat_show` mit viertem Parameter + Rückfall aufs letzte Show-Cover — Abschnitt 13. **Kein `GRANT` nötig**, `scheduled_lives` hat keine eingefrorene Spaltenliste |
 | `20260816190000_berkat_scheduled_cover_woz.sql` | `AND s.women_only = false` im Rückfall — ohne das hebt eine `SECURITY DEFINER`-Funktion ein geschütztes Cover in eine öffentliche Zeile, siehe Abschnitt 3 |
+| `20260816200000_berkat_sellers.sql` | `berkat_sellers` (Anbietertyp, Impressumsangaben, `checkout_enabled`), `live_auctions.seller_kind`, `set_berkat_seller_kind` — Abschnitt 20 |
+| `20260816210000_berkat_listing_fields.sql` | Beschreibung, Zustand, PLZ, Ort; `create_standing_listing` neu; **zwei Lücken in `buy_now_live_auction`** (Frauen-Only, ZAG-Schranke) — Abschnitt 20 |
+| `20260816220000_berkat_default_private.sql` | ⚠️ **NOCH NICHT EINGESPIELT.** Wer die Vorgabe „Privatperson" stehen lässt, bekommt sie auch gespeichert — sonst zeigt die App eine Angabe, die die Datenbank nicht hat |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -2658,3 +2684,132 @@ zwanzig Minuten Senden schon.
 
 **Vor jeder weiteren größeren Änderung am Live-Weg gehört eine echte Sendung** — nicht als
 Abnahme, sondern als Fehlersuche.
+
+---
+
+## 20. Marktplatz — Privat- und Gewerbeverkäufer nebeneinander (17.08.2026)
+
+Zaur: *„Ich will auf meiner Plattform nicht nur Gewerbetreibende, sondern auch private Leute
+verkaufen lassen. So wie Kleinanzeigen und Amazon."* Und: *„Ich verkaufe nicht mehr — wir planen
+hier eine Plattform."*
+
+Beides zusammen ändert die Ausgangslage: Berkat ist ab sofort **von Tag eins ein Marktplatz mit
+fremden Verkäufern**, nicht ein Shop, der später einer wird.
+
+### Warum die Trennung privat/gewerblich keine Produktentscheidung ist
+
+Ein Privatverkauf hat **kein Widerrufsrecht**, und die Gewährleistung ist ausschließbar. Ein
+gewerblicher hat beides, dazu Impressumspflicht. **Art. 246d § 1 EGBGB verlangt, dass der Käufer
+das VOR seiner Vertragserklärung erfährt** — also muss die App es wissen und an jedem Angebot
+zeigen.
+
+### Der erste Entwurf wurde verworfen — von drei Skeptikern
+
+Der Bauplan entstand über acht Agenten in drei Stufen (Bestand, Recht, Vorbilder, Technik →
+Entwurf → drei Skeptiker). **Alle drei Skeptiker haben ihn abgelehnt.** Die Funde waren es wert:
+
+- **Der Plan hätte den einzigen funktionierenden Kaufweg abgeschaltet.** `checkout_enabled` mit
+  Vorgabe `false`, ohne Backfill, als Riegel vor `buy_now_live_auction` — ab dem Einspielen wäre
+  kein Dauerangebot mehr kaufbar gewesen, auch nicht die, die am 16.08. mit einem echten Kauf
+  belegt wurden.
+- **Die ZAG-Grenze war an einem von vier Geldwegen gezogen.** Live-Zuschlag, Sofortkauf in der
+  Show und Trinkgeld hätten sie umgangen.
+- **`seller_kind` hätte den Hauptverkaufsweg nie erreicht** — Show-Artikel entstehen über
+  `create_live_auction`, die der Plan nicht anfasste.
+- **Der vorformulierte Gewährleistungsausschluss wäre unwirksam gewesen** (siehe unten).
+- **Umfang:** Die Shop-Seite existierte halb schon, und in der Datenbank lagen zwei Angebote —
+  Filter und Suchindizes dafür sind Arbeit am falschen Ende.
+
+**Die Lehre: Ein Riegel mit Vorgabe `false` und ohne Backfill ist kein Riegel, sondern ein
+Ausfall.** In der gebauten Fassung heißt „keine Zeile" deshalb **wie bisher**, nicht „gesperrt";
+nur eine Zeile, die ausdrücklich `false` sagt, schrankt.
+
+### Was gebaut wurde
+
+| Wo | Was |
+|---|---|
+| `20260816200000` | `berkat_sellers` (Anbietertyp, Impressumsangaben, `checkout_enabled`), `live_auctions.seller_kind`, `set_berkat_seller_kind` |
+| `20260816210000` | Beschreibung, Zustand, PLZ, Ort; `create_standing_listing` neu; zwei Lücken in `buy_now_live_auction` |
+| `20260816220000` | ⚠️ **offen** — die Vorgabe „privat" wird auch gespeichert (siehe Abschnitt 3) |
+| `lib/useBerkatSeller.ts` | Typ lesen und erklären, die sechs Zustände, der Satz fürs Angebot |
+| `lib/useShop.ts` + `app/shop.tsx` | alles Kaufbare über alle Verkäufer, ohne Filter |
+| `lib/uploadImage.ts` | **die Kamera** |
+
+### ⚠️ Eine eigene Tabelle, nicht Spalten auf `profiles`
+
+`profiles` trägt seit `20260814240000` eine eingefrorene Spaltenliste. Jedes Rechtsfeld dort wäre
+dieselbe Falle wie `banner_url` am 16.08. — und Serlo erbte alles mit.
+
+`berkat_sellers` ist **offen lesbar**, und das ist hier ausnahmsweise richtig: Bei einem
+gewerblichen Verkäufer sind Name und Anschrift **gesetzlich öffentlich** (Impressum), bei einem
+privaten steht außer `kind` nichts drin. Die Felder sind bewusst so geschnitten, dass eine offene
+Lese-Policy korrekt ist. Geschrieben wird nur über die RPC — sonst könnte sich jeder
+`checkout_enabled` selbst erteilen und damit die ZAG-Schranke aufheben.
+
+### Kontakt statt Kasse
+
+Ein Privatverkäufer kann ohne Stripe Connect **gar kein Geld** über die Plattform bekommen: Läuft
+es über das Konto des Betreibers, ist das nach ZAG erlaubnispflichtig. Sein Angebot bekommt
+deshalb **„Nachricht" statt „Kaufen"**, und der Erstkontakt startet mit Kleinanzeigens
+meistgetipptem Satz — mit dem Artikelnamen darin, damit der Verkäufer ohne Rückfrage weiß, worum
+es geht.
+
+Der Knopf ist bewusst **nicht gold**: Gold ist in Berkat der Kaufweg (Gebot, Preis, Zuschlag), ein
+„schreib ihm mal" ist eine ruhige Handlung.
+
+### ⚠️ Warum Berkat KEINEN Gewährleistungsausschluss stellt
+
+Ein von der Plattform vorformulierter Standardsatz ist eine **AGB im Sinne der §§ 305 ff. BGB** —
+auch zwischen Privatleuten. Ein pauschaler Ausschluss erfasst in kundenfeindlichster Auslegung
+auch Körperschäden und grobe Fahrlässigkeit und ist damit nach **§ 309 Nr. 7 BGB unwirksam**; eine
+geltungserhaltende Reduktion gibt es nicht, der Ausschluss fiele **vollständig** weg.
+
+Der Privatverkäufer, dem Berkat „hilft", stünde damit schlechter da als ohne uns. Deshalb
+kennzeichnet die App nur, WER verkauft, und sagt, was daraus folgt. Den Text stellt der Verkäufer.
+
+### Zwei Lücken, die dabei auffielen
+
+**`buy_now_live_auction` prüfte `women_only` nicht.** Die Funktion ist `SECURITY DEFINER`, liest
+mit `SELECT * … FOR UPDATE` und umgeht damit RLS — geprüft wurden Preis, Status und Verkäufer, die
+Kennzeichnung nie. Heute unerreichbar, weil UUIDs nur über den gefilterten Lesepfad kommen; sobald
+Artikel-Links geteilt werden, wäre jeder Frauen-Only-Artikel mit dem Link kaufbar gewesen. Der
+Wächter meldet bewusst **„gibt es nicht"** statt „keine Berechtigung", damit die Existenz nicht
+durch die Fehlermeldung sickert.
+
+⚠️ **Der Rumpf ist im Übrigen wörtlich der alte.** Beim ersten Anlauf hatte ich ihn neu
+geschrieben und dabei `buy_now_gone`, den Eintrag in `live_bids`, `bid_count`, `ends_at` und den
+jsonb-Rückgabewert verloren — der geänderte Rückgabetyp allein hätte die Migration scheitern
+lassen, weil Postgres ihn per `CREATE OR REPLACE` nicht ändert. Genau die Stelle, an der laut
+CLAUDE.md schon einmal spätere Änderungen verlorengingen. **Wer hier etwas ändert, legt vorher das
+Original daneben.**
+
+### Die Kamera — der teuerste fehlende Schritt
+
+`pickImage` rief bis dahin ausschließlich die Mediathek auf: Man konnte ein vorhandenes Foto
+wählen, aber **keines machen**. Für jemanden, der heute in einer WhatsApp-Gruppe verkauft, ist das
+der erste Handgriff überhaupt. Kein neuer Build nötig — `NSCameraUsageDescription` steht wegen
+LiveKit ohnehin in der `app.json`.
+
+### Was bewusst NICHT gebaut wurde
+
+- **Kein Stripe Connect, keine Provisionsabrechnung.** Erst wenn der erste fremde Verkäufer da ist.
+- **Keine Umkreissuche, keine Karte, kein GPS.** PostGIS und earthdistance sind nicht installiert,
+  `expo-location` fehlt. PLZ und Ort stehen an der Zeile — eine Präfix-Suche lässt sich später
+  ohne Datenwanderung durch echte Koordinaten ersetzen.
+- **Keine Filter, keine Volltextsuche auf der Shop-Seite.** Es gibt zwei Angebote.
+- **Keine Abholung.** Sie bräche `get_cart_shipping_options`, die Stripe-Adressabfrage und
+  `mark_order_shipped`. Für Privatverkäufer ist sie trotzdem der wahrscheinlich größere Hebel als
+  die Umkreissuche — der nächste Kandidat.
+- **Keine DAC7-Zählung.** Ohne Geldfluss über die Plattform entsteht bei einem Privatverkäufer
+  keine Vergütung, die Berkat kennt. Kommt mit Connect.
+
+### Was als Nächstes fehlt
+
+1. `20260816220000` einspielen — sonst trägt kein neues Angebot eine Kennzeichnung.
+2. Den Weg von vorne am Gerät durchspielen: Typ erklären, Angebot mit Zustand und Ort einstellen,
+   Kennzeichnung in Regal, Kategorie-Seite und Shop-Seite sehen.
+3. **Ein zweites Konto als Privatverkäufer**, damit „Nachricht" statt „Kaufen" überhaupt sichtbar
+   wird — an eigenen Angeboten erscheint immer „Zurückziehen".
+4. Die Impressumsangaben gewerblicher Verkäufer haben noch keine Oberfläche: Die Spalten stehen,
+   das Formular im Konto fehlt, und der Hinweis-Streifen am Angebot („Anbieterangaben
+   unvollständig") ist nicht gebaut.

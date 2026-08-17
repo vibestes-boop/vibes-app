@@ -24,6 +24,7 @@ import { ChevronLeft, Lock, ShoppingBag } from 'lucide-react-native';
 
 import { useSession } from '../../lib/session';
 import { formatEuro, useProfiles } from '../../lib/useAuction';
+import { conditionLabel } from '../../lib/useBerkatSeller';
 import {
   useCategoryContent,
   useCategoryTree,
@@ -262,6 +263,26 @@ export default function CategoryScreen() {
                 {item.title}
               </Text>
               <Text style={styles.itemPrice}>{formatEuro(item.buy_now_cents)}</Text>
+              {[conditionLabel(item.condition), [item.postal_code, item.city]
+                .filter(Boolean)
+                .join(' ') || null]
+                .filter(Boolean).length ? (
+                <Text numberOfLines={1} style={styles.itemMeta}>
+                  {[
+                    conditionLabel(item.condition),
+                    [item.postal_code, item.city].filter(Boolean).join(' ') || null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              ) : null}
+              {/* Pflichtangabe nach Art. 246d § 1 EGBGB — an jedem Angebot,
+                  nicht nur auf dem Verkäuferprofil. */}
+              {item.seller_kind ? (
+                <Text style={styles.itemKind}>
+                  {item.seller_kind === 'private' ? 'Privatverkauf' : 'Gewerblich'}
+                </Text>
+              ) : null}
 
               {/* Auf eigene Artikel lässt der Server niemanden bieten
                   (`seller_cannot_bid`). Einen Knopf zu zeigen, der immer
@@ -270,6 +291,21 @@ export default function CategoryScreen() {
                 <View style={styles.ownPill}>
                   <Text style={styles.ownPillText}>Deins</Text>
                 </View>
+              ) : item.seller_kind === 'private' ? (
+                <Pressable
+                  style={styles.contact}
+                  onPress={() =>
+                    router.push(
+                      `/messages/${item.seller_id}?draft=${encodeURIComponent(
+                        `Hallo! Ist „${item.title}" noch da?`,
+                      )}`,
+                    )
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.title} — Verkäufer anschreiben`}
+                >
+                  <Text style={styles.contactText}>Nachricht</Text>
+                </Pressable>
               ) : (
                 <Pressable
                   style={[styles.buy, busy && styles.buyOff]}
@@ -399,6 +435,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buyOff: { opacity: 0.5 },
+  itemMeta: { fontSize: 11, color: ui.textMuted, marginTop: 2 },
+  itemKind: { fontSize: 11, color: ui.textMuted, marginTop: 1, fontWeight: '600' },
+  contact: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 36,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+    marginTop: space.sm,
+  },
+  contactText: { fontSize: 13, fontWeight: '700', color: ui.text },
+
   buyText: { fontSize: 14, fontWeight: '700', color: ui.goldInk },
   ownPill: {
     marginTop: space.sm,

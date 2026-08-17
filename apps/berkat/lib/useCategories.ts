@@ -154,7 +154,24 @@ export type CategoryListing = {
   buy_now_cents: number;
   women_only: boolean;
   created_at: string;
+  /**
+   * ⚠️ Diese vier stehen im Typ UND in der `.select()`-Kette. Dieselbe
+   * Doppelung, die am 16.08.2026 zweimal ein Bild verschluckt hat.
+   *
+   * `seller_kind` ist dabei nicht optional im Sinne von „nice to have":
+   * Art. 246d § 1 EGBGB verlangt die Anbieterkennzeichnung an JEDEM Angebot,
+   * also auch hier und nicht nur auf dem Verkäuferprofil.
+   */
+  condition: string | null;
+  postal_code: string | null;
+  city: string | null;
+  seller_kind: 'private' | 'business' | null;
 };
+
+/** Einmal, damit Typ und Abfrage nicht auseinanderlaufen. */
+const CATEGORY_LISTING_COLUMNS =
+  'id, seller_id, title, image_url, buy_now_cents, women_only, created_at, ' +
+  'condition, postal_code, city, seller_kind';
 
 /**
  * Was in einer Kategorie liegt: laufende Shows UND Dauerangebote.
@@ -200,14 +217,16 @@ export function useCategoryContent(slugs: string[]) {
     queryFn: async (): Promise<CategoryListing[]> => {
       const { data, error } = await supabase
         .from('live_auctions')
-        .select('id, seller_id, title, image_url, buy_now_cents, women_only, created_at')
+        .select(CATEGORY_LISTING_COLUMNS)
         .is('session_id', null)
         .eq('status', 'listed')
         .in('category', slugs)
         .order('created_at', { ascending: false })
         .limit(60);
       if (error) throw error;
-      return (data ?? []) as CategoryListing[];
+      // Doppelte Umleitung über `unknown` — supabase-js bildet die lange
+      // Spaltenliste nicht mehr auf den Zeilentyp ab.
+      return (data ?? []) as unknown as CategoryListing[];
     },
   });
 

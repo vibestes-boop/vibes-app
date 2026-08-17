@@ -13,7 +13,28 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Lock, ShoppingBag, MessageCircle } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { formatEuro } from '../lib/useAuction';
+import { conditionLabel } from '../lib/useBerkatSeller';
 import type { StandingListing } from '../lib/useStanding';
+
+/**
+ * Die Zeile unter dem Preis: Zustand, Ort, Anbietertyp.
+ *
+ * Als eine Funktion für beide Ansichten (Raster und Liste). Zwei Fassungen
+ * derselben Auskunft laufen auseinander, sobald jemand nur eine anfasst — und
+ * die Anbieterkennzeichnung ist die eine Angabe, die nach Art. 246d § 1 EGBGB
+ * an JEDEM Angebot stehen muss, nicht nur an dem, das gerade gepflegt wurde.
+ *
+ * Reihenfolge nach Nutzen: Zustand entscheidet über den Kauf, der Ort über die
+ * Abholung, der Anbietertyp über die Rechte. Wer nur eine Zeile liest, liest
+ * die wichtigste.
+ */
+function metaLine(item: StandingListing): string | null {
+  const teile = [
+    conditionLabel(item.condition),
+    [item.postal_code, item.city].filter(Boolean).join(' ') || null,
+  ].filter(Boolean);
+  return teile.length ? teile.join(' · ') : null;
+}
 
 type Props = {
   listings: StandingListing[];
@@ -119,6 +140,16 @@ export function StandingShelf({
                   {item.title}
                 </Text>
                 <Text style={s.cellPrice}>{formatEuro(item.buy_now_cents)}</Text>
+                {metaLine(item) ? (
+                  <Text numberOfLines={1} style={s.meta}>
+                    {metaLine(item)}
+                  </Text>
+                ) : null}
+                {item.seller_kind ? (
+                  <Text style={s.kind}>
+                    {item.seller_kind === 'private' ? 'Privatverkauf' : 'Gewerblich'}
+                  </Text>
+                ) : null}
 
                 {isOwner ? (
                   <Pressable
@@ -190,6 +221,16 @@ export function StandingShelf({
                 {item.women_only ? <Lock size={12} color={ui.success} /> : null}
               </View>
               <Text style={s.price}>{formatEuro(item.buy_now_cents)}</Text>
+              {metaLine(item) ? (
+                <Text numberOfLines={1} style={s.meta}>
+                  {metaLine(item)}
+                </Text>
+              ) : null}
+              {item.seller_kind ? (
+                <Text style={s.kind}>
+                  {item.seller_kind === 'private' ? 'Privatverkauf' : 'Gewerblich'}
+                </Text>
+              ) : null}
             </View>
 
             {isOwner ? (
@@ -309,6 +350,12 @@ const s = StyleSheet.create({
     marginTop: space.sm,
   },
   contactText: { fontSize: 13, fontWeight: '700', color: ui.text },
+
+  meta: { fontSize: 11, color: ui.textMuted, marginTop: 2 },
+  /* Bewusst unauffällig: Die Angabe MUSS dastehen, sie ist aber keine Werbung.
+     Ein Privatverkauf ist nicht schlechter als ein gewerblicher — er hat nur
+     andere Rechte, und das steht ausführlich auf der Artikelseite. */
+  kind: { fontSize: 11, color: ui.textMuted, marginTop: 1, fontWeight: '600' },
 
   buyText: { fontSize: 14, fontWeight: '700', color: ui.goldInk },
 

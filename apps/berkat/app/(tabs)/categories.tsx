@@ -195,6 +195,25 @@ export default function CategoriesScreen() {
         <Text style={styles.subtitle}>Stöbern, auch wenn gerade niemand sendet</Text>
       </View>
 
+      {/* Kein sechster Reiter: Unten liegen schon fünf, und „Kategorien" ist
+          dort das längste Wort. Der Einstieg gehört hierher, weil dieser
+          Bildschirm ohnehin die Frage „was gibt es hier überhaupt" beantwortet —
+          „Alles ansehen" ist nur die Antwort ohne Umweg über eine Kachel.
+
+          Wichtig für die Auffindbarkeit: Die Kategorie ist beim Einstellen
+          FREIWILLIG. Ein Angebot ohne Kategorie lag bis hierher in keiner Kachel
+          und war damit für jeden unauffindbar, der den Verkäufer nicht kennt. */}
+      <Pressable
+        style={styles.allRow}
+        onPress={() => router.push('/shop')}
+        accessibilityRole="button"
+        accessibilityLabel="Alle Angebote ansehen"
+      >
+        <ShoppingBag size={17} color={ui.text} />
+        <Text style={styles.allText}>Alles ansehen</Text>
+        <ChevronRight size={17} color={ui.textMuted} />
+      </Pressable>
+
       <View style={styles.sortRow}>
         {SORTS.map((option) => {
           const on = option.key === sort;
@@ -369,6 +388,21 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: space.md, paddingTop: space.sm },
   title: { fontSize: 26, fontWeight: '700', color: ui.text, letterSpacing: -0.4 },
   subtitle: { fontSize: 13, color: ui.textMuted, marginTop: 2 },
+
+  allRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginHorizontal: space.md,
+    marginBottom: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    borderRadius: radius.md,
+    backgroundColor: ui.card,
+    borderWidth: 1,
+    borderColor: ui.line,
+  },
+  allText: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
 
   sortRow: {
     flexDirection: 'row',
