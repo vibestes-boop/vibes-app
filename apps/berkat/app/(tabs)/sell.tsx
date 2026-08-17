@@ -68,7 +68,7 @@ import { CategoryPicker } from '../../components/CategoryPicker';
 import { SellerStart, useProfileFilled, type StartStep } from '../../components/SellerStart';
 import { useSellerShows } from '../../lib/useSellerShows';
 // Nur noch zum Zählen — bearbeitet wird das Regal auf `/shelf`.
-import { useStandingListings } from '../../lib/useStanding';
+import { useSellerListings } from '../../lib/useListings';
 import { ui, radius, space } from '../../theme/tokens';
 
 const DURATIONS = [20, 30, 60];
@@ -121,7 +121,7 @@ export default function SellScreen() {
   // auf `/shelf` und `/orders`. Die Listen selbst zu laden hieße, fünfzig
   // Bestellungen samt Lieferadressen im Speicher zu halten, um zwei Zahlen
   // anzuzeigen.
-  const { data: standing = [] } = useStandingListings(myUserId ?? undefined);
+  const { data: standing = [] } = useSellerListings(myUserId ?? undefined);
   const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
 
   // ── Die ersten Schritte ───────────────────────────────────────────────────

@@ -8,32 +8,21 @@
 // `ListHeaderComponent`. Zwei ScrollViews ineinander sind auf Android der
 // sichere Weg zu einer Liste, die sich nicht mehr scrollen lässt.
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Lock, ShoppingBag } from 'lucide-react-native';
 
 import { useSession } from '../../lib/session';
-import { formatEuro, useProfiles } from '../../lib/useAuction';
-import { conditionLabel } from '../../lib/useBerkatSeller';
-import {
-  useCategoryContent,
-  useCategoryTree,
-  type CategoryListing,
-} from '../../lib/useCategories';
-import { standingErrorText, useStandingActions } from '../../lib/useStanding';
+import { useProfiles } from '../../lib/useAuction';
+import { useCategoryContent, useCategoryTree } from '../../lib/useCategories';
+import type { Listing } from '../../lib/useListings';
 import { goBack } from '../../lib/nav';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
+import { ListingCard } from '../../components/ListingCard';
 import { radius, space, ui } from '../../theme/tokens';
 
 export default function CategoryScreen() {
@@ -67,7 +56,7 @@ export default function CategoryScreen() {
   // besetzt ihn. `spacer: true` als Merkmal statt eines Vergleichs auf der id —
   // TypeScript reduziert das Literal in der Vereinigung sonst zu `string`
   // (dieselbe Falle wie im Show-Raster der Startseite).
-  const gridItems = useMemo((): (CategoryListing | { id: string; spacer: true })[] => {
+  const gridItems = useMemo((): (Listing | { id: string; spacer: true })[] => {
     const rows = listings.data ?? [];
     return rows.length % 2 === 1
       ? [...rows, { id: '__spacer__', spacer: true as const }]
@@ -103,33 +92,10 @@ export default function CategoryScreen() {
   );
   const profiles = useProfiles(sellerIds);
 
-  // `sellerId` bleibt leer: Auf dieser Seite stehen Artikel vieler Verkäufer,
-  // und `buy` braucht ihn nicht — nur `canSell` täte es, und Zurückziehen
-  // gehört aufs eigene Profil.
-  const { buy } = useStandingActions(undefined, myUserId);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  const onBuy = useCallback(
-    async (item: CategoryListing) => {
-      if (!myUserId) {
-        setNotice('Melde dich an, dann kannst du kaufen.');
-        return;
-      }
-      setBusyId(item.id);
-      setNotice(null);
-      try {
-        await buy.mutateAsync(item.id);
-        setNotice(`„${item.title}" liegt in deinem Paket. 🎉`);
-      } catch (err) {
-        setNotice(standingErrorText((err as Error)?.message ?? ''));
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [buy, myUserId],
-  );
-
+  // Kein Kaufweg auf dieser Seite. Eine Kategorie ist eine Stöber-Fläche, und
+  // seit dem 17.08.2026 liegt der einzige Kaufknopf der App auf `/listing/<id>`
+  // — dort, wo Beschreibung, Versandkosten und Anbieterkennzeichnung
+  // danebenstehen. Begründung im Kopf von `components/ListingCard.tsx`.
   const loading = shows.isLoading || listings.isLoading;
 
   return (
@@ -225,103 +191,13 @@ export default function CategoryScreen() {
           // einzelner Artikel in der letzten Reihe über die volle Breite.
           if ('spacer' in item) return <View style={styles.gridCell} />;
 
-          const seller = profiles[item.seller_id];
-          const mine = item.seller_id === myUserId;
-          const busy = busyId === item.id;
           return (
-            <View style={styles.gridCell}>
-              {/* Das Bild IST die Kachel, nicht ihr Zubehör.
-                  Vorher stand hier eine 60-px-Zeile — das Muster einer
-                  Arbeitsliste („welches meine ich?"), auf einer Fläche, die
-                  eine ganz andere Frage beantwortet („was soll ich mir
-                  ansehen?"). Auf einer Stöber-Fläche trägt das Bild. */}
-              <Pressable
-                style={styles.gridThumb}
-                onPress={() => router.push(`/seller/${item.seller_id}`)}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.title} — Profil von ${seller?.username ?? 'Verkäufer'}`}
-              >
-                {item.image_url ? (
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    transition={140}
-                  />
-                ) : null}
-                {item.women_only ? (
-                  <View style={styles.gridLock}>
-                    <Lock size={11} color={ui.successInk} />
-                  </View>
-                ) : null}
-              </Pressable>
-
-              <Text numberOfLines={1} style={styles.itemSeller}>
-                {seller?.username ?? '…'}
-              </Text>
-              <Text numberOfLines={2} style={styles.itemTitle}>
-                {item.title}
-              </Text>
-              <Text style={styles.itemPrice}>{formatEuro(item.buy_now_cents)}</Text>
-              {[conditionLabel(item.condition), [item.postal_code, item.city]
-                .filter(Boolean)
-                .join(' ') || null]
-                .filter(Boolean).length ? (
-                <Text numberOfLines={1} style={styles.itemMeta}>
-                  {[
-                    conditionLabel(item.condition),
-                    [item.postal_code, item.city].filter(Boolean).join(' ') || null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              ) : null}
-              {/* Pflichtangabe nach Art. 246d § 1 EGBGB — an jedem Angebot,
-                  nicht nur auf dem Verkäuferprofil. */}
-              {item.seller_kind ? (
-                <Text style={styles.itemKind}>
-                  {item.seller_kind === 'private' ? 'Privatverkauf' : 'Gewerblich'}
-                </Text>
-              ) : null}
-
-              {/* Auf eigene Artikel lässt der Server niemanden bieten
-                  (`seller_cannot_bid`). Einen Knopf zu zeigen, der immer
-                  scheitert, ist schlechter als keiner. */}
-              {mine ? (
-                <View style={styles.ownPill}>
-                  <Text style={styles.ownPillText}>Deins</Text>
-                </View>
-              ) : item.seller_kind === 'private' ? (
-                <Pressable
-                  style={styles.contact}
-                  onPress={() =>
-                    router.push(
-                      `/messages/${item.seller_id}?draft=${encodeURIComponent(
-                        `Hallo! Ist „${item.title}" noch da?`,
-                      )}`,
-                    )
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.title} — Verkäufer anschreiben`}
-                >
-                  <Text style={styles.contactText}>Nachricht</Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  style={[styles.buy, busy && styles.buyOff]}
-                  disabled={busy}
-                  onPress={() => void onBuy(item)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.title} für ${formatEuro(item.buy_now_cents)} kaufen`}
-                >
-                  {busy ? (
-                    <ActivityIndicator color={ui.goldInk} />
-                  ) : (
-                    <Text style={styles.buyText}>Kaufen</Text>
-                  )}
-                </Pressable>
-              )}
-            </View>
+            <ListingCard
+              listing={item}
+              sellerName={profiles[item.seller_id]?.username}
+              mine={item.seller_id === myUserId}
+              onPress={() => router.push(`/listing/${item.id}`)}
+            />
           );
         }}
         ListFooterComponent={
@@ -332,12 +208,6 @@ export default function CategoryScreen() {
           ) : null
         }
       />
-
-      {notice ? (
-        <Pressable style={styles.notice} onPress={() => setNotice(null)}>
-          <Text style={styles.noticeText}>{notice}</Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -401,63 +271,8 @@ const styles = StyleSheet.create({
   sellerName: { flexShrink: 1, fontSize: 13, fontWeight: '600', color: ui.text },
   showTitle: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 3 },
 
+  // Die Zelle hält nur die Spalte — gezeichnet wird in `ListingCard`.
   gridCell: { flex: 1 },
-  // Quadratisch und volle Spaltenbreite — dieselbe Sprache wie die Show-Karten
-  // auf der Startseite. Bei zwei Spalten sind das rund 170 px statt 60.
-  gridThumb: {
-    aspectRatio: 1,
-    borderRadius: radius.md,
-    backgroundColor: ui.sunken,
-    overflow: 'hidden',
-    marginBottom: space.sm,
-  },
-  gridLock: {
-    position: 'absolute',
-    top: space.sm,
-    left: space.sm,
-    width: 22,
-    height: 22,
-    borderRadius: radius.pill,
-    backgroundColor: ui.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemSeller: { fontSize: 12, color: ui.textMuted },
-  itemTitle: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 1 },
-  itemPrice: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
-
-  buy: {
-    marginTop: space.sm,
-    height: 38,
-    borderRadius: radius.pill,
-    backgroundColor: ui.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buyOff: { opacity: 0.5 },
-  itemMeta: { fontSize: 11, color: ui.textMuted, marginTop: 2 },
-  itemKind: { fontSize: 11, color: ui.textMuted, marginTop: 1, fontWeight: '600' },
-  contact: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 36,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: ui.lineStrong,
-    marginTop: space.sm,
-  },
-  contactText: { fontSize: 13, fontWeight: '700', color: ui.text },
-
-  buyText: { fontSize: 14, fontWeight: '700', color: ui.goldInk },
-  ownPill: {
-    marginTop: space.sm,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: ui.sunken,
-  },
-  ownPillText: { fontSize: 12, fontWeight: '600', color: ui.textMuted },
 
   footHint: {
     fontSize: 11,
@@ -476,17 +291,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     lineHeight: 20,
   },
-
-  notice: {
-    position: 'absolute',
-    left: space.md,
-    right: space.md,
-    bottom: space.xl,
-    backgroundColor: ui.card,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: ui.lineStrong,
-    padding: space.md,
-  },
-  noticeText: { fontSize: 13, color: ui.text },
 });

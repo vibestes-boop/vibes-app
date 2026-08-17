@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell, Lock, MessageSquare, Search } from 'lucide-react-native';
+import { Bell, Lock, MessageSquare, Search, ShoppingBag } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -31,6 +31,7 @@ import { SellerResults } from '../../components/SellerResults';
 import { SEARCH_MIN, useSellerSearch } from '../../lib/useSellerSearch';
 import { useUpcomingShows } from '../../lib/useSchedule';
 import { useCategoryOptions } from '../../lib/useCategories';
+import { useShopCount } from '../../lib/useListings';
 import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
@@ -165,7 +166,11 @@ export default function HomeScreen() {
   // Die Suche im Raster filtert nur, was OHNEHIN geladen ist — also die
   // laufenden Shows. Diese hier fragt den Server nach Menschen und findet sie
   // deshalb auch, wenn gerade niemand sendet.
-  const { data: foundSellers = [], isFetching: searching } = useSellerSearch(search);
+  const {
+    data: foundSellers = [],
+    isFetching: searching,
+    error: searchError,
+  } = useSellerSearch(search);
   const searchingSellers = search.trim().length >= SEARCH_MIN;
   const [filter, setFilter] = useState(ALL);
 
@@ -187,6 +192,9 @@ export default function HomeScreen() {
   // „buecher" statt „Beauty & Duft" und „Bücher & Medien" — vorher fiel das
   // nicht auf, weil dort immer die Konstante `'shopping'` stand.
   const { groups: categoryGroups } = useCategoryOptions();
+  // Nur die Zahl, keine Zeile (`head: true`) — sie beantwortet im Leerzustand
+  // die Frage „gibt es hier überhaupt etwas zu tun?".
+  const { data: shopCount = 0 } = useShopCount();
   const categoryNames = useMemo(() => {
     const map = new Map<string, string>();
     for (const parent of categoryGroups) {
@@ -332,6 +340,11 @@ export default function HomeScreen() {
             <SellerResults
               sellers={foundSellers}
               loading={searching}
+              // Ohne den Fehler kann die Trefferliste „nicht angemeldet" nicht
+              // von „nichts gefunden" unterscheiden — und sagte bisher das
+              // Falsche.
+              error={searchError}
+              onSignIn={() => router.push('/login')}
               query={search.trim()}
               onSelect={(sellerId) => router.push(`/seller/${sellerId}`)}
             />
@@ -366,8 +379,33 @@ export default function HomeScreen() {
                     // direkt darüber.
                     upcoming.length > 0
                     ? 'Aber der nächste Termin steht schon oben — folge dem Verkäufer, dann erinnern wir dich.'
-                    : 'Schau später wieder rein — oder mach unter „Verkaufen" selbst die erste Show auf.'}
+                    : // Dieselbe Regel eine Ebene weiter: Liegt etwas im Regal,
+                      // ist „schau später wieder rein" wieder die falsche
+                      // Auskunft. Es gibt etwas zu tun, es steht nur zwei
+                      // Bildschirme entfernt.
+                      shopCount > 0
+                      ? 'Aber es liegt etwas im Regal — rund um die Uhr kaufbar, auch ohne Sendung.'
+                      : 'Schau später wieder rein — oder mach unter „Verkaufen" selbst die erste Show auf.'}
               </Text>
+
+              {/* Der Knopf steht unabhängig vom Text: Auch wer gerade auf einen
+                  Termin verwiesen wird, darf jetzt etwas kaufen. Solange
+                  niemand sendet — rund 94 % der Zeit — ist das der einzige Weg
+                  von der Startseite zu etwas Kaufbarem. Vorher hing „Alle
+                  Angebote" an einer einzigen Zeile im Kategorien-Reiter. */}
+              {!search && filter === ALL && shopCount > 0 ? (
+                <Pressable
+                  style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.7 }]}
+                  onPress={() => router.push('/shop')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Alle ${shopCount} Angebote ansehen`}
+                >
+                  <ShoppingBag size={16} color={ui.text} />
+                  <Text style={styles.emptyCtaText}>
+                    {shopCount === 1 ? '1 Angebot ansehen' : `${shopCount} Angebote ansehen`}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           )
         }
@@ -534,4 +572,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     lineHeight: 20,
   },
+  /* Kontur statt Gold: Gold ist in Berkat der Kaufweg (Gebot, Preis, Zuschlag).
+     „Sieh dir das Regal an" ist eine Einladung zum Stöbern, kein Kauf. */
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginTop: space.sm,
+    height: 44,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+  },
+  emptyCtaText: { fontSize: 14, fontWeight: '700', color: ui.text },
 });

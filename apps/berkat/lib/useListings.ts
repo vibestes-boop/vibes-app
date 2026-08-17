@@ -1,0 +1,242 @@
+// Ein Angebot — der Zeilentyp und alle vier Wege, ihn zu holen.
+//
+// WARUM DIESE DATEI EXISTIERT
+// Bis zum 17.08.2026 gab es dieselbe Tabellenzeile in zwei Fassungen:
+//
+//   `StandingListing` (useStanding.ts)  trug die Beschreibung, aber keine `seller_id`
+//   `CategoryListing` (useCategories.ts) trug die `seller_id`, aber keine Beschreibung
+//
+// Beide unvollständig, und zwar an verschiedenen Stellen. Die Folge war keine
+// Theorie: Das Regal auf dem Profil konnte nicht auf ein Angebot verlinken, weil
+// ihm die Kennung des Verkäufers fehlte — und die Kategorie-Seite konnte die
+// Beschreibung nicht zeigen, weil sie die Spalte nie holte. Ein Verkäufer tippte
+// also einen Text, den kein Bildschirm je anzeigte.
+//
+// Der Kopf des alten `useShop.ts` beschrieb die Gefahr sogar ausdrücklich („wer
+// hier eine Spalte ergänzt, muss sie dort mit ergänzen"), statt sie abzuschaffen.
+// Eine Warnung ist kein Riegel. Jetzt gilt: **ein Typ, eine Spaltenliste, vier
+// Abfragen darauf.** Wer eine Spalte braucht, ergänzt sie an genau einer Stelle,
+// und alle vier Flächen haben sie.
+
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from './supabase';
+
+/**
+ * Ein Dauerangebot ist keine eigene Tabelle, sondern eine `live_auctions`-Zeile
+ * ohne Session (Migration 20260815210000). `cancelled` heißt zurückgezogen,
+ * `sold` verkauft — beide bleiben lesbar, siehe `useListing` unten.
+ */
+export type ListingStatus = 'listed' | 'sold' | 'cancelled';
+
+export type Listing = {
+  id: string;
+  seller_id: string;
+  title: string;
+  image_url: string | null;
+  /** Der Festpreis. Bei einem Dauerangebot immer gesetzt. */
+  buy_now_cents: number;
+  women_only: boolean;
+  created_at: string;
+  status: ListingStatus;
+  /**
+   * Seit 20260816210000, alle vier freiwillig.
+   *
+   * Für ein Angebot ohne Sendung ist die Beschreibung die einzige, die es je
+   * geben wird: In einer Show erzählt der Verkäufer, hier steht nur, was er
+   * getippt hat. Sie gehört deshalb auf die Artikelseite und nicht in eine
+   * Zeile, die nach zwei Wörtern abschneidet.
+   */
+  description: string | null;
+  /** Slug aus `CONDITIONS` in `useBerkatSeller.ts` — nicht der Anzeigename. */
+  condition: string | null;
+  postal_code: string | null;
+  city: string | null;
+  /**
+   * Anbietertyp zum Zeitpunkt des Einstellens. NULL = noch nicht erklärt.
+   *
+   * Art. 246d § 1 EGBGB verlangt die Angabe, BEVOR der Käufer seine
+   * Vertragserklärung abgibt. Seit dem 17.08.2026 ist das genau ein Ort: die
+   * Artikelseite. Vorher lag der Kaufknopf im Stöber-Raster, wo für den ganzen
+   * Satz kein Platz war — die Karte zeigte deshalb nur ein Etikett ohne
+   * Rechtsfolge, und die stand nirgends.
+   */
+  seller_kind: 'private' | 'business' | null;
+};
+
+/**
+ * ⚠️ Die eine Spaltenliste. Sie steht mit dem Typ oben in genau einer Datei,
+ * damit beide nicht auseinanderlaufen können — am 16.08.2026 ist genau diese
+ * Doppelung zweimal schiefgegangen (ein Bild wurde geholt und weggeworfen,
+ * weil der Zeilentyp es nicht trug).
+ */
+const LISTING_COLUMNS =
+  'id, seller_id, title, image_url, buy_now_cents, women_only, created_at, status, ' +
+  'description, condition, postal_code, city, seller_kind';
+
+/**
+ * Die Regal-Grenze, in jeder Listen-Abfrage dieselbe.
+ *
+ * `session_id is null` trennt Regal von Show: Ohne den Filter kämen
+ * Show-Artikel mit, sobald sie denselben Status trügen.
+ */
+function shelfQuery() {
+  return supabase
+    .from('live_auctions')
+    .select(LISTING_COLUMNS)
+    .is('session_id', null)
+    .eq('status', 'listed');
+}
+
+/** supabase-js bildet die lange Spaltenliste nicht mehr auf einen Zeilentyp ab. */
+function asListings(data: unknown): Listing[] {
+  return (data ?? []) as unknown as Listing[];
+}
+
+/**
+ * Alles Kaufbare über alle Verkäufer — die Marktplatz-Ansicht.
+ *
+ * Kein Realtime-Abo: Eine Übersicht mit vielen Zeilen darf keine dauerhafte
+ * Verbindung je Zeile aufmachen (Kostenhygiene). Nachgeladen wird beim Fokus,
+ * wie überall sonst — die Stack-Falle aus HANDOFF 3 gilt hier genauso.
+ */
+export function useShopListings(limit = 60) {
+  return useQuery({
+    queryKey: ['berkat', 'shop', limit],
+    staleTime: 30_000,
+    queryFn: async (): Promise<Listing[]> => {
+      const { data, error } = await shelfQuery()
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return asListings(data);
+    },
+  });
+}
+
+/**
+ * Wie viele Angebote es überhaupt gibt — die Zahl für den Leerzustand der
+ * Startseite.
+ *
+ * Eine eigene, winzige Abfrage statt `useShopListings().length`: Die Startseite
+ * ist der Bildschirm, den jeder als Ersten sieht, und sie soll nicht sechzig
+ * Zeilen laden, um einen Satz zu formulieren. `head: true` überträgt keine
+ * einzige Zeile — dasselbe Muster wie beim Bestell-Abzeichen am Verkaufen-Reiter.
+ *
+ * Fehler schlucken statt werfen: Ein fehlender Hinweis ist ärgerlich, eine
+ * kaputte Startseite wäre schlimmer.
+ */
+export function useShopCount() {
+  return useQuery({
+    queryKey: ['berkat', 'shop-count'],
+    staleTime: 60_000,
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await supabase
+        .from('live_auctions')
+        .select('id', { count: 'exact', head: true })
+        .is('session_id', null)
+        .eq('status', 'listed');
+      if (error) {
+        if (__DEV__) console.warn('[Berkat] Angebote zählen:', error.message);
+        return 0;
+      }
+      return count ?? 0;
+    },
+  });
+}
+
+/**
+ * Was in einer Kategorie liegt.
+ *
+ * `slugs` ist eine Liste und kein einzelner Wert: Wer eine Oberkategorie
+ * öffnet, will auch sehen, was in ihren Kindern liegt — sonst wäre „Mode" leer,
+ * während unter „Abaya" drei Artikel hängen.
+ */
+export function useCategoryListings(slugs: string[]) {
+  // Stabiler Schlüssel: Ohne das Sortieren käme bei jeder Neuberechnung des
+  // Aufrufers eine andere Reihenfolge und damit ein anderer Query-Key heraus —
+  // die Abfrage liefe bei jedem Render neu.
+  const key = useMemo(() => [...slugs].sort().join(','), [slugs]);
+
+  return useQuery({
+    queryKey: ['berkat', 'category-listings', key],
+    enabled: slugs.length > 0,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Listing[]> => {
+      const { data, error } = await shelfQuery()
+        .in('category', slugs)
+        .order('created_at', { ascending: false })
+        .limit(60);
+      if (error) throw error;
+      return asListings(data);
+    },
+  });
+}
+
+/** Was dieser Verkäufer gerade dauerhaft anbietet — sein Regal. */
+export function useSellerListings(sellerId: string | undefined) {
+  return useQuery({
+    // Der Schlüssel heißt weiter `standing`: `useStandingActions.invalidate()`
+    // setzt ihn zurück, und ein Umbenennen wäre eine stille Regression an genau
+    // der Stelle, die am 16.08. schon einmal falsch war.
+    queryKey: ['berkat', 'standing', sellerId],
+    enabled: Boolean(sellerId),
+    staleTime: 30_000,
+    queryFn: async (): Promise<Listing[]> => {
+      const { data, error } = await shelfQuery()
+        .eq('seller_id', sellerId!)
+        .order('created_at', { ascending: false })
+        .limit(60);
+      if (error) throw error;
+      return asListings(data);
+    },
+  });
+}
+
+/**
+ * Ein einzelnes Angebot — die Artikelseite.
+ *
+ * ⚠️ Hier steht bewusst **kein** `status`-Filter. Die Lese-Policy
+ * `live_auctions_select_standing` erlaubt jede Zeile ohne Session, nicht nur
+ * die offenen — und das ist die Voraussetzung dafür, dass ein verkaufter oder
+ * zurückgezogener Artikel „schon weg" sagen kann statt „gibt es nicht".
+ *
+ * Der Unterschied zählt: Wer aus einer Nachricht auf einen Artikel kommt, den
+ * jemand vor zehn Minuten gekauft hat, soll das erfahren — und nicht auf einer
+ * Fehlerseite landen, die aussieht, als sei die App kaputt.
+ *
+ * Frauen-Only bleibt trotzdem geschützt: Die Policy verlangt zusätzlich
+ * `women_only = false OR seller_id = auth.uid() OR is_women_only_verified()`.
+ * Ein geschützter Artikel kommt hier als `null` zurück, also als „gibt es
+ * nicht" — dieselbe Sprache, die auch `buy_now_live_auction` seit
+ * 20260816210000 spricht, damit die Existenz nicht über die Antwort durchsickert.
+ */
+export function useListing(id: string | undefined) {
+  return useQuery({
+    queryKey: ['berkat', 'listing', id],
+    enabled: Boolean(id),
+    staleTime: 15_000,
+    queryFn: async (): Promise<Listing | null> => {
+      const { data, error } = await supabase
+        .from('live_auctions')
+        .select(LISTING_COLUMNS)
+        .eq('id', id!)
+        .is('session_id', null)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as unknown as Listing) ?? null;
+    },
+  });
+}
+
+/** Zustand und Ort als eine Zeile — oder nichts. */
+export function listingMeta(
+  listing: Pick<Listing, 'condition' | 'postal_code' | 'city'>,
+  conditionText: string | null,
+): string | null {
+  const teile = [
+    conditionText,
+    [listing.postal_code, listing.city].filter(Boolean).join(' ') || null,
+  ].filter(Boolean);
+  return teile.length ? teile.join(' · ') : null;
+}

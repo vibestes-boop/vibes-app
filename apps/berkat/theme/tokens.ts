@@ -19,8 +19,15 @@ export const ui = {
   /** Chips, Bildplatzhalter, ruhige Flächen. */
   sunken: '#F0EAE0',
   /**
-   * Milchige Auflage für Text auf einem FREMDEN Bild — die Live-Vorschau auf
-   * den Show-Karten ist die einzige Stelle, an der Berkat das tut.
+   * Milchige Auflage für Text auf einem FREMDEN Bild. Berkat tut das an genau
+   * ZWEI Stellen, und diese Liste ist der Bestand:
+   *
+   *   1. die Live-Vorschau auf den Show-Karten (`components/LivePreview.tsx`)
+   *   2. die „Deins"-Pille auf der Angebots-Karte (`components/ListingCard.tsx`,
+   *      seit 17.08.2026)
+   *
+   * Wer eine dritte anlegt, trägt sie hier ein — sonst misst der nächste Prüfer
+   * eine Fläche nach und glaubt, alle geprüft zu haben.
    *
    * Bewusst fast deckend. Ein Vorschaubild ist mal hell, mal dunkel; zartes
    * Glas wäre auf dem einen lesbar und auf dem nächsten weg. Genau diesen Fall

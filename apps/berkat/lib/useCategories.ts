@@ -19,6 +19,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import { useCategoryListings } from './useListings';
 
 export type Category = {
   slug: string;
@@ -146,33 +147,6 @@ export type CategoryShow = {
   women_only: boolean;
 };
 
-export type CategoryListing = {
-  id: string;
-  seller_id: string;
-  title: string;
-  image_url: string | null;
-  buy_now_cents: number;
-  women_only: boolean;
-  created_at: string;
-  /**
-   * ⚠️ Diese vier stehen im Typ UND in der `.select()`-Kette. Dieselbe
-   * Doppelung, die am 16.08.2026 zweimal ein Bild verschluckt hat.
-   *
-   * `seller_kind` ist dabei nicht optional im Sinne von „nice to have":
-   * Art. 246d § 1 EGBGB verlangt die Anbieterkennzeichnung an JEDEM Angebot,
-   * also auch hier und nicht nur auf dem Verkäuferprofil.
-   */
-  condition: string | null;
-  postal_code: string | null;
-  city: string | null;
-  seller_kind: 'private' | 'business' | null;
-};
-
-/** Einmal, damit Typ und Abfrage nicht auseinanderlaufen. */
-const CATEGORY_LISTING_COLUMNS =
-  'id, seller_id, title, image_url, buy_now_cents, women_only, created_at, ' +
-  'condition, postal_code, city, seller_kind';
-
 /**
  * Was in einer Kategorie liegt: laufende Shows UND Dauerangebote.
  *
@@ -184,17 +158,23 @@ const CATEGORY_LISTING_COLUMNS =
  * diesen Reiter ist: Ohne die Dauerangebote wäre eine Kategorie 94 % der Zeit
  * leer. Frauen-Only filtert in beiden Fällen die RLS selbst; hier steht bewusst
  * kein zweiter Filter, sonst gäbe es zwei Wahrheiten über dieselbe Grenze.
+ *
+ * ⚠️ Die Angebots-Abfrage liegt seit dem 17.08.2026 in `useListings.ts`.
+ * Vorher stand hier eine eigene Spaltenliste und ein eigener Zeilentyp
+ * (`CategoryListing`) — dieselbe Tabellenzeile in einer zweiten, anderen
+ * Fassung. Sie trug die `seller_id`, aber nicht die Beschreibung; der Typ im
+ * Regal trug es umgekehrt. Genau daran ist die Beschreibung zwei Tage lang
+ * unsichtbar geblieben.
  */
 export function useCategoryContent(slugs: string[]) {
   // Stabiler Schlüssel: Ohne das Sortieren käme bei jeder Neuberechnung des
   // Aufrufers eine andere Reihenfolge und damit ein anderer Query-Key heraus —
   // die Abfrage liefe bei jedem Render neu.
   const key = useMemo(() => [...slugs].sort().join(','), [slugs]);
-  const enabled = slugs.length > 0;
 
   const shows = useQuery({
     queryKey: ['berkat', 'category-shows', key],
-    enabled,
+    enabled: slugs.length > 0,
     refetchInterval: 20_000,
     queryFn: async (): Promise<CategoryShow[]> => {
       const { data, error } = await supabase
@@ -210,25 +190,7 @@ export function useCategoryContent(slugs: string[]) {
     },
   });
 
-  const listings = useQuery({
-    queryKey: ['berkat', 'category-listings', key],
-    enabled,
-    staleTime: 30_000,
-    queryFn: async (): Promise<CategoryListing[]> => {
-      const { data, error } = await supabase
-        .from('live_auctions')
-        .select(CATEGORY_LISTING_COLUMNS)
-        .is('session_id', null)
-        .eq('status', 'listed')
-        .in('category', slugs)
-        .order('created_at', { ascending: false })
-        .limit(60);
-      if (error) throw error;
-      // Doppelte Umleitung über `unknown` — supabase-js bildet die lange
-      // Spaltenliste nicht mehr auf den Zeilentyp ab.
-      return (data ?? []) as unknown as CategoryListing[];
-    },
-  });
+  const listings = useCategoryListings(slugs);
 
   return { shows, listings };
 }

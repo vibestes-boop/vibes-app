@@ -59,11 +59,8 @@ import { ProfileEditSheet } from '../../components/ProfileEditSheet';
 import { RatingStars } from '../../components/RatingStars';
 import { VouchPanel } from '../../components/VouchPanel';
 import { StandingShelf } from '../../components/StandingShelf';
-import {
-  standingErrorText,
-  useStandingActions,
-  useStandingListings,
-} from '../../lib/useStanding';
+import { standingErrorText, useStandingActions } from '../../lib/useStanding';
+import { useSellerListings } from '../../lib/useListings';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
 
@@ -236,7 +233,7 @@ export default function SellerScreen() {
   const vouch = useVouchActions(id, myUserId);
   const [vouchNotice, setVouchNotice] = useState<string | null>(null);
 
-  const { data: standing = [], refetch: refetchStanding } = useStandingListings(id);
+  const { data: standing = [], refetch: refetchStanding } = useSellerListings(id);
   const standingActions = useStandingActions(id, myUserId);
   const [standingBusyId, setStandingBusyId] = useState<string | null>(null);
   const follow = useFollow(id, myUserId);
@@ -714,7 +711,6 @@ export default function SellerScreen() {
               <StandingShelf
                 listings={standing}
                 isOwner={isSelf}
-                signedIn={Boolean(myUserId)}
                 // Auf dem Profil wird gestöbert, nicht verwaltet — hier trägt
                 // das Bild. Unter `/shelf` bleibt es die kompakte Liste.
                 layout="grid"
@@ -727,31 +723,10 @@ export default function SellerScreen() {
                     : null
                 }
                 busyId={standingBusyId}
-                // Kontakt statt Kasse — mit Kleinanzeigens meistgetipptem Satz
-                // als Anfang. Der Artikelname steht darin, damit der Verkäufer
-                // ohne Rückfrage weiß, worum es geht (Berkats Antwort auf
-                // Serlos Muster, den Artikel in den Nachrichtentext zu legen).
-                onContact={(item) =>
-                  router.push(
-                    `/messages/${id}?draft=${encodeURIComponent(
-                      `Hallo! Ist „${item.title}" noch da?`,
-                    )}`,
-                  )
-                }
-                onBuy={(item) => {
-                  setStandingBusyId(item.id);
-                  void standingActions.buy
-                    .mutateAsync(item.id)
-                    .then(() =>
-                      setVouchNotice('Im Paket. 🎉 Bezahlen kannst du unter „Konto".'),
-                    )
-                    .catch((e: unknown) =>
-                      setVouchNotice(
-                        standingErrorText(e instanceof Error ? e.message : String(e)),
-                      ),
-                    )
-                    .finally(() => setStandingBusyId(null));
-                }}
+                // Kaufen und Anschreiben liegen seit dem 17.08.2026 auf der
+                // Artikelseite, zu der jede Karte führt. Auf dem Profil wäre
+                // beides ein Kaufweg ohne Beschreibung, ohne Versandkosten und
+                // ohne die Rechtsfolge der Anbieterkennzeichnung.
                 onCancel={(item) => {
                   setStandingBusyId(item.id);
                   void standingActions.cancel

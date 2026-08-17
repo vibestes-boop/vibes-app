@@ -1,4 +1,5 @@
-// Dauerangebote — was ein Verkäufer auch ohne laufende Show verkauft.
+// Dauerangebote — die Aktionen. Der Zeilentyp und die Abfragen liegen in
+// `useListings.ts`.
 //
 // Fünf Verkäufer mit je zwei Stunden pro Woche senden zusammen 10 von 168
 // Stunden. Die App ist rund 94 % der Zeit ein leerer Raum, und der Sendeplan
@@ -12,67 +13,13 @@
 // Gekauft wird über dieselbe RPC wie der Sofortkauf in der Show. Nebenbefund
 // vom 15.08.2026: Diese RPC hatte bis dahin **gar keinen Aufrufer** — der
 // Sofortkauf war serverseitig fertig und im Client nie verdrahtet.
+//
+// ⚠️ Seit dem 17.08.2026 ruft `buy` nur noch die Artikelseite auf. Aus den
+// Rastern ist der Kaufknopf verschwunden — siehe Kopf von `ListingCard.tsx`.
 
 import { useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
-
-export type StandingListing = {
-  id: string;
-  title: string;
-  image_url: string | null;
-  /** Der Festpreis. Bei einem Dauerangebot immer gesetzt. */
-  buy_now_cents: number;
-  women_only: boolean;
-  created_at: string;
-  /**
-   * Seit 20260816210000. Alle vier freiwillig — ein Pflichtformular baut genau
-   * die Reibung wieder auf, die Berkat gegenüber einer WhatsApp-Gruppe
-   * abschafft.
-   *
-   * ⚠️ Diese Felder stehen im Typ UND in der `.select()`-Kette unten. Genau
-   * diese Doppelung ist am 16.08.2026 zweimal schiefgegangen — das Bild wurde
-   * geholt und weggeworfen, weil der Zeilentyp es nicht trug.
-   */
-  description: string | null;
-  condition: string | null;
-  postal_code: string | null;
-  city: string | null;
-  /** Anbietertyp zum Zeitpunkt des Einstellens. NULL = noch nicht erklärt. */
-  seller_kind: 'private' | 'business' | null;
-};
-
-/** Die Spalten eines Angebots — einmal, damit Typ und Abfrage nicht auseinanderlaufen. */
-const LISTING_COLUMNS =
-  'id, title, image_url, buy_now_cents, women_only, created_at, ' +
-  'description, condition, postal_code, city, seller_kind';
-
-/** Was dieser Verkäufer gerade dauerhaft anbietet. */
-export function useStandingListings(sellerId: string | undefined) {
-  return useQuery({
-    queryKey: ['berkat', 'standing', sellerId],
-    enabled: Boolean(sellerId),
-    staleTime: 30_000,
-    queryFn: async (): Promise<StandingListing[]> => {
-      const { data, error } = await supabase
-        .from('live_auctions')
-        .select(LISTING_COLUMNS)
-        // `session_id is null` ist die Regal-Grenze. Ohne den Filter kämen
-        // Show-Artikel mit, sobald sie denselben Status hätten.
-        .is('session_id', null)
-        .eq('seller_id', sellerId!)
-        .eq('status', 'listed')
-        .order('created_at', { ascending: false })
-        .limit(60);
-      if (error) throw error;
-      // Doppelte Umleitung über `unknown`: supabase-js kann die lange
-      // Spaltenliste nicht mehr auf einen Zeilentyp abbilden und fällt auf
-      // `GenericStringError` zurück. Dasselbe Muster wie bei den Auktionen
-      // (lib/useAuction.ts) — `StandingListing` oben ist die verbindliche Form.
-      return (data ?? []) as unknown as StandingListing[];
-    },
-  });
-}
 
 export function standingErrorText(message: string): string {
   if (message.includes('price_too_low'))
@@ -104,7 +51,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
   const queryClient = useQueryClient();
 
   /**
-   * Ein Dauerangebot steht an DREI Orten, und alle drei müssen nachladen.
+   * Ein Dauerangebot steht an VIER Orten, und alle vier müssen nachladen.
    *
    * Am 16.08.2026 genau daran gescheitert: „Fahrrad" wurde unter Sonstiges
    * angelegt, auf dem Profil zurückgezogen — und blieb im Kategorien-Reiter
@@ -113,14 +60,22 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
    * wurde `['berkat', 'standing']` allein zurückgesetzt.
    *
    * Deshalb hier alles zusammen statt an jeder Aufrufstelle einzeln — beim
-   * nächsten Regal-Ort ist es eine Zeile hier und nicht drei vergessene.
+   * nächsten Regal-Ort ist es eine Zeile hier und nicht vier vergessene.
    */
   const invalidate = useCallback(() => {
+    // Das Regal eines Verkäufers (Profil, `/shelf`) …
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'standing'] });
-    // Die Kachel-Zähler im Kategorien-Reiter …
+    // … die Kachel-Zähler im Kategorien-Reiter …
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'categories'] });
-    // … und die Liste auf der Kategorie-Seite selbst.
+    // … die Liste auf der Kategorie-Seite …
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'category-listings'] });
+    // … der Marktplatz und sein Zähler im Leerzustand der Startseite …
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop'] });
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop-count'] });
+    // … und seit dem 17.08.2026 die Artikelseite selbst. Ohne sie stünde nach
+    // einem Kauf weiter „Kaufen · 24 €" auf genau dem Bildschirm, von dem aus
+    // gekauft wurde.
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'listing'] });
   }, [queryClient]);
 
   const create = useMutation({

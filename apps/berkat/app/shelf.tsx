@@ -33,11 +33,8 @@ import { ChevronLeft } from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
-import {
-  standingErrorText,
-  useStandingActions,
-  useStandingListings,
-} from '../lib/useStanding';
+import { standingErrorText, useStandingActions } from '../lib/useStanding';
+import { useSellerListings } from '../lib/useListings';
 import { StandingComposer } from '../components/StandingComposer';
 import { useBerkatSeller, useDeclareSellerKind } from '../lib/useBerkatSeller';
 import { StandingShelf } from '../components/StandingShelf';
@@ -48,7 +45,7 @@ export default function ShelfScreen() {
   const myUserId = useSession((s) => s.userId);
   const myProfile = useSession((s) => s.profile);
 
-  const { data: standing = [], refetch } = useStandingListings(myUserId ?? undefined);
+  const { data: standing = [], refetch } = useSellerListings(myUserId ?? undefined);
   const actions = useStandingActions(myUserId ?? undefined, myUserId);
   const { data: seller } = useBerkatSeller(myUserId);
   const declareKind = useDeclareSellerKind(myUserId);
@@ -126,19 +123,14 @@ export default function ShelfScreen() {
           }
         />
 
+        {/* Die kompakte Liste: Hier wird verwaltet, nicht gestöbert. Ein Tipp
+            auf eine Zeile öffnet den Artikel so, wie ein Fremder ihn sieht —
+            das ist die einzige Vorschau, die es gibt. Zurückziehen bleibt am
+            Rand, weil es der häufige Handgriff ist. */}
         <StandingShelf
           listings={standing}
           isOwner
-          signedIn
           busyId={busyId}
-          // Auf dem eigenen Regal erscheint weder Kauf- noch Kontakt-Knopf —
-          // `isOwner` blendet beide aus. Die Zeile steht trotzdem da, weil die
-          // Eigenschaft verlangt wird und ein Platzhalter ehrlicher ist als
-          // eine erfundene Handlung.
-          onContact={() => {}}
-          // Auf dem eigenen Regal gibt es nichts zu kaufen — der Server ließe
-          // es ohnehin nicht zu (`seller_cannot_bid`).
-          onBuy={() => {}}
           onCancel={(item) => {
             setBusyId(item.id);
             void actions.cancel
