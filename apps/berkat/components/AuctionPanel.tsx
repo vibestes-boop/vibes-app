@@ -10,6 +10,7 @@ import { Package, Play } from 'lucide-react-native';
 import { stage, radius, space, auction as auctionConfig } from '../theme/tokens';
 import { formatCountdown, formatEuro, type Auction, type MiniProfile } from '../lib/useAuction';
 import { shippingHint } from '../lib/useShipping';
+import { sellerKindNote } from '../lib/useBerkatSeller';
 import { Avatar } from './Avatar';
 import { BidButton } from './BidButton';
 
@@ -123,6 +124,19 @@ export function AuctionPanel({
             <Text style={styles.shipping}>
               {shippingHint(shippingFromCents) ?? 'Alle Zuschläge kommen in ein Paket'}
             </Text>
+            {/* Die Anbieterkennzeichnung — auch auf der Bühne.
+                Art. 246d § 1 EGBGB verlangt sie vor JEDER Vertragserklärung,
+                und hier fallen zwei: der Sofortkauf über `BidButton` und der
+                Zuschlag am Ende der Uhr. Bis zum 17.08.2026 stand sie nur am
+                Regal-Angebot, also ausgerechnet nicht auf dem Hauptverkaufsweg.
+
+                Steht direkt über dem Gebots-Knopf und nicht in einem Sheet:
+                „vor der Erklärung" heißt im Blickfeld, nicht einen Tipp
+                entfernt. Ist nichts erklärt (`null`), steht hier nichts —
+                lieber eine Lücke als eine erfundene Angabe. */}
+            {sellerKindNote(auction.seller_kind) ? (
+              <Text style={styles.kind}>{sellerKindNote(auction.seller_kind)}</Text>
+            ) : null}
           </View>
 
           <View style={styles.priceBlock}>
@@ -257,6 +271,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', color: stage.text },
   description: { fontSize: 12, color: stage.textMuted, marginTop: 1 },
   shipping: { fontSize: 10, color: stage.textMuted, marginTop: 2, opacity: 0.8 },
+  /* Etwas heller als der Versandhinweis: Der ist ein Preisdetail, dies eine
+     Rechtsfolge. Trotzdem ruhig — auf der Bühne trägt Gold den Kauf, und eine
+     Pflichtangabe ist keine Werbung. */
+  kind: { fontSize: 10, fontWeight: '600', color: stage.textMuted, marginTop: 1 },
   startWrap: { paddingHorizontal: space.md, paddingBottom: space.md },
   startNext: {
     height: 48,

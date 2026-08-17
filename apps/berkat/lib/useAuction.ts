@@ -27,12 +27,22 @@ export type Auction = {
   bid_count: number;
   ends_at: string | null;
   winner_id: string | null;
+  /**
+   * Anbietertyp zum Zeitpunkt des Auflegens. NULL = noch nicht erklärt.
+   *
+   * ⚠️ Nicht Zierrat: Über `BidButton` läuft hier derselbe Sofortkauf wie im
+   * Regal, und ein Zuschlag am Ende einer Auktion schließt ebenso einen
+   * Vertrag. Art. 246d § 1 EGBGB verlangt die Angabe vor JEDER
+   * Vertragserklärung. Bis zum 17.08.2026 holte diese Abfrage die Spalte gar
+   * nicht — und `create_live_auction` stempelte sie ohnehin nie.
+   */
+  seller_kind: 'private' | 'business' | null;
 };
 
 const AUCTION_COLUMNS =
   'id, session_id, seller_id, title, image_url, start_price_cents, min_increment_cents, ' +
   'buy_now_cents, status, sort_index, current_bid_cents, current_bidder_id, bid_count, ' +
-  'ends_at, winner_id';
+  'ends_at, winner_id, seller_kind';
 
 /** Nächstes gültiges Gebot in Cent. */
 export function nextMinBid(a: Auction | null | undefined): number {

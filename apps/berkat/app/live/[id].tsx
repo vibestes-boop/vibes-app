@@ -576,7 +576,7 @@ export default function LiveAuctionRoom() {
         <Text style={styles.emptyTitle}>Die Show ist zu Ende</Text>
         <Text style={styles.emptyBody}>
           {wonCart
-            ? `Du hast ${wonCart.itemCount} ${wonCart.itemCount === 1 ? 'Artikel' : 'Artikel'} gewonnen — alles zusammen in einem Paket. 🎉`
+            ? `Du hast ${wonCart.itemCount} Artikel gewonnen — alles zusammen in einem Paket. 🎉`
             : 'Danke fürs Zuschauen — schau, wer gerade sonst live ist.'}
         </Text>
 

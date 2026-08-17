@@ -234,7 +234,16 @@ export function useActivity(userId: string | null) {
           body: `${a.title} · ${euro(a.buy_now_cents)}`,
           userId: a.seller_id,
           imageUrl: a.image_url,
-          target: `/seller/${a.seller_id}`,
+          // Die Zeile trägt das Artikelbild und den Artikelnamen — sie
+          // verspricht einen Artikel und muss auch einen liefern. Bis zum
+          // 17.08.2026 stand hier `/seller/${a.seller_id}`; das war die letzte
+          // Aufrufstelle des alten Musters, das der Umbau an vier anderen
+          // Flächen beseitigt hat (Übergabe Abschnitt 21).
+          //
+          // Ein inzwischen verkaufter Artikel ist dabei kein Problem:
+          // `useListing` filtert nicht auf den Status, die Seite sagt dann
+          // „Schon verkauft" statt „gibt es nicht".
+          target: `/listing/${a.id}`,
         });
       }
 

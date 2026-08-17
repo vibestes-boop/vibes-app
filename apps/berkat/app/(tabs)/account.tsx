@@ -257,7 +257,7 @@ export default function AccountScreen() {
               <Text style={styles.cartTotal}>{formatEuro(cart.totalCents)}</Text>
             </View>
             <Text style={styles.cardBody}>
-              {cart.itemCount} {cart.itemCount === 1 ? 'Artikel' : 'Artikel'} · 1 Paket ·{' '}
+              {cart.itemCount} Artikel · 1 Paket ·{' '}
               {formatCartWindow(cart.closes_at, serverNow)}
             </Text>
 
