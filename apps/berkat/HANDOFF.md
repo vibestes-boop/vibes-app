@@ -3342,3 +3342,65 @@ Datenbank belegt.
 eigenen Angebot rendert die Komponente korrekt nichts, solange keine Vorschläge vorliegen. Damit
 hängt auch dieser Weg am zweiten Konto — wie der Kauf, wie „Nachricht statt Kaufen", wie das
 Merken. Das ist inzwischen der einzige offene Punkt, und er ist an allen vier Stellen derselbe.
+
+---
+
+## 25. Rechtstexte auf der Website (18.08.2026)
+
+Bis zum 18.08.2026 hatte `berkat-web` **Impressum und Datenschutz — sonst nichts.** Keine AGB,
+keine Widerrufsbelehrung, keine Regelung zum Vertragsschluss. Bei einer Auktion, in der ein Gebot
+eine bindende Willenserklärung ist, war das die klaffendste Lücke im ganzen Rechtsteil.
+
+Aufgefallen bei der **dritten Whatnot-Analyse** (`WHATNOT-ANALYSE.md`): Deren EU-Vertragswerk
+beschreibt den Vertragsschluss bei Auktionen wörtlich und präzise. Berkat beschrieb ihn nirgends.
+
+| Neu | Inhalt |
+|---|---|
+| `apps/berkat-web/agb.html` | Marktplatz-Rolle · Konto · **Vertragsschluss für Auktion, Festpreis und Preisvorschlag** · Preise/Versand/Sammelpaket · Widerrufsrecht-Weiche · Verkäuferpflichten · verbotene Waren · Inhalte · Gebühren · Sperrung · Haftung · Recht |
+| `apps/berkat-web/widerruf.html` | Belehrung nach amtlichem Muster + Muster-Widerrufsformular, mit der Weiche privat/gewerblich davor |
+
+⚠️ **Beides sind Entwürfe und anwaltlich nicht geprüft.** Eine fehlerhafte Widerrufsbelehrung
+verlängert die Frist auf zwölf Monate und vierzehn Tage — das ist derselbe Gedanke, aus dem heraus
+Berkat bewusst **keinen** Gewährleistungsausschluss stellt (Abschnitt 20).
+
+### Drei Dinge, die beim Bauen auffielen
+
+**1. Vier Seiten hatten gar keine Fußzeilen-Navigation** (`live`, `listing`, `bezahlt`,
+`abgebrochen`). Nach § 5 DDG muss das Impressum von **jeder** Seite erreichbar sein — auch von
+denen, die als Brücke aus einem geteilten Link geöffnet werden. Alle neun Seiten verlinken jetzt
+Nutzungsbedingungen, Widerruf, Impressum und Datenschutz.
+
+**2. Das weiche Trennzeichen ist Hauskonvention, und ich hatte sie übersehen.**
+`datenschutz.html` schreibt `Datenschutz&shy;erklärung`, und das Stylesheet steht passend auf
+`hyphens: manual` — die Seite trennt lange deutsche Komposita also **von Hand**, nicht automatisch.
+Meine beiden neuen Überschriften („Widerrufsbelehrung", „Nutzungsbedingungen") hatten keins und
+erzeugten auf schmalen Geräten **seitliches Scrollen der ganzen Seite** (nachgemessen: Dokument
+318 px breit bei 283 px Viewport). Behoben mit `&shy;`, danach `scrollWidth == clientWidth`.
+
+> **Merksatz:** Wer eine neue Seite anlegt, schaut in eine bestehende, BEVOR er sie schreibt. Die
+> Konvention stand da, sie war nur nicht dokumentiert.
+
+**3. ⚠️ Impressum und App widersprechen sich — Stand 18.08.2026 offen.**
+
+`impressum.html` erklärt den Betreiber als **Kleinunternehmer nach § 19 UStG** — das ist ein
+Unternehmer-Status. In `berkat_sellers` steht für dasselbe Konto aber `kind = 'private'`, und die
+App schreibt deshalb an seine Angebote **„Privatverkauf · kein Widerrufsrecht"**.
+
+Wenn der Betreiber gewerblich handelt, ist das eine **falsche Angabe gegenüber Verbrauchern** —
+und zwar ausgerechnet die, die Art. 246d § 1 EGBGB verlangt. Die Zeile stammt aus dem Testlauf vom
+17.08.: `create_standing_listing` legt beim ersten Angebot automatisch `kind = 'private'` an
+(20260816220000). Für einen Kleinunternehmer ist das die falsche Vorgabe.
+
+**Nicht von mir zu entscheiden** — ob jemand gewerblich handelt, ist eine Tatsachenfrage über sein
+Handeln, nicht über die Datenbank. Ein Tipp auf „Gewerblich" im Composer korrigiert es und zieht
+alle offenen Angebote nach (`set_berkat_seller_kind`). Danach fehlen noch die Impressumsangaben in
+`berkat_sellers`, sonst steht auf der Artikelseite „Anbieterangaben unvollständig".
+
+### Was daraus noch offen ist
+
+1. **Der Widerspruch oben.** Zaurs Handgriff, ein Tipp.
+2. **Impressums-Formular im Konto** — die Spalten stehen seit `20260816200000`, das Formular fehlt.
+   Wird Pflicht in dem Moment, in dem der Anbietertyp auf gewerblich steht.
+3. **Die Texte anwaltlich prüfen lassen**, bevor der erste fremde Käufer kommt.
+4. **Durchsetzungsseite** (wer trägt die Rückerstattung, was bei Nichtlieferung) — Whatnot regelt
+   das ausführlich, Berkat gar nicht. Erst ab dem ersten Drittverkäufer nötig.

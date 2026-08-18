@@ -629,3 +629,120 @@ Whatnot führt ihn als Schalter je Angebot: annehmen, kontern, ablehnen.
 - [Variants for Sellers](https://help.whatnot.com/hc/en-us/articles/34889029544845-Variants-for-Sellers)
 - [Inside the Whatnot Seller Hub 2026 — CLOSO](https://closo.co/blogs/platform-specific-guides/inside-the-whatnot-seller-hub-a-survival-guide-for-live-auctions-in-2026)
 - [How does Whatnot work — nifty.ai](https://nifty.ai/post/how-does-whatnot-work) · [Whatnot app guide — Vendoo](https://blog.vendoo.co/whatnot-app-a-guide-for-sellers-and-buyers)
+
+---
+---
+
+# Dritte Analyse: die deutsche Rechtsmaschine (18.08.2026)
+
+> Beide bisherigen Analysen haben etwas übersehen: **Whatnot ist als
+> `Whatnot Europe Ltd.` (Irland, Registernummer 723475) im EU-Markt** und musste
+> damit exakt die Probleme lösen, an denen Berkat seit dem 17.08. arbeitet.
+> Grundlage ist ihr EU-Vertragswerk, im Volltext gelesen (PDF, Quelle unten).
+
+## 1. Wie sie „privat oder gewerblich" beantworten
+
+Berkat hat sich das selbst hergeleitet und ist bei einer Selbsterklärung
+gelandet. Whatnot auch, wörtlich:
+
+> *„Whatnot zeigt über die App an, ob es sich bei den Verkäufern gemäß ihren
+> **Selbsterklärungen** um Verbraucher oder um gewerbliche Verkäufer handelt."*
+
+Dasselbe Modell, unabhängig gefunden — eine Bestätigung für `seller_kind`.
+
+Davor steht bei ihnen aber ein Riegel, den Berkat nicht hat:
+
+> *„Verkäufer aus der EU **müssen in der EU für Umsatzsteuerzwecke registriert
+> sein**, um auf Whatnot verkaufen zu können."*
+
+⚠️ Zwei Klauseln in EINEM Dokument, die sich reiben: Die eine sieht Verbraucher
+als Verkäufer vor, die andere verlangt von jedem EU-Verkäufer eine
+USt-Registrierung, die ein Privatmensch nicht hat. Das lässt sich von außen
+nicht auflösen, und so zu tun wäre falsch. Die operative Wirkung ist trotzdem
+eindeutig: **Der USt-Riegel steht beim Onboarding, die Selbsterklärung erst
+danach.**
+
+**Berkat geht bewusst den anderen Weg** (Zaur am 17.08.: „nicht nur
+Gewerbetreibende, sondern auch private Leute"). Das ist der schwerere, und
+Whatnot hat ihn mit acht Milliarden Umsatz nicht genommen. Kein Argument
+dagegen — aber es heißt: **Für einen Marktplatz mit echten Privatverkäufern gibt
+es hier kein Vorbild zum Abschauen.**
+
+## 2. Der Geldweg — eine Konstruktion, die Berkat nicht kennt
+
+> *„Jeder Verkäufer ernennt hiermit Whatnot zu seinem **Inkassobeauftragten** für
+> den begrenzten Zweck, Zahlungen von Käufern entgegenzunehmen … jede Zahlung,
+> die Whatnot im Namen des Verkäufers erhält, [gilt] als direkte Zahlung an den
+> Verkäufer. … Mit der Zahlung an Whatnot erlischt die Zahlungsverpflichtung des
+> Käufers gegenüber dem Verkäufer."*
+
+Das ist die klassische Antwort auf genau das ZAG-Problem, um das Berkats
+`checkout_enabled` gebaut ist (Analyse A1, Übergabe Abschnitt 22): Wer als
+Inkassobeauftragter im Namen des Verkäufers kassiert, erbringt kein
+Zahlungsgeschäft im eigenen Namen, und der Käufer ist mit der Zahlung an die
+Plattform befreit.
+
+⚠️ **Im Verkäufer-Absatz steht allerdings: „Dieser eingeschränkte Auftrag gilt
+nur für Verkäufer, die eine ‚United States person' sind."** Im käuferseitigen
+Absatz derselben Klausel fehlt die Einschränkung. Das sieht nach einer unsauber
+lokalisierten US-Fassung aus.
+
+**Für Berkat heißt das: Die Konstruktion ist bekannt und gängig, ihre deutsche
+Wirksamkeit ist aus diesem Dokument aber NICHT ableitbar.** Das gehört einem
+Anwalt vorgelegt. Der gebaute Weg (Stripe Connect) bleibt der sichere.
+
+## 3. Was passiert, wenn es schiefgeht
+
+| Whatnot | Berkat |
+|---|---|
+| **Der Verkäufer trägt die Kosten der Rückerstattung**, ausdrücklich | ungeregelt |
+| **Vertragsstrafe 15 % der Transaktion, mindestens 12 €** | — |
+| Auszahlung **bis 30 Tage** einbehalten | — |
+| Artikel entfernen, Transaktionen annullieren, Kauf/Verkauf sperren | nur Sperren |
+| Rückbuchungs- und Ersatzkosten dem Verkäufer belasten | — |
+| Whatnot ist **nicht Partei** und verkauft selbst keine Waren | Berkat **ist** heute selbst Verkäufer |
+
+Die letzte Zeile ist die wichtigste und wird leicht übersehen: Solange der
+Betreiber selbst verkauft, ist Berkat **Verkäufer und Plattform in einer
+Person** — eine ganz andere Rechtslage als Whatnots reine Vermittlerrolle. Die
+Trennung entsteht erst mit dem ersten Drittverkäufer, und **erst dann** brauchen
+die Zeilen darüber ein Gegenstück.
+
+## 4. Der Vertragsschluss steht bei ihnen im Text
+
+> *„Die Abgabe eines Gebots ist bindend und führt, wenn das Gebot bei Ablauf der
+> Angebotsdauer das Höchstgebot ist, **direkt zum Abschluss eines
+> Kaufvertrags**."*
+
+Und zum Anti-Snipe, feiner als unsere Umsetzung: Bei ≤ 10 Sekunden springt der
+Zähler auf **eine vom Verkäufer festzulegende Zeit**; daneben gibt es „Sudden
+Death" ganz ohne Verlängerung. Berkat hat `extendSeconds: 10` fest verdrahtet
+(`theme/tokens.ts`).
+
+## 5. Zwei Kleinigkeiten mit Folgen
+
+- **Preise sind brutto:** *„Die Preise für Inlandskäufe sind in der EU inklusive
+  Umsatzsteuer."* Berkat rechnet in Cent und sagt zur Steuer nichts.
+- **Einfuhrumsatzsteuer unter 150 €** zieht Whatnot selbst ein (IOSS). Das ist
+  die steuerliche Maschinerie hinter dem Geographie-Trick aus der ersten
+  Analyse — und der Bauplan, sobald Berkat über Grenzen verkauft (DE/AT/TR/FR/RU).
+
+## 6. Was daraus folgt
+
+1. **AGB, Widerrufsbelehrung und ein Text zum Vertragsschluss** auf
+   `berkat-web`. Dort standen bis zum 18.08.2026 nur Impressum und Datenschutz —
+   bei einer Auktion, in der ein Gebot bindend ist, die klaffendste Lücke.
+2. **Anti-Snipe-Zeit vom Verkäufer wählbar**, plus „Sudden Death". Klein, und es
+   macht aus einer Hausregel eine Entscheidung.
+3. **Vor dem ersten Drittverkäufer** die Durchsetzungsseite: wer trägt die
+   Rückerstattung, was passiert bei Nichtlieferung.
+4. **Nicht kopieren:** den USt-Riegel am Eingang. Er würde genau die
+   Privatverkäufer aussperren, die Berkats erklärter Zweck sind.
+
+Was diese Analyse **nicht** kann: sagen, ob Whatnots Inkasso-Konstruktion in
+Deutschland trägt. Das ist eine Anwaltsfrage. Hier steht nur, was sie ihren
+Nutzern vorlegen.
+
+## Quelle
+
+- [Whatnot Servicebedingungen für Nutzer in der EU oder im Vereinigten Königreich](https://whatnot.pactsafe.io/versions/67991d177a099bf2be49a58f.pdf) — PDF, im Volltext gelesen (`pdftotext -layout`), 18.08.2026
