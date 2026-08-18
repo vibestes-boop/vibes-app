@@ -36,6 +36,7 @@ import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { useProfiles } from '../lib/useAuction';
 import { useShopListings, type Listing } from '../lib/useListings';
+import { useSavedIds, useToggleSaved } from '../lib/useSaved';
 import { ListingCard } from '../components/ListingCard';
 import { BerkatMark } from '../components/BerkatMark';
 import { space, ui } from '../theme/tokens';
@@ -62,6 +63,9 @@ export default function ShopScreen() {
   const myUserId = useSession((s) => s.userId);
   const { data: listings = [], isLoading, refetch } = useShopListings();
   const profiles = useProfiles(listings.map((l) => l.seller_id));
+  // Merken direkt von der Karte — der O(1)-Blick ins Set, siehe useSaved.ts.
+  const { data: savedIds } = useSavedIds(myUserId);
+  const toggleSaved = useToggleSaved(myUserId);
   const [pulling, setPulling] = useState(false);
 
   // Die Reiter- und Stapel-Falle aus HANDOFF 3: Expo Router hält Bildschirme
@@ -130,11 +134,22 @@ export default function ShopScreen() {
         }
         renderItem={({ item }) => {
           if ('spacer' in item) return <View style={{ flex: 1 }} />;
+          const mine = myUserId === item.seller_id;
+          const saved = Boolean(savedIds?.has(item.id));
           return (
             <ListingCard
               listing={item}
               sellerName={profiles[item.seller_id]?.username}
-              mine={myUserId === item.seller_id}
+              mine={mine}
+              saved={saved}
+              onToggleSaved={
+                mine
+                  ? undefined
+                  : () =>
+                      myUserId
+                        ? toggleSaved.mutate({ auctionId: item.id, saved })
+                        : router.push('/login')
+              }
               onPress={() => router.push(`/listing/${item.id}`)}
             />
           );

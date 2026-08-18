@@ -1,9 +1,16 @@
-// Einen Artikel dauerhaft anbieten — unabhängig von einer Show.
+// Einen Artikel dauerhaft anbieten — oder einen bestehenden bearbeiten.
 //
 // Steht bewusst im Verkaufen-Reiter und NICHT im Studio einer laufenden
 // Sendung: Der Sinn eines Dauerangebots ist ja gerade, dass es ohne Sendung
 // existiert. Wer es nur während einer Show anlegen könnte, hätte den Zweck
 // verfehlt.
+//
+// EIN Formular für beide Fälle. Bearbeiten (seit 17.08.2026) ist dasselbe
+// Formular mit vorbefüllten Feldern und anderem Knopf — eine zweite Abschrift
+// wäre exakt der Fehler, der bei den Angebots-Karten viermal auseinanderlief
+// (HANDOFF 21). Der einzige Unterschied: Im Bearbeiten fehlt die
+// Anbietertyp-Wahl, denn die gehört zum VERKÄUFER, nicht zum Artikel — und
+// `set_berkat_seller_kind` zieht offene Angebote ohnehin nach.
 //
 // Kein Bild-Zwang. Ein Verkäufer, der abends schnell drei Sachen einstellt,
 // bricht sonst nach dem ersten ab — und ein Angebot ohne Foto ist immer noch
@@ -21,58 +28,77 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { ImagePlus, ShoppingBag } from 'lucide-react-native';
+import { ImagePlus, ShoppingBag, X } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { euroToCents } from '../lib/useStudio';
 import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
 import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
 
+/** Serverseitig als CHECK gespiegelt — wer hier erhöht, erhöht dort mit. */
+const MAX_IMAGES = 8;
+
+export type ListingFormValues = {
+  title: string;
+  priceCents: number;
+  womenOnly: boolean;
+  category: string | null;
+  /** Alle Bilder in Reihenfolge — das erste ist das Cover. */
+  imageUrls: string[];
+  description: string | null;
+  condition: string | null;
+  postalCode: string | null;
+  city: string | null;
+};
+
 type Props = {
   busy: boolean;
   /** Nur geprüfte Frauen dürfen Frauen-Only setzen — der Server prüft es nochmal. */
   canWomenOnly: boolean;
-  /** Was der Verkäufer bisher erklärt hat. `null` = noch nie gefragt worden. */
-  sellerKind: SellerKind | null;
-  /** Wird nur gerufen, wenn sich der Typ tatsächlich ändert. */
-  onDeclareKind: (kind: SellerKind) => void;
-  onCreate: (input: {
-    title: string;
-    priceCents: number;
-    womenOnly: boolean;
-    category: string | null;
-    imageUrl: string | null;
-    description: string | null;
-    condition: string | null;
-    postalCode: string | null;
-    city: string | null;
-  }) => void;
+  /**
+   * `edit` befüllt aus `initial`, versteckt die Anbietertyp-Wahl und setzt das
+   * Formular nach dem Abschicken NICHT zurück — beim Bearbeiten wäre ein leeres
+   * Formular ein scheinbarer Datenverlust.
+   */
+  mode?: 'create' | 'edit';
+  initial?: Partial<ListingFormValues>;
+  /** Was der Verkäufer bisher erklärt hat. `null` = noch nie gefragt worden. Nur `create`. */
+  sellerKind?: SellerKind | null;
+  /** Wird nur gerufen, wenn sich der Typ tatsächlich ändert. Nur `create`. */
+  onDeclareKind?: (kind: SellerKind) => void;
+  onSubmit: (input: ListingFormValues) => void;
+  submitLabel?: string;
 };
 
 export function StandingComposer({
   busy,
   canWomenOnly,
+  mode = 'create',
+  initial,
   sellerKind,
   onDeclareKind,
-  onCreate,
+  onSubmit,
+  submitLabel,
 }: Props) {
-  const [title, setTitle] = useState('');
-  const [price, setPrice] = useState('');
-  const [womenOnly, setWomenOnly] = useState(false);
-  const [category, setCategory] = useState<string | null>(null);
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [price, setPrice] = useState(() =>
+    initial?.priceCents != null ? String(initial.priceCents / 100).replace('.', ',') : '',
+  );
+  const [womenOnly, setWomenOnly] = useState(initial?.womenOnly ?? false);
+  const [category, setCategory] = useState<string | null>(initial?.category ?? null);
   const [openParent, setOpenParent] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>(initial?.imageUrls ?? []);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const [condition, setCondition] = useState<string | null>(null);
-  const [postalCode, setPostalCode] = useState('');
-  const [city, setCity] = useState('');
-  const [description, setDescription] = useState('');
+  const [condition, setCondition] = useState<string | null>(initial?.condition ?? null);
+  const [postalCode, setPostalCode] = useState(initial?.postalCode ?? '');
+  const [city, setCity] = useState(initial?.city ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
   // Die Beschreibung ist das einzige Feld, das echte Arbeit kostet. Sie liegt
   // deshalb hinter einem Tipp — der schnelle Weg bleibt schnell, und wer
-  // erzählen will, kann.
-  const [descOpen, setDescOpen] = useState(false);
+  // erzählen will, kann. Beim Bearbeiten ist sie offen, wenn sie Text trägt.
+  const [descOpen, setDescOpen] = useState(Boolean(initial?.description));
 
   /**
    * ⚠️ Vorgabe „privat", und zwar nicht aus Bequemlichkeit.
@@ -88,49 +114,59 @@ export function StandingComposer({
   // als es sich als Fehlermeldung abzuholen.
   const priceOk = cents !== null && cents > 100;
   // `uploading` blockiert mit: Wer währenddessen abschickt, verlöre das Bild,
-  // weil `imageUrl` erst nach dem Hochladen gesetzt wird.
-  const canCreate = title.trim().length >= 2 && priceOk && !busy && !uploading;
+  // weil die URL erst nach dem Hochladen in der Liste steht.
+  const canSubmit = title.trim().length >= 2 && priceOk && !busy && !uploading;
+
+  const addImage = () => {
+    if (imageUrls.length >= MAX_IMAGES || uploading) return;
+    setUploading(true);
+    setUploadError(null);
+    void pickAndUpload('article', 'square')
+      .then((url) => {
+        if (url) setImageUrls((prev) => (prev.length >= MAX_IMAGES ? prev : [...prev, url]));
+      })
+      .catch((error: unknown) =>
+        setUploadError(error instanceof Error ? error.message : 'Das Bild kam nicht durch.'),
+      )
+      .finally(() => setUploading(false));
+  };
+
+  const removeImage = (url: string) => {
+    setImageUrls((prev) => prev.filter((u) => u !== url));
+  };
+
+  const cover = imageUrls[0] ?? null;
 
   return (
     <View style={s.card}>
-      <View style={s.head}>
-        <ShoppingBag size={18} color={ui.text} />
-        <Text style={s.title}>Dauerhaft anbieten</Text>
-      </View>
-      <Text style={s.body}>
-        Bleibt auf deinem Profil kaufbar, auch wenn du nicht sendest. Zwischen zwei Shows ist
-        das alles, was jemand bei dir tun kann.
-      </Text>
+      {mode === 'create' ? (
+        <>
+          <View style={s.head}>
+            <ShoppingBag size={18} color={ui.text} />
+            <Text style={s.title}>Dauerhaft anbieten</Text>
+          </View>
+          <Text style={s.body}>
+            Bleibt auf deinem Profil kaufbar, auch wenn du nicht sendest. Zwischen zwei Shows
+            ist das alles, was jemand bei dir tun kann.
+          </Text>
+        </>
+      ) : null}
 
-      {/* Bild links, Titel rechts — dieselbe Anordnung wie bei „Artikel
-          auflegen" darüber. Dass die beiden Formulare unterschiedlich aussahen,
-          war der Grund für die Verwechslung am 16.08.2026: Der einzige
-          Bild-Wähler auf dem Bildschirm gehörte zur Show, und es sah aus, als
-          müsse man ihn auch für ein Dauerangebot benutzen. */}
+      {/* Cover links, Titel rechts — dieselbe Anordnung wie bei „Artikel
+          auflegen". Der Tipp auf das Cover fügt ein WEITERES Bild hinzu; das
+          Entfernen liegt am ✕ der Kachelreihe darunter. So bleibt der schnelle
+          Weg (ein Foto, fertig) ein einziger Tipp. */}
       <View style={s.titleRow}>
         <Pressable
           style={s.picker}
-          disabled={uploading}
-          onPress={() => {
-            setUploading(true);
-            setUploadError(null);
-            void pickAndUpload('article', 'square')
-              .then((url) => {
-                if (url) setImageUrl(url);
-              })
-              .catch((error: unknown) =>
-                setUploadError(
-                  error instanceof Error ? error.message : 'Das Bild kam nicht durch.',
-                ),
-              )
-              .finally(() => setUploading(false));
-          }}
+          disabled={uploading || imageUrls.length >= MAX_IMAGES}
+          onPress={addImage}
           accessibilityRole="button"
-          accessibilityLabel={imageUrl ? 'Foto ändern' : 'Foto wählen'}
+          accessibilityLabel={cover ? 'Weiteres Foto hinzufügen' : 'Foto wählen'}
         >
-          {imageUrl ? (
+          {cover ? (
             <Image
-              source={{ uri: imageUrl }}
+              source={{ uri: cover }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={120}
@@ -138,7 +174,7 @@ export function StandingComposer({
           ) : null}
           {uploading ? (
             <ActivityIndicator color={ui.brand} />
-          ) : imageUrl ? null : (
+          ) : cover ? null : (
             <ImagePlus size={20} color={ui.textMuted} />
           )}
         </Pressable>
@@ -154,10 +190,63 @@ export function StandingComposer({
         />
       </View>
 
+      {/* Die Kachelreihe: alle Bilder, jedes mit ✕, hinten die Plus-Kachel.
+          Umsortieren geht über Entfernen und neu Hinzufügen — ein Zieh-Sortierer
+          bräuchte eine Gesten-Bibliothek und damit einen Build. Das erste Bild
+          ist das Cover; die Karte und der Live-Raum zeigen nur dieses. */}
+      {imageUrls.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.imageRow}>
+          {imageUrls.map((url, index) => (
+            <View key={url} style={s.imageTile}>
+              <Image
+                source={{ uri: url }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={100}
+              />
+              {index === 0 ? (
+                <View style={s.coverTag}>
+                  <Text style={s.coverTagText}>Titelbild</Text>
+                </View>
+              ) : null}
+              <Pressable
+                style={s.imageRemove}
+                hitSlop={8}
+                onPress={() => removeImage(url)}
+                accessibilityRole="button"
+                accessibilityLabel={`Foto ${index + 1} entfernen`}
+              >
+                <X size={12} color={ui.bg} />
+              </Pressable>
+            </View>
+          ))}
+          {imageUrls.length < MAX_IMAGES ? (
+            <Pressable
+              style={s.imageAdd}
+              disabled={uploading}
+              onPress={addImage}
+              accessibilityRole="button"
+              accessibilityLabel="Weiteres Foto hinzufügen"
+            >
+              {uploading ? (
+                <ActivityIndicator color={ui.textMuted} />
+              ) : (
+                <ImagePlus size={18} color={ui.textMuted} />
+              )}
+            </Pressable>
+          ) : null}
+        </ScrollView>
+      ) : null}
+      {imageUrls.length > 1 ? (
+        <Text style={s.photoHint}>
+          {imageUrls.length} von {MAX_IMAGES} Fotos — das erste ist das Titelbild.
+        </Text>
+      ) : null}
+
       {/* Kein Bild-ZWANG, aber ein deutlicher Hinweis. In der Show hältst du
           den Artikel in die Kamera — hier gibt es keine Kamera, das Foto IST
           die Auslage. */}
-      {!imageUrl && !uploading ? (
+      {imageUrls.length === 0 && !uploading ? (
         <Text style={s.photoHint}>
           Ohne Foto sehen Fremde nur ein graues Feld — hier gibt es keine Kamera, die es zeigt.
         </Text>
@@ -256,67 +345,76 @@ export function StandingComposer({
       {/* Die Rechtsangabe steht direkt über dem Knopf, weil sie zur Handlung
           gehört — nicht in einer Einstellung, die niemand findet. Kein Riegel:
           Ein Rechtsfeld, das beim letzten Handgriff aussperrt, holt niemanden
-          herüber. Wer nichts anfasst, verkauft privat. */}
-      <Text style={s.label}>Du verkaufst als</Text>
-      <View style={s.kindRow}>
-        {([
-          { value: 'private' as const, label: 'Privatperson' },
-          { value: 'business' as const, label: 'Gewerblich' },
-        ]).map((option) => {
-          const on = kind === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => {
-                if (kind !== option.value) onDeclareKind(option.value);
-              }}
-              style={[s.kindTile, on && s.kindTileOn]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-            >
-              <Text style={[s.kindLabel, on && s.kindLabelOn]}>{option.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <Text style={s.kindNote}>
-        {kind === 'business'
-          ? 'Käufer haben Widerrufsrecht und Gewährleistung. Deine Anbieterangaben stehen an jedem Angebot — trag sie im Konto nach, falls noch nicht geschehen.'
-          : 'Beim Privatverkauf gibt es kein Widerrufsrecht. Beschreibe den Zustand ehrlich — daran wirst du gemessen.'}
-      </Text>
+          herüber. Wer nichts anfasst, verkauft privat.
+
+          Nur beim ANLEGEN: Der Anbietertyp gehört zum Verkäufer, nicht zum
+          Artikel — beim Bearbeiten wäre er hier eine zweite Wahrheit. */}
+      {mode === 'create' ? (
+        <>
+          <Text style={s.label}>Du verkaufst als</Text>
+          <View style={s.kindRow}>
+            {([
+              { value: 'private' as const, label: 'Privatperson' },
+              { value: 'business' as const, label: 'Gewerblich' },
+            ]).map((option) => {
+              const on = kind === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => {
+                    if (kind !== option.value) onDeclareKind?.(option.value);
+                  }}
+                  style={[s.kindTile, on && s.kindTileOn]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Text style={[s.kindLabel, on && s.kindLabelOn]}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={s.kindNote}>
+            {kind === 'business'
+              ? 'Käufer haben Widerrufsrecht und Gewährleistung. Deine Anbieterangaben stehen an jedem Angebot — trag sie im Konto nach, falls noch nicht geschehen.'
+              : 'Beim Privatverkauf gibt es kein Widerrufsrecht. Beschreibe den Zustand ehrlich — daran wirst du gemessen.'}
+          </Text>
+        </>
+      ) : null}
 
       <Pressable
-        style={[s.primary, !canCreate && s.primaryOff]}
-        disabled={!canCreate}
+        style={[s.primary, !canSubmit && s.primaryOff]}
+        disabled={!canSubmit}
         onPress={() => {
-          onCreate({
+          onSubmit({
             title,
             priceCents: cents!,
             womenOnly,
             category,
-            imageUrl,
+            imageUrls,
             description: description.trim() || null,
             condition,
             postalCode: postalCode.trim() || null,
             city: city.trim() || null,
           });
-          setTitle('');
-          setPrice('');
-          setWomenOnly(false);
-          setCategory(null);
-          setOpenParent(null);
-          setImageUrl(null);
-          setUploadError(null);
-          setCondition(null);
-          setDescription('');
-          setDescOpen(false);
-          // PLZ und Ort bleiben ABSICHTLICH stehen: Wer abends fünf Sachen
-          // einstellt, wohnt bei allen fünf am selben Ort.
+          if (mode === 'create') {
+            setTitle('');
+            setPrice('');
+            setWomenOnly(false);
+            setCategory(null);
+            setOpenParent(null);
+            setImageUrls([]);
+            setUploadError(null);
+            setCondition(null);
+            setDescription('');
+            setDescOpen(false);
+            // PLZ und Ort bleiben ABSICHTLICH stehen: Wer abends fünf Sachen
+            // einstellt, wohnt bei allen fünf am selben Ort.
+          }
         }}
         accessibilityRole="button"
-        accessibilityLabel="Artikel dauerhaft anbieten"
+        accessibilityLabel={submitLabel ?? 'Artikel dauerhaft anbieten'}
       >
-        <Text style={s.primaryText}>Ins Regal legen</Text>
+        <Text style={s.primaryText}>{submitLabel ?? 'Ins Regal legen'}</Text>
       </Pressable>
     </View>
   );
@@ -359,6 +457,50 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
+
+  imageRow: { marginTop: space.sm },
+  imageTile: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+    marginRight: space.sm,
+  },
+  coverTag: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: ui.overlay,
+    paddingVertical: 1,
+    alignItems: 'center',
+  },
+  // Auf `ui.overlay` gilt `overlayMuted` — Text auf fremdem Bild, siehe die
+  // Bestandsliste an `ui.overlay` in theme/tokens.ts.
+  coverTagText: { fontSize: 8, fontWeight: '700', color: ui.overlayMuted },
+  imageRemove: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: ui.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageAdd: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: ui.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   photoHint: { fontSize: 11, color: ui.textMuted, marginTop: space.sm, lineHeight: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.md },
   switchWrap: { alignItems: 'center', gap: 2 },

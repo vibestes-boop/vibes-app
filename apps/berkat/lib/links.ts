@@ -25,3 +25,17 @@ export const SITE_URL = 'https://berkat-live.pages.dev';
 export function showLink(sessionId: string): string {
   return `${SITE_URL}/live?id=${encodeURIComponent(sessionId)}`;
 }
+
+/**
+ * Adresse, unter der ein Angebot geteilt wird.
+ *
+ * Derselbe Grund für den Parameter statt des Pfads wie bei `showLink` —
+ * Cloudflare Pages wirft bei der Weiterleitung den Pfadteil weg.
+ *
+ * Das ist der Kanal, über den diese Community heute tatsächlich handelt:
+ * WhatsApp-Gruppen. Ein Verkäufer, der sein Angebot nicht in seine Gruppe
+ * werfen kann, stellt es dort ein statt hier.
+ */
+export function listingLink(auctionId: string): string {
+  return `${SITE_URL}/listing?id=${encodeURIComponent(auctionId)}`;
+}

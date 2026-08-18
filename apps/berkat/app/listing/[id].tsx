@@ -32,33 +32,45 @@
 // und trägt als einzige Fläche den Kaufknopf. Damit ist der Ort der
 // Vertragserklärung genau der Ort, an dem die Pflichtangabe steht.
 //
-// KEIN TEILEN-KNOPF. Die Website unter `SITE_URL` kennt nur `/live` — ein
-// geteilter Artikel-Link ginge ins Leere. Kommt eine Artikelseite im Netz dazu,
-// gehört er hierher (Muster: `showLink()` in `lib/links.ts`).
+// Seit dem Vollausbau (17.08.2026 abends) außerdem: Bild-Galerie (alle Fotos,
+// nicht nur das Cover), Teilen (die Website hat jetzt `/listing`), Merken-Herz,
+// Bearbeiten für den Besitzer, „Angebot melden" und „Mehr von diesem Verkäufer".
+// Zaur: „Dass es keine angebotenen Produkte gibt, ist kein Grund, die App nicht
+// vollständig zu bauen."
 
 import { useCallback, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   ChevronRight,
+  Heart,
   Lock,
   MessageCircle,
   Package,
+  Share2,
   Star,
+  Truck,
+  X,
 } from 'lucide-react-native';
 
 import { useSession } from '../../lib/session';
 import { goBack } from '../../lib/nav';
+import { listingLink } from '../../lib/links';
 import { formatEuro, useProfiles } from '../../lib/useAuction';
 import {
   conditionLabel,
@@ -66,12 +78,17 @@ import {
   sellerKindNote,
   useBerkatSeller,
 } from '../../lib/useBerkatSeller';
-import { useListing } from '../../lib/useListings';
-import { formatRating, useSellerStats } from '../../lib/useSellerStats';
+import { listingImages, useListing, useSellerListings } from '../../lib/useListings';
+import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
+import { REPORT_REASONS, useSellerActions } from '../../lib/useSellerActions';
+import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
 import { shippingHint, useShippingFrom } from '../../lib/useShipping';
 import { standingErrorText, useStandingActions } from '../../lib/useStanding';
+import { useVouches, vouchSummary } from '../../lib/useVouch';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
+import { ListingCard } from '../../components/ListingCard';
+import { StandingComposer } from '../../components/StandingComposer';
 import { radius, space, ui } from '../../theme/tokens';
 
 /** Ein Hinweis, der einen Weg mitbringen kann statt nur einen Rat. */
@@ -128,6 +145,9 @@ export default function ListingScreen() {
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
   const sessionLoading = useSession((s) => s.loading);
+  // Vor den frühen returns, wie jeder Hook hier — Rules of Hooks. Gebraucht
+  // erst weit unten im Bearbeiten-Blatt (Frauen-Only-Schalter).
+  const canWomenOnly = useSession((s) => Boolean(s.profile?.women_only_verified));
 
   const { data: listing, isLoading, refetch } = useListing(id);
   const sellerId = listing?.seller_id;
@@ -141,6 +161,41 @@ export default function ListingScreen() {
   const actions = useStandingActions(sellerId, myUserId);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+
+  // Galerie: EIN aktiver Index, gesetzt am ENDE der Scroll-Animation — nicht
+  // per onScroll. Das ist die Serlo-Lehre v1.26.8: Wer bei jedem Frame setzt,
+  // lässt die Punkte beim Blättern hin- und herspringen.
+  const { width: screenWidth } = useWindowDimensions();
+  const [imageIndex, setImageIndex] = useState(0);
+  const onGalleryEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const w = e.nativeEvent.layoutMeasurement.width || 1;
+      setImageIndex(Math.round(e.nativeEvent.contentOffset.x / w));
+    },
+    [],
+  );
+
+  // Merken. Das Set kommt aus einer eigenen Mini-Abfrage (useSavedIds), damit
+  // jede Fläche dieselbe Wahrheit liest; der Toggle setzt beide Schlüssel zurück.
+  const { data: savedIds } = useSavedIds(myUserId);
+  const toggleSaved = useToggleSaved(myUserId);
+  const isSaved = Boolean(id && savedIds?.has(id));
+
+  // „Mehr von diesem Verkäufer" — dieselbe Abfrage wie das Profil-Regal, der
+  // aktuelle Artikel wird nur herausgefiltert.
+  const { data: sellerListings = [] } = useSellerListings(sellerId);
+  const moreFromSeller = useMemo(
+    () => sellerListings.filter((l) => l.id !== id).slice(0, 6),
+    [sellerListings, id],
+  );
+
+  // Bürgen — dieselbe Zeile wie im Verkäufer-Sheet des Live-Raums.
+  const { data: vouches = [] } = useVouches(sellerId, myUserId);
+  const vouchLine = vouchSummary(vouches);
+
+  const sellerActions = useSellerActions(myUserId);
 
   // Dieselbe Falle wie überall: Stack-Bildschirme bleiben aufgebaut. Wer von
   // hier auf das Profil geht, den Artikel dort zurückzieht und zurückkommt,
@@ -239,13 +294,77 @@ export default function ListingScreen() {
     }
   }, [actions.cancel, listing]);
 
+  const onShare = useCallback(() => {
+    if (!listing) return;
+    // `Share` ist Kern-React-Native, kein natives Zusatzmodul — kein Build.
+    // Der Link führt auf die Web-Seite (`/listing?id=…`), und die trägt den
+    // „In Berkat öffnen"-Knopf. So funktioniert er auch bei Empfängern ohne App
+    // — also bei genau denen, für die man teilt.
+    void Share.share({
+      message: `${listing.title} · ${formatEuro(listing.buy_now_cents)}\n${listingLink(listing.id)}`,
+    }).catch(() => {
+      // Abgebrochenes Teilen ist kein Fehler.
+    });
+  }, [listing]);
+
+  const onToggleSaved = useCallback(() => {
+    if (!listing || needsLogin()) return;
+    toggleSaved.mutate({ auctionId: listing.id, saved: isSaved });
+  }, [listing, needsLogin, toggleSaved, isSaved]);
+
+  const onReport = useCallback(
+    async (reason: (typeof REPORT_REASONS)[number]['key']) => {
+      if (!listing || needsLogin()) return;
+      setReportOpen(false);
+      // `user_reports` meldet MENSCHEN — das Angebot steht in der Notiz. Eine
+      // eigene Angebots-Melde-Tabelle wäre eine zweite Königin für denselben
+      // Posteingang; wer prüft, will ohnehin den Verkäufer sehen.
+      const result = await sellerActions.report(
+        listing.seller_id,
+        reason,
+        `Angebot: „${listing.title}" (${listing.id})`,
+      );
+      setNotice({
+        text: result.ok ? 'Danke — wir schauen uns das an.' : result.message,
+      });
+    },
+    [listing, needsLogin, sellerActions],
+  );
+
+  // Rechts zwei Knöpfe, links deshalb ein unsichtbarer Zwilling — sonst rutscht
+  // der Titel aus der Mitte. Teilen und Merken stehen im Kopf, weil beides
+  // AUCH für einen verkauften Artikel sinnvoll bleibt, wenn die Leiste unten
+  // längst „Schon verkauft" sagt.
   const header = (
     <View style={styles.header}>
       <Pressable hitSlop={10} onPress={() => goBack('/shop')} style={styles.back}>
         <ChevronLeft size={24} color={ui.text} />
       </Pressable>
-      <Text style={styles.headerTitle}>Angebot</Text>
       <View style={styles.back} />
+      <Text style={styles.headerTitle}>Angebot</Text>
+      <Pressable
+        hitSlop={8}
+        style={styles.back}
+        onPress={onToggleSaved}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isSaved }}
+        accessibilityLabel={isSaved ? 'Nicht mehr merken' : 'Merken'}
+      >
+        <Heart
+          size={21}
+          color={isSaved ? ui.success : ui.text}
+          fill={isSaved ? ui.success : 'transparent'}
+        />
+      </Pressable>
+      <Pressable
+        hitSlop={8}
+        style={styles.back}
+        onPress={onShare}
+        accessibilityRole="button"
+        accessibilityLabel="Angebot teilen"
+      >
+        <Share2 size={20} color={ui.text} />
+      </Pressable>
     </View>
   );
 
@@ -284,6 +403,8 @@ export default function ListingScreen() {
     );
   }
 
+  const images = listingImages(listing);
+
   const meta = [
     conditionLabel(listing.condition),
     [listing.postal_code, listing.city].filter(Boolean).join(' ') || null,
@@ -308,17 +429,28 @@ export default function ListingScreen() {
           paddingBottom: space.xl,
         }}
       >
-        {/* ── Das Bild. Quadratisch und volle Breite: Hier wird gestöbert, und
-            auf einer Stöber-Fläche IST das Bild der Inhalt (HANDOFF 18).
-            `pickImage` schneidet ohnehin quadratisch zu. ─────────────────── */}
+        {/* ── Die Galerie. Quadratisch und volle Breite: Hier wird gestöbert,
+            und auf einer Stöber-Fläche IST das Bild der Inhalt (HANDOFF 18).
+            Geblättert wird seitenweise, der Punkt-Index folgt am ENDE der
+            Animation (onMomentumScrollEnd, Serlo-Lehre v1.26.8). ──────────── */}
         <View style={styles.hero}>
-          {listing.image_url ? (
-            <Image
-              source={{ uri: listing.image_url }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={160}
-            />
+          {images.length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={onGalleryEnd}
+            >
+              {images.map((url) => (
+                <Image
+                  key={url}
+                  source={{ uri: url }}
+                  style={{ width: screenWidth, height: screenWidth }}
+                  contentFit="cover"
+                  transition={160}
+                />
+              ))}
+            </ScrollView>
           ) : (
             <View style={styles.heroEmpty}>
               <BerkatMark size={44} color={ui.lineStrong} />
@@ -328,6 +460,16 @@ export default function ListingScreen() {
             <View style={styles.heroLock}>
               <Lock size={12} color={ui.successInk} />
               <Text style={styles.heroLockText}>Frauen-Only</Text>
+            </View>
+          ) : null}
+          {/* Punkte nur, wenn es etwas zu blättern gibt — ein einzelner Punkt
+              wäre ein Versprechen ohne Inhalt. Auf `ui.overlay`, weil darunter
+              ein fremdes Foto liegt (Bestandsliste an `ui.overlay`). */}
+          {images.length > 1 ? (
+            <View style={styles.dots}>
+              {images.map((url, i) => (
+                <View key={url} style={[styles.dot, i === imageIndex && styles.dotOn]} />
+              ))}
             </View>
           ) : null}
         </View>
@@ -410,7 +552,23 @@ export default function ListingScreen() {
                 {stats?.sold ? (
                   <Text style={styles.sellerStatText}>· {stats.sold} Zuschläge</Text>
                 ) : null}
+                {/* Versandtempo — dieselbe Zahl wie die Kachel auf dem Profil.
+                    Nur wenn es Versände gab; ein erfundenes „—" wäre Lärm. */}
+                {stats?.shipHours != null ? (
+                  <View style={styles.sellerStatIconPair}>
+                    <Truck size={11} color={ui.textMuted} />
+                    <Text style={styles.sellerStatText}>{formatShipTime(stats.shipHours)}</Text>
+                  </View>
+                ) : null}
               </View>
+              {/* Die Bürgen — für diese Community das eigentliche Signal
+                  (HANDOFF 15: „Vertrauen ist personal, nicht institutionell").
+                  Dieselbe Zeile wie im Verkäufer-Sheet des Live-Raums. */}
+              {vouchLine ? (
+                <Text numberOfLines={1} style={styles.vouchLine}>
+                  {vouchLine}
+                </Text>
+              ) : null}
             </View>
             <ChevronRight size={18} color={ui.textMuted} />
           </Pressable>
@@ -470,6 +628,53 @@ export default function ListingScreen() {
               )}
             </View>
           ) : null}
+
+          {/* ── Mehr von diesem Verkäufer. Dieselbe Abfrage wie das
+              Profil-Regal — wer hier steht, hat schon Interesse an genau
+              diesem Menschen, und alles von ihm kommt in DASSELBE Paket. ── */}
+          {moreFromSeller.length > 0 ? (
+            <View style={styles.block}>
+              <Text style={styles.blockLabel}>Mehr von {seller?.username ?? 'diesem Verkäufer'}</Text>
+              <View style={styles.moreGrid}>
+                {moreFromSeller.map((item) => (
+                  <View key={item.id} style={styles.moreCell}>
+                    <ListingCard
+                      listing={item}
+                      mine={mine}
+                      saved={savedIds?.has(item.id)}
+                      onToggleSaved={
+                        mine
+                          ? undefined
+                          : () => {
+                              if (needsLogin()) return;
+                              toggleSaved.mutate({
+                                auctionId: item.id,
+                                saved: Boolean(savedIds?.has(item.id)),
+                              });
+                            }
+                      }
+                      onPress={() => router.push(`/listing/${item.id}`)}
+                    />
+                  </View>
+                ))}
+                {moreFromSeller.length % 2 === 1 ? <View style={styles.moreCell} /> : null}
+              </View>
+            </View>
+          ) : null}
+
+          {/* ── Melden — leise, am Ende, wie bei Kleinanzeigen. `user_reports`
+              meldet Menschen; das Angebot steht in der Notiz. Nicht am eigenen
+              Artikel: sich selbst melden ist keine Handlung. ─────────────── */}
+          {!mine ? (
+            <Pressable
+              style={styles.reportLink}
+              onPress={() => (needsLogin() ? null : setReportOpen(true))}
+              accessibilityRole="button"
+              accessibilityLabel="Angebot melden"
+            >
+              <Text style={styles.reportLinkText}>Angebot melden</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -511,19 +716,33 @@ export default function ListingScreen() {
             </Text>
           </View>
         ) : mine ? (
-          <Pressable
-            style={[styles.ghost, busy && styles.off]}
-            disabled={busy}
-            onPress={() => void onCancel()}
-            accessibilityRole="button"
-            accessibilityLabel="Angebot zurückziehen"
-          >
-            {busy ? (
-              <ActivityIndicator color={ui.textMuted} />
-            ) : (
-              <Text style={styles.ghostText}>Zurückziehen</Text>
-            )}
-          </Pressable>
+          // Der eigene Artikel: Bearbeiten ist der häufige Handgriff (Preis
+          // senken!), Zurückziehen der seltene. Deshalb trägt Bearbeiten die
+          // Kontur und steht zuerst.
+          <View style={styles.ownRow}>
+            <Pressable
+              style={[styles.editBtn, busy && styles.off]}
+              disabled={busy}
+              onPress={() => setEditOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Angebot bearbeiten"
+            >
+              <Text style={styles.editBtnText}>Bearbeiten</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.ghost, styles.ownGhost, busy && styles.off]}
+              disabled={busy}
+              onPress={() => void onCancel()}
+              accessibilityRole="button"
+              accessibilityLabel="Angebot zurückziehen"
+            >
+              {busy ? (
+                <ActivityIndicator color={ui.textMuted} />
+              ) : (
+                <Text style={styles.ghostText}>Zurückziehen</Text>
+              )}
+            </Pressable>
+          </View>
         ) : sellerLoading ? (
           // Solange die Kassen-Freigabe unbekannt ist, steht hier KEIN
           // beschrifteter Knopf. Ein Etikett, das eine Zehntelsekunde später von
@@ -570,9 +789,100 @@ export default function ListingScreen() {
           </Pressable>
         )}
       </View>
+
+      {/* ── Bearbeiten: DASSELBE Formular wie das Anlegen, vorbefüllt.
+          Eine zweite Abschrift wäre der Karten-Fehler von HANDOFF 21 noch
+          einmal. `pageSheet` statt Vollbild: Man soll sehen, dass man über
+          seinem Angebot arbeitet. ─────────────────────────────────────────── */}
+      <Modal
+        visible={editOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditOpen(false)}
+      >
+        <View style={styles.editSheet}>
+          <View style={styles.editHead}>
+            <Text style={styles.editTitle}>Angebot bearbeiten</Text>
+            <Pressable
+              hitSlop={10}
+              onPress={() => setEditOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Schließen"
+            >
+              <X size={22} color={ui.text} />
+            </Pressable>
+          </View>
+          <ScrollView
+            contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <StandingComposer
+              mode="edit"
+              busy={actions.update.isPending}
+              canWomenOnly={canWomenOnly}
+              initial={{
+                title: listing.title,
+                priceCents: listing.buy_now_cents,
+                womenOnly: listing.women_only,
+                category: listing.category,
+                imageUrls: images,
+                description: listing.description,
+                condition: listing.condition,
+                postalCode: listing.postal_code,
+                city: listing.city,
+              }}
+              submitLabel="Speichern"
+              onSubmit={(input) => {
+                setEditOpen(false);
+                void actions.update
+                  .mutateAsync({ id: listing.id, ...input })
+                  .then(() => setNotice({ text: 'Gespeichert.' }))
+                  .catch((e: unknown) =>
+                    setNotice({
+                      text: standingErrorText(e instanceof Error ? e.message : String(e)),
+                    }),
+                  );
+              }}
+            />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Melden: dieselben Gründe wie im Verkäufer-Sheet. ──────────────── */}
+      <Modal
+        visible={reportOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReportOpen(false)}
+      >
+        <Pressable style={styles.reportBackdrop} onPress={() => setReportOpen(false)}>
+          <Pressable style={styles.reportSheet} onPress={() => {}}>
+            <Text style={styles.reportTitle}>Was stimmt hier nicht?</Text>
+            {REPORT_REASONS.map((r) => (
+              <Pressable
+                key={r.key}
+                style={styles.reportRow}
+                onPress={() => void onReport(r.key)}
+                accessibilityRole="button"
+                accessibilityLabel={r.label}
+              >
+                <Text style={styles.reportRowText}>{r.label}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              style={styles.reportCancel}
+              onPress={() => setReportOpen(false)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.reportCancelText}>Abbrechen</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: ui.bg },
@@ -698,6 +1008,73 @@ const styles = StyleSheet.create({
   },
   goneText: { fontSize: 14, fontWeight: '700', color: ui.textMuted },
   waiting: { height: 52, alignItems: 'center', justifyContent: 'center' },
+
+  dots: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: space.md,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  /* Die Punkte liegen auf einem fremden Foto — deshalb `ui.overlay` als
+     Grundton (Bestandsliste an `ui.overlay` in tokens.ts) und der aktive in
+     Marken-Dunkelgrün, das auf der milchigen Fläche sicher trägt. */
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ui.overlay },
+  dotOn: { backgroundColor: ui.brand },
+
+  sellerStatIconPair: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  /* Hellgrün wie im Verkäufer-Sheet: Eine Bürgschaft ist kein Kaufknopf. */
+  vouchLine: { fontSize: 12, color: ui.success, marginTop: 3, fontWeight: '600' },
+
+  moreGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginTop: space.xs },
+  moreCell: { width: '47%' },
+
+  reportLink: { alignSelf: 'center', paddingVertical: space.sm, marginTop: space.sm },
+  reportLinkText: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
+
+  ownRow: { flexDirection: 'row', gap: space.sm },
+  editBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtnText: { fontSize: 15, fontWeight: '700', color: ui.text },
+  ownGhost: { flex: 1, minWidth: 0 },
+
+  editSheet: { flex: 1, backgroundColor: ui.bg },
+  editHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+  },
+  editTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
+
+  reportBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(11,21,18,0.45)',
+    justifyContent: 'flex-end',
+  },
+  reportSheet: {
+    backgroundColor: ui.card,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    padding: space.lg,
+    paddingBottom: space.xl,
+    gap: 2,
+  },
+  reportTitle: { fontSize: 16, fontWeight: '700', color: ui.text, marginBottom: space.sm },
+  reportRow: { paddingVertical: space.md },
+  reportRowText: { fontSize: 15, color: ui.text },
+  reportCancel: { paddingVertical: space.md, alignItems: 'center', marginTop: space.xs },
+  reportCancelText: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
 
   notice: {
     position: 'absolute',

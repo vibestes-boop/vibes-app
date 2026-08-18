@@ -19,6 +19,7 @@ import { useSession } from '../../lib/session';
 import { useProfiles } from '../../lib/useAuction';
 import { useCategoryContent, useCategoryTree } from '../../lib/useCategories';
 import type { Listing } from '../../lib/useListings';
+import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { goBack } from '../../lib/nav';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -96,6 +97,8 @@ export default function CategoryScreen() {
   // seit dem 17.08.2026 liegt der einzige Kaufknopf der App auf `/listing/<id>`
   // — dort, wo Beschreibung, Versandkosten und Anbieterkennzeichnung
   // danebenstehen. Begründung im Kopf von `components/ListingCard.tsx`.
+  const { data: savedIds } = useSavedIds(myUserId);
+  const toggleSaved = useToggleSaved(myUserId);
   const loading = shows.isLoading || listings.isLoading;
 
   return (
@@ -191,11 +194,22 @@ export default function CategoryScreen() {
           // einzelner Artikel in der letzten Reihe über die volle Breite.
           if ('spacer' in item) return <View style={styles.gridCell} />;
 
+          const mine = item.seller_id === myUserId;
+          const saved = Boolean(savedIds?.has(item.id));
           return (
             <ListingCard
               listing={item}
               sellerName={profiles[item.seller_id]?.username}
-              mine={item.seller_id === myUserId}
+              mine={mine}
+              saved={saved}
+              onToggleSaved={
+                mine
+                  ? undefined
+                  : () =>
+                      myUserId
+                        ? toggleSaved.mutate({ auctionId: item.id, saved })
+                        : router.push('/login')
+              }
               onPress={() => router.push(`/listing/${item.id}`)}
             />
           );

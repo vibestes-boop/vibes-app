@@ -5,7 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, Gift, Lock, MessageSquare, Package } from 'lucide-react-native';
+import { ChevronRight, Gift, Heart, Lock, MessageSquare, Package } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -236,6 +236,21 @@ export default function AccountScreen() {
             </Text>
           </View>
         ) : null}
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
+
+      {/* Die Merkliste — zwischen Einladen und den Paketen: Sie gehört zum
+          Stöbern, nicht zum Abwickeln. Kein Abzeichen: Eine Zahl, die nie auf
+          null geht, liest bald niemand mehr (dieselbe Regel wie beim
+          Bestell-Abzeichen). */}
+      <Pressable
+        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        onPress={() => router.push('/saved')}
+        accessibilityRole="button"
+        accessibilityLabel="Gemerkte Angebote"
+      >
+        <Heart size={19} color={ui.text} />
+        <Text style={styles.linkLabel}>Gemerkt</Text>
         <ChevronRight size={18} color={ui.textMuted} />
       </Pressable>
 

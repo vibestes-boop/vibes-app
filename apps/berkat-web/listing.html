@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Angebot auf Berkat</title>
+    <meta property="og:title" content="Angebot auf Berkat" />
+    <meta property="og:description" content="Jemand bietet das dauerhaft an — ansehen und kaufen geht in der Berkat-App." />
+    <meta property="og:type" content="website" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="Berkat">
+        <path d="M32 56 L32 18" fill="none" stroke="#E9A73C" stroke-width="3.2" stroke-linecap="round"/>
+        <ellipse cx="24" cy="46" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 24 46)"/>
+        <ellipse cx="40" cy="46" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 40 46)"/>
+        <ellipse cx="24.8" cy="35" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 24.8 35)"/>
+        <ellipse cx="39.2" cy="35" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 39.2 35)"/>
+        <ellipse cx="25.6" cy="24" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 25.6 24)"/>
+        <ellipse cx="38.4" cy="24" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 38.4 24)"/>
+        <ellipse cx="32" cy="13" rx="3.4" ry="7" fill="#E9A73C"/>
+      </svg>
+
+      <p class="eyebrow">Angebot</p>
+      <h1>Gefunden auf dem <em>Basar</em>.</h1>
+      <p class="lead">
+        Jemand bietet das dauerhaft an — mit Fotos, Zustand und Festpreis.
+        Ansehen, merken und kaufen geht in der Berkat-App.
+      </p>
+
+      <a class="cta" id="open" href="berkat://">In Berkat öffnen</a>
+      <p class="note" id="hint">
+        Du hast Berkat noch nicht? Die App ist gerade im geschlossenen Test — frag
+        die Person, die dir den Link geschickt hat, nach einer Einladung.
+      </p>
+    </main>
+
+    <footer>Berkat — Live-Auktionen</footer>
+
+    <script>
+      // Die Angebots-Kennung steht als Parameter in der Adresse
+      // (/listing?id=<id>) — aus demselben Grund wie bei /live: Cloudflare
+      // Pages macht aus einem Umschreib-Ziel eine echte Weiterleitung und
+      // wirft dabei den Pfadteil weg (auf der veröffentlichten Seite
+      // nachgemessen, HANDOFF 8). Als Parameter überlebt die Kennung.
+      //
+      // Bewusst KEIN Datenabruf: Diese Seite ist eine Brücke in die App, kein
+      // zweiter Marktplatz. Titel und Preis stehen ohnehin in der geteilten
+      // Nachricht direkt über dem Link (lib/links.ts → Share-Text).
+      //
+      // Der Pfad wird trotzdem noch gelesen, falls je ein Link in der Form
+      // /listing/<id> ankommt.
+      var params = new URLSearchParams(location.search);
+      var id = params.get('id') || location.pathname.split('/').filter(Boolean)[1] || '';
+
+      // Nur Zeichen, die eine UUID haben darf. Ohne diese Prüfung könnte eine
+      // beliebige Adresse beliebigen Inhalt in das Ziel des Knopfes schreiben.
+      if (/^[0-9a-fA-F-]{10,40}$/.test(id)) {
+        document.getElementById('open').setAttribute('href', 'berkat://listing/' + id);
+      }
+    </script>
+  </body>
+</html>

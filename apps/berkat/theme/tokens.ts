@@ -23,8 +23,9 @@ export const ui = {
    * ZWEI Stellen, und diese Liste ist der Bestand:
    *
    *   1. die Live-Vorschau auf den Show-Karten (`components/LivePreview.tsx`)
-   *   2. die „Deins"-Pille auf der Angebots-Karte (`components/ListingCard.tsx`,
-   *      seit 17.08.2026)
+   *   2. die Pillen auf der Angebots-Karte — „Deins", Merken-Herz, Bildzahl —
+   *      und das „Titelbild"-Etikett im Composer (`ListingCard.tsx`,
+   *      `StandingComposer.tsx`, seit 17.08.2026)
    *
    * Wer eine dritte anlegt, trägt sie hier ein — sonst misst der nächste Prüfer
    * eine Fläche nach und glaubt, alle geprüft zu haben.

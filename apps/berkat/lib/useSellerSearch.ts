@@ -33,7 +33,7 @@ export const SEARCH_MIN = 2;
  * für ein Ergebnis. 300 ms sind kurz genug, dass es sich sofort anfühlt, und
  * lang genug, dass ein Wort als ein Aufruf ankommt.
  */
-function useDebounced(value: string, ms = 300): string {
+export function useDebounced(value: string, ms = 300): string {
   const [settled, setSettled] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setSettled(value), ms);

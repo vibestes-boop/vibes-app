@@ -661,8 +661,8 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Zweiunddreißig Migrationen, **alle eingespielt und verzeichnet** — `supabase migration list`
-zeigt am 17.08.2026 keine Lücke. Die Tabelle war bis dahin sechs Einträge im Rückstand (`20260815180000`
+Dreiunddreißig Migrationen, **alle eingespielt und verzeichnet** — `supabase migration list`
+zeigt am 18.08.2026 keine Lücke. Die Tabelle war bis dahin sechs Einträge im Rückstand (`20260815180000`
 bis `20260816090000` fehlten, obwohl die Abschnitte 14, 15 und 17 sie beschreiben); das ist
 nachgetragen.
 
@@ -705,6 +705,7 @@ list` keine Lücke zeigt (siehe Abschnitt 3).
 | `20260816220000_berkat_default_private.sql` | Wer die Vorgabe „Privatperson" stehen lässt, bekommt sie auch gespeichert — sonst zeigt die App eine Angabe, die die Datenbank nicht hat. **Eingespielt am 17.08.2026** per `supabase db push`, am Gerät gegengeprüft (Abschnitt 21). ⚠️ Hat dabei die ZAG-Schranke für alle zuschnappen lassen — siehe die nächste Zeile |
 | `20260817120000_berkat_checkout_gate.sql` | `checkout_enabled` ist die **einzige** Wahrheit für den Kaufweg: Bestandsschutz für den Betreiber + `IS DISTINCT FROM true` im Wächter, damit auch „keine Zeile" sperrt — Abschnitt 22 |
 | `20260817130000_berkat_live_seller_kind.sql` | `create_live_auction` stempelt `seller_kind` (nur lesen, nie anlegen); `set_berkat_seller_kind` schreibt die Impressumsfelder per `COALESCE`, damit ein Typwechsel sie nicht löscht — Abschnitt 22 |
+| `20260817140000_berkat_shop_vollausbau.sql` | Mehrbild (`image_urls`), `update_standing_listing`, Merkliste `berkat_saved_listings` — Abschnitt 23 |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -3162,3 +3163,98 @@ die Übergabe.
 **Ungeprüft:** die Anzeige im Live-Raum selbst. Sie bräuchte eine laufende Sendung, und ein Start
 löst über `follows` Benachrichtigungen an echte Geräte aus — das gehört nicht in einen Testlauf,
 den niemand erwartet.
+
+---
+
+## 23. Der Shop-Vollausbau (17./18.08.2026)
+
+Zaur: *„Dass es keine angebotenen Produkte gibt, ist kein Grund, die App nicht
+vollständig zu bauen."* Dieselbe Ansage wie am 16.08. („nichts weglassen, alles bauen"), diesmal
+für den Marktplatz. Damit ist die Zurückhaltung aus den Abschnitten 20 und 21 aufgehoben — die
+Kommentare „bewusst ohne Filter, ein Bild reicht" waren an ihrem Tag richtig und sind es nicht mehr.
+
+### Was dazukam
+
+| Was | Wo |
+|---|---|
+| **Mehrbild** (bis 8, Cover = erstes) | `20260817140000`, `StandingComposer`, Galerie in `app/listing/[id].tsx` |
+| **Bearbeiten** statt Löschen-und-neu | RPC `update_standing_listing`, `StandingComposer` mode=`edit` |
+| **Merkliste** | Tabelle `berkat_saved_listings`, `lib/useSaved.ts`, `app/saved.tsx`, Herzen auf den Karten |
+| **Artikelsuche** | `useListingSearch`, `components/ListingResults.tsx` — im selben Suchfeld wie die Verkäufer |
+| **Teilen** | `listingLink()`, `apps/berkat-web/listing.html`, Knopf im Kopf der Artikelseite |
+| **Melden am Angebot** | Blatt auf der Artikelseite über `useSellerActions` |
+| **Mehr von diesem Verkäufer** | dieselbe Abfrage wie das Profil-Regal, aktueller Artikel gefiltert |
+| **Versandtempo + Bürgen** in der Verkäuferkarte | `useSellerStats.shipHours`, `vouchSummary()` |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **`image_urls` ist die Wahrheit, `image_url` bleibt das Cover.** Beide werden von den RPCs
+  synchron gehalten, und `image_url` ist immer `image_urls[1]`. Dadurch liest **jede** bestehende
+  Fläche unverändert weiter — Karten, Live-Raum, Aktivität, Serlos Web. Nur die Artikelseite
+  blättert. Wer je einen dritten Schreibweg baut, muss beide setzen; `listingImages()` ist das
+  Netz für Zeilen von vor dem Backfill.
+- **Bearbeiten ist Vollersatz, `set_berkat_seller_kind` ist COALESCE.** Zwei entgegengesetzte
+  Semantiken am selben Tag, und beide sind richtig: Das Angebots-Formular ist vorbefüllt und
+  schickt **alle** Felder — nur so lässt sich eine Beschreibung auch wieder LEEREN. Der
+  Anbietertyp-Umschalter schickt **ein** Feld, dort würde Vollersatz das Impressum löschen
+  (Abschnitt 22). Die Frage ist nie „was ist sauberer", sondern „was schickt der Aufrufer".
+- **`seller_kind` fasst `update_standing_listing` nicht an.** Den pflegt allein
+  `set_berkat_seller_kind`, damit es genau eine Wahrheit über den Anbietertyp gibt.
+- **`FOR UPDATE` im Bearbeiten** — gegen den Wettlauf mit `buy_now_live_auction`. Wer gerade
+  kauft, hält die Zeile; der Verkäufer ändert danach ins Leere (`listing_not_found`), statt einen
+  bereits verkauften Artikel umzuschreiben.
+- **Die Merkliste zeigt auch WEG-Artikel**, mit Etikett „Verkauft"/„Weg". Das ist die Auskunft,
+  für die man eine Merkliste hat — sie stumm zu verschlucken wäre die schlechtere Hälfte.
+- **Ein Formular für Anlegen und Bearbeiten.** Eine zweite Abschrift wäre der Karten-Fehler von
+  Abschnitt 21 noch einmal. Einziger Unterschied: Im Bearbeiten fehlt die Anbietertyp-Wahl — die
+  gehört zum Verkäufer, nicht zum Artikel.
+- **Die Artikelsuche braucht KEINE RPC.** Die Regal-Zeilen sind für jeden lesbar (anders als
+  `search_berkat_sellers`, die für `anon` gesperrt ist), also reicht ein `ilike` über die
+  bestehende RLS. `%` und `_` werden escaped — sonst wäre „100%" ein Joker statt einer Suche.
+- **Die Web-Seite ruft keine Daten ab.** Sie ist eine Brücke in die App, kein zweiter Marktplatz;
+  Titel und Preis stehen ohnehin im geteilten Nachrichtentext über dem Link.
+
+### ⚠️ Ein Fund am Gerät: zwei Wahrheiten auf einem Bildschirm
+
+Die Artikelsuche fand „Kaffeetasse" — und darunter stand **„Nichts gefunden. Versuch es mit einem
+anderen Wort."** Der Leerzustand gehört dem SHOW-Raster, die Treffer stehen im Kopf darüber, und
+niemand hatte die beiden aneinander gekoppelt. Ein Satz, der jemanden wegschickt, der schon
+gefunden hat.
+
+Behoben über `hasSearchHits` (Verkäufer ODER Artikel). **Wer eine dritte Trefferart einbaut, muss
+sie dort mit aufnehmen** — die Kopplung steht als Kommentar an der Stelle.
+
+Das ist dieselbe Familie wie die Regel aus Abschnitt 21: Wer etwas an N Orten anzeigt, muss an
+allen N nachziehen. Hier war es kein Nachladen, sondern ein Leerzustand — aber derselbe Bruch.
+
+### Am Gerät durchgespielt (18.08.2026, 14:43–14:48)
+
+- **Bearbeiten** — Blatt öffnet vorbefüllt (Titel, Preis 64, Bild mit „Titelbild"-Etikett), die
+  Anbietertyp-Wahl fehlt korrekt. Zweites Foto ergänzt → „2 von 8 Fotos — das erste ist das
+  Titelbild" → **„Gespeichert."**
+- **Galerie** — zwei Punkte unter dem Bild, Wischen blättert, der aktive Punkt wandert mit.
+- **Bildzähler** — „📷 2" auf der Marktplatz-Karte, und nur dort (die Ein-Bild-Karte daneben hat
+  keinen).
+- **Artikelsuche** — „Kaffee" findet den Artikel; der Leerzustand darunter sagt jetzt
+  „Keine laufende Show · Aber die Artikel oben".
+- **Merkliste** — Leerzustand steht. Ein gefülltes Herz braucht ein FREMDES Angebot; beide
+  vorhandenen gehören dem Betreiber, das Herz erscheint dort bewusst nicht.
+
+Migration eingespielt (33/33, keine Lücke), vier Gegenproben grün: Backfill-Vertrag hält
+(`image_urls` = `[image_url]`), `berkat_saved_listings` für `anon` dicht (42501), beide RPCs
+auflösbar und gesperrt — **kein HTTP 300**. Web-Seite live, `/listing?id=…` antwortet mit **200
+ohne Weiterleitung**; die Pages-Falle aus Abschnitt 8 greift also nicht.
+
+### Was weiterhin fehlt
+
+1. **Das zweite Konto.** Kaufweg, Merken an einem fremden Angebot und „Nachricht statt Kaufen"
+   sind alle nur logisch belegt. Unverändert der einzige Punkt zwischen dem Marktplatz und einem
+   bewiesenen Durchlauf — und ein Konto anzulegen ist Zaurs Handgriff, nicht meiner.
+2. **Umsortieren der Bilder** geht nur über Entfernen und neu Hinzufügen. Ein Zieh-Sortierer
+   bräuchte `react-native-gesture-handler` samt `GestureHandlerRootView` im Wurzel-Layout — also
+   einen Build (Abschnitt 19 nennt dieselbe Grenze beim Gebots-Knopf).
+3. **Impressums-Formular** und **Widerrufsbelehrung als Volltext** — beide werden Pflicht, sobald
+   der erste gewerbliche Verkäufer eine Kassen-Freigabe bekommt.
+4. **Keine Umkreissuche, keine Abholung.** PLZ und Ort stehen an der Zeile; Abholung bräche
+   `get_cart_shipping_options`, die Stripe-Adressabfrage und `mark_order_shipped` und gehört zu
+   Connect in Phase 2.

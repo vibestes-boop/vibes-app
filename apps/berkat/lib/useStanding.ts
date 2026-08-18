@@ -34,6 +34,10 @@ export function standingErrorText(message: string): string {
     return 'Diesen Artikel kaufst du direkt beim Verkäufer — schreib ihm kurz.';
   // Frauen-Only meldet sich bewusst als „gibt es nicht" (die Existenz soll
   // nicht über die Fehlermeldung durchsickern), fällt also in `auction_closed`.
+  if (message.includes('too_many_images'))
+    return 'Mehr als 8 Fotos gehen nicht — nimm die aussagekräftigsten.';
+  if (message.includes('title_too_short'))
+    return 'Der Titel braucht mindestens 2 Zeichen.';
   if (message.includes('unknown_category'))
     return 'Diese Kategorie gibt es nicht mehr. Wähl eine andere.';
   if (message.includes('auction_closed') || message.includes('listing_not_found'))
@@ -82,7 +86,8 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
     mutationFn: async (input: {
       title: string;
       priceCents: number;
-      imageUrl?: string | null;
+      /** Alle Bilder in Reihenfolge, das erste ist das Cover. Max. 8 (Server-CHECK). */
+      imageUrls?: string[];
       womenOnly?: boolean;
       /** Slug aus `berkat_categories`. Ohne sie liegt der Artikel in keiner Kachel. */
       category?: string | null;
@@ -105,7 +110,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       const { data, error } = await supabase.rpc('create_standing_listing', {
         p_title: input.title.trim(),
         p_price_cents: input.priceCents,
-        p_image_url: input.imageUrl ?? null,
+        p_image_urls: input.imageUrls ?? [],
         p_women_only: input.womenOnly ?? false,
         p_category: input.category ?? null,
         p_description: input.description ?? null,
@@ -115,6 +120,44 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       });
       if (error) throw error;
       return data as string;
+    },
+    onSuccess: invalidate,
+  });
+
+  /**
+   * Bearbeiten — Vollersatz, kein Teil-Update.
+   *
+   * Das Formular ist vorbefüllt und schickt immer alle Felder; was ankommt,
+   * gilt. Nur so lässt sich eine Beschreibung auch wieder LEEREN — ein
+   * „NULL heißt behalten" könnte das nicht. `seller_kind` fasst die RPC
+   * bewusst nicht an, den pflegt allein `set_berkat_seller_kind`.
+   */
+  const update = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      title: string;
+      priceCents: number;
+      imageUrls?: string[];
+      womenOnly?: boolean;
+      category?: string | null;
+      description?: string | null;
+      condition?: string | null;
+      postalCode?: string | null;
+      city?: string | null;
+    }) => {
+      const { error } = await supabase.rpc('update_standing_listing', {
+        p_id: input.id,
+        p_title: input.title.trim(),
+        p_price_cents: input.priceCents,
+        p_image_urls: input.imageUrls ?? [],
+        p_women_only: input.womenOnly ?? false,
+        p_category: input.category ?? null,
+        p_description: input.description ?? null,
+        p_condition: input.condition ?? null,
+        p_postal_code: input.postalCode ?? null,
+        p_city: input.city ?? null,
+      });
+      if (error) throw error;
     },
     onSuccess: invalidate,
   });
@@ -141,5 +184,5 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
     },
   });
 
-  return { create, cancel, buy, canSell: Boolean(myUserId && myUserId === sellerId) };
+  return { create, update, cancel, buy, canSell: Boolean(myUserId && myUserId === sellerId) };
 }

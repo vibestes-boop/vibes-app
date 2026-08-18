@@ -113,7 +113,7 @@ export default function ShelfScreen() {
               )
               .catch(() => setNotice('Das ließ sich gerade nicht speichern.'))
           }
-          onCreate={(input) =>
+          onSubmit={(input) =>
             void actions.create
               .mutateAsync(input)
               .then(() => setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉'))

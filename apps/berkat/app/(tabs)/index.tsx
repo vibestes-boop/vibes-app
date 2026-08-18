@@ -31,7 +31,8 @@ import { SellerResults } from '../../components/SellerResults';
 import { SEARCH_MIN, useSellerSearch } from '../../lib/useSellerSearch';
 import { useUpcomingShows } from '../../lib/useSchedule';
 import { useCategoryOptions } from '../../lib/useCategories';
-import { useShopCount } from '../../lib/useListings';
+import { useListingSearch, useShopCount } from '../../lib/useListings';
+import { ListingResults } from '../../components/ListingResults';
 import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
@@ -171,6 +172,11 @@ export default function HomeScreen() {
     isFetching: searching,
     error: searchError,
   } = useSellerSearch(search);
+  // Die zweite Hälfte derselben Suche: Artikel nach Titel. Läuft parallel zur
+  // Verkäufer-Suche — wer „Teekanne" tippt, meint keinen Benutzernamen.
+  const { data: foundListings = [] } = useListingSearch(search);
+  /** Irgendein Treffer im Kopf — egal ob Mensch oder Ware. */
+  const hasSearchHits = foundSellers.length > 0 || foundListings.length > 0;
   const searchingSellers = search.trim().length >= SEARCH_MIN;
   const [filter, setFilter] = useState(ALL);
 
@@ -337,17 +343,25 @@ export default function HomeScreen() {
           // Menschen. Deshalb steht die Trefferliste an derselben Stelle, an
           // der sonst der „Demnächst"-Streifen steht.
           searchingSellers ? (
-            <SellerResults
-              sellers={foundSellers}
-              loading={searching}
-              // Ohne den Fehler kann die Trefferliste „nicht angemeldet" nicht
-              // von „nichts gefunden" unterscheiden — und sagte bisher das
-              // Falsche.
-              error={searchError}
-              onSignIn={() => router.push('/login')}
-              query={search.trim()}
-              onSelect={(sellerId) => router.push(`/seller/${sellerId}`)}
-            />
+            <View>
+              <SellerResults
+                sellers={foundSellers}
+                loading={searching}
+                // Ohne den Fehler kann die Trefferliste „nicht angemeldet" nicht
+                // von „nichts gefunden" unterscheiden — und sagte bisher das
+                // Falsche.
+                error={searchError}
+                onSignIn={() => router.push('/login')}
+                query={search.trim()}
+                onSelect={(sellerId) => router.push(`/seller/${sellerId}`)}
+              />
+              {/* Artikel-Treffer darunter — rendert bei null Treffern nichts,
+                  die Verkäufer-Box erklärt den Leerfall schon. */}
+              <ListingResults
+                listings={foundListings}
+                onSelect={(auctionId) => router.push(`/listing/${auctionId}`)}
+              />
+            </View>
           ) : search || filter !== ALL ? null : (
             <UpcomingStrip
               shows={upcoming}
@@ -363,15 +377,27 @@ export default function HomeScreen() {
             <View style={styles.empty}>
               <BerkatMark size={40} color={ui.sunken} />
               <Text style={styles.emptyTitle}>
-                {searchingSellers && foundSellers.length > 0
+                {searchingSellers && hasSearchHits
                   ? 'Keine laufende Show'
                   : search || filter !== ALL
                     ? 'Nichts gefunden'
                     : 'Gerade ist niemand live'}
               </Text>
               <Text style={styles.emptyBody}>
-                {searchingSellers && foundSellers.length > 0
-                  ? 'Aber die Verkäufer oben — tipp auf einen, um zu sehen, was er anbietet.'
+                {/* ⚠️ Dieser Leerzustand gehört dem SHOW-Raster, die Treffer
+                    stehen im Kopf darüber — beides muss zusammenpassen. Am
+                    18.08.2026 am Gerät gesehen: Die Artikelsuche fand
+                    „Kaffeetasse", und darunter stand „Nichts gefunden. Versuch
+                    es mit einem anderen Wort." Zwei Wahrheiten auf einem
+                    Bildschirm, und der Satz schickt jemanden weg, der schon
+                    gefunden hat. Wer hier eine dritte Trefferart einbaut, muss
+                    sie in `hasSearchHits` mit aufnehmen. */}
+                {searchingSellers && hasSearchHits
+                  ? foundSellers.length > 0 && foundListings.length > 0
+                    ? 'Aber die Treffer oben — Verkäufer und Artikel.'
+                    : foundListings.length > 0
+                      ? 'Aber die Artikel oben — tipp auf einen, um ihn dir anzusehen.'
+                      : 'Aber die Verkäufer oben — tipp auf einen, um zu sehen, was er anbietet.'
                   : search || filter !== ALL
                   ? 'Versuch es mit einem anderen Wort.'
                   : // Steht ein Termin an, ist „schau später wieder rein" die

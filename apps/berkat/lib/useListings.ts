@@ -21,6 +21,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import { SEARCH_MIN, useDebounced } from './useSellerSearch';
 
 /**
  * Ein Dauerangebot ist keine eigene Tabelle, sondern eine `live_auctions`-Zeile
@@ -36,9 +37,21 @@ export type Listing = {
   image_url: string | null;
   /** Der Festpreis. Bei einem Dauerangebot immer gesetzt. */
   buy_now_cents: number;
+  /**
+   * ALLE Bilder in Reihenfolge (seit 20260817140000, max. 8). `image_url`
+   * bleibt das Cover und ist immer `image_urls[0]` — die RPCs halten beide
+   * synchron. Karten lesen weiter nur das Cover, die Artikelseite blättert.
+   */
+  image_urls: string[];
   women_only: boolean;
   created_at: string;
   status: ListingStatus;
+  /**
+   * Slug aus `berkat_categories`, NULL = ohne Kategorie. Muss im Typ stehen,
+   * seit das Bearbeiten Vollersatz-Semantik hat: Ein Formular, das die
+   * Kategorie nicht KENNT, würde sie beim Speichern LÖSCHEN.
+   */
+  category: string | null;
   /**
    * Seit 20260816210000, alle vier freiwillig.
    *
@@ -71,8 +84,8 @@ export type Listing = {
  * weil der Zeilentyp es nicht trug).
  */
 const LISTING_COLUMNS =
-  'id, seller_id, title, image_url, buy_now_cents, women_only, created_at, status, ' +
-  'description, condition, postal_code, city, seller_kind';
+  'id, seller_id, title, image_url, image_urls, buy_now_cents, women_only, created_at, status, ' +
+  'category, description, condition, postal_code, city, seller_kind';
 
 /**
  * Die Regal-Grenze, in jeder Listen-Abfrage dieselbe.
@@ -227,6 +240,63 @@ export function useListing(id: string | undefined) {
       return (data as unknown as Listing) ?? null;
     },
   });
+}
+
+/**
+ * Die Bild-Liste eines Angebots — mit Netz für Zeilen von vor dem Backfill.
+ * Eine leere Liste heißt wirklich „kein Bild", nie „Liste vergessen".
+ */
+export function listingImages(l: Pick<Listing, 'image_url' | 'image_urls'>): string[] {
+  if (l.image_urls?.length) return l.image_urls;
+  return l.image_url ? [l.image_url] : [];
+}
+
+/**
+ * Artikel per Titel suchen — die zweite Hälfte des Suchfelds.
+ *
+ * `search_berkat_sellers` findet Menschen; das hier findet Ware. Bewusst KEINE
+ * RPC: Die Regal-Zeilen sind für jeden lesbar (auch ohne Anmeldung — anders
+ * als die Verkäufer-Suche, die für `anon` gesperrt ist), also reicht ein
+ * `ilike` über die bestehende RLS. Ein Trigram-Index kommt, wenn die
+ * Angebotszahl ihn je verlangt.
+ *
+ * `%` und `_` werden escaped — sonst wäre „100%" ein Joker statt einer Suche.
+ */
+export function useListingSearch(query: string) {
+  const settled = useDebounced(query.trim());
+  const q = settled.replace(/[\\%_]/g, (m) => `\\${m}`);
+
+  return useQuery({
+    queryKey: ['berkat', 'listing-search', settled],
+    enabled: settled.length >= SEARCH_MIN,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Listing[]> => {
+      const { data, error } = await shelfQuery()
+        .ilike('title', `%${q}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return asListings(data);
+    },
+  });
+}
+
+/**
+ * Angebote zu einer ID-Liste — für die Merkliste.
+ *
+ * Bewusst OHNE Status-Filter: Ein gemerkter Artikel, der verkauft wurde, ist
+ * genau die Auskunft, für die man eine Merkliste hat. Frauen-Only filtert die
+ * RLS; eine gemerkte ID, deren Artikel unsichtbar wurde, fällt still raus.
+ */
+export async function fetchListingsByIds(ids: string[]): Promise<Listing[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from('live_auctions')
+    .select(LISTING_COLUMNS)
+    .in('id', ids)
+    .is('session_id', null);
+  if (error) throw error;
+  return asListings(data);
 }
 
 /** Zustand und Ort als eine Zeile — oder nichts. */
