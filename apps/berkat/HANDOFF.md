@@ -1,6 +1,6 @@
 # Berkat — Übergabe
 
-**Stand: 16.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 18.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
@@ -12,10 +12,18 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 
 ---
 
-## 0. Wo du gerade stehst — 16.08.2026
+## 0. Wo du gerade stehst — 18.08.2026
 
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
+
+> **Frisch dazugekommen (17./18.08.2026):** Artikelseite (21), Audit mit 45 Funden (22),
+> Shop-Vollausbau (23), Preisvorschlag (24), Rechtstexte (25) — und **Abschnitt 26, wo die
+> nächste Arbeit liegt.** Wer hier neu einsteigt: erst 0, dann 26, dann bei Bedarf rückwärts.
+>
+> ⚠️ **Was in der Datenbank liegt, sind Testdaten.** Es wird nichts verkauft. Der Anbietertyp,
+> die zwei Angebote, die Bestellungen — alles Testläufe. Wer daraus Aussagen über einen echten
+> Verkäufer ableitet, liest den Datenstand falsch.
 
 ### Gebaut und am echten Datenstand geprüft
 
@@ -3380,27 +3388,171 @@ erzeugten auf schmalen Geräten **seitliches Scrollen der ganzen Seite** (nachge
 > **Merksatz:** Wer eine neue Seite anlegt, schaut in eine bestehende, BEVOR er sie schreibt. Die
 > Konvention stand da, sie war nur nicht dokumentiert.
 
-**3. ⚠️ Impressum und App widersprechen sich — Stand 18.08.2026 offen.**
+**3. Der Anbietertyp im Datenstand ist Testdaten, keine Aussage.**
 
-`impressum.html` erklärt den Betreiber als **Kleinunternehmer nach § 19 UStG** — das ist ein
-Unternehmer-Status. In `berkat_sellers` steht für dasselbe Konto aber `kind = 'private'`, und die
-App schreibt deshalb an seine Angebote **„Privatverkauf · kein Widerrufsrecht"**.
+⚠️ **Richtigstellung vom 18.08.2026.** In einer früheren Fassung stand hier eine Warnung, die
+`impressum.html` („Kleinunternehmer nach § 19 UStG") gegen `berkat_sellers.kind = 'private'`
+hielt und daraus einen Rechtsverstoß ableitete. **Die Prämisse war falsch:** Was in der Datenbank
+liegt, sind Testzeilen. Es wird nichts verkauft.
 
-Wenn der Betreiber gewerblich handelt, ist das eine **falsche Angabe gegenüber Verbrauchern** —
-und zwar ausgerechnet die, die Art. 246d § 1 EGBGB verlangt. Die Zeile stammt aus dem Testlauf vom
-17.08.: `create_standing_listing` legt beim ersten Angebot automatisch `kind = 'private'` an
-(20260816220000). Für einen Kleinunternehmer ist das die falsche Vorgabe.
+Was technisch stimmt und für einen späteren Leser zählt: `create_standing_listing` legt beim
+ersten Angebot automatisch `kind = 'private'` an (`20260816220000`). Wer den Datenstand für eine
+Aussage über einen echten Verkäufer hält, liest ihn falsch — **erst mit einem echten Verkäufer
+wird der Anbietertyp eine Erklärung, vorher ist er eine Vorgabe.**
 
-**Nicht von mir zu entscheiden** — ob jemand gewerblich handelt, ist eine Tatsachenfrage über sein
-Handeln, nicht über die Datenbank. Ein Tipp auf „Gewerblich" im Composer korrigiert es und zieht
-alle offenen Angebote nach (`set_berkat_seller_kind`). Danach fehlen noch die Impressumsangaben in
-`berkat_sellers`, sonst steht auf der Artikelseite „Anbieterangaben unvollständig".
+Ein Tipp auf „Gewerblich" im Composer ändert ihn und zieht alle offenen Angebote nach
+(`set_berkat_seller_kind`).
 
 ### Was daraus noch offen ist
 
-1. **Der Widerspruch oben.** Zaurs Handgriff, ein Tipp.
-2. **Impressums-Formular im Konto** — die Spalten stehen seit `20260816200000`, das Formular fehlt.
-   Wird Pflicht in dem Moment, in dem der Anbietertyp auf gewerblich steht.
+1. **Impressums-Formular im Konto** — die Spalten stehen seit `20260816200000`, das Formular fehlt.
+   Wird Pflicht, sobald ein Verkäufer sich als gewerblich erklärt.
 3. **Die Texte anwaltlich prüfen lassen**, bevor der erste fremde Käufer kommt.
 4. **Durchsetzungsseite** (wer trägt die Rückerstattung, was bei Nichtlieferung) — Whatnot regelt
    das ausführlich, Berkat gar nicht. Erst ab dem ersten Drittverkäufer nötig.
+
+---
+
+## 26. Hier geht es weiter (Stand 18.08.2026, Chat-Ende)
+
+**Der Anschlusspunkt für einen frischen Chat.** Der Arbeitsstand ist sauber — alles committet,
+nichts Halbfertiges im Baum außer `deno.lock`, das wie immer nicht dazugehört.
+
+### Wo Berkat gerade steht
+
+| | |
+|---|---|
+| Letzter Commit | `0d952e0 docs(berkat): dritte Whatnot-Analyse — und die Rechtstexte, die daraus fehlten` |
+| Migrationen | **34, alle eingespielt und verzeichnet**, keine Lücke |
+| `tsc --noEmit` | fehlerfrei |
+| `expo export --platform ios` | fehlerfrei |
+| Website | live, neun Seiten inkl. AGB und Widerruf |
+| Ungeprüft | alles, was ein **zweites Konto** braucht — siehe unten |
+
+### Drei Whatnot-Analysen, alle in `WHATNOT-ANALYSE.md`
+
+Die Datei hat inzwischen vier Teile. Wer sie liest, liest sie in dieser Reihenfolge:
+
+1. **Vollanalyse (13.08.)** — Strategie, Zahlen, Psychologie, Struktur, Technik, Recht, Phasenplan.
+   Die Grundlage des ganzen Projekts.
+2. **Die Nicht-Live-Seite (18.08.)** — Profile Shop vs. Live Shop, „Reserve for Live", Offers,
+   Varianten, Seller Hub. **Und der Satz, der wehtut:** Whatnot bekommt das stille Regal selbst
+   mit 8 Mrd. $ GMV nicht gut sichtbar.
+3. **Die deutsche Rechtsmaschine (18.08.)** — `Whatnot Europe Ltd.`, USt-Riegel am Eingang,
+   der „eingeschränkte Inkassobeauftragte", Vertragsschluss im Text, Durchsetzungsmaschine.
+
+### ⚠️ Die eigentliche Lücke: Artikel entstehen erst IM Raum
+
+Der schärfste Fund des Tages, und er ist noch **nicht** behoben.
+
+`create_live_auction` verlangt eine `live_sessions`-ID — die existiert erst, **wenn die Show
+läuft**:
+
+```sql
+SELECT host_id INTO v_host FROM public.live_sessions WHERE id = p_session_id;
+IF v_host IS NULL THEN RAISE EXCEPTION 'session_not_found';
+```
+
+Ein Verkäufer kann seine Artikel also nicht vorbereiten. Er steht vor der Kamera, vor Publikum,
+und tippt dort Titel, Preis, Mindestschritt und lädt ein Foto hoch. Whatnot erledigt das **Tage
+vorher** (Live Shop, Import aus dem Inventar, CSV).
+
+Das kostet vier Dinge auf einmal:
+
+- **Tote Sendezeit** — jeder Artikel beginnt damit, dass das Publikum beim Tippen zusieht.
+- **Nichts zum Vorab-Ansehen** — die „Demnächst"-Karte hat Titel und Bild, aber keine Ware.
+  Whatnots Live Shop ist vor dem Start befüllt und browsebar.
+- **Kein Grund, pünktlich zu sein** — wer nicht weiß, was kommt, verpasst auch nichts.
+- **Keine Vorbereitung** — der Sendeplan (Abschnitt 13) schafft das Ritual, aber der Verkäufer
+  kann sich inhaltlich nicht darauf vorbereiten.
+
+**Der Weg dahin, in drei Schritten:**
+
+1. **„Für die Show reservieren"** — Whatnots `Reserve for Live`, in ihrer neuen Semantik vom Juli
+   2026: **verschieben, nicht duplizieren** (ein `UPDATE` auf `session_id`). Das Regal IST das
+   Inventar; dort liegen Artikel schon mit Fotos, Zustand und Beschreibung.
+2. Damit das vor dem Start geht, muss die **Sitzungszeile beim Planen entstehen** statt beim
+   Starten. Heute legt `schedule_berkat_show` nur eine `scheduled_lives`-Zeile an, und
+   `link_live_session_to_scheduled` verbindet beides erst hinterher.
+3. Käufer sehen die Artikel vor dem Start — das ist der Grund, warum sich 1 und 2 lohnen.
+
+⚠️ **Schritt 2 ist der riskante.** `live_sessions` ist mit Serlo geteilt, und Serlos Listen filtern
+auf `status = 'active'`. Eine vorab angelegte Zeile braucht einen Status, den **beide** Apps
+korrekt ignorieren — das ist exakt die Klasse von Änderung, die am 14.08. die Live-Liste in allen
+drei Oberflächen leer gemacht hätte (Abschnitt 8, „Die App-Trennung"). Vor dem Bauen: alle sieben
+Listen-Abfragen beider Apps durchgehen, plus `get_public_profile_web`, plus die zwei Schreibpfade,
+die beim Live-Start fremde Sessions beenden.
+
+### Angefangen und bewusst gestoppt: der Verkaufen-Bildschirm
+
+Zaur am 18.08. mit Screenshots aus Whatnots Verkäufer-Onboarding: *„es hat sehr viele Auswahlfelder,
+dadurch wird die Seite sehr lang und unübersichtlich."*
+
+Stimmt. Der `SchedulePlanner`-Block trägt **elf Kacheln plus zwei Hinweistexte**: 7 Tage, bis zu
+4 Zeiten (3 relative + absolute Stunden), 2 Rhythmus-Kacheln — das ist ein halber Bildschirm für
+eine Entscheidung.
+
+**Die Entscheidung ist schon getroffen, gebaut ist nichts.** So soll es aussehen:
+
+```
+📅 Nächsten Termin ankündigen
+[Bild] [Titel]
+┌────────────────────────────────────────┐
+│ Wann?     Heute 20:00 · jede Woche   › │   ← EINE antippbare Zeile
+└────────────────────────────────────────┘
+[ Ankündigen ]
+```
+
+Tippen öffnet ein Blatt (`Modal`, wie im Bearbeiten-Blatt der Artikelseite) mit **denselben
+Kacheln**, darunter „Übernehmen: Di 20:00 · 4 Termine". Blatt zu, Hauptseite wieder kurz.
+
+⚠️ **Kein nativer Datums-/Zeit-Wähler.** Zwei Gründe, und beide sind entschieden:
+
+- `@react-native-community/datetimepicker` ist ein **natives Modul** → EAS-Build.
+- Wichtiger: Abschnitt 13 begründet die Kacheln inhaltlich — *„Ein freier Zeitstempel lädt zu
+  ‚irgendwann Dienstag halb neun' ein; das Ritual ist aber die Wiederholung."* Ein Kalender
+  zerstört genau das Ritual, das der Sendeplan erzeugen soll.
+
+Die Kacheln bleiben also. Sie wandern nur eine Ebene tiefer, und die Hauptseite zeigt das
+**Ergebnis** statt des Entscheidungsbaums.
+
+Betroffen: `components/SchedulePlanner.tsx` (501 Zeilen; die Zustände und Berechnungen ab Zeile 65
+bleiben unverändert, nur die drei Kachel-Blöcke ab Zeile 215 wandern ins Blatt).
+
+**Was aus den Screenshots noch zu lernen wäre, aber nicht entschieden ist:**
+
+- **Eine Frage pro Bildschirm.** Whatnots Onboarding klappt nichts ein, es *trennt*:
+  Regeln → Kategorie → USt-ID, jede mit eigenem „Weiter" und Fortschrittsbalken.
+- **Gesperrte Schritte.** Ihre Checkliste zeigt „Erstelle deine Show ›" offen und die drei
+  darunter mit Schloss. Berkats „Deine ersten Schritte" zeigt alle vier gleichzeitig und
+  *empfiehlt* nur. Whatnot lässt gar nicht erst zu, dass man das Falsche zuerst tut — das ist
+  die radikalere Antwort auf „lang und unübersichtlich".
+- **Frist mit Belohnung** („14 Tage, erste 400 € verdoppelt") — Angebots-Akquise, wie in
+  Analyse 1 beschrieben.
+
+### Der eine Punkt, der alles andere blockiert
+
+**Das zweite Konto.** Vier Wege sind gebaut und nur logisch belegt, nie durchlaufen:
+
+1. **Kauf** — `seller_cannot_bid` greift vor allem anderen, ein Kauf am eigenen Artikel ist
+   unmöglich.
+2. **„Nachricht" statt „Kaufen"** — sichtbar nur an einem fremden Angebot ohne Kassen-Freigabe.
+3. **Merken** — das Herz erscheint nur an fremden Artikeln.
+4. **Preisvorschlag** — das Feld erscheint nur für einen fremden Käufer.
+
+Alle vier hängen an derselben Sache. **Ein Konto anzulegen und ein Passwort einzugeben ist nichts,
+was ein Assistent tut** — das ist Zaurs Handgriff, und danach ist die ganze Kette in wenigen
+Minuten belegt.
+
+### Kleinkram, offen und begründet
+
+- **Anti-Snipe-Zeit vom Verkäufer wählbar** plus „Sudden Death" — Whatnot hat beides, Berkat hat
+  `extendSeconds: 10` fest verdrahtet (`theme/tokens.ts`).
+- **Varianten** (Größe/Farbe an einem Artikel) — wichtig für Abaya, Hijab, Mode, Schuhe. Erst mit
+  einem echten Verkäufer, vorher Schema-Arbeit ins Blaue.
+- **Zustands-Leitfaden** — sechs Slugs, kein Satz dazu, was „Sehr gut" heißt. Vier Sätze im
+  Composer, kein Feature.
+- **Verkäufer-Analytics** — Whatnots Seller Hub hat sie, Berkat gar nichts.
+- **Bilder umsortieren** geht nur über Entfernen und neu Hinzufügen (Zieh-Sortierer bräuchte
+  `react-native-gesture-handler` → Build).
+- **Impressums-Formular im Konto** — Spalten stehen, Formular fehlt.
