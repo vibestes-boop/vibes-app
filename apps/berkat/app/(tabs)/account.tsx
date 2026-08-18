@@ -5,7 +5,15 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, Gift, Heart, Lock, MessageSquare, Package } from 'lucide-react-native';
+import {
+  ChevronRight,
+  FileText,
+  Gift,
+  Heart,
+  Lock,
+  MessageSquare,
+  Package,
+} from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -19,6 +27,7 @@ import {
 import { useCheckoutCart } from '../../lib/useCheckout';
 import { shippingHint, useShippingLookup } from '../../lib/useShipping';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
+import { missingBusinessFields, useBerkatSeller } from '../../lib/useBerkatSeller';
 import { useMyRewards } from '../../lib/useRewards';
 import { useMyReviews } from '../../lib/useOrderReview';
 import { RatingStars } from '../../components/RatingStars';
@@ -94,6 +103,10 @@ export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const myUserId = useSession((s) => s.userId);
+  // Fehlen einem gewerblichen Verkäufer Pflichtangaben, steht das an der Zeile
+  // — bei privat ist die Liste leer und es erscheint nichts.
+  const { data: sellerRow } = useBerkatSeller(myUserId);
+  const sellerMissing = missingBusinessFields(sellerRow ?? null);
   const profile = useSession((s) => s.profile);
   const { serverNow } = useServerClock();
 
@@ -251,6 +264,35 @@ export default function AccountScreen() {
       >
         <Heart size={19} color={ui.text} />
         <Text style={styles.linkLabel}>Gemerkt</Text>
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
+
+      {/* ── Anbieterangaben. Bis zum 19.08.2026 gab es dafür kein Formular:
+          Die Spalten standen seit `20260816200000`, die RPC nahm jedes Feld
+          entgegen, die Artikelseite prüfte auf Vollständigkeit — nur eintragen
+          konnte man sie nirgends. Ein gewerblicher Verkäufer sah damit an jedem
+          seiner Angebote einen Mangel, den er selbst nicht beheben konnte
+          (Übergabe, Abschnitt 33).
+
+          Die Zeile steht für JEDEN da, nicht nur für Gewerbliche: Auch der
+          Wechsel VON privat AUF gewerblich beginnt hier. Der rote Hinweis
+          erscheint dagegen nur, wenn tatsächlich etwas fehlt — ein Mahnzeichen
+          an einem Privatkonto wäre eine Aufforderung ohne Anlass. ────────── */}
+      <Pressable
+        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        onPress={() => router.push('/seller-details')}
+        accessibilityRole="button"
+        accessibilityLabel={
+          sellerMissing.length > 0
+            ? `Anbieterangaben, unvollständig: es fehlen ${sellerMissing.join(', ')}`
+            : 'Anbieterangaben'
+        }
+      >
+        <FileText size={19} color={ui.text} />
+        <Text style={styles.linkLabel}>Anbieterangaben</Text>
+        {sellerMissing.length > 0 ? (
+          <Text style={styles.linkWarn}>unvollständig</Text>
+        ) : null}
         <ChevronRight size={18} color={ui.textMuted} />
       </Pressable>
 
@@ -483,6 +525,7 @@ const styles = StyleSheet.create({
   },
   linkRowPressed: { opacity: 0.6 },
   linkLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
+  linkWarn: { fontSize: 12, fontWeight: '600', color: ui.live },
   linkBadge: {
     minWidth: 20,
     height: 20,

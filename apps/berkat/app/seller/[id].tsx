@@ -46,6 +46,7 @@ import { useSession } from '../../lib/session';
 import { useFollow, useFollowCounts } from '../../lib/useFollow';
 import { formatEuro } from '../../lib/useAuction';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
+import { useBerkatSeller } from '../../lib/useBerkatSeller';
 import { useVouchActions, useVouches, vouchErrorText } from '../../lib/useVouch';
 import { profileEditErrorText, useUpdateProfile } from '../../lib/useProfileEdit';
 import { pickAndUpload } from '../../lib/uploadImage';
@@ -62,7 +63,7 @@ import { StandingShelf } from '../../components/StandingShelf';
 import { standingErrorText, useStandingActions } from '../../lib/useStanding';
 import { useSellerListings } from '../../lib/useListings';
 import { BerkatMark } from '../../components/BerkatMark';
-import { radius, space, ui } from '../../theme/tokens';
+import { radius, ratio, space, ui } from '../../theme/tokens';
 
 type SellerProfile = {
   id: string;
@@ -229,6 +230,29 @@ export default function SellerScreen() {
   const { data: liveShow, refetch: refetchLive } = useSellerLiveShow(id);
   const { data: items = [], refetch: refetchItems } = useSellerSoldItems(id);
   const { data: vouches = [], refetch: refetchVouches } = useVouches(id, myUserId);
+  // Die Anbieterangaben. Nur bei gewerblichen Verkäufern gefüllt; fehlen sie,
+  // rendert der Block gar nicht (siehe Kommentar an der Stelle).
+  const { data: sellerRow } = useBerkatSeller(id);
+  const imprintLines = useMemo(
+    () =>
+      [
+        sellerRow?.legal_name,
+        sellerRow?.street,
+        [sellerRow?.postal_code, sellerRow?.city].filter(Boolean).join(' ') || null,
+        // ⚠️ Der Ländercode wird AUSGESCHRIEBEN. `berkat_sellers.country` ist
+        // per CHECK auf 'DE' | 'AT' | 'CH' beschränkt — als Datenwert richtig,
+        // als Zeile in einer Anschrift falsch. Am 19.08.2026 am Gerät gesehen:
+        // Zwischen „60313 Frankfurt am Main" und der E-Mail stand nackt „DE".
+        // Ein Impressum ist eine Anschrift, keine Tabellenzeile.
+        sellerRow?.country
+          ? ({ DE: 'Deutschland', AT: 'Österreich', CH: 'Schweiz' }[sellerRow.country] ??
+            sellerRow.country)
+          : null,
+        sellerRow?.contact_email,
+        sellerRow?.vat_id ? `USt-IdNr. ${sellerRow.vat_id}` : null,
+      ].filter((v): v is string => Boolean(v)),
+    [sellerRow],
+  );
   const { data: counts, refetch: refetchCounts } = useFollowCounts(id);
   const vouch = useVouchActions(id, myUserId);
   const [vouchNotice, setVouchNotice] = useState<string | null>(null);
@@ -680,6 +704,33 @@ export default function SellerScreen() {
                 <Pressable onPress={() => setVouchNotice(null)}>
                   <Text style={styles.vouchNotice}>{vouchNotice}</Text>
                 </Pressable>
+              ) : null}
+
+              {/* ── Anbieterangaben eines gewerblichen Verkäufers (seit
+                  18.08.2026 HIER statt auf jeder Artikelseite).
+
+                  § 5 DDG verlangt „leicht erkennbar, unmittelbar erreichbar und
+                  ständig verfügbar". Das Profil des Verkäufers ist genau das:
+                  Von jedem seiner Angebote führt ein Tipp hierher, und die
+                  Angaben stehen an EINER Stelle statt an dreißig.
+
+                  Vorher lagen sie auf der Artikelseite — zwischen Beschreibung
+                  und Kaufknopf, wo sie die Kaufseite behördlich machten. Zaur:
+                  „Leute wollen beim Kaufen genießen, sie kommen nicht, um
+                  eingeschüchtert zu werden."
+
+                  ⚠️ Fehlen die Angaben, steht hier NICHTS. Der frühere rote
+                  Satz („dieser Verkäufer hat … noch nicht hinterlegt") warnte
+                  den Käufer vor einem Mangel, den er nicht beheben kann — und
+                  vor allem vor einer Lücke auf UNSERER Seite: Das Formular zum
+                  Eintragen fehlt bis heute (Abschnitt 33). Der Hinweis steht
+                  jetzt nur noch dort, wo er handlungsleitend ist: an den
+                  eigenen Angeboten des Verkäufers. ─────────────────────────── */}
+              {sellerRow?.kind === 'business' && imprintLines.length > 0 ? (
+                <View style={styles.imprintBlock}>
+                  <Text style={styles.imprintLabel}>Anbieterangaben</Text>
+                  <Text style={styles.imprintText}>{imprintLines.join('\n')}</Text>
+                </View>
               ) : null}
 
               {/* Die Reiter, nach Whatnot-Vorbild. „Clips" fehlt bewusst:
@@ -1217,9 +1268,19 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
   },
 
+  // Ruhig gesetzt: Pflichtangaben müssen lesbar sein, nicht laut. Sie stehen
+  // am Ende des Kopfes, nach dem, wofür jemand hergekommen ist.
+  imprintBlock: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    gap: 3,
+  },
+  imprintLabel: { fontSize: 11, fontWeight: '700', color: ui.textMuted },
+  imprintText: { fontSize: 12, color: ui.textMuted, lineHeight: 18 },
+
   cell: { flex: 1 },
   thumb: {
-    aspectRatio: 1,
+    aspectRatio: ratio.card,
     borderRadius: radius.sm,
     backgroundColor: ui.sunken,
     overflow: 'hidden',

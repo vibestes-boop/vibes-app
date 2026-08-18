@@ -115,9 +115,10 @@ function asListings(data: unknown): Listing[] {
  * Verbindung je Zeile aufmachen (Kostenhygiene). Nachgeladen wird beim Fokus,
  * wie überall sonst — die Stack-Falle aus HANDOFF 3 gilt hier genauso.
  */
-export function useShopListings(limit = 60) {
+export function useShopListings(limit = 60, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'shop', limit],
+    enabled,
     staleTime: 30_000,
     queryFn: async (): Promise<Listing[]> => {
       const { data, error } = await shelfQuery()

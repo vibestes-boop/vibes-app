@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +21,8 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  Bell,
+  CalendarClock,
   Check,
   ChevronRight,
   ImagePlus,
@@ -56,12 +59,15 @@ import {
 } from '../../lib/useStudio';
 import { useOpenOrderCount } from '../../lib/useSellerOrders';
 import {
+  formatSlot,
+  formatUntil,
   linkShowToPlan,
   matchingPlan,
   scheduleErrorText,
   useMyPlannedShows,
   usePlanShow,
 } from '../../lib/useSchedule';
+import { useFollowCounts } from '../../lib/useFollow';
 import { BerkatMark } from '../../components/BerkatMark';
 import { SchedulePlanner } from '../../components/SchedulePlanner';
 import { CategoryPicker } from '../../components/CategoryPicker';
@@ -98,6 +104,9 @@ export default function SellScreen() {
   const winnerNames = useUsernames(sold.map((a) => a.winner_id));
 
   const [showTitle, setShowTitle] = useState('');
+  /** Die zwei Blätter hinter den Einstiegs-Kacheln. */
+  const [showSheet, setShowSheet] = useState(false);
+  const [planSheet, setPlanSheet] = useState(false);
   const [showCategory, setShowCategory] = useState<string | null>(null);
   const [showCategoryParent, setShowCategoryParent] = useState<string | null>(null);
   const [duration, setDuration] = useState(30);
@@ -123,6 +132,11 @@ export default function SellScreen() {
   // anzuzeigen.
   const { data: standing = [] } = useSellerListings(myUserId ?? undefined);
   const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
+  // Wie viele Menschen eine Erinnerung bekommen, wenn ein Termin ansteht.
+  // Berkat kennt kein „Show merken" wie Whatnot — die Erinnerung geht an die
+  // Follower. Die Zahl beantwortet dieselbe Frage: Wen erreiche ich damit?
+  const { data: followCounts } = useFollowCounts(myUserId ?? undefined);
+  const followers = followCounts?.followers ?? 0;
 
   // ── Die ersten Schritte ───────────────────────────────────────────────────
   // Alle vier Zustände kommen aus Daten, die es ohnehin gibt — keine Tabelle,
@@ -144,7 +158,7 @@ export default function SellScreen() {
         key: 'termin',
         label: 'Ersten Termin ankündigen',
         // Kein Ziel: Der Planer steht auf diesem Bildschirm gleich darunter.
-        hint: 'Gleich hier unten. Deine Follower bekommen 15 Minuten vorher eine Erinnerung.',
+        hint: 'Der Knopf steht gleich darunter. Deine Follower werden 15 Minuten vorher erinnert.',
         done: plannedShows.length > 0,
       },
       {
@@ -175,7 +189,7 @@ export default function SellScreen() {
       // Beide Sorten von hier werden quadratisch gezeichnet: das Show-Cover auf
       // der Startseite und im Kategorien-Reiter, der Artikel in der
       // Warteschlange und im Regal.
-      const url = await pickAndUpload(kind, 'square');
+      const url = await pickAndUpload(kind, 'portrait');
       if (url) apply(url);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Das Bild kam nicht durch.');
@@ -322,8 +336,100 @@ export default function SellScreen() {
             onOpen={(target) => router.push(target as never)}
           />
 
+          {/* ── Zwei Türen statt zweier Formulare (seit 19.08.2026).
+              Hier standen „Mach die Show auf" und „Nächsten Termin ankündigen"
+              als VOLLE Formulare untereinander — zusammen anderthalb
+              Bildschirmhöhen, beide mit Bild links, Titel rechts, Knopf unten.
+              Sie sahen fast gleich aus; der Unterschied war allein „jetzt"
+              gegen „später" und musste aus den Überschriften erschlossen
+              werden.
+
+              Whatnots Seller Hub führt an derselben Stelle zwei Kacheln —
+              „Create a Product" und „Schedule a Show" —, die nur Türen sind;
+              der Hub selbst zeigt, was ansteht (sechste Analyse). Genau das
+              war Zaurs Kritik vom 18.08.: nicht die Kacheln im Sendeplan waren
+              zu viel, sondern dass die Übersicht das Formular IST. ────────── */}
+          <View style={styles.doorRow}>
+            <Pressable
+              style={({ pressed }) => [styles.door, styles.doorPrimary, pressed && styles.doorPressed]}
+              onPress={() => setShowSheet(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Show starten"
+            >
+              <Radio size={20} color={ui.goldInk} />
+              <Text style={styles.doorTextPrimary}>Show starten</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.door, pressed && styles.doorPressed]}
+              onPress={() => setPlanSheet(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Termin ankündigen"
+            >
+              <CalendarClock size={20} color={ui.text} />
+              <Text style={styles.doorText}>Termin ankündigen</Text>
+            </Pressable>
+          </View>
+
+          {/* Die angekündigten Termine — auf der Übersicht, nicht im Formular.
+              Mit der Zahl der Menschen, die eine Erinnerung bekommen: Whatnot
+              zeigt an derselben Stelle ein Lesezeichen mit Zähler, und das ist
+              das Signal, das aus einer Ankündigung eine Erwartung macht. */}
+          {plannedShows.length > 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Deine nächsten Termine</Text>
+              {plannedShows.slice(0, 4).map((plan) => (
+                <View key={plan.id} style={styles.planRow}>
+                  {plan.cover_url ? (
+                    <Image source={{ uri: plan.cover_url }} style={styles.planThumb} contentFit="cover" />
+                  ) : (
+                    <View style={styles.planThumb} />
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={styles.planTitle}>
+                      {plan.title}
+                    </Text>
+                    <Text style={styles.planWhen}>
+                      {formatSlot(plan.scheduled_at)} · {formatUntil(plan.scheduled_at)}
+                    </Text>
+                  </View>
+                  {/* Nur wenn jemand folgt. „0 werden erinnert" wäre eine
+                      Enttäuschung in Zahlenform — dieselbe Regel wie bei den
+                      Kategorie-Zählern. */}
+                  {followers > 0 ? (
+                    <View style={styles.planBell}>
+                      <Bell size={12} color={ui.textMuted} />
+                      <Text style={styles.planBellText}>{followers}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {/* ── Das Show-Formular, jetzt im Blatt. Inhalt unverändert:
+              Titel, Cover, Kategorie, „Show starten". ──────────────────── */}
+          <Modal
+            visible={showSheet}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setShowSheet(false)}
+          >
+            <View style={styles.sheet}>
+              <View style={styles.sheetHead}>
+                <Text style={styles.sheetTitle}>Show starten</Text>
+                <Pressable
+                  hitSlop={10}
+                  onPress={() => setShowSheet(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Schließen"
+                >
+                  <X size={22} color={ui.text} />
+                </Pressable>
+              </View>
+              <ScrollView
+                contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
+                keyboardShouldPersistTaps="handled"
+              >
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Mach die Show auf</Text>
             <Text style={styles.cardBody}>
               Gib ihr einen Namen, den man im Feed erkennt — zum Beispiel „Parfüm ab 1 €".
             </Text>
@@ -363,7 +469,9 @@ export default function SellScreen() {
 
             {/* Kategorie der Show. Freiwillig, aber sie entscheidet, ob die
                 Sendung im Kategorien-Reiter überhaupt auftaucht — und dort
-                sucht, wer den Verkäufer noch nicht kennt. */}
+                sucht, wer den Verkäufer noch nicht kennt. Der Hinweis darunter
+                stand bis zum 19.08.2026 dreizeilig da; gekürzt auf den Teil,
+                der eine Folge nennt. */}
             <CategoryPicker
               value={showCategory}
               onChange={setShowCategory}
@@ -400,6 +508,7 @@ export default function SellScreen() {
                   setShowTitle('');
                   setCoverUrl(null);
                   setShowCategory(null);
+                  setShowSheet(false);
                   router.push(`/live/${sessionId}`);
                 })
               }
@@ -408,8 +517,38 @@ export default function SellScreen() {
               <Text style={styles.primaryButtonText}>Show starten</Text>
             </Pressable>
           </View>
+              </ScrollView>
+            </View>
+          </Modal>
 
+          {/* ── Der Sendeplan, ebenfalls im Blatt. Er trägt seine eigene
+              Terminliste weiter — beim Planen ist es nützlich zu sehen, was
+              schon steht. Auf der Übersicht steht sie zusätzlich, dort aber
+              mit der Erinnerungs-Zahl. ────────────────────────────────────── */}
+          <Modal
+            visible={planSheet}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setPlanSheet(false)}
+          >
+            <View style={styles.sheet}>
+              <View style={styles.sheetHead}>
+                <Text style={styles.sheetTitle}>Termin ankündigen</Text>
+                <Pressable
+                  hitSlop={10}
+                  onPress={() => setPlanSheet(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Schließen"
+                >
+                  <X size={22} color={ui.text} />
+                </Pressable>
+              </View>
+              <ScrollView
+                contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
+                keyboardShouldPersistTaps="handled"
+              >
           <SchedulePlanner
+            bare
             plans={plannedShows}
             busy={planShow.isPending || cancelPlan.isPending}
             onPlan={(input) =>
@@ -440,6 +579,9 @@ export default function SellScreen() {
                 .catch(() => setNotice('Der Termin ließ sich nicht absagen.'))
             }
           />
+              </ScrollView>
+            </View>
+          </Modal>
           </>
         ) : (
           <>
@@ -1024,4 +1166,49 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   noticeText: { fontSize: 13, color: ui.text },
+
+  // ── Die zwei Türen. Nebeneinander, gleich groß: Sie sind gleichwertige
+  // Wege, nur zu verschiedenen Zeitpunkten. „Show starten" trägt Gold, weil
+  // es die Handlung ist, für die dieser Reiter existiert.
+  doorRow: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
+  door: {
+    flex: 1,
+    minHeight: 96,
+    borderRadius: radius.lg,
+    backgroundColor: ui.card,
+    borderWidth: 1,
+    borderColor: ui.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.sm,
+  },
+  doorPrimary: { backgroundColor: ui.gold, borderColor: ui.gold },
+  doorPressed: { opacity: 0.8 },
+  doorText: { fontSize: 14, fontWeight: '700', color: ui.text, textAlign: 'center' },
+  doorTextPrimary: { fontSize: 14, fontWeight: '700', color: ui.goldInk, textAlign: 'center' },
+
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingTop: space.sm,
+  },
+  planThumb: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: ui.sunken },
+  planTitle: { fontSize: 14, fontWeight: '600', color: ui.text },
+  planWhen: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
+  // Die Erinnerungs-Zahl: ruhig, keine Werbung. Sie sagt „so viele erfahren
+  // davon", nicht „so viele kommen".
+  planBell: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  planBellText: { fontSize: 12, color: ui.textMuted },
+
+  sheet: { flex: 1, backgroundColor: ui.bg },
+  sheetHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+  },
+  sheetTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
 });

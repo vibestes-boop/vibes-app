@@ -746,3 +746,453 @@ Nutzern vorlegen.
 ## Quelle
 
 - [Whatnot Servicebedingungen für Nutzer in der EU oder im Vereinigten Königreich](https://whatnot.pactsafe.io/versions/67991d177a099bf2be49a58f.pdf) — PDF, im Volltext gelesen (`pdftotext -layout`), 18.08.2026
+
+---
+---
+
+# Vierte Analyse: das Design (18.08.2026)
+
+> Die drei Analysen davor haben Strategie, Sortiment und Recht seziert und dabei
+> nie gefragt, **wie das Ding eigentlich aussieht**. Diese hier misst es nach:
+> Farben, Schriftgrößen, Radien und Trefferflächen am laufenden Objekt
+> ausgelesen, nicht geschätzt. Methode und Grenzen stehen am Ende — sie sind für
+> die Bewertung wichtiger als üblich.
+
+## 0. Der Befund in einem Satz
+
+Whatnots Oberfläche ist **absichtlich unauffällig** — eine graue, dichte,
+gleichförmige Liste, deren einzige Aufgabe es ist, hinter der Ware zu
+verschwinden. Die Farbe im Bild kommt von den Verkäufern, nicht von der
+Plattform.
+
+## 1. Die Messung
+
+Am 18.08.2026 im Browse-Feed und in zwei laufenden Live-Räumen ausgelesen:
+
+| | Wert | Häufigkeit |
+|---|---|---|
+| Schrift | `system-ui` — **kein eigener Font** | durchgehend |
+| Schriftgrößen | 11 / 12 / 13 / 14 px | 12 px 106×, 13 px 53×, 14 px 51× |
+| Größte Schrift | **24 px, genau einmal** pro Seite | 1× |
+| Schriftgewicht | **600** | 160× — gegen 63× Regular, 23× Bold |
+| Radius | **8 px**, sonst Pille | 58× / 36× |
+| Grundfläche | Weiß, Grau `#F3F3F3` | 57× |
+| Signalgelb | `#FFE414` | **2–3× pro Seite** |
+| Rot | `#ED2C28` | 28–31× |
+| Kaufknopf | 188 × 36 px, Fläche `rgba(0,0,0,0.05)` | 25× in einer Liste |
+| Video | 451 × 801 = **9:16, auch auf 1440 px Desktop** | |
+
+Drei Zahlen daraus tragen die ganze Analyse:
+
+**Eine Schriftgröße.** 12 bis 14 px machen praktisch alles. Es gibt genau *eine*
+große Zeile pro Seite. Die Hierarchie entsteht nicht durch Größe.
+
+**Ein Gewicht.** 600 ist nicht die Betonung, sondern die **Grundschrift** — es
+kommt 2,5-mal häufiger vor als Regular. Wenn fast alles halbfett ist, betont
+Fettschrift nichts mehr. Die Hierarchie entsteht also auch nicht durch Gewicht.
+
+**Sie entsteht durch Farbe und Position** — und zwar sehr sparsam: Gelb erscheint
+zwei- bis dreimal auf einer ganzen Seite.
+
+## 2. Der wichtigste Fund: der Kaufknopf ist grau
+
+In einer Show mit 25 Artikeln steht neben jedem ein Knopf. Er ist
+**`rgba(0,0,0,0.05)`** — ein Grau, das man kaum sieht. Das Signalgelb ist
+daneben für **„Folgen"** reserviert (85 × 24 px).
+
+Whatnot färbt also nicht den Kauf, sondern die **Beziehung**.
+
+Der Grund ist arithmetisch: 25 gelbe Knöpfe untereinander sind keine
+Hervorhebung mehr, sondern eine Wand. Eine Signalfarbe funktioniert nur, solange
+sie selten ist. Wer sie an jede Zeile schreibt, hat sie abgeschafft.
+
+⚠️ **Das steht in direktem Widerspruch zu Berkats Regel** „Gold ist der Kauf"
+(`theme/tokens.ts`). Der Widerspruch löst sich über den Ort auf, und die
+Auflösung ist die eigentliche Lehre:
+
+| Ort | Wie viele Kaufwege gleichzeitig? | Farbe |
+|---|---|---|
+| Live-Raum | **einer** — es läuft genau ein Artikel | Gold ist richtig |
+| Artikelseite | **einer** — die Leiste unten | Gold ist richtig |
+| Regal, Kategorie, Suchergebnis | **viele nebeneinander** | Gold wäre eine Wand |
+
+Berkat kommt damit heute durch, weil auf den Karten im Regal **gar kein
+Kaufknopf** sitzt — man tippt die Karte an, gekauft wird auf der Artikelseite.
+Das ist unbeabsichtigt genau die richtige Lösung. **Sie darf nicht kippen:** Wer
+später „Sofortkauf" direkt auf die Regal-Karte legt, muss ihn grau machen, nicht
+gold. Sonst ist Gold nach dem ersten vollen Regal keine Auszeichnung mehr.
+
+## 3. Die drei Regeln, die dahinterstehen
+
+**Die Plattform tritt zurück, die Ware schreit.** Whatnots UI ist grau und
+neutral — die Show-Cover dagegen sind selbstgemachte Poster im
+YouTube-Thumbnail-Stil: Versalien, Rahmen, Knallfarben, mit der Mechanik im Bild
+(„$1 DOLLAR STARTS", „3 FREE GIVEAWAYS ALL SHOW", „500 MASSIVE SLABS"). Der
+Kontrast ist die Gestaltung. Eine bunte Plattform plus bunte Cover ergäbe Brei.
+
+**Die Person steht über der Ware.** Auf jeder Show-Karte im Feed steht der
+Verkäufer mit Avatar und Namen **über** dem Cover, nicht darunter. Auf der Karte
+steht **kein Preis und kein Produkt** — man wählt den Abend, nicht den Artikel.
+
+**Wärme statt Bestand.** Die Kategorie-Kacheln zeigen „15.216 Zuschauer", nicht
+„412 Artikel". Gezählt wird, wo etwas los ist.
+
+## 4. Die mobile Wand — der schärfste Unterschied zur Erwartung
+
+Auf dem Telefon zeigt `whatnot.com` **keinen Stream**. Statt des Live-Raums
+erscheint eine dunkle Seite mit einer Verkäufer-Karte:
+
+```
+        [Avatar]
+         ★ 5
+      blairscloset
+  5030 Follower | 6546 Artikel verkauft
+ „Nimm an dieser Live-Show teil, um zu bieten,
+  zu kaufen, zu chatten …"
+     [ Weiter auf Whatnot ]   ← gelb, volle Breite
+```
+
+Auf dem Desktop läuft derselbe Stream ohne Anmeldung komplett durch. Die
+Trennung ist also keine Rechte-, sondern eine **Geräte**-Entscheidung: Wer ein
+Telefon hat, soll die App installieren, weil dort die Push-Berechtigung liegt.
+
+Bemerkenswert ist, **womit** diese Wand überzeugt: drei Zahlen — Sterne,
+Follower, verkaufte Artikel. Kein Produktbild, kein Preis, kein Sortiment. Genau
+die Stelle, an der Berkats Bürgen-System (Übergabe § 15) das kulturell stärkere
+Argument hat: „Wer bürgt für ihn" schlägt „6546 Artikel verkauft" in einer
+Gemeinschaft, in der man sich kennt.
+
+Nebenbefund gegenüber der ersten Analyse (13.08.): Der Login-Wall ist schärfer
+geworden. Er stand damals „exakt an einer Stelle" — beim Mitmachen. Heute
+springt im Desktop-Raum nach etwa einer halben Minute Zuschauen ein Modal auf
+(„Mach mit bei Whatnot!"), zusätzlich zum Balken im Video.
+
+## 5. Was Whatnot bewusst NICHT tut
+
+- **Keinen eigenen Font.** 20 Mrd. $ Bewertung, `system-ui`. Berkat macht es
+  genauso — das ist keine Sparmaßnahme, sondern die Entscheidung, die
+  Ladezeit und Plattform-Vertrautheit über Markenschrift zu stellen.
+- **Keine großen Überschriften.** Eine 24-px-Zeile pro Seite, sonst nichts über
+  16 px.
+- **Keine Bewegung in der Fläche.** Die einzige Animation ist das Video selbst.
+- **Keine zweite Radius-Stufe.** 8 px oder Pille, nichts dazwischen.
+
+## 6. Wo Berkat abweicht — und ob das ein Fehler ist
+
+| | Whatnot | Berkat | Urteil |
+|---|---|---|---|
+| Grundfläche | Weiß/Grau, neutral | Sand `#FAF7F2`, warm | **Berkats Weg.** Das ist die „Basar statt Jahrmarkt"-Entscheidung und der einzige Punkt, an dem die Plattform sichtbar sein soll. |
+| Radien | 8 px + Pille | 8/12/16/26 + Pille | Whatnot hat recht. Vier Stufen sind drei mehr, als jemand unterscheiden kann. |
+| Schriftgrößen | 11–14 px, eine 24er | 11–22 px, viele Stufen | Whatnot hat recht — aber Berkat ist eine Telefon-App, 12 px wären dort zu klein. Die Lehre ist die **Anzahl** der Stufen, nicht ihr Wert. |
+| Kategorie-Zähler | Zuschauer | „1 kaufbar", leer wenn nichts da | **Zu ändern.** Siehe unten. |
+| Kaufknopf im Raster | grau, auf der Karte | keiner, Karte führt zur Seite | Berkats Lösung ist besser — solange sie so bleibt. |
+| Cover | Verkäufer-Poster, schreiend | Foto, quadratisch | Offen. Berkat hat keine Cover-Kultur, und sie lässt sich nicht verordnen. |
+
+**Der eine Punkt, der sich lohnt: die Kategorie-Kacheln.** Berkat zeigt heute
+„1 kaufbar" — und bei leeren Kategorien gar nichts. Zwölf Kacheln, von denen
+zehn keinen Zähler tragen, lesen sich wie ein Fehler, nicht wie ein Angebot.
+Whatnots Zahl beantwortet dagegen „wo ist was los". Berkat kann das nicht
+kopieren (es sind keine Zuschauer da), aber die Frage lässt sich anders
+beantworten — etwa mit dem nächsten Termin in dieser Kategorie („Do 20:00")
+statt mit einer Bestandszahl. Der Sendeplan ist gebaut, die Daten liegen vor.
+
+## 7. Methode und Grenzen
+
+Gelesen wurden `whatnot.com/de-DE/browse`, die Kategorie-Seiten Frauenmode und
+Trading Card Games sowie drei Live-Räume (`blairscloset`, `legacy_auction_house`,
+`crazy4tcg`), im Browser bei 1440 × 900 und 375 × 812. Farben, Schriftgrößen,
+Gewichte, Radien und Knopfmaße wurden per `getComputedStyle` über alle sichtbaren
+Elemente ausgezählt, nicht nach Augenmaß geschätzt.
+
+Drei Einschränkungen, die das Ergebnis begrenzen:
+
+1. **Es ist die Web-Fassung, nicht die App.** Whatnots eigentliches Produkt ist
+   die native App; die Startseite ist ein reiner Download-Funnel. Für Berkat,
+   das selbst eine App ist, ist das der falsche Vergleichsgegenstand — nur eben
+   der einzige zugängliche.
+2. **Kein Gebots-Overlay gesehen.** In keinem der drei Räume lief während des
+   Zuschauens eine Auktion. Ausgerechnet der Bildschirm, der Berkats Kern ist,
+   fehlt in dieser Analyse.
+3. **Kein Konto.** Alles ohne Anmeldung, also ohne Warenkorb, Kasse,
+   Verkäufer-Ansicht und ohne die eingeloggte Fassung des Live-Raums.
+
+## Quelle
+
+- Eigene Messung: `whatnot.com` — Browse-Feed, Kategorien Frauenmode und Trading
+  Card Games, Live-Räume `blairscloset`, `legacy_auction_house`, `crazy4tcg`;
+  `getComputedStyle`-Auszählung bei 1440 × 900 und 375 × 812, 18.08.2026
+
+---
+
+## Nachtrag zur vierten Analyse: die App (18.08.2026, spät)
+
+⚠️ **Die Analyse oben hat die Web-Fassung vermessen. Das war die falsche Quelle.** Whatnots
+Produkt ist die App; die Website ist ein Download-Funnel mit eigenem, viel konventionellerem
+Layout. Was unten steht, korrigiert und ergänzt sie — Grundlage sind die offiziellen
+Store-Screenshots (DE) und die Produktbilder aus Whatnots eigenem Blog.
+
+### Woher man App-Bilder bekommt, ohne die App zu installieren
+
+```bash
+curl -s "https://itunes.apple.com/search?term=whatnot&entity=software&country=de&limit=1" \
+  | python3 -c "import json,sys; [print(u) for u in json.load(sys.stdin)['results'][0]['screenshotUrls']]"
+```
+
+Die URLs enden auf `/320x480bb.jpg` — durch `/900x0w.jpg` ersetzen und man bekommt sie in voller
+Breite. Play Store: Paketname ist `com.whatnot_mobile` (nicht `com.whatnot*`, das 404t). Der
+Produktblog `blog.teamwhatnot.com` liefert die Feed-Bilder in Presse-Qualität, hell **und** dunkel.
+
+### Der Live-Raum ist randloses Vollbild
+
+Kein Kasten, keine Spalten, kein schwarzer Rahmen — das Video füllt den Bildschirm, und **alles
+liegt als Overlay darauf**:
+
+| Wo | Was |
+|---|---|
+| oben links | Avatar, Name, ★-Bewertung |
+| oben rechts | rotes Zuschauer-Badge, Chevron zum Schließen |
+| rechte Kante | Icon-Spalte **mit Beschriftung**: Ton, Teilen, Zahlung, Shop (mit Artikelzahl) |
+| links unten | Chat — **ohne Kasten, ohne Hintergrund**, nur Text mit Schatten, runde Avatare |
+| darüber | Zuschlag-Meldung als farbige Zeile („… hat den Zuschlag!") |
+| unten | Artikelzeile: Bild, Titel, „1 Verfügbar · Zustand neu mit Etikett", Preis, Countdown, Versandkosten |
+| ganz unten | **gelber Knopf über die volle Breite: „Biete 40 € ≫"** |
+
+Der Gebots-Knopf ist gelb und dominant — das **bestätigt** die Ortsregel aus Abschnitt 2 oben,
+statt sie zu widerlegen: Signalfarbe dort, wo es genau einen Kaufweg gibt; Grau im Regal, wo
+fünfundzwanzig nebeneinanderliegen.
+
+### Die Kategorie-Leiste im Feed — der schärfste Unterschied zu Berkat
+
+Whatnots Leiste besteht aus kleinen **hochformatigen** Kacheln, die waagerecht scrollen. Jede
+trägt den Namen oben und darunter ein **freigestelltes Objekt auf einem eigenen Farbverlauf** —
+Sneaker auf Beige, Pullover auf Blau, Pflanze auf Lila, Tasche auf Braun. Zwei Sonderfälle:
+„For You" ist gelb und zeigt **den eigenen Avatar**, „Following" ein gelbes Herz.
+
+**Der inhaltliche Unterschied ist wichtiger als der optische:** Whatnots Leiste ist eine
+**Entdeckungs**-Leiste — sie zeigt alle Kategorien, immer, unabhängig davon, ob dort gerade jemand
+sendet. Berkats `CategoryRail` ist ein **Filter für laufende Shows**: Sie wird aus `shows`
+aufgebaut und ist deshalb genau dann leer, wenn ohnehin nichts läuft — also fast immer. Am
+18.08.2026 wurde sie deshalb ausgeblendet, sobald sie nur noch „Für dich" enthielt. Das war
+richtig gegen das leere Gerüst, behebt aber nur das Symptom: **Die Leiste beantwortet die falsche
+Frage.**
+
+### Show-Karten im Feed
+
+Zwei Spalten, hochformatig, **Verkäufername mit Avatar über der Karte** — das hat Berkat schon,
+samt Begründung im Quelltext („bei Live-Shopping kauft man den Menschen, nicht das Bild"). Oben
+links auf dem Bild ein rotes Badge `Live 143`, das Zustand und Zahl in einem Element führt.
+
+### Was Berkat bewusst anders lässt
+
+Whatnots App hat einen **Dunkelmodus** (der Blog zeigt beide Fassungen nebeneinander). Berkat hat
+bewusst keinen — zwei feste Flächen, `ui` hell und `stage` dunkel, damit heller Text auf heller
+Fläche strukturell unmöglich ist (Übergabe, Abschnitt 4). Das bleibt richtig; es ist eine
+Entscheidung, keine Lücke.
+
+### Was daraus folgt
+
+1. **Kategorie-Kacheln mit freigestellten Produktfotos** statt Konturicons — und zwar als
+   Entdeckungs-Leiste, die auch ohne laufende Show trägt. Das ist der größte sichtbare Abstand.
+   Freistellen genügt, 3D-Renderings sind es bei Whatnot nur teilweise.
+2. **Live-Raum gegen die App halten** — Vollbild, Chat ohne Kasten, beschriftete Icon-Spalte,
+   Gebots-Knopf über die volle Breite. Steht noch aus, weil dafür eine laufende Show nötig ist.
+3. **Ein Teil des Abstands ist Inhalt, nicht Gestaltung.** Whatnots Bilder zeigen Models,
+   Studiolicht und volle Regale; Berkats Testdaten zeigen ein Strandfoto und ein leeres Feld. Wer
+   das Design an diesen Bildern misst, optimiert am falschen Ende.
+
+## Quellen
+
+- Offizielle App-Screenshots (DE), iTunes Search API, App-ID `1488269261`, 18.08.2026
+- Google Play, Paket `com.whatnot_mobile`
+- `blog.teamwhatnot.com` — Produktbilder „Explore Tiles" und Versand-Ansicht, hell und dunkel
+
+---
+
+## Fünfte Analyse: die übrigen Flächen der App (18.08.2026, nachts)
+
+Quelle sind Whatnots eigene Produktbilder aus dem Blog (`blog.teamwhatnot.com`, Artikel
+`freshlook`, `sellerhome`, `built-for-live-listings`, `capture-buyer-intent-and-drive-sales`) —
+Presse-Qualität, teils mit Vorher/Nachher. Google Bilder war nicht nutzbar: Die Bildersuche
+verlangt ein CAPTCHA, und das wird nicht gelöst. Der Umweg über Blog und Stores ist ohnehin die
+bessere Quelle, weil dort die Bildschirme unverkleinert und offiziell stehen.
+
+### Der Feed — und was auf der Show-Karte steht
+
+Das wichtigste Bild (`PinnedListing_2`) zeigt den Feed mit vollen Karten:
+
+| Element | Whatnot | Berkat |
+|---|---|---|
+| Verkäufer mit Avatar über der Karte | ✔ | ✔ |
+| rotes Live-Badge mit Zuschauerzahl | `Live 2.1k` | `Live · 23` ✔ |
+| **laufender Artikel auf der Karte** | Name, Preis, **roter Countdown `00:08`** | ✔ `LivePreview` |
+| Titel unter der Karte, zwei Zeilen | ✔ | ✔ |
+| Kategorie darunter als Link | blau | ✔ `cardCategory` |
+| Cover | verkäufergemachtes Poster | Foto |
+
+**Das ist der überraschendste Befund der ganzen Design-Arbeit: Bei der Feed-Karte ist Berkat
+gleichauf — an einer Stelle sogar reicher.** `LivePreview` kennt drei Zustände (läuft / verkauft /
+als Nächstes) und lässt den Preis hochzählen; Whatnots Karte zeigt nur den laufenden Artikel. Wer
+also findet, die App „komme nicht ran", misst nicht diese Fläche, sondern die Bilder darauf.
+
+### Der Shop im Live-Raum — hier liegt echter Abstand
+
+`Before+After.png` zeigt Whatnots eigenen Umbau. Die Liste hinter dem „Shop"-Knopf hat:
+
+- **eine Suche über die Artikel der Show** („Search shop…")
+- **Filterchips**: `Sort`, `Auction`, `Buy Now`, `Sold` — man kann also nur die Auktionen sehen
+- **Attribute als Chips** je Zeile: `Brands: Nike, New Balance +4` · `Sizes: 7M, 7.5M, 8M +8` ·
+  `Condition: New, New w/Tag`
+- **eine Glocke je Artikel** — „sag mir Bescheid, wenn der drankommt"
+- **das Video läuft klein weiter**, während die Liste offen ist
+
+Der Vorher-Zustand ist lehrreich: graue Platzhalter, „Random Pull A/B/C/D", keine Bilder. Whatnot
+hatte dasselbe Problem wie Berkat heute — Artikel entstehen in Eile — und hat es nicht durch
+Gestaltung gelöst, sondern durch **Vorbereitung vor der Show** (Abschnitt 26 der Übergabe).
+
+### Verkäufer-Profil
+
+`BIN.png` zeigt die Reiter `Shop | Shows | Reviews` — Berkat hat sie (Übergabe 18), dort heißen sie
+Angebote / Shows / Bewertungen. Neu für Berkat wären:
+
+- Suche **im** Shop eines Verkäufers plus Filter `Sort`, `Buy it Now`, `Category`
+- `Multiple Options` statt eines Preises, Knopf **„Select Options"** — das ist die Varianten-Frage
+  aus Abschnitt 26, hier als fertige Lösung: Varianten machen aus dem Kaufknopf einen Auswahlknopf.
+- Ein **Produktvideo im Vollbild** mit fester Kaufleiste unten, außerhalb jeder Sendung. Das ist
+  die Nicht-Live-Seite aus der zweiten Analyse, konsequent zu Ende gebaut.
+
+### Kleinigkeiten, die auffallen
+
+- Der **Konto-Reiter zeigt den eigenen Avatar**, kein Symbol. Berkat hat dort `CircleUser`.
+  Winzig, aber es ist der einzige Reiter, der von *mir* handelt.
+- Neue Funktionen werden über ein **Erklär-Blatt** eingeführt (Bild, Titel, zwei Sätze, ein Knopf)
+  — z. B. „A Week of Hearts" für die Herz-Geste, die Berkat auch hat.
+- Die Zuschauerzahl wird **abgekürzt** (`2.1k`), Berkat schreibt sie aus. Ab vierstellig lohnt das.
+
+### Was daraus folgt — ehrlich sortiert
+
+**Kein Handlungsbedarf** (Berkat ist gleichauf): Feed-Karte, Live-Badge, laufender Artikel mit
+Countdown, Kategorie auf der Karte, Profil-Reiter, fünf Reiter unten, Filterpillen im
+Kategorien-Reiter.
+
+**Echte Lücken, nach Nutzen sortiert:**
+
+1. **Filter und Suche im Regal** — Berkats `/shop` ist eine flache Liste ohne jede Sortierung. Bei
+   zwei Artikeln egal, ab fünfzig unbrauchbar. Whatnots Chips (`Auktion`, `Sofortkauf`, `Verkauft`,
+   `Sortierung`) sind die naheliegende Vorlage und brauchen keine Migration.
+2. **Artikel vor der Show vorbereiten** — steht als größte Lücke schon in Übergabe 26. Whatnots
+   Vorher/Nachher belegt, dass sie dasselbe Problem hatten.
+3. **Varianten** (Größe, Farbe) mit „Optionen wählen" statt Kaufknopf — für Abaya, Hijab, Schuhe
+   der Normalfall, nicht die Ausnahme.
+4. **Attribute als Chips** (Marke, Größe) neben dem Zustand, den Berkat schon hat.
+5. **Der eigene Avatar im Konto-Reiter** — eine Zeile, rein kosmetisch.
+
+**Nicht übernehmen:** die abgekürzte Zuschauerzahl (bei zweistelligen Zahlen wäre `2.1k` eine
+Behauptung), und die Poster-Cover lassen sich nicht verordnen — sie entstehen, wenn Verkäufer
+merken, dass es sich lohnt.
+
+## Quellen
+
+- `blog.teamwhatnot.com/canada-blog/` — `built-for-live-listings` (Vorher/Nachher der Shop-Liste),
+  `capture-buyer-intent-and-drive-sales` (angepinnter Artikel im Feed), `sellerhome`, `freshlook`;
+  Bilder über `?format=1500w`, 18.08.2026
+
+---
+
+## Sechste Analyse: der Verkäufer-Bereich (19.08.2026)
+
+Quelle: `blog.teamwhatnot.com/unitedstates/sellerhome`, offizielle Produktbilder.
+
+### Whatnots „Seller Hub" ist ein ÜBERBLICK, kein Formular
+
+```
+Seller Hub                                    ☰
+┌──────────────────┐ ┌──────────────────┐
+│ Create a Product │ │ Schedule a Show  │     ← zwei Einstiege, mehr nicht
+└──────────────────┘ └──────────────────┘
+
+Shipments
+  Ready for Dropoff · 2 due tomorrow      11 ›
+
+Account Health                          View All
+  On-Time Shipment  Fulfillment Success  Policy
+  100 %             100 %                Excellent
+
+Upcoming Shows                          View All
+  [Today 6:00PM 🔖24] [4/2 6:00PM 🔖24] …
+```
+
+**Die beiden Kacheln oben sind nur Türen.** Das Anlegen eines Produkts und das Planen einer Show
+passieren auf eigenen Bildschirmen. Der Hub selbst beantwortet eine andere Frage: **„Wie läuft mein
+Geschäft?"** — Sendungen mit Frist, drei Kennzahlen, die nächsten Termine.
+
+### Berkats Verkaufen-Reiter ist das Formular
+
+| | |
+|---|---|
+| 1 | „Deine ersten Schritte" — Fortschrittsbalken, vier Zeilen |
+| 2 | **„Mach die Show auf"** — Titelfeld, großer Cover-Wähler, Kategorie-Chips, Erklärtext, „Show starten" |
+| 3 | **„Nächsten Termin ankündigen"** — Bild + Titel, zwei Erklärtexte, Wann-Zeile, „Ankündigen" |
+| 4 | „Bestellungen · 3 zu packen" / „Dein Regal · 9 kaufbar" |
+
+Zwei **volle Formulare** direkt untereinander, zusammen anderthalb Bildschirmhöhen. Das ist die
+eigentliche Antwort auf Zaurs Kritik vom 18.08. („sehr viele Auswahlfelder, dadurch wird die Seite
+sehr lang und unübersichtlich") — **nicht die Kacheln im Sendeplan waren das Problem**, die sind
+seit Abschnitt 27 im Blatt. Das Problem ist, dass die Übersichtsseite zwei Formulare IST.
+
+Verschärfend: Die beiden Formulare sehen fast gleich aus — Bild links, Titel rechts, Knopf unten.
+Der Unterschied ist allein „jetzt" gegen „später". Wer den Reiter zum ersten Mal öffnet, sieht
+zweimal dasselbe und muss den Unterschied aus den Überschriften erschließen.
+
+### Was Berkat schon hat — und zwar gleichwertig
+
+Das Verkäufer-**Profil** ist praktisch deckungsgleich: drei Statistik-Kacheln (Bewertung,
+Versandzeit, Verkäufe), Follower-Zeile, Bio, „Message" und „Tip Me" nebeneinander, Reiter
+`Shop | Shows | Reviews`. Berkat hat dieselbe Anordnung — plus die Bürgen, die Whatnot fehlen.
+
+### Zwei Dinge, die Whatnot dort hat und Berkat nicht
+
+1. **Account Health.** Drei Zahlen: pünktliche Sendungen, erfolgreiche Abwicklung,
+   Richtlinien-Stand. Das ist Verkäufer-**Führung** — es sagt, woran man gemessen wird, bevor
+   jemand sich beschwert. Berkat hat nichts davon.
+2. **Die Lesezeichen-Zahl auf Termin-Karten** (`🔖 24`). Sie zeigt dem Verkäufer, **wie viele
+   Menschen für diesen Termin erinnert werden.** Das ist das stärkste Motivations-Signal im ganzen
+   Hub: Es macht aus einer Ankündigung eine Erwartung. Berkats Sendeplan zeigt Termine ohne diese
+   Zahl — dabei liegt sie in `scheduled_lives` bereits vor (die Erinnerungen werden ja verschickt).
+
+### Nebenbefund: das Gebots-UI, endlich gesehen
+
+Im selben Bild ein laufender Live-Raum mit Auktion. Unten:
+
+```
+[🚌] No Cancellations!! #9        $16
+     $5.25 Shipping + Taxes    00:01 ⟵ rot
+  ( Custom )  [ Bid: $16 ≫ ]  ⟵ gelb, breit
+```
+
+**Zwei Knöpfe: ein Schnellgebot zum nächsten Schritt und „Custom" für einen eigenen Betrag.** Der
+Countdown steht klein an der Artikelzeile, nicht groß im Bild. Berkat löst das mit einer Ziehbahn
+(bewusst, siehe Übergabe: „Ein Bildschirm, auf dem Tippen die normale Geste ist, darf keinen Kauf
+mit demselben Tippen auslösen") — die Entscheidung bleibt richtig, aber der zweite Weg für einen
+**eigenen Betrag** fehlt bei Berkat.
+
+Außerdem im Bild: „Watch to earn 00:36" (Zuschauen wird belohnt) und „Show Notes". Beides bewusst
+nicht für Berkat — das erste ist eine Aufmerksamkeits-Prämie, die zur ethischen Linie in der
+Übergabe (§ Design-Gesetz 4) nicht passt.
+
+### Was daraus für den Verkaufen-Reiter folgt
+
+1. **Die zwei Formulare hinter Einstiege legen.** Der Reiter zeigt dann: was ansteht (Bestellungen,
+   Regal), was kommt (Termine), und zwei Knöpfe „Show starten" / „Termin ankündigen". Das ist
+   Whatnots Aufteilung und löst „lang und unübersichtlich" an der Wurzel.
+2. **Erklärtexte kürzen.** Drei mehrzeilige Hinweise stehen zwischen den Feldern
+   („Ohne Kategorie …", „Wer dir folgt …", „Ohne Bild …"). Sie sind alle richtig — aber sie
+   erklären, bevor jemand gefragt hat.
+3. **Die Lesezeichen-Zahl an die Termine.** Billig, weil die Daten vorliegen, und es ist das
+   Signal, das einen Verkäufer wiederkommen lässt.
+4. **Account Health** — erst sinnvoll, wenn es echte Verkäufer mit echten Sendungen gibt. Nicht
+   jetzt.
+
+## Quelle
+
+- `blog.teamwhatnot.com/unitedstates/sellerhome` — Seller Hub, Verkäufer-Profil und Live-Raum mit
+  laufender Auktion, 19.08.2026

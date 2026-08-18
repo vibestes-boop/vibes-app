@@ -12,18 +12,28 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 
 ---
 
-## 0. Wo du gerade stehst — 18.08.2026
+## 0. Wo du gerade stehst — 19.08.2026
 
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Frisch dazugekommen (17./18.08.2026):** Artikelseite (21), Audit mit 45 Funden (22),
-> Shop-Vollausbau (23), Preisvorschlag (24), Rechtstexte (25) — und **Abschnitt 26, wo die
-> nächste Arbeit liegt.** Wer hier neu einsteigt: erst 0, dann 26, dann bei Bedarf rückwärts.
+> **Der Design-Durchgang vom 18./19.08.2026** hat den größten Teil der App angefasst. Wer neu
+> einsteigt, liest **0 → 38 → 26** und danach bei Bedarf rückwärts.
 >
-> ⚠️ **Was in der Datenbank liegt, sind Testdaten.** Es wird nichts verkauft. Der Anbietertyp,
-> die zwei Angebote, die Bestellungen — alles Testläufe. Wer daraus Aussagen über einen echten
-> Verkäufer ableitet, liest den Datenstand falsch.
+> Neu in dieser Runde: Startseite zeigt das Regal (27), Hochformat für alle Karten (28),
+> Entdeckungs-Leiste (29), Suche und Sortierung im Regal (30), Testware per Skript (31),
+> Filter mit Ort und Preis (32), Artikelseite geprüft (33) und entrümpelt (34), Impressum am
+> richtigen Ort (35, 36), Verkaufen-Reiter als Übersicht (37).
+>
+> Grundlage sind drei neue Whatnot-Analysen (vierte bis sechste, alle in `WHATNOT-ANALYSE.md`).
+> **Ihr wichtigstes Ergebnis ist entlastend:** Bei Feed-Karte, Profil und Artikelseite ist Berkat
+> gleichauf oder reicher. Der Abstand lag an fehlendem Inhalt, nicht an Gestaltung — mit 38
+> Testartikeln sieht dieselbe App aus wie ein anderes Produkt.
+>
+> ⚠️ **Was in der Datenbank liegt, sind Testdaten.** Es wird nichts verkauft. 36 davon stammen
+> aus `scripts/seed-berkat-shop.mjs` und tragen `[testware]` in der Beschreibung; sie gehören
+> fremden Profilen, damit Kaufknopf, Merken und Preisvorschlag überhaupt sichtbar werden.
+> **Vor jeder echten Nutzung entfernen** (`--remove`).
 
 ### Gebaut und am echten Datenstand geprüft
 
@@ -32,7 +42,7 @@ was gilt.
 | Auktion, Gebote, Anti-Snipe, Zuschlag, Sammelkorb | ✅ |
 | Kasse — öffnet **in der App**, bezahlen am Show-Ende | ✅ (Abschnitt 11) |
 | Versand — Zonen-Pauschale pro Paket, bis in die Datenbank | ✅ `shipping_cents 490` belegt (14) |
-| Sendeplan — Termine, wöchentliche Reihen, Erinnerungs-Push | ✅ bis auf den Sperrbildschirm (13) |
+| Sendeplan — Termine, wöchentliche Reihen, Erinnerungs-Push | ✅ bis auf den Sperrbildschirm (13); Zeitwahl seit 18.08. im Blatt (26) |
 | **Termin-Bild** — Vorschaubild auf der „Demnächst"-Karte, Rückfall aufs letzte Show-Cover | ✅ am Gerät durchgespielt, Rückfall belegt (13) |
 | Bürgen — Vertrauen mit Namen statt Sterne | ✅ (15) |
 | **Dauerangebote** — kaufbar ohne laufende Show | ✅ Kauf gelaufen (17) |
@@ -84,8 +94,13 @@ was gilt.
    installieren**; alles Gebaute ist für genau eine Person erreichbar. TestFlight braucht Apples
    Anmeldung mit Zwei-Faktor — das kann nur Zaur.
 2. **Stripe-Zugang.** Konto ist `acct_1Tk85WDimgI7k5Md` („brandwerkx"), die Wiederherstellung läuft
-   per Ausweis. Alles ist **Testbetrieb** (`cs_test_`, nie echtes Geld). Danach zuerst: Klarna,
-   Billie und Scalapay abschalten — **in Test- UND Live-Modus getrennt** (Riba, Analyse § B3).
+   per Ausweis. Alles ist **Testbetrieb** (`cs_test_`, nie echtes Geld).
+   ✅ **Ratenzahlung ist seit dem 19.08.2026 abgeschaltet** — Klarna, Billie und Scalapay, in Test-
+   und Live-Modus getrennt (Riba, Analyse § B3). Der Weg dorthin, falls es sich wiederholt:
+   Dashboard → Einstellungen → Zahlungen → Zahlungsmethoden; die Testmodus-Liste ist eine eigene
+   Seite (`/test/` im Pfad). ⚠️ Stripe schaltet neue Methoden bei Länder-Freischaltungen von selbst
+   zu — **vor dem Go-Live noch einmal durchsehen** und einen etwaigen Automatik-Schalter
+   („von Stripe verwaltet") zuerst ausschalten, sonst kommen sie zurück.
 3. **Phase 0 ist nie begonnen.** Fünf Verkäufer, acht Wochen, wöchentlich zwei Stunden. Das Werkzeug
    dafür steht seit dem 15.08. vollständig; die Menschen fehlen.
 
@@ -3422,16 +3437,27 @@ nichts Halbfertiges im Baum außer `deno.lock`, das wie immer nicht dazugehört.
 
 | | |
 |---|---|
-| Letzter Commit | `0d952e0 docs(berkat): dritte Whatnot-Analyse — und die Rechtstexte, die daraus fehlten` |
+| Letzter Commit | `f97227b docs(berkat): Abschnitt 26 — Anschlusspunkt, und eine Richtigstellung` |
 | Migrationen | **34, alle eingespielt und verzeichnet**, keine Lücke |
 | `tsc --noEmit` | fehlerfrei |
 | `expo export --platform ios` | fehlerfrei |
 | Website | live, neun Seiten inkl. AGB und Widerruf |
 | Ungeprüft | alles, was ein **zweites Konto** braucht — siehe unten |
 
-### Drei Whatnot-Analysen, alle in `WHATNOT-ANALYSE.md`
+**Nachtrag 18.08.2026, abends:** Zwei der hier gelisteten offenen Punkte sind gebaut und am
+Simulator geprüft — das **Wann-Blatt** im Sendeplan (Verkaufen-Bildschirm gekürzt) und der
+**Zustands-Leitfaden** im Composer. Beide brauchten weder Migration noch Build. Außerdem ist der
+**Audit für die Reservieren-Lücke gemacht** (Abschnitt 26): `status='active'` für eine Vorab-Zeile
+ist versperrt, ein neuer Status `'planned'` ist gangbar und kostet vier Eingriffe — einer davon
+ist der Go-Live-Push, der sonst still ausfällt. Die Migration selbst ist **nicht** eingespielt;
+sie fasst eine mit der ausgelieferten Serlo-App geteilte Tabelle an und gehört unter Aufsicht.
 
-Die Datei hat inzwischen vier Teile. Wer sie liest, liest sie in dieser Reihenfolge:
+**Und danach die Startseite** (Abschnitt 27): Sendet niemand, zeigt sie jetzt das Regal, statt
+darauf zu verweisen. Das ist der Zustand, den rund 94 % aller Besucher sehen.
+
+### Vier Whatnot-Analysen, alle in `WHATNOT-ANALYSE.md`
+
+Wer sie liest, liest sie in dieser Reihenfolge:
 
 1. **Vollanalyse (13.08.)** — Strategie, Zahlen, Psychologie, Struktur, Technik, Recht, Phasenplan.
    Die Grundlage des ganzen Projekts.
@@ -3440,6 +3466,10 @@ Die Datei hat inzwischen vier Teile. Wer sie liest, liest sie in dieser Reihenfo
    mit 8 Mrd. $ GMV nicht gut sichtbar.
 3. **Die deutsche Rechtsmaschine (18.08.)** — `Whatnot Europe Ltd.`, USt-Riegel am Eingang,
    der „eingeschränkte Inkassobeauftragte", Vertragsschluss im Text, Durchsetzungsmaschine.
+4. **Das Design (18.08.)** — nachgemessen statt geschätzt: eine Schriftgröße, ein Gewicht, ein
+   Radius, Signalgelb zwei- bis dreimal pro Seite. **Der Kaufknopf ist grau, gelb ist „Folgen".**
+   Enthält die Auflösung des Widerspruchs zu Berkats Regel „Gold ist der Kauf" — sie hält, solange
+   im Regal kein Kaufknopf auf der Karte sitzt.
 
 ### ⚠️ Die eigentliche Lücke: Artikel entstehen erst IM Raum
 
@@ -3479,20 +3509,103 @@ Das kostet vier Dinge auf einmal:
 ⚠️ **Schritt 2 ist der riskante.** `live_sessions` ist mit Serlo geteilt, und Serlos Listen filtern
 auf `status = 'active'`. Eine vorab angelegte Zeile braucht einen Status, den **beide** Apps
 korrekt ignorieren — das ist exakt die Klasse von Änderung, die am 14.08. die Live-Liste in allen
-drei Oberflächen leer gemacht hätte (Abschnitt 8, „Die App-Trennung"). Vor dem Bauen: alle sieben
-Listen-Abfragen beider Apps durchgehen, plus `get_public_profile_web`, plus die zwei Schreibpfade,
-die beim Live-Start fremde Sessions beenden.
+drei Oberflächen leer gemacht hätte (Abschnitt 8, „Die App-Trennung").
 
-### Angefangen und bewusst gestoppt: der Verkaufen-Bildschirm
+#### Der geforderte Audit ist gemacht — 18.08.2026
+
+Beide Apps, alle Migrationen, alle Edge Functions durchgesucht; die fünf Kernbefunde am Quelltext
+gegengeprüft. **Das Ergebnis in einem Satz: Der naheliegende Weg ist versperrt, der andere ist
+gangbar und kostet vier Eingriffe.**
+
+**Warum `status = 'active'` für die Vorab-Zeile NICHT geht** — vier Stellen, jede allein tödlich:
+
+| Wo | Was passiert |
+|---|---|
+| `20260415000000_cleanup_cron.sql:44` + `functions/cleanup-stale-lives` | Setzt **alle 5 Minuten** jede `active`-Zeile mit `updated_at` älter als 10 Minuten auf `ended` — **ohne app-Filter**. Eine Tage vorher angekündigte Show ist tot, bevor sie beginnt. |
+| `apps/berkat/lib/useStudio.ts:42` (`useMyShow`) | `order('started_at' desc).limit(1)` — die Vorab-Zeile verdrängt die **echte laufende** Show. Studio-Steuerung und „Beenden" zeigen auf die falsche Session. |
+| `lib/useLiveSession.ts:363` + `apps/web/app/actions/live-host.ts:77` | Der Zombie-Cleanup beendet beim nächsten echten Live-Start **alle** `active`-Zeilen des Hosts — die Vorab-Zeile samt der daran hängenden Artikel. |
+| Startseite, Kategorien, Aktivität, Verkäuferprofil (Berkat) | Zeigen leere Geisterzeilen; `get_berkat_category_counts` zählt sie mit. |
+
+**Der Weg über einen neuen Status (`'planned'`) funktioniert** — er verlangt vier Eingriffe, und
+der zweite ist der, den man übersieht:
+
+1. **CHECK-Constraint erweitern.** `live_sessions_status_check` erlaubt heute ausschließlich
+   `'active'` und `'ended'` (`supabase/schema_live.sql:13115`); ein INSERT mit `'planned'`
+   scheitert mit `23514`.
+2. ⚠️ **Der Go-Live-Push ginge verloren.** `trg_notify_followers_on_go_live`
+   (`20260519210000_live_notification_recovery.sql`) ist **AFTER INSERT ONLY**. Wird die Zeile als
+   `'planned'` angelegt und später auf `'active'` gedreht, feuert er **nie** — die Fassung mit
+   Mute-Respekt und Backlog-Deckel fällt ersatzlos aus. Muss auf
+   `AFTER INSERT OR UPDATE OF status`.
+3. **Statusfilter nachrüsten**, wo heute gar keiner steht und eine Vorab-Zeile durchkäme:
+   `apps/web/lib/data/studio.ts:458` und `:532`, `apps/web/app/studio/moderation/page.tsx:41`,
+   die View `creator_live_history` — und in Berkat der **Bild-Rückfall** in
+   `20260816180000`/`20260816190000` (`ORDER BY started_at DESC` ohne Statusfilter: das Cover
+   einer nie gelaufenen Vorab-Show würde zum Fallback des nächsten Termins) sowie
+   `search_berkat_sellers`.
+4. **Entscheiden, ob die Artikel einer geplanten Show vorab öffentlich sind.**
+   `live_auctions_select` erbt von der Session nur `women_only`, **nicht den Status** — die Ware
+   wäre ab dem Anlegen für jeden lesbar. Das ist Schritt 3 des Plans oben und damit vermutlich
+   gewollt; es muss nur eine Entscheidung sein und kein Nebeneffekt.
+
+Und die gute Nachricht, die den ganzen Umbau erst lohnend macht: **`create_live_auction` prüft
+weder Status noch App**, nur `host_id = auth.uid()` (`20260817130000:64`). Die Vorabzuordnung von
+Artikeln braucht dort **keine Änderung**.
+
+Zusätzlich zu bedenken: Jede **neue Spalte** auf `live_sessions` (etwa `scheduled_id`) ist wegen
+der eingefrorenen Spaltenliste für die Clients unsichtbar und braucht ihr eigenes
+`GRANT SELECT (spalte)` — siehe Abschnitt 3.
+
+#### ~~Nebenbefund aus demselben Audit: die App-Trennung hat ein fünftes Loch~~ — Web erledigt 18.08.2026
+
+`creator_live_history` hat **kein `WHERE`** — weder Status noch App — und
+`apps/web/lib/data/live-host.ts:104` (`getMyPastSessions`) filtert nur auf `host_id`. **Berkat-Shows
+erscheinen damit schon heute in Serlos Web-Studio unter „Vergangene Sessions".** Kein Datenleck
+(jeder sieht nur die eigenen), aber die App-Trennung von `20260814280000` ist an dieser Stelle nicht
+durchgezogen. Fällt heute nur nicht auf, weil genau eine Person beide Apps benutzt.
+
+Der Fix ist nicht einzeilig: Die View gibt `app` gar nicht aus, man kann also nicht auf ihr
+filtern. Entweder die View um die Spalte erweitern (Migration, geteilte View der Produktions-App)
+oder die zweite Abfrage in `getMyPastSessions`, die ohnehin auf `live_sessions` geht, als Filter
+benutzen.
+
+**Gemacht: der zweite Weg, ohne Migration.** `getMyPastSessions` fragt jetzt **zuerst**
+`live_sessions` (`host_id` + `app = 'serlo'`, sortiert, `limit`) und reichert die Treffer danach
+aus der View an. Keine Änderung an einer View, die die ausgelieferte Serlo-App mitbenutzt — also
+kein Risiko an `security_invoker` (`20260814270000`) und an den Grants. Nur ein Vercel-Deploy, keine
+Rollout-Reihenfolge.
+
+Zwei Dinge, die dabei nicht offensichtlich waren:
+
+- **Nachträglich filtern hätte zu wenig gezeigt.** Der naheliegende Weg — View wie bisher mit
+  `limit` abfragen, Berkat-Zeilen danach verwerfen — verbraucht das Fenster von 30 schon vor dem
+  Filter. Bei 20 Berkat-Sessions im Backfill wären in Serlos Studio ein Dutzend übrig geblieben,
+  und es hätte wie ein zweiter Fehler ausgesehen. Zuerst `live_sessions` zu fragen liefert genau
+  die letzten 30 **Serlo**-Sessions.
+- **Der Filter funktioniert nur wegen `20260814290000`.** `app` ist eine nachgereichte Spalte auf
+  `live_sessions` und damit von der eingefrorenen Spaltenliste nicht gedeckt (Abschnitt 3). Das
+  eigene `GRANT SELECT (app)` steht — sonst wäre schon der Filter ein `42501`.
+
+⚠️ **Offen: dieselbe Lücke in der nativen Serlo-App.** `lib/useCreatorLiveHistory.ts:58` liest
+dieselbe View mit `select('*')` und filtert ebenfalls nur auf `host_id`; angezeigt wird sie in
+`app/creator/live-history.tsx`. **Dort stehen die Berkat-Shows weiterhin drin.** Der Web-Fix greift
+nicht, weil die native Abfrage gar nicht erst auf `live_sessions` geht. Und der Trick von oben ist
+dort nicht wiederholbar, ohne den Hook auf zwei Abfragen umzubauen.
+
+Der geradere Weg für nativ ist deshalb doch der **erste**: die View um `app` erweitern
+(`CREATE OR REPLACE VIEW`, `security_invoker = on` danach **prüfen**, Grants explizit neu setzen —
+Regel aus `20260419250000`), dann `.eq('app', 'serlo')` im Hook. Das ist eine Migration **plus** ein
+OTA (`eas update`, `EAS_BUILD=1`) und braucht damit die Reihenfolge aus `20260814280000` — also eine
+Entscheidung, keine Nebensache. Bis dahin: nur das Web ist sauber.
+
+### ~~Angefangen und bewusst gestoppt: der Verkaufen-Bildschirm~~ — gebaut am 18.08.2026
 
 Zaur am 18.08. mit Screenshots aus Whatnots Verkäufer-Onboarding: *„es hat sehr viele Auswahlfelder,
 dadurch wird die Seite sehr lang und unübersichtlich."*
 
-Stimmt. Der `SchedulePlanner`-Block trägt **elf Kacheln plus zwei Hinweistexte**: 7 Tage, bis zu
-4 Zeiten (3 relative + absolute Stunden), 2 Rhythmus-Kacheln — das ist ein halber Bildschirm für
-eine Entscheidung.
-
-**Die Entscheidung ist schon getroffen, gebaut ist nichts.** So soll es aussehen:
+Stimmt. Der `SchedulePlanner`-Block trug **elf Kacheln plus zwei Hinweistexte**: 7 Tage, bis zu
+4 Zeiten (3 relative + absolute Stunden), 2 Rhythmus-Kacheln — ein halber Bildschirm für eine
+Entscheidung. **Umgesetzt wie geplant**, am Simulator durchgespielt:
 
 ```
 📅 Nächsten Termin ankündigen
@@ -3503,8 +3616,19 @@ eine Entscheidung.
 [ Ankündigen ]
 ```
 
-Tippen öffnet ein Blatt (`Modal`, wie im Bearbeiten-Blatt der Artikelseite) mit **denselben
-Kacheln**, darunter „Übernehmen: Di 20:00 · 4 Termine". Blatt zu, Hauptseite wieder kurz.
+Tippen öffnet ein `pageSheet`-Blatt („Wann sendest du?") mit **denselben Kacheln**, überschrieben
+mit „Tag" und „Uhrzeit", darunter „Übernehmen: Heute 20:00 · 4 Termine". Blatt zu, Hauptseite kurz.
+
+Drei Dinge, die beim Umbau entschieden wurden und nicht offensichtlich sind:
+
+- **Der Hauptknopf heißt jetzt „Ankündigen"**, nicht mehr „Ab Di 20:00 — jede Woche". Der Termin
+  steht eine Zeile darüber; ihn zweimal zu nennen war die Verdopplung, die die Karte lang machte.
+  Nur der Fehlerfall bleibt am Knopf („Dieser Zeitpunkt ist schon vorbei"), weil er sonst nirgends
+  stünde.
+- **„Übernehmen" schließt nur das Blatt, es trägt nichts ein.** Eingetragen wird auf der
+  Hauptseite. Sonst gäbe es zwei Knöpfe, die dasselbe zu tun scheinen, und der zweite gewinnt.
+- **Der Knopf im Blatt ist bei totem Zeitpunkt gesperrt** — wer dort übernehmen könnte, trüge eine
+  Auswahl nach draußen, die der Server ohnehin ablehnt.
 
 ⚠️ **Kein nativer Datums-/Zeit-Wähler.** Zwei Gründe, und beide sind entschieden:
 
@@ -3513,11 +3637,11 @@ Kacheln**, darunter „Übernehmen: Di 20:00 · 4 Termine". Blatt zu, Hauptseite
   ‚irgendwann Dienstag halb neun' ein; das Ritual ist aber die Wiederholung."* Ein Kalender
   zerstört genau das Ritual, das der Sendeplan erzeugen soll.
 
-Die Kacheln bleiben also. Sie wandern nur eine Ebene tiefer, und die Hauptseite zeigt das
+Die Kacheln sind also geblieben. Sie stehen nur eine Ebene tiefer, und die Hauptseite zeigt das
 **Ergebnis** statt des Entscheidungsbaums.
 
-Betroffen: `components/SchedulePlanner.tsx` (501 Zeilen; die Zustände und Berechnungen ab Zeile 65
-bleiben unverändert, nur die drei Kachel-Blöcke ab Zeile 215 wandern ins Blatt).
+Am Gerät geprüft: Zeile zeigt „Heute 20:00 · jede Woche", Blatt öffnet, „in 30 Min" blendet den
+Rhythmus-Block aus (eine spontane Sendung ist keine Reihe), Zeile steht danach auf „in 30 Min".
 
 **Was aus den Screenshots noch zu lernen wäre, aber nicht entschieden ist:**
 
@@ -3550,9 +3674,819 @@ Minuten belegt.
   `extendSeconds: 10` fest verdrahtet (`theme/tokens.ts`).
 - **Varianten** (Größe/Farbe an einem Artikel) — wichtig für Abaya, Hijab, Mode, Schuhe. Erst mit
   einem echten Verkäufer, vorher Schema-Arbeit ins Blaue.
-- **Zustands-Leitfaden** — sechs Slugs, kein Satz dazu, was „Sehr gut" heißt. Vier Sätze im
-  Composer, kein Feature.
+- ~~**Zustands-Leitfaden**~~ — **erledigt am 18.08.2026.** Jeder der sechs Zustände in `CONDITIONS`
+  (`lib/useBerkatSeller.ts`) trägt jetzt ein `hint`; der Composer zeigt den Satz zur **gewählten**
+  Kachel, nicht alle sechs. Am Gerät gesehen: „Sehr gut" → „Kaum benutzt, keine sichtbaren Mängel."
+  Der Maßstab steht damit dort, wo der Verkäufer die Angabe macht — beim Privatverkauf ohne
+  Gewährleistung ist genau sie das, woran er gemessen wird.
 - **Verkäufer-Analytics** — Whatnots Seller Hub hat sie, Berkat gar nichts.
 - **Bilder umsortieren** geht nur über Entfernen und neu Hinzufügen (Zieh-Sortierer bräuchte
   `react-native-gesture-handler` → Build).
 - **Impressums-Formular im Konto** — Spalten stehen, Formular fehlt.
+
+---
+
+## 27. Die Startseite zeigt das Regal (18.08.2026, abends)
+
+Erste Umsetzung aus der **vierten Whatnot-Analyse** (Design). Kein neues Feature — eine Fläche, die
+94 % der Zeit nichts tat, tut jetzt etwas.
+
+### Was vorher da stand
+
+Läuft keine Show, zeigte die Startseite eine Ähre, den Satz „Gerade ist niemand live" und einen
+Knopf „2 Angebote ansehen", der ins Regal führte. Alles handwerklich sauber — und trotzdem der
+falsche Bildschirm: **Das ist der Zustand, den fast jeder Besucher sieht** (fünf Verkäufer × zwei
+Stunden pro Woche, Abschnitt 17). Die wichtigste Fläche der App verwies also im Normalfall auf
+einen anderen Bildschirm, statt selbst etwas zu zeigen.
+
+Aus der Analyse: *„Ein Regal erzeugt keine Nachfrage. Es hält Nachfrage, die schon da ist."* Wer
+die App öffnet, **hat** Nachfrage. Sie einen Tipp weit wegzuschicken verschenkt sie.
+
+### Was jetzt passiert
+
+Im Ruhezustand — keine Show, keine Suche, kein Filter — füllen bis zu acht Angebote aus dem Regal
+dasselbe zweispaltige Raster, unter einer Zeile, die beides sagt: „Gerade ist niemand live / Aus
+dem Regal — rund um die Uhr kaufbar, auch ohne Sendung." Gibt es mehr als die gezeigten, steht
+unter dem Raster der Weg ins ganze Regal.
+
+Vier Entscheidungen, die nicht offensichtlich sind:
+
+- **Nie beides zugleich.** Läuft auch nur eine Show, gehört das Raster ihr allein. Eine laufende
+  Sendung ist immer das Wichtigere, und zwei Sorten Karten nebeneinander wären zwei Antworten auf
+  eine Frage.
+- **Bei Suche und Filter bleibt alles wie es war.** Die Trefferliste steht im Kopf, das Regal
+  erscheint nicht — am Gerät gegengeprüft: „Kaffee" tippen zeigt weiterhin Verkäufer- und
+  Artikeltreffer oben und „Keine laufende Show" darunter.
+- **`ListingCard`, nicht nachgebaut.** Dieselbe Karte wie Marktplatz und Kategorie. An ihr hängt
+  die Anbieterkennzeichnung nach Art. 246d § 1 EGBGB; eine zweite Abschrift wäre genau der Fehler,
+  für den es die Komponente überhaupt gibt (Abschnitt 21).
+- **Das Regal lädt nur im Ruhezustand** (`useShopListings(limit, enabled)`). Laufen Shows, fragt
+  die Startseite es gar nicht erst ab.
+
+⚠️ **Ein zweiter `useProfiles`-Aufruf ist Absicht.** Die Kette läuft `profiles → visible → idle →
+shelf`; die Verkäufer der Regal-Artikel in dieselbe Liste zu hängen wäre ein Ring. React Query
+teilt beiden Aufrufen denselben Zwischenspeicher, und bei leerem Regal fragt der zweite wegen
+`enabled: ids.length > 0` überhaupt nicht.
+
+### Die Kategorie-Leiste verschwindet, wenn sie nichts filtert
+
+Beim Prüfen am Gerät sofort sichtbar geworden: Die Leiste zeigte im Ruhezustand eine einzelne
+goldene Kachel „Für dich" — 104 Punkte hohes, leeres Gerüst über der Ware, immer aktiv, ohne
+Wirkung. Sie filtert **laufende Shows**; gibt es keine, gibt es nichts zu filtern. Sie erscheint
+jetzt erst ab zwei Einträgen.
+
+Das ist derselbe Gedanke wie beim Regal: **Zeig, was es gibt — nicht das Gerüst, in dem etwas
+stehen könnte.**
+
+### Geprüft und ungeprüft
+
+Am Simulator durchgespielt: Ruhezustand mit zwei Angeboten, Suche „Kaffee" (Treffer oben, Regal
+korrekt weg), Rückkehr in den Ruhezustand. `tsc` und `expo export` sauber, keine Migration, kein
+Build.
+
+**Nicht geprüft:** der Fuß-Knopf „Alle N Angebote ansehen" — er erscheint erst ab mehr als acht
+Angeboten, und es liegen zwei in der Datenbank. Die Bedingung ist
+`idle && shopCount > shelf.length && shelf.length > 0`.
+
+### Die Gold-Regel ist jetzt gegen ihren eigenen Sonderfall gesichert
+
+Aus derselben Analyse, in `theme/tokens.ts` festgeschrieben: Whatnots Kaufknopf im Regal ist
+`rgba(0,0,0,0.05)` — fast unsichtbares Grau —, ihr Signalgelb gehört „Folgen". Der Grund ist
+Arithmetik: Fünfundzwanzig goldene Knöpfe untereinander sind keine Hervorhebung mehr, sondern eine
+Wand.
+
+Berkat hält die Regel heute ein, **ohne es zu wissen** — `ListingCard` hat gar keinen Kaufknopf.
+Der Kommentar am Token sagt jetzt, warum das so bleiben muss und was zu tun ist, falls sich das je
+ändert: Knopf im Raster grau, nicht gold.
+
+---
+
+## 28. Hochformat — die Karten (18.08.2026, spät)
+
+Zaurs Fund, nicht meiner. Nach der Design-Analyse (vierter Teil) sein Einwand: *„die Anzeige
+Kärtchen und Bilder sind Hochformat, unser Design im Allgemeinen kommt nicht an Whatnot ran."*
+Beides zutreffend — und der erste Punkt war messbar.
+
+### Warum die Analyse ihn verfehlt hat
+
+Die vierte Analyse hatte die **Web**-Fassung von Whatnot vermessen. Die ist ein anderes Produkt:
+drei Spalten, Video in einem schwarzen Kasten, Chat als eigene Spalte. Der Store-Screenshot der
+**App** zeigt etwas völlig anderes — randloses Vollbild-Hochformat, alle Bedienelemente als
+Overlay auf dem Video, unten ein gelber Gebots-Knopf über die volle Breite.
+
+Lehre für die nächste Analyse: **Bei einer App ist die Web-Fassung nicht die Quelle.** Die
+offiziellen Store-Screenshots sind kostenlos, offiziell, aktuell und in der Landessprache — über
+`itunes.apple.com/search?term=…&entity=software&country=de` kommt man in einem Aufruf an sie heran.
+
+### Was geändert wurde
+
+`aspectRatio: 1` stand an sechs Stellen. Es war nie eine Entscheidung, sondern der Vorgabewert des
+ersten Rasters, fünfmal abgeschrieben. Neu ist ein Token in `theme/tokens.ts`:
+
+```ts
+export const ratio = { card: 4 / 5, tile: 1 };
+```
+
+Auf `card` (hochkant) stehen jetzt die **Stöber**-Flächen: Angebots-Karte (`ListingCard`, Raster),
+Show-Karte auf der Startseite, „Demnächst"-Karte, die Galerie der Artikelseite und das Raster
+verkaufter Artikel im Verkäufer-Profil. Auf `tile` (quadratisch) bleiben die **Arbeits**-Flächen:
+die Zeilen-Vorschau in Listen und das Bild in der Bestellung. Das ist die Regel aus Abschnitt 18 —
+„was schaue ich mir an" gegen „welches meine ich" —, nur zum ersten Mal auch beim Format angewandt.
+
+Bei gleicher Spaltenbreite zeigt eine 4:5-Karte rund ein Viertel mehr Ware als ein Quadrat. Für
+Abaya, Kleider, Schuhe und Menschen ist das kein Geschmack, sondern der Unterschied zwischen
+„Produkt sichtbar" und „Produkt angeschnitten".
+
+### Der Zuschnitt musste mit — sonst wäre es eine Verschlechterung gewesen
+
+Eine 4:5-Fläche mit quadratisch zugeschnittenen Bildern zu füllen heißt, seitlich ein Fünftel
+wegzuschneiden. Deshalb hat `CropShape` einen dritten Wert: `'portrait'`.
+
+Er verhält sich wie `'wide'` — **kein Zuschnitt-Rahmen** (`allowsEditing: false`), das ganze Bild
+wird geladen, `contentFit="cover"` wählt beim Zeichnen. Der Grund ist derselbe wie dort und steht
+seit dem 16.08. in Abschnitt 3: Auf iOS ist der Rahmen bei `allowsEditing` **immer quadratisch**,
+egal was in `aspect` steht. Ein 4:5-Rahmen wäre ein Versprechen, das die Plattform nicht hält.
+
+Hier ist das sogar der gutmütige Fall: Ein Handyfoto im Hochformat hat 3:4, also fast die
+Kartenform — es verliert beim Zeichnen wenige Prozent oben und unten. Umgestellt sind die drei
+Aufrufe für Show-Cover, Artikelfotos und Termin-Bild; das Profil-Banner bleibt `'wide'`.
+
+⚠️ **Bestandsbilder bleiben quadratisch zugeschnitten.** Was vor dem 18.08.2026 hochgeladen wurde,
+verliert in der neuen Karte seitlich etwas. Das ist sichtbar und nicht reparierbar — die Originale
+liegen nicht mehr vor.
+
+### Die Falle, die dabei zugeschlagen hat
+
+Die Galerie der Artikelseite bekam die neue Höhe über `styles.hero`, ihre **Einzelbilder** standen
+aber weiter auf `height: screenWidth`. Ergebnis am Gerät: Die Fläche war 4:5 hoch, das Foto darin
+quadratisch, und darunter klaffte ein sandfarbener Streifen mit den Blätter-Punkten mittendrin.
+
+**Wer eine Bildfläche umstellt, muss prüfen, ob die Kinder ihre Größe von ihr erben oder selbst
+rechnen.** In einer horizontalen `ScrollView` mit `pagingEnabled` rechnen sie selbst — dort steht
+die Bildhöhe als Zahl im JSX, nicht im Stylesheet, und ein `aspectRatio` am Elternteil erreicht sie
+nicht.
+
+### Geprüft
+
+Am Simulator durchgespielt: Startseite (Regal im Hochformat), Artikelseite (Galerie füllt die
+Fläche, kein Streifen mehr), „Alle Angebote". `tsc` und `expo export` sauber, keine Migration, kein
+Build.
+
+**Nicht geprüft:** der neue `'portrait'`-Zuschnitt selbst — dafür müsste ein Bild ausgewählt
+werden, und der Simulator hat keine Fotomediathek mit brauchbarem Material. Am Gerät ist das ein
+Handgriff: ein Foto einstellen und sehen, ob der Wähler ohne Zuschnitt-Rahmen kommt.
+
+---
+
+## 29. Die Kategorie-Leiste wird zur Entdeckungs-Leiste (18.08.2026, nachts)
+
+Zweite Umsetzung aus der Design-Analyse, und die erste, die einen **Denkfehler** behebt statt einer
+Optik.
+
+### Der Fehler
+
+Die Leiste auf der Startseite wurde aus den **laufenden Shows** aufgebaut. Sie war damit genau dann
+leer, wenn niemand sendet — also rund 94 % der Zeit —, und beantwortete ausgerechnet dann nichts,
+wenn jemand etwas zum Stöbern gesucht hätte. Am Nachmittag des 18.08. wurde sie deshalb
+ausgeblendet, sobald nur noch „Für dich" übrig blieb. Das war richtig gegen das leere Gerüst, aber
+es kurierte ein Symptom: **Die Leiste beantwortete die falsche Frage.**
+
+Whatnots Leiste zeigt **alle** Kategorien, immer, unabhängig davon ob dort jemand sendet. Sie sagt
+„was gibt es hier?"; „was läuft gerade?" beantwortet das Raster darunter ohnehin.
+
+### Was jetzt da steht
+
+Alle zwölf Oberkategorien, sortiert nach Wärme: erst die mit laufenden Shows, dann die mit Ware im
+Regal, dann der Rest alphabetisch. Jede Kachel trägt Name, Bild und eine Zahl — `3 live`, sonst
+`12 kaufbar`, und wenn beides fehlt, nichts (eine Null ist kein Stand).
+
+Die Zahlen kommen aus `get_berkat_category_counts`, also demselben Abruf, den der Kategorien-Reiter
+schon macht. **Nicht selbst nachgerechnet:** Die RPC rollt Kinder auf die Eltern auf (eine Show
+unter „Abaya" zählt auf „Mode") und achtet dabei die Frauen-Only-Grenze, weil sie `SECURITY
+INVOKER` ist. Eine eigene Rechnung im Client wäre eine zweite Wahrheit über dieselbe Zahl gewesen —
+und eine, die den Schutz nicht kennt.
+
+### ⚠️ Der Filter musste aufs Regal wirken — sonst wäre die Leiste eine Verschlechterung gewesen
+
+Der wichtigste Teil dieser Änderung, und er ist nicht sichtbar. Bis dahin schloss ein gesetzter
+Filter den Ruhezustand aus: Das Raster zeigte dann nur Shows der Kategorie. Mit einer Leiste, die
+alle zwölf Kategorien anbietet, hätte der **häufigste** Tipp auf eine Kategorie geführt, in der
+gerade niemand sendet — und mit „Nichts gefunden" geantwortet, obwohl dort Ware liegt.
+
+Deshalb hängt der Ruhezustand jetzt nur noch an „keine Show im Raster, keine Suche". Bei gesetztem
+Filter lädt `useCategoryListings` die Kategorie **samt ihrer Kinder** („Mode" muss zeigen, was unter
+„Abaya" liegt), sonst `useShopListings` das ganze Regal. Immer nur eine der beiden Abfragen ist
+aktiv.
+
+Zwei Dinge, die am Gerät sofort auffielen und mitgehen mussten:
+
+- **Die Erklärzeile war weg**, weil der ganze Listenkopf an `filter === ALL` hing. Man sah Ware
+  ohne Grund. Sie nennt jetzt die Kategorie: „Nichts live in Beauty & Duft".
+- **Der Fuß-Knopf log.** Er zeigte den Gesamtbestand und führte ins ganze Regal — bei gesetzter
+  Kategorie also die falsche Zahl und ein Weg, der die eben getroffene Wahl wegwirft. Jetzt führt
+  er nach `/category/<slug>` und zählt die Kategorie.
+
+### Die Bilder — vorbereitet, nicht fertig
+
+Neue Datei `theme/categoryArt.ts`: je Kategorie ein Symbol und ein gedeckter Farbton. Sie ist die
+**einzige** Stelle, die beim Bildtausch angefasst werden muss — `photo` je Eintrag füllen, fertig.
+Kachelgröße, Raster und Textanordnung bleiben unberührt, und beide Flächen (Leiste und
+Kategorien-Reiter) lesen dieselbe Zuordnung.
+
+Whatnot hat dort **freigestellte Produktfotos** auf farbigem Grund, keine 3D-Renderings — das stand
+bis heute falsch im Quelltext des Kategorien-Reiters. Freistellen genügt also. Zaur macht die
+Bilder später; bis dahin steht an der Stelle das Symbol.
+
+### Zwei Fehler, die am Gerät sichtbar wurden
+
+- **Namen abgeschnitten.** Bei 88 Punkten Breite und einer Zeile endete „Beauty & Duft" nach dem
+  Kaufmanns-Und. Zwei Zeilen, Kachel von 92 auf 100 Punkte.
+- **„Für dich" war eine leere goldene Fläche.** Der Eintrag ist keine Kategorie und trägt deshalb
+  kein Symbol (`art: false`) — dann muss der Text aber in die Mitte, sonst steht er oben und
+  darunter klafft nichts. Dass die Kachel anders aussieht als die übrigen, ist richtig: Sie ist
+  keine Kategorie.
+
+### Geprüft
+
+Am Simulator: Leiste voll mit zwölf Kategorien und Zählern, Tipp auf „Beauty & Duft" zeigt das
+Parfüm mit der richtigen Überschrift, Rückkehr auf „Für dich" zeigt wieder das ganze Regal. `tsc`
+und `expo export` sauber, keine Migration, kein Build.
+
+**Nicht geprüft:** der Fuß-Knopf in einer Kategorie mit mehr als acht Artikeln, und die Sortierung
+nach laufenden Shows — dafür müsste gesendet werden.
+
+---
+
+## 30. Suche und Sortierung im Regal (18.08.2026, nachts)
+
+Erste Umsetzung aus der **fünften Analyse** (die übrigen Flächen der App). `/shop` war eine flache
+Liste ohne jede Möglichkeit, etwas zu finden — bei zwei Artikeln egal, ab fünfzig unbrauchbar.
+Whatnots Shop-Liste hat Suche und Chips, seit sie Bestand haben.
+
+### Eine Schwelle statt eines Entweder-Oder
+
+Im Kopf von `app/shop.tsx` stand ausdrücklich **„bewusst ohne Filter, Suche und Umkreis"**, mit der
+Begründung: *„Eine Filterleiste über zwei Artikel ist keine Hilfe, sondern Beschäftigung."*
+
+Die Begründung ist richtig und gilt weiter — sie ist nur nicht mehr die ganze Wahrheit, sobald das
+Regal wächst. Aufgelöst über `TOOLS_FROM = 8`: Unter acht Artikeln erscheint die Leiste nicht,
+darüber schon. Acht ist eine volle Rasterseite; darunter sieht man ohnehin alles auf einmal, und
+ein Werkzeug für etwas, das man schon überblickt, ist nur eine Zeile weniger Ware auf dem Schirm.
+
+**Das Muster ist übertragbar** und wurde am selben Tag schon zweimal gebraucht (Kategorie-Leiste
+ab zwei Einträgen, Fuß-Knopf ab mehr Ware als gezeigt): Wenn eine alte Entscheidung „zu wenig
+Daten" lautete, ist die Antwort meist eine Schwelle und kein Widerruf.
+
+### Was drin ist
+
+- **Suche** über **Titel und Ort** — „Abaya" oder „Berlin". Die Beschreibung bleibt bewusst
+  draußen: Drei Sätze Fließtext liefern zu viele Zufallstreffer.
+- **Sortierung** als Chips: Neueste · Günstigste · Teuerste. Dunkel, nicht gold — eine Sortierung
+  ist kein Kaufweg (`theme/tokens.ts`).
+- Die **Kopfzeile zählt mit**: ohne Suche „2 Artikel · rund um die Uhr", mit Suche „1 Treffer".
+  Die Artikelzahl über drei sichtbaren Karten wäre eine Auskunft über etwas, das man gerade nicht
+  sieht.
+- Ein **Löschknopf** im Feld. Ohne ihn kommt man aus einer Suche nur mit zwölfmal Rücktaste heraus.
+
+### ⚠️ Der Leerzustand redet über die richtige Menge
+
+Sucht jemand „Parfxzy" und findet nichts, steht dort **nicht** „Noch nichts im Regal" — das Regal
+ist voll, es passt nur nichts zum Wort. Stattdessen: „Nichts für „Parfxzy"", der Hinweis, dass in
+Titel und Ort gesucht wird, und ein Knopf zurück zu allen Artikeln.
+
+Das ist derselbe Fehler, der am 18.08.2026 auf der Startseite gefunden wurde (Suche fand
+„Kaffeetasse", darunter stand „Nichts gefunden"). Er entsteht immer gleich: Ein Leerzustand gehört
+einer Liste, aber der Text redet über den ganzen Bestand.
+
+### ⚠️ Die Grenze dieser Lösung
+
+Gefiltert und sortiert wird **im Client**, über die geladenen Zeilen. Das ist bei
+`useShopListings()` mit seiner Grenze von 60 richtig und wird falsch, sobald das Regal darüber
+hinauswächst: Dann durchsucht die Leiste die ersten sechzig und behauptet, das sei alles. **Wer die
+Grenze anhebt, muss Suche und Sortierung in dieselbe Abfrage schieben** — der Kommentar steht im
+Kopf der Datei.
+
+### Geprüft
+
+Am Simulator mit **vorübergehend auf 1 gesenkter Schwelle** durchgespielt, weil zwei Artikel in der
+Datenbank liegen: Leiste erscheint, „Günstigste" sortiert 35 € vor 64 €, „Parf" filtert auf einen
+Treffer und die Kopfzeile schaltet auf „1 Treffer", „Parfxzy" zeigt den richtigen Leerzustand mit
+Rückweg. Danach `TOOLS_FROM` zurück auf 8 und gegengeprüft, dass die Leiste bei zwei Artikeln
+wieder verschwindet. `tsc` und `expo export` sauber, keine Migration, kein Build.
+
+**Nicht geprüft:** das Verhalten ab echten sechzig Artikeln — also genau der Fall, für den die
+Leiste gebaut ist.
+
+---
+
+## 31. Testware im Regal — und was sie sofort sichtbar machte (18.08.2026, nachts)
+
+### Das Skript
+
+`scripts/seed-berkat-shop.mjs` legt 36 Artikel über 31 Unterkategorien an: Abaya, Hijab,
+Abendmode, Schuhe, Taschen, Gold- und Silberschmuck, Uhren, Oud, Gebetsteppich, Quran,
+Kinderbücher. Preise von 14 € bis 249 €, gemischte Zustände, zwölf deutsche Städte, ein Teil mit
+Preisvorschlag, mehrere mit zwei Bildern.
+
+```bash
+SERVICE_ROLE_KEY=<key> node scripts/seed-berkat-shop.mjs
+SERVICE_ROLE_KEY=<key> node scripts/seed-berkat-shop.mjs --remove
+```
+
+Der Schlüssel kommt aus der Umgebung und steht nirgends im Repo — dasselbe Muster wie beim älteren
+`scripts/seed-posts.js`. Jeder erzeugte Artikel trägt `[testware]` am Ende der Beschreibung; daran
+hängt `--remove`.
+
+**Zwei Entscheidungen, die Wege freischalten:** Die Ware gehört **fremden** Profilen, nicht dem
+eigenen Testkonto — dadurch erscheinen Kaufknopf, Merken-Herz und Preisvorschlag erstmals
+überhaupt (die vier Wege, die laut Abschnitt 26 am zweiten Konto hingen). Und ein Verkäufer steht
+auf `kind = 'business'`, damit der gewerbliche Zweig der Artikelseite samt Impressumsblock endlich
+befüllt ist.
+
+⚠️ **Die Bilder sind direkte Unsplash-URLs, keine Kopie nach R2.** Für Testware richtig — spart den
+Upload und hinterlässt beim Aufräumen nichts. Für echte Angebote wäre es falsch: Die hängen sonst
+an einer fremden Domain.
+
+⚠️ **Stolperstein beim ersten Lauf:** Die Beispielzeile enthielt `sb_secret_…` mit einem echten
+Auslassungszeichen. Wer sie kopiert, schickt U+2026 in einen HTTP-Header und bekommt
+`Cannot convert argument to a ByteString … value of 8230`. Das Skript prüft den Schlüssel jetzt
+vorab auf Nicht-ASCII und auf Mindestlänge und sagt, was zu tun ist.
+
+### Was der Bestand sofort sichtbar machte
+
+Mit 38 Artikeln sieht die App aus wie ein anderes Produkt — dieselben Bildschirme, dieselbe
+Gestaltung. Das ist die Bestätigung der These aus der fünften Analyse: **Ein Teil des Abstands zu
+Whatnot war nie Gestaltung, sondern Inhalt.**
+
+Und es machte zwei Dinge sichtbar, die vorher unsichtbar waren, weil zwei Artikel sie nicht
+auslösen konnten — beides in Abschnitt 32.
+
+---
+
+## 32. Filter, Ort und Preis im Regal (18.08.2026, nachts)
+
+Damit ist der alte Satz „bewusst ohne Filter, Suche und Umkreis" vollständig abgetragen. Suche und
+Sortierung kamen in Abschnitt 30; hier der Rest.
+
+### Ein Blatt, kein Chip-Teppich
+
+Der Filter sitzt hinter einem Knopf **vor** den Sortier-Chips — er verändert, WAS man sieht, die
+Sortierung nur die Reihenfolge. Der Knopf trägt die Zahl der aktiven Filter: Ein Filter, den man
+nicht sieht, erklärt später kein halb leeres Regal.
+
+Das Blatt selbst ist dasselbe Muster wie das Wann-Blatt im Sendeplan und das Bearbeiten-Blatt der
+Artikelseite. Es wirkt **sofort, ohne „Übernehmen"** — der goldene Knopf unten zeigt stattdessen
+mit, was die Auswahl bewirkt: „2 Artikel zeigen", oder „Keine Treffer", bevor man schließt.
+
+### Die Auswahl entsteht aus den Daten
+
+Kategorie, Zustand und Ort werden **aus dem geladenen Bestand gezählt**, nicht aus einer festen
+Liste. Was im Blatt steht, hat garantiert mindestens einen Treffer, und die Zahl daneben sagt wie
+viele. Eine feste Liste hätte sechs Zustände und 31 Kategorien angeboten, die meisten davon leer —
+Auswahlmöglichkeiten, die ins Leere führen, sind schlimmer als keine.
+
+Die Preisstufen richten sich ebenfalls nach dem Bestand: `bis 25 €`, `bis 50 €`, `bis 100 €`
+erscheinen nur, solange es überhaupt Teureres gibt.
+
+### ⚠️ Kategorien auf Elternebene — am Gerät gelernt
+
+Zuerst mit **Unter**kategorien gebaut. Das Blatt zeigte einunddreißig Einträge, davon zwanzig mit
+„1", und man scrollte an ihnen vorbei, bevor „Zustand" überhaupt sichtbar wurde. Umgestellt auf die
+zwölf **Ober**kategorien: Sie passen auf einen Blick und tragen Zahlen, die eine Entscheidung
+stützen („Mode 8"). Der Filter vergleicht deshalb auf Elternebene — „Mode" muss auch „Abaya"
+durchlassen. Wer feiner filtern will, hat den Kategorien-Reiter mit seinem Baum.
+
+### ⚠️ „Umkreis" heißt Ort, nicht Radius
+
+Ein echter Umkreis („20 km um 13353") braucht Geokoordinaten je Postleitzahl. `live_auctions` trägt
+nur `city` und `postal_code` als Text. Die Ortsliste beantwortet dieselbe Frage für den Fall, der
+zählt — „ist das bei mir in der Nähe" —, ohne eine Genauigkeit zu behaupten, die die Daten nicht
+hergeben. Wer den echten Radius will, braucht zuerst eine PLZ-Geo-Tabelle.
+
+### ⚠️ Derselbe Zähl-Fehler, zum dritten Mal
+
+Am Gerät gesehen: Mit „Mode" und „Berlin" standen zwei Karten da — und darüber **„38 Artikel"**.
+Die Kopfzeile schaltete nur bei aktiver SUCHE auf die Trefferzahl um, nicht bei Filtern.
+
+Das ist dieselbe Falle wie am selben Tag auf der Startseite („Kaffeetasse gefunden" über „Nichts
+gefunden") und im Leerzustand des Regals. Sie entsteht immer gleich: **Eine Zeile redet über den
+ganzen Bestand, während der Bildschirm einen Ausschnitt zeigt.** Wer hier eine dritte Art der
+Eingrenzung einbaut, muss sie in dieselbe Bedingung aufnehmen — der Hinweis steht jetzt im Code.
+
+Ebenso der Leerzustand: Er nennt jetzt, ob Suche, Filter oder beides schuld sind, und sein Knopf
+räumt genau das weg. Vorher hätte „Suche zurücksetzen" jemanden vor einer weiterhin leeren Fläche
+stehen lassen, weil noch ein Filter stand.
+
+### Geprüft
+
+Am Simulator mit echten 38 Artikeln: Blatt öffnet mit zwölf Kategorien, vier Zuständen, dreizehn
+Orten und drei Preisstufen. „Mode" + „Berlin" → zwei Treffer, Kopfzeile „2 Treffer", Chip
+„Filter · 2". „Schmuck" + „Frankfurt" → der Knopf sagt vorab „Keine Treffer", danach der richtige
+Leerzustand mit „Filter zurücksetzen". `tsc` und `expo export` sauber, keine Migration, kein Build.
+
+**Nicht geprüft:** ob die Client-Filterung ab mehr als 60 Artikeln noch die Wahrheit sagt — sie tut
+es nicht, siehe die Warnung im Kopf von `app/shop.tsx`.
+
+---
+
+## 33. Die Artikelseite — vier belegte Wege und eine Sackgasse (18.08.2026, nachts)
+
+Erste Prüfung der Artikelseite an **fremder** Ware. Möglich geworden durch die Testware aus
+Abschnitt 31: Vorher gehörten beide Angebote dem eigenen Konto, und alles, was nur an fremden
+Artikeln erscheint, war unsichtbar.
+
+### Die vier Wege aus Abschnitt 26 — alle vier belegt
+
+An „Abaya Dubai-Stil, Sand" von `amir32` (gewerblich, Frankfurt), am Simulator gesehen:
+
+| Weg | Stand |
+|---|---|
+| **Merken-Herz** in der Kopfzeile | ✅ erscheint, nur an fremden Artikeln |
+| **„Nachricht schreiben" statt „Kaufen"** | ✅ die Leiste zeigt den Kontaktweg, weil der Verkäufer keine Kassen-Freigabe hat |
+| **Preisvorschlag** | ✅ „Preis vorschlagen" mit Feld und Senden-Knopf |
+| **Gewerblicher Anbieter-Block** | ✅ „Gewerblich · Widerrufsrecht und Gewährleistung — Gewerblicher Verkauf. 14 Tage Widerrufsrecht und gesetzliche Gewährleistung." |
+
+Der gewerbliche Block war seit dem 17.08. ungeprüft, weil es kein Konto mit `kind = 'business'`
+gab. Das Seed-Skript setzt einen — deshalb steht er jetzt zum ersten Mal auf dem Schirm.
+
+Ebenfalls belegt: die **Bürgen-Zeile** („berkattest bürgt", grün), die Verkäufer-Karte mit
+Bewertung und Versandzeit, der Sammelkorb-Hinweis („Kommt in dasselbe Paket wie deine Zuschläge —
+du zahlst nur einmal Versand") und „Mehr von amir32" mit dem Regal des Verkäufers.
+
+**Weiterhin ungeprüft bleibt der Kaufknopf selbst.** Er erscheint erst, wenn
+`berkat_sellers.checkout_enabled` gesetzt ist, und das ist eine bewusste Admin-Entscheidung, die
+das Seed-Skript nicht vorwegnimmt. Wer ihn sehen will, setzt das Flag für einen Testverkäufer.
+
+### ⚠️ Die Sackgasse: der rote Hinweis führt nirgendwohin
+
+Unter dem Anbieter-Block steht in Rot:
+
+> **Anbieterangaben** — Dieser Verkäufer hat seine Anbieterangaben noch nicht vollständig
+> hinterlegt.
+
+Das ist **richtig**: Ein gewerblicher Verkäufer braucht ein Impressum (§ 5 DDG), das Skript hat
+`kind = 'business'` gesetzt, aber keine Daten. Die Warnung greift also korrekt.
+
+Nur: **Es gibt keinen Weg, sie abzustellen.** Das Impressums-Formular im Konto fehlt bis heute
+(Abschnitt 26, letzter Punkt: „Spalten stehen, Formular fehlt"). Ein gewerblicher Verkäufer sieht
+damit an jedem seiner Angebote einen roten Mangel, den er selbst nicht beheben kann.
+
+Solange kein echter gewerblicher Verkäufer existiert, ist das folgenlos. Es ist aber der Punkt, an
+dem der erste zahlende Gewerbliche hängen bleibt — und damit rückt das Formular von „Kleinkram"
+nach oben.
+
+### Whatnots Produktseite daneben
+
+Aus `blog.teamwhatnot.com/unitedstates/variants` und dem Shopify-Bild:
+
+- Produktzeile im Shop: Bild, Titel, **„Multiple Options"** statt eines Preises, Knopf
+  **„Select Options"**
+- Das Blatt darunter: **„Choose an Option"** mit `Size 10 · 4 left`, `Size 11 · 3 left`,
+  `Size 12 · 4 left` — Auswahl **und Knappheit je Variante** in einer Zeile
+- Verkäuferseite: `Create Listing` mit Pflichtfeld-Sternchen, Mengen-Stepper, Variants-Block
+  („A T-Shirt mit 3 Größen und 2 Farben ergibt 6 Varianten"), Segmented `Auction | Buy It Now`,
+  unten **„Save Draft" neben „Publish"**
+
+**Der Vergleich fällt anders aus als erwartet.** Berkats Artikelseite ist inhaltlich **reicher** —
+Anbieterkennzeichnung mit Rechtsfolge, Widerrufsbelehrung, Impressums-Prüfung, Bürgen, Sammelkorb-
+Erklärung, Versandzeit des Verkäufers. Nichts davon hat Whatnots Produktseite.
+
+Zwei Dinge fehlen Berkat:
+
+1. **Varianten** (Größe, Farbe) mit „Optionen wählen" statt Kaufknopf. Für Abaya, Hijab und Schuhe
+   ist das der Normalfall — von den 36 Testartikeln tragen neun die Größe im Titel, weil es kein
+   Feld dafür gibt.
+2. **Knappheit je Variante** („noch 3"). Berkat kennt nur „ein Stück oder weg".
+
+Und ein Verkäufer-Detail: **„Entwurf speichern"** beim Einstellen. Berkat hat es nicht; wer beim
+Einstellen unterbrochen wird, fängt von vorn an.
+
+### Geprüft
+
+Am Simulator an einem fremden, gewerblichen Artikel: Galerie im Hochformat, Preis, Zustands- und
+Ortschips, Anbieter-Block, Beschreibung, Preisvorschlag, Verkäufer-Karte mit Bürgen,
+Versandhinweis, Anbieterangaben-Warnung, „Mehr von …". Kein Code geändert — das war eine Prüfung,
+kein Umbau.
+
+---
+
+## 34. Die Artikelseite entrümpelt — Pflicht bleibt, Lautstärke geht (18.08.2026, nachts)
+
+Zaurs Einwand nach der Prüfung in Abschnitt 33:
+
+> „Ich denke nicht, dass die Artikelseite der richtige Ort ist für Anbieterkennzeichnung mit
+> Rechtsfolge, Widerrufsbelehrung, Impressums-Prüfung, Bürgen, Sammelkorb-Erklärung, Versandzeit.
+> Leute wollen beim Kaufen genießen und kriegen dadurch positive Stimmung, sie kommen nicht, um
+> eingeschüchtert zu werden."
+
+Berechtigt — aber die sechs Dinge sind nicht dasselbe. **Drei schüchtern ein, drei verkaufen.**
+
+| | Urteil |
+|---|---|
+| Roter Impressums-Mangel | **weg** aus der Käufersicht |
+| Impressumsblock | **verschoben** aufs Verkäufer-Profil |
+| Anbieterkennzeichnung + Rechtsfolge | **bleibt**, aber als Zeile statt Kasten |
+| Bürgen („berkattest bürgt") | **bleibt** — Vertrauen, nicht Recht |
+| Versandzeit („<1h") | **bleibt** — Verkaufsargument |
+| Sammelkorb („du zahlst nur einmal Versand") | **bleibt** — gute Nachricht |
+
+### Der rote Satz war der schlimmste Fall
+
+> „Dieser Verkäufer hat seine Anbieterangaben noch nicht vollständig hinterlegt."
+
+Er warnte den **Käufer** vor einem Mangel, den er weder verursacht hat noch beheben kann, und säte
+Misstrauen gegen den Verkäufer. Und er warnte in Wahrheit vor **unserer eigenen Lücke**: Das
+Formular, mit dem der Verkäufer die Angaben eintragen könnte, fehlt bis heute (Abschnitt 33, „die
+Sackgasse"). Für den Verkäufer selbst steht der Hinweis weiterhin an seinen eigenen Angeboten —
+dort ist er handlungsleitend statt beunruhigend.
+
+### Das Impressum liegt jetzt auf dem Profil
+
+§ 5 DDG verlangt „leicht erkennbar, unmittelbar erreichbar und ständig verfügbar". Das Profil des
+Verkäufers ist genau das: Von jedem seiner Angebote führt ein Tipp dorthin, und die Angaben stehen
+an **einer** Stelle statt an dreißig. Auf jeder Artikelseite ausbreiten verlangt das Gesetz nicht.
+
+Fehlen die Angaben, steht dort **nichts** — kein leerer Kasten, keine Warnung.
+
+### Die Pflichtangabe bleibt sichtbar, nur leiser
+
+Aus dem Kasten mit Überschrift und Erklärsatz wurde **eine Zeile zwischen zwei Haarlinien**:
+„Gewerblich · Widerrufsrecht und Gewährleistung ⌄". Die Rechtsfolge klappt auf Tipp auf.
+
+⚠️ **Die Zeile selbst ist immer sichtbar.** Auch sie hinter den Tipp zu legen wäre der Fehler aus
+Abschnitt 3 („Eine Vorgabe anzeigen und nicht speichern") — bei genau dieser Angabe ist Berkat
+schon einmal danebengelegen, und Art. 246d § 1 EGBGB verlangt sie **vor** der Vertragserklärung.
+Die Pflicht betrifft, DASS sie dasteht; die Lautstärke ist Gestaltung.
+
+### Die Seite liest sich jetzt als Verkaufsraum
+
+Bild → Preis → Titel → Zustand und Ort → **eine** Pflichtzeile → Beschreibung → Preisvorschlag →
+Verkäufer mit Bürgen → Versandhinweis → Mehr von ihm. Drei Blöcke weniger, jede Pflichtangabe
+erhalten.
+
+### Geprüft
+
+Am Simulator an einem fremden, gewerblichen Artikel: Zeile steht, klappt auf und zu, Chevron dreht
+sich, roter Block ist verschwunden. Auf dem Profil rendert der Impressumsblock korrekt **gar
+nicht**, solange keine Daten da sind. `tsc` und `expo export` sauber, keine Migration, kein Build.
+
+**Nicht geprüft:** wie der Impressumsblock mit Inhalt aussieht. Das Seed-Skript setzt die Angaben
+für den gewerblichen Testverkäufer jetzt mit — sichtbar wird es beim nächsten Lauf
+(`--remove`, dann neu).
+
+---
+
+## 35. Testware zum Zweiten — und zwei Fehler beim Einspielen (19.08.2026)
+
+Der zweite Lauf des Seed-Skripts, diesmal mit Impressumsangaben für den gewerblichen
+Testverkäufer. Damit ist der letzte offene Punkt aus Abschnitt 34 belegt: **Der
+Anbieterangaben-Block auf dem Verkäufer-Profil steht mit Inhalt** — nach den Bürgen, vor den
+Reitern, grau und ruhig.
+
+### Drei Stolpersteine, alle im Skript behoben
+
+**1. Der Platzhalter war kopierbar.** `SERVICE_ROLE_KEY=sb_secret_…` enthielt ein echtes
+Auslassungszeichen (U+2026). Wer die Zeile kopiert, schickt es in einen HTTP-Header und bekommt
+`Cannot convert argument to a ByteString … value of 8230`. Das Skript prüft den Schlüssel jetzt
+vorab auf Nicht-ASCII.
+
+**2. `country` ist keine Freitext-Spalte.** `berkat_sellers` hat
+`CHECK (country IS NULL OR country IN ('DE','AT','CH'))`. Das Skript schrieb „Deutschland" und
+scheiterte mit `23514`. Die Spalte heißt `country`, sieht nach Text aus und ist eine Auswahl aus
+dreien — **vor dem Schreiben in eine geerbte Tabelle gehört die Migration gelesen**, nicht nur der
+Spaltenname.
+
+**3. Ein 401 sagte nur „Invalid API key".** Der häufigste Fall ist nicht ein falscher Schlüssel,
+sondern der falsche **von zweien**: `anon` und `service_role` stehen im Dashboard direkt
+untereinander. Die Fehlerbehandlung nennt jetzt Länge und Anfang des Schlüssels und die zwei
+Dinge, die zu prüfen sind — dieselbe Lehre wie in Abschnitt 3 („Eine Fehlermeldung für alles ist
+keine Fehlermeldung").
+
+### Ein Anzeigefehler, der aus einer richtigen Datenentscheidung folgte
+
+Im Impressum stand zwischen „60313 Frankfurt am Main" und der E-Mail nackt **„DE"**. Der
+Ländercode ist als Datenwert richtig (der CHECK erzwingt ihn), als Zeile in einer Anschrift aber
+falsch. `app/seller/[id].tsx` schreibt ihn beim Zeichnen aus: DE → Deutschland, AT → Österreich,
+CH → Schweiz.
+
+**Das Muster dahinter:** Ein Wert, der in der Datenbank korrekt normiert ist, ist deshalb noch
+lange keine Anzeige. Dasselbe galt für die Kategorie-Slugs („beauty" statt „Beauty & Duft",
+Abschnitt 18) und die Zustands-Slugs. Wer eine normierte Spalte direkt rendert, zeigt die
+Datenbank statt der Auskunft.
+
+### Ein Testartikel blieb beim Aufräumen liegen
+
+Der erste `--remove`-Lauf ließ „Babyjacke, Gr. 74" stehen; der Tag-Filter fand sie danach nicht
+mehr — die Beschreibung trug das `[testware]`-Kennzeichen also nicht, aus ungeklärtem Grund
+(möglich: ein Teil-Insert aus einer früheren Fassung des Skripts). **Die Ursache ist nicht
+belegt.**
+
+Das Aufräumen greift jetzt auf **zwei** Wegen: über das Kennzeichen UND über die 36 bekannten
+Titel aus `ITEMS` (nur `status = 'listed'`, damit ein gleichnamiger verkaufter Artikel eines
+echten Nutzers nicht mitgeht). Es läuft in einer Schleife und meldet am Ende, wenn doch etwas
+übrig bleibt — ein Aufräumen, das schweigend unvollständig bleibt, ist schlimmer als keines.
+
+### Stand
+
+38 Artikel im Regal, sechs Verkäufer, davon einer gewerblich mit vollständigem Impressum.
+`tsc` und `expo export` sauber, keine Migration, kein Build.
+
+---
+
+## 36. Das Impressums-Formular — die Sackgasse ist zu (19.08.2026)
+
+Der letzte Punkt aus Abschnitt 33. Seit dem 16.08. stehen die Spalten, die RPC
+`set_berkat_seller_kind` nimmt **jedes** Feld entgegen, und die App prüft auf Vollständigkeit —
+**eintragen konnte man sie nie.** Ein gewerblicher Verkäufer sah an jedem seiner Angebote einen
+Mangel, den er selbst nicht beheben konnte. Neu: `app/seller-details.tsx`, erreichbar über eine
+Zeile im Konto.
+
+**Am Server war nichts zu tun.** Der ganze Weg lag fertig da — Hook (`useDeclareSellerKind`), Typ
+(`SellerDeclaration`), RPC mit neun Parametern. Es fehlte die Oberfläche. Das ist derselbe Befund
+wie bei der Beschreibung (Abschnitt 3, „Ein Feld, das geschrieben und nie gelesen wird"): Die Kette
+war an jedem Glied vollständig, nur das letzte fehlte.
+
+### Entscheidungen
+
+- **Jeder sieht die Zeile, nicht nur Gewerbliche.** Der Anbietertyp ist die erste Wahl auf dem
+  Bildschirm; wer von privat auf gewerblich wechselt, braucht die Felder direkt darunter. Sie
+  hinter dem Typ zu verstecken hieße, jemanden erst umschalten zu lassen und ihm dann zu sagen,
+  dass jetzt etwas fehlt.
+- **Der rote Hinweis „unvollständig" erscheint nur, wenn wirklich etwas fehlt** — ein Mahnzeichen
+  an einem Privatkonto wäre eine Aufforderung ohne Anlass.
+- **Die Felder erscheinen nur im gewerblichen Fall.** Die Anschrift einer Privatperson gehört
+  nicht auf ein öffentliches Profil, und ein leeres Formular ist eine Aufforderung, Daten
+  herzugeben, die niemand braucht.
+- **Beim Wechsel zurück auf privat gehen die Felder als `null` mit.** Wer nicht mehr gewerblich
+  verkauft, will seine Anschrift nicht weiter öffentlich haben.
+- **Land als Chips, nicht als Textfeld** — `country` ist per CHECK auf `DE`/`AT`/`CH` beschränkt
+  (siehe Abschnitt 35). Ein Freitextfeld hätte denselben `23514` erzeugt, nur beim Verkäufer statt
+  im Skript.
+
+### ⚠️ Die E-Mail wird auf ihre FORM geprüft
+
+Am Gerät aufgefallen, weil die Simulator-Tastatur das `@` als `"` tippte: Der Speichern-Knopf stand
+offen, obwohl im Feld `test"berkat.invalid` stand. § 5 DDG verlangt „Angaben, die eine schnelle
+elektronische Kontaktaufnahme ermöglichen" — eine Adresse ohne `@` ermöglicht gar nichts, und ein
+Impressum mit kaputter Kontaktadresse ist keins.
+
+Die Prüfung ist bewusst **minimal** (etwas, ein `@`, etwas mit Punkt): Strengere Muster weisen
+regelmäßig gültige Adressen ab, und eine Pflichtangabe, die an der eigenen Prüfung scheitert,
+sperrt den Verkäufer aus — derselbe Grund, aus dem die Vollständigkeitsprüfung in der Oberfläche
+sitzt und nicht als CHECK in der Datenbank (`missingBusinessFields`, Kommentar dort).
+
+### Geprüft
+
+Am Simulator: Umschalten auf „Gewerblich" blendet die sechs Felder plus Länderwahl ein und
+tauscht den Rechtsfolge-Satz; „Es fehlt noch: …" zählt die leeren Pflichtfelder auf; eine E-Mail
+ohne `@` sperrt Speichern und nennt den Grund; Speichern als „Privatperson" läuft durch und meldet
+„Gespeichert." `tsc` und `expo export` sauber, keine Migration, kein Build.
+
+**Nicht geprüft:** Speichern im gewerblichen Fall bis zum Ende — dafür braucht es eine gültige
+E-Mail, und die Simulator-Tastatur kann kein `@` tippen (deutsche Belegung). Die RPC ist dieselbe
+wie im privaten Zweig, der durchläuft; der ungeprüfte Teil ist die Feld-Übergabe, nicht der
+Aufruf. Am Gerät ist das ein Handgriff: Formular ausfüllen, speichern, aufs eigene Profil schauen.
+
+---
+
+## 37. Der Verkaufen-Reiter wird zur Übersicht (19.08.2026)
+
+Umsetzung der sechsten Analyse. Zaurs Kritik vom 18.08. lautete: *„es hat sehr viele Auswahlfelder,
+dadurch wird die Seite sehr lang und unübersichtlich."* Abschnitt 27 legte daraufhin die
+Sendeplan-Kacheln in ein Blatt — das war richtig, traf aber nicht die Ursache.
+
+### Die Ursache
+
+Der Reiter trug **zwei vollständige Formulare untereinander**: „Mach die Show auf" (Titel, großer
+Cover-Wähler, Kategorie-Chips, Knopf) und „Nächsten Termin ankündigen" (Bild, Titel, Wann-Zeile,
+Knopf). Zusammen anderthalb Bildschirmhöhen. Beide sahen fast gleich aus — Bild links, Titel
+rechts, Knopf unten —; der Unterschied war allein „jetzt" gegen „später" und musste aus den
+Überschriften erschlossen werden.
+
+Whatnots Seller Hub führt an derselben Stelle **zwei Kacheln, die nur Türen sind** („Create a
+Product", „Schedule a Show"). Der Hub selbst zeigt, was ansteht: Sendungen mit Frist, Kennzahlen,
+kommende Termine.
+
+### Was jetzt dasteht
+
+```
+Deine ersten Schritte            3 von 4
+┌─────────────────┐ ┌─────────────────┐
+│  Show starten   │ │ Termin ankündigen│   ← zwei Türen, gleich groß
+└─────────────────┘ └─────────────────┘
+Deine nächsten Termine        (nur wenn welche stehen)
+  [Bild] Titel · Heute 20:00 · in 3 Std   🔔 12
+Bestellungen              3 zu packen  ›
+Dein Regal                 9 kaufbar   ›
+```
+
+**Der Reiter passt jetzt auf eine Bildschirmhöhe statt zwei.** Beide Formulare liegen unverändert
+in Blättern (`pageSheet`) — dasselbe Muster wie das Wann-Blatt, das Filter-Blatt und das
+Bearbeiten-Blatt der Artikelseite.
+
+### Die Erinnerungs-Zahl an den Terminen
+
+Whatnot zeigt auf Termin-Karten ein Lesezeichen mit Zähler: **wie viele Menschen erinnert werden.**
+Das macht aus einer Ankündigung eine Erwartung — das stärkste Signal im ganzen Hub.
+
+Berkat kennt kein „Show merken"; die Erinnerung geht an die **Follower**. Die Zahl beantwortet
+dieselbe Frage („wen erreiche ich damit?") und kostet nichts, weil `useFollowCounts` längst
+existiert. Sie erscheint **nur, wenn jemand folgt** — „0 werden erinnert" wäre eine Enttäuschung in
+Zahlenform, dieselbe Regel wie bei den Kategorie-Zählern.
+
+### Drei Erklärtexte gekürzt
+
+| vorher | jetzt |
+|---|---|
+| „Wer dir folgt, bekommt 15 Minuten vorher eine Erinnerung aufs Handy. Ein fester Abend bringt die Leute wieder — mehr als jede einzelne gute Show." | „Wer dir folgt, wird 15 Minuten vorher erinnert." |
+| „Ohne Bild nehmen wir das Cover deiner letzten Show. Hast du noch keine, steht dein Abend nur als Text auf der Startseite." | „Ohne Bild nehmen wir das Cover deiner letzten Show." |
+| „Ohne Kategorie liegt der Artikel nur auf deinem Profil — im Kategorien-Reiter findet ihn dann niemand, der dich noch nicht kennt." | „Ohne Kategorie findet dich niemand, der dich noch nicht kennt." |
+
+Alle drei waren **wahr** — sie erklärten nur, bevor jemand gefragt hatte. Was blieb, nennt jeweils
+die Folge, nicht den Mechanismus.
+
+### ⚠️ `bare` am SchedulePlanner
+
+Im Blatt stand zuerst „Termin ankündigen" (Kopfzeile) über „Nächsten Termin ankündigen"
+(Komponente) — dieselbe Aussage zweimal. Der Planer trägt jetzt `bare`, das seinen eigenen Kopf
+unterdrückt. Wer ihn außerhalb eines Blattes einsetzt, lässt das Prop weg und bekommt die
+Überschrift zurück.
+
+**Und ein Text, der stillschweigend falsch geworden wäre:** Der Schritt „Ersten Termin ankündigen"
+sagte „Gleich hier unten" — das Formular ist aber nicht mehr unten, sondern hinter einem Knopf.
+Jetzt: „Der Knopf steht gleich darunter." Wer eine Fläche verschiebt, muss die Texte suchen, die
+auf ihre Lage zeigen.
+
+### Nicht gebaut
+
+**Account Health** (Whatnots drei Kennzahlen: pünktliche Sendungen, erfolgreiche Abwicklung,
+Richtlinien-Stand). Sinnvoll erst, wenn es echte Verkäufer mit echten Sendungen gibt — heute wären
+es drei Zahlen über null Vorgänge.
+
+### Geprüft
+
+Am Simulator: Der Reiter passt auf eine Höhe, beide Blätter öffnen mit vollständigem Formular und
+lassen sich schließen, die gekürzten Texte stehen, die doppelte Überschrift ist weg. `tsc` und
+`expo export` sauber, keine Migration, kein Build.
+
+**Nicht geprüft:** die Erinnerungs-Zahl an einem Termin — das Testkonto hat einen Follower, aber
+gerade keinen geplanten Termin. Der Block erscheint erst mit beidem.
+
+---
+
+## 38. Hier geht es weiter (Stand 19.08.2026, Chat-Ende)
+
+**Der Anschlusspunkt.** Löst Abschnitt 26 ab — der bleibt als Begründung für die Reservieren-Lücke
+und die Zwei-Konten-Frage gültig, sein Aufgabenteil ist aber abgearbeitet.
+
+### Wo Berkat steht
+
+| | |
+|---|---|
+| Migrationen | 34, alle eingespielt, keine Lücke — in dieser Runde **keine neue** |
+| `tsc --noEmit` / `expo export` | fehlerfrei |
+| Regal | 38 Artikel, sechs Verkäufer, einer gewerblich mit Impressum (Testware!) |
+| Build nötig? | nein — alles seit dem 18.08. lief über Metro |
+
+### Was in dieser Runde abgehakt wurde
+
+Aus der alten Liste in Abschnitt 26 sind erledigt: Wann-Blatt, Zustands-Leitfaden,
+Impressums-Formular (36) und — durch die Testware — **alle vier Wege, die am zweiten Konto
+hingen** (33): Kaufknopf-Umfeld, „Nachricht statt Kaufen", Merken, Preisvorschlag. Ebenso der
+gewerbliche Anbieterblock.
+
+### Was offen ist, nach Nutzen sortiert
+
+1. **Varianten** (Größe, Farbe) — der einzige echte Funktionsrückstand gegenüber Whatnot. Neun der
+   36 Testartikel tragen die Größe im Titel, weil es kein Feld gibt. Whatnots Lösung steht in der
+   fünften Analyse: „Multiple Options" statt Preis, Knopf „Optionen wählen", Blatt mit
+   `Größe · noch 3`. **Braucht eine Migration** (Tabelle oder JSON-Spalte an `live_auctions`) und
+   berührt Composer, Artikelseite und Kaufweg. Der größte Brocken auf der Liste.
+2. **Artikel vor der Show vorbereiten** — die alte Lücke aus Abschnitt 26. Der Audit dazu ist
+   gemacht: `status='planned'` ist gangbar, kostet vier Eingriffe, und die Migration fasst eine mit
+   Serlo geteilte Tabelle an. Unter Aufsicht bauen.
+3. **Der Kaufknopf selbst** ist weiterhin ungeprüft — er erscheint erst mit
+   `berkat_sellers.checkout_enabled`, und das ist eine bewusste Admin-Entscheidung. Für einen
+   Testdurchlauf das Flag bei einem Seed-Verkäufer setzen.
+4. **Kleinkram:** „Entwurf speichern" beim Einstellen · Knappheit je Variante (hängt an 1) ·
+   Anti-Snipe-Zeit wählbar · eigener Avatar im Konto-Reiter statt `CircleUser` · Bilder umsortieren
+   (bräuchte `react-native-gesture-handler` → Build).
+
+### Was NICHT gebaut werden soll — mit Begründung
+
+- **Account Health** (Whatnots drei Verkäufer-Kennzahlen): erst mit echten Sendungen, heute wären
+  es drei Zahlen über null Vorgänge.
+- **„Watch to earn"** (Whatnot belohnt Zuschauzeit): widerspricht dem Design-Gesetz Nr. 4 — gesunde
+  Bindung, keine Aufmerksamkeits-Ausbeutung.
+- **Abgekürzte Zuschauerzahlen** (`2.1k`): bei zweistelligen Zahlen eine Behauptung.
+- **Dunkelmodus**: Berkat hat zwei feste Flächen, damit hell-auf-hell strukturell unmöglich ist
+  (Abschnitt 4). Das ist eine Entscheidung, keine Lücke.
+
+### Die drei Blocker sind unverändert — außer einem Teilerfolg
+
+Store-Eintrag und Phase 0 stehen wie gehabt. Beim Stripe-Blocker ist **die Ratenzahlung erledigt**
+(Klarna, Billie, Scalapay aus, Test und Live getrennt — siehe Abschnitt 0).
+
+**Und der Satz, der über allem steht:** Der Engpass ist nicht mehr Wissen. Sechs Whatnot-Analysen
+liegen vor, der Funktionsabstand ist auf Varianten geschrumpft, und die App sieht mit Inhalt gut
+aus. Was fehlt, sind **fünf Verkäufer** — und eine siebte Analyse ersetzt keinen davon.

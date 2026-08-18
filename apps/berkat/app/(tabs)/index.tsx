@@ -3,6 +3,18 @@
 // Aufbau nach Whatnot: Suche, Filterreihe, zweispaltiges Raster. Der
 // Verkäufername steht ÜBER der Karte, nicht darunter — bei Live-Shopping kauft
 // man den Menschen, nicht das Bild.
+//
+// SENDET NIEMAND, ZEIGT DAS RASTER DAS REGAL (seit 18.08.2026).
+// Vorher stand hier eine Ähre, ein Satz und ein Knopf, der ins Regal führte.
+// Das war der Zustand, den rund 94 % aller Besucher sehen (HANDOFF 17) — die
+// wichtigste Fläche der App verwies also fast immer auf einen anderen
+// Bildschirm, statt selbst etwas zu zeigen. Aus der Design-Analyse: „Ein Regal
+// erzeugt keine Nachfrage. Es hält Nachfrage, die schon da ist." Wer die App
+// öffnet, HAT Nachfrage; sie einen Tipp weit wegzuschicken verschenkt sie.
+//
+// Die Regel dahinter: Erst die Live-Shows, und nur wenn es keine gibt, die
+// Ware. Nie beides zugleich — eine laufende Sendung ist immer das Wichtigere,
+// und zwei Sorten Karten im selben Raster wären zwei Antworten auf eine Frage.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -30,10 +42,17 @@ import { UpcomingStrip } from '../../components/UpcomingStrip';
 import { SellerResults } from '../../components/SellerResults';
 import { SEARCH_MIN, useSellerSearch } from '../../lib/useSellerSearch';
 import { useUpcomingShows } from '../../lib/useSchedule';
-import { useCategoryOptions } from '../../lib/useCategories';
-import { useListingSearch, useShopCount } from '../../lib/useListings';
+import { useCategories, useCategoryOptions } from '../../lib/useCategories';
+import {
+  useCategoryListings,
+  useListingSearch,
+  useShopCount,
+  useShopListings,
+  type Listing,
+} from '../../lib/useListings';
 import { ListingResults } from '../../components/ListingResults';
-import { ui, radius, space } from '../../theme/tokens';
+import { ListingCard } from '../../components/ListingCard';
+import { ui, radius, ratio, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
@@ -63,7 +82,17 @@ const ALL = '__all__';
 // Kennzeichen, an dem Karte und Platzhalter sicher auseinandergehalten werden.
 const SPACER_ID = '__spacer__';
 type Spacer = { id: typeof SPACER_ID; spacer: true };
-type GridItem = LiveShow | Spacer;
+/** Ein Angebot aus dem Regal, wenn keine Show läuft. */
+type ShelfItem = { shelf: Listing };
+type GridItem = LiveShow | Spacer | ShelfItem;
+
+/**
+ * Wie viele Angebote das Raster im Ruhezustand trägt.
+ *
+ * Es ist die Startseite, kein Katalog: Wer weiterstöbern will, findet unten den
+ * Weg ins ganze Regal. Eine gerade Zahl, damit die letzte Reihe voll ist.
+ */
+const SHELF_PREVIEW = 8;
 
 function useLiveShows() {
   return useQuery({
@@ -198,6 +227,9 @@ export default function HomeScreen() {
   // „buecher" statt „Beauty & Duft" und „Bücher & Medien" — vorher fiel das
   // nicht auf, weil dort immer die Konstante `'shopping'` stand.
   const { groups: categoryGroups } = useCategoryOptions();
+  // Die Zähler für die Entdeckungs-Leiste. Derselbe Abruf, den der
+  // Kategorien-Reiter ohnehin macht — React Query gibt beiden dieselbe Antwort.
+  const { data: counted = [] } = useCategories();
   // Nur die Zahl, keine Zeile (`head: true`) — sie beantwortet im Leerzustand
   // die Frage „gibt es hier überhaupt etwas zu tun?".
   const { data: shopCount = 0 } = useShopCount();
@@ -210,25 +242,43 @@ export default function HomeScreen() {
     return map;
   }, [categoryGroups]);
 
+  /**
+   * Die Leiste zeigt ALLE Oberkategorien, nicht nur die mit laufenden Shows.
+   *
+   * Bis zum 18.08.2026 wurde sie aus `shows` aufgebaut. Damit war sie genau
+   * dann leer, wenn niemand sendet — also fast immer —, und beantwortete
+   * ausgerechnet dann nichts, wenn jemand etwas zum Stöbern gesucht hätte.
+   * Whatnots Leiste ist eine Entdeckungs-Leiste (Analyse, Nachtrag zur
+   * vierten): Sie zeigt, was es GIBT; was gerade LÄUFT, steht im Raster
+   * darunter.
+   *
+   * Die Reihenfolge trägt die Auskunft: erst Kategorien mit laufenden Shows,
+   * dann die mit Ware im Regal, dann der Rest in gepflegter Sortierung. Wer die
+   * Leiste von links liest, liest sie nach Wärme.
+   */
   const categories = useMemo((): RailItem[] => {
-    const counts = new Map<string, number>();
-    for (const show of shows) {
-      if (!show.category) continue;
-      counts.set(show.category, (counts.get(show.category) ?? 0) + 1);
-    }
-    return [
-      { slug: ALL, name: 'Für dich', liveCount: shows.length },
-      ...Array.from(counts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([slug, liveCount]) => ({
-          slug,
-          // Kennt die Liste den Slug nicht (alte Zeile, gelöschte Kategorie),
-          // steht er selbst da — besser als eine leere Kachel.
-          name: categoryNames.get(slug) ?? slug,
-          liveCount,
-        })),
-    ];
-  }, [shows, categoryNames]);
+    // `get_berkat_category_counts` rollt Kinder bereits auf die Eltern auf —
+    // eine Show unter „Abaya" zählt dort auf „Mode". Selbst nachzurechnen wäre
+    // eine zweite Wahrheit über dieselbe Zahl, und die Aggregation der RPC
+    // achtet zusätzlich die Frauen-Only-Grenze (`SECURITY INVOKER`).
+    const tiles = counted
+      .filter((c) => !c.parent_slug)
+      .map((c) => ({
+        slug: c.slug,
+        name: c.name,
+        liveCount: c.live_count,
+        listingCount: c.listing_count,
+      }));
+
+    tiles.sort(
+      (a, b) =>
+        b.liveCount - a.liveCount ||
+        b.listingCount - a.listingCount ||
+        a.name.localeCompare(b.name, 'de'),
+    );
+
+    return [{ slug: ALL, name: 'Für dich', liveCount: shows.length, art: false }, ...tiles];
+  }, [shows.length, counted]);
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -242,15 +292,50 @@ export default function HomeScreen() {
     });
   }, [shows, search, filter, profiles]);
 
+  /**
+   * Der Ruhezustand: keine laufende Show im Raster und keine Suche.
+   *
+   * Dann tritt das Regal an die Stelle des Rasters. Bei aktiver Suche wäre das
+   * falsch — die Trefferliste steht schon im Kopf.
+   *
+   * ⚠️ Ein gesetzter FILTER schließt den Ruhezustand seit dem 18.08.2026 NICHT
+   * mehr aus. Seit die Leiste alle Kategorien zeigt (Entdeckung statt
+   * Show-Filter), führt der häufigste Tipp auf eine Kategorie, in der gerade
+   * niemand sendet. Bliebe es beim alten Verhalten, hätte fast jeder Tipp mit
+   * „Nichts gefunden" geantwortet, obwohl dort Ware liegt — die Leiste wäre
+   * schlechter gewesen als gar keine.
+   */
+  const idle = !searchingSellers && !search && visible.length === 0;
+  /** Die Kategorie und ihre Kinder — „Mode" muss auch zeigen, was unter „Abaya" liegt. */
+  const filterSlugs = useMemo(() => {
+    if (filter === ALL) return [];
+    const parent = categoryGroups.find((g) => g.slug === filter);
+    return parent ? [parent.slug, ...parent.children.map((c) => c.slug)] : [filter];
+  }, [filter, categoryGroups]);
+
+  // Zwei Quellen, eine Fläche: ohne Filter das ganze Regal, mit Filter die
+  // Kategorie. Immer nur eine davon ist aktiv (`enabled`), es läuft also nie
+  // ein Abruf für Zeilen, die niemand sieht.
+  const { data: wholeShelf = [] } = useShopListings(SHELF_PREVIEW, idle && filter === ALL);
+  const { data: categoryShelf = [] } = useCategoryListings(idle ? filterSlugs : []);
+  const shelf = filter === ALL ? wholeShelf : categoryShelf.slice(0, SHELF_PREVIEW);
+  // Eigener Aufruf statt einer gemeinsamen Liste mit den Show-Gastgebern: Die
+  // Kette läuft profiles → visible → idle → shelf, ein Ring wäre die Folge.
+  // React Query hält beide Antworten ohnehin im selben Zwischenspeicher, und
+  // bei leerem Regal fragt dieser hier gar nicht erst (`enabled`).
+  const shelfProfiles = useProfiles(shelf.map((l) => l.seller_id));
+
   // Zwei Spalten, jede Karte `flex: 1`: Bleibt in der letzten Reihe ein Platz
   // frei, zieht sich die einzelne Karte über die volle Breite — samt Vorschau.
   // Ein leerer Platzhalter besetzt die zweite Spalte und hält die Karte halb.
   // Bei null Shows entsteht keiner, sonst stünde die Leer-Ansicht nie da.
-  const gridData = useMemo(
-    (): GridItem[] =>
-      visible.length % 2 === 1 ? [...visible, { id: SPACER_ID, spacer: true }] : visible,
-    [visible],
-  );
+  const gridData = useMemo((): GridItem[] => {
+    if (idle) {
+      const items: GridItem[] = shelf.map((listing) => ({ shelf: listing }));
+      return items.length % 2 === 1 ? [...items, { id: SPACER_ID, spacer: true }] : items;
+    }
+    return visible.length % 2 === 1 ? [...visible, { id: SPACER_ID, spacer: true }] : visible;
+  }, [idle, shelf, visible]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -312,18 +397,28 @@ export default function HomeScreen() {
         />
       </View>
 
-      <View style={styles.railWrap}>
-        <CategoryRail
-          items={categories}
-          active={filter}
-          collapsed={railCollapsed}
-          onSelect={setFilter}
-        />
-      </View>
+      {/* Die Leiste trägt jetzt alle Kategorien und ist damit auch dann voll,
+          wenn niemand sendet — die Bedingung von heute Mittag („erst ab zwei
+          Einträgen") greift nur noch, solange die Kategorien nicht geladen
+          sind. Sie bleibt trotzdem stehen: Ein Wackeln beim Nachladen wäre
+          schlimmer als eine Zehntelsekunde ohne Leiste. */}
+      {categories.length > 1 ? (
+        <View style={styles.railWrap}>
+          <CategoryRail
+            items={categories}
+            active={filter}
+            collapsed={railCollapsed}
+            onSelect={setFilter}
+          />
+        </View>
+      ) : null}
 
       <FlatList
         data={gridData}
-        keyExtractor={(item) => item.id}
+        // Regal-Artikel und Shows können dieselbe Position, aber nie dieselbe
+        // Liste belegen; das Präfix hält die Schlüssel trotzdem auseinander,
+        // falls beide Sorten je nebeneinander stehen sollten.
+        keyExtractor={(item) => ('shelf' in item ? `shelf:${item.shelf.id}` : item.id)}
         refreshing={pulling}
         onRefresh={pullToRefresh}
         onScroll={onScroll}
@@ -362,14 +457,41 @@ export default function HomeScreen() {
                 onSelect={(auctionId) => router.push(`/listing/${auctionId}`)}
               />
             </View>
-          ) : search || filter !== ALL ? null : (
-            <UpcomingStrip
-              shows={upcoming}
-              // `?tab=shows`: Wer auf einen TERMIN tippt, will den Termin sehen
-              // — nicht das Regal. Ohne den Parameter öffnet das Profil auf
-              // „Shop", und die Ankündigung liegt hinter dem dritten Reiter.
-              onSelect={(hostId) => router.push(`/seller/${hostId}?tab=shows`)}
-            />
+          ) : search ? null : (
+            <View>
+              {/* Ein Termin gehört zu keiner Kategorie — bei gesetztem Filter
+                  wäre der Streifen eine Antwort auf eine nicht gestellte
+                  Frage. */}
+              {filter === ALL ? (
+                <UpcomingStrip
+                  shows={upcoming}
+                  // `?tab=shows`: Wer auf einen TERMIN tippt, will den Termin sehen
+                  // — nicht das Regal. Ohne den Parameter öffnet das Profil auf
+                  // „Shop", und die Ankündigung liegt hinter dem dritten Reiter.
+                  onSelect={(hostId) => router.push(`/seller/${hostId}?tab=shows`)}
+                />
+              ) : null}
+
+              {/* Die Zeile über der Ware. Sie muss sein: Ohne sie stünden im
+                  Show-Raster plötzlich Artikel, und niemand wüsste, warum sich
+                  die Startseite anders verhält als eben noch. Der Satz sagt
+                  beides — dass gerade niemand sendet, und dass es trotzdem
+                  etwas gibt. Bei gesetztem Filter nennt er die Kategorie, sonst
+                  stünde „Gerade ist niemand live" über einem Regal, das nur
+                  einen Ausschnitt zeigt. */}
+              {idle && shelf.length > 0 ? (
+                <View style={styles.shelfHead}>
+                  <Text style={styles.shelfTitle}>
+                    {filter === ALL
+                      ? 'Gerade ist niemand live'
+                      : `Nichts live in ${categoryNames.get(filter) ?? 'dieser Kategorie'}`}
+                  </Text>
+                  <Text style={styles.shelfBody}>
+                    Aus dem Regal — rund um die Uhr kaufbar, auch ohne Sendung.
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           )
         }
         ListEmptyComponent={
@@ -414,11 +536,12 @@ export default function HomeScreen() {
                       : 'Schau später wieder rein — oder mach unter „Verkaufen" selbst die erste Show auf.'}
               </Text>
 
-              {/* Der Knopf steht unabhängig vom Text: Auch wer gerade auf einen
-                  Termin verwiesen wird, darf jetzt etwas kaufen. Solange
-                  niemand sendet — rund 94 % der Zeit — ist das der einzige Weg
-                  von der Startseite zu etwas Kaufbarem. Vorher hing „Alle
-                  Angebote" an einer einzigen Zeile im Kategorien-Reiter. */}
+              {/* ⚠️ Seit dem 18.08.2026 ist das der AUSNAHMEFALL, nicht der
+                  Normalfall: Sendet niemand, füllt das Regal das Raster, und
+                  dieser Leerzustand erscheint gar nicht erst. Hierher kommt
+                  nur noch, wer ein leeres Regal hat — oder dessen Regal-Abruf
+                  gescheitert ist, während der Zähler noch eine Zahl kennt.
+                  Genau dafür bleibt der Knopf stehen. */}
               {!search && filter === ALL && shopCount > 0 ? (
                 <Pressable
                   style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.7 }]}
@@ -435,10 +558,60 @@ export default function HomeScreen() {
             </View>
           )
         }
+        // Der Weg weiter — nur wenn es mehr gibt als die gezeigten acht. Steht
+        // ohnehin alles da, wäre der Knopf eine Lüge über die Menge und ein
+        // Tipp, der nichts Neues zeigt.
+        //
+        // ⚠️ Das Ziel hängt am Filter. Bei „Beauty & Duft" ins ganze Regal zu
+        // schicken hieße, die eben getroffene Wahl wegzuwerfen — und die Zahl
+        // daneben wäre die falsche (Gesamtbestand statt Kategorie).
+        ListFooterComponent={
+          !idle || shelf.length === 0 ? null : filter !== ALL ? (
+            categoryShelf.length > shelf.length ? (
+              <Pressable
+                style={({ pressed }) => [styles.shelfMore, pressed && { opacity: 0.7 }]}
+                onPress={() => router.push(`/category/${filter}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Alle ${categoryShelf.length} Angebote in dieser Kategorie ansehen`}
+              >
+                <ShoppingBag size={16} color={ui.text} />
+                <Text style={styles.emptyCtaText}>
+                  Alle {categoryShelf.length} in {categoryNames.get(filter) ?? 'dieser Kategorie'}
+                </Text>
+              </Pressable>
+            ) : null
+          ) : shopCount > shelf.length ? (
+            <Pressable
+              style={({ pressed }) => [styles.shelfMore, pressed && { opacity: 0.7 }]}
+              onPress={() => router.push('/shop')}
+              accessibilityRole="button"
+              accessibilityLabel={`Alle ${shopCount} Angebote ansehen`}
+            >
+              <ShoppingBag size={16} color={ui.text} />
+              <Text style={styles.emptyCtaText}>Alle {shopCount} Angebote ansehen</Text>
+            </Pressable>
+          ) : null
+        }
         renderItem={({ item }) => {
           // Der Platzhalter hält nur die Spalte offen: keine Karte, kein Bild,
           // nichts zum Drücken.
           if ('spacer' in item) return <View style={styles.spacer} />;
+
+          // Ware aus dem Regal — dieselbe Karte wie im Marktplatz und in der
+          // Kategorie. Kein eigener Aufbau: Die Anbieterkennzeichnung hängt an
+          // ihr, und eine zweite Abschrift wäre genau der Fehler, für den es
+          // `ListingCard` überhaupt gibt.
+          if ('shelf' in item) {
+            return (
+              <ListingCard
+                listing={item.shelf}
+                sellerName={shelfProfiles[item.shelf.seller_id]?.username}
+                layout="grid"
+                mine={item.shelf.seller_id === userId}
+                onPress={() => router.push(`/listing/${item.shelf.id}`)}
+              />
+            );
+          }
 
           const host = profiles[item.host_id];
           const preview = previews[item.id];
@@ -550,7 +723,7 @@ const styles = StyleSheet.create({
   sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   sellerName: { flex: 1, fontSize: 13, fontWeight: '600', color: ui.text },
   thumb: {
-    aspectRatio: 1,
+    aspectRatio: ratio.card,
     borderRadius: radius.md,
     backgroundColor: ui.sunken,
     overflow: 'hidden',
@@ -612,4 +785,25 @@ const styles = StyleSheet.create({
     borderColor: ui.lineStrong,
   },
   emptyCtaText: { fontSize: 14, fontWeight: '700', color: ui.text },
+
+  /* Die Überschrift über der Ware. Kleiner als ein Leerzustand-Titel: Sie
+     erklärt eine Fläche, die schon gefüllt ist — sie ist nicht selbst die
+     Nachricht. */
+  shelfHead: { paddingTop: space.sm, paddingBottom: space.md, gap: 2 },
+  shelfTitle: { fontSize: 15, fontWeight: '700', color: ui.text },
+  shelfBody: { fontSize: 13, color: ui.textMuted, lineHeight: 18 },
+  /* Wie `emptyCta`, nur zentriert unter dem Raster statt in einer leeren
+     Fläche — dieselbe Kontur, weil es dieselbe Einladung ist. */
+  shelfMore: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginTop: space.lg,
+    height: 44,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+  },
 });

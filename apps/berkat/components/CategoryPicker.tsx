@@ -107,12 +107,12 @@ export function CategoryPicker({
         </ScrollView>
       ) : null}
 
+      {/* Ein Satz, nicht drei Zeilen. Er nennt die FOLGE („findet dich
+          niemand"), nicht den Mechanismus — der Rest erklärte, bevor jemand
+          gefragt hat (sechste Whatnot-Analyse, 19.08.2026). */}
       {value ? null : (
         <View style={s.hintWrap}>
-          <Text style={s.hint}>
-            Ohne Kategorie liegt der Artikel nur auf deinem Profil — im Kategorien-Reiter
-            findet ihn dann niemand, der dich noch nicht kennt.
-          </Text>
+          <Text style={s.hint}>Ohne Kategorie findet dich niemand, der dich noch nicht kennt.</Text>
         </View>
       )}
     </>

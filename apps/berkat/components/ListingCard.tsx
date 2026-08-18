@@ -31,7 +31,7 @@ import { Camera, Heart, Lock } from 'lucide-react-native';
 import { formatEuro } from '../lib/useAuction';
 import { conditionLabel } from '../lib/useBerkatSeller';
 import { listingImages, listingMeta, type Listing } from '../lib/useListings';
-import { radius, space, ui } from '../theme/tokens';
+import { radius, ratio, space, ui } from '../theme/tokens';
 
 type Props = {
   listing: Listing;
@@ -220,7 +220,7 @@ const s = StyleSheet.create({
   // ── Raster ───────────────────────────────────────────────────────────────
   cell: { flex: 1 },
   thumb: {
-    aspectRatio: 1,
+    aspectRatio: ratio.card,
     borderRadius: radius.md,
     backgroundColor: ui.sunken,
     overflow: 'hidden',

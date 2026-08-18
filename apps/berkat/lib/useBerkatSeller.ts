@@ -147,14 +147,22 @@ export function missingBusinessFields(seller: BerkatSeller | null): string[] {
   return fehlt;
 }
 
-/** Die sechs Zustände, in der Reihenfolge, in der Kleinanzeigen sie zeigt. */
+/**
+ * Die sechs Zustände, in der Reihenfolge, in der Kleinanzeigen sie zeigt.
+ *
+ * `hint` ist der Maßstab, nicht Deko: Beim Privatverkauf ohne Gewährleistung
+ * ist der angegebene Zustand das, woran der Verkäufer gemessen wird — und
+ * bis zum 18.08.2026 stand nirgends, was „Sehr gut" überhaupt heißt
+ * (WHATNOT-ANALYSE, zweite Analyse § 3). Der Composer zeigt den Satz zur
+ * gewählten Kachel.
+ */
 export const CONDITIONS = [
-  { slug: 'neu-mit-etikett', label: 'Neu mit Etikett' },
-  { slug: 'neu', label: 'Neu' },
-  { slug: 'sehr-gut', label: 'Sehr gut' },
-  { slug: 'gut', label: 'Gut' },
-  { slug: 'in-ordnung', label: 'In Ordnung' },
-  { slug: 'defekt', label: 'Defekt' },
+  { slug: 'neu-mit-etikett', label: 'Neu mit Etikett', hint: 'Ungetragen, Original-Etikett noch dran.' },
+  { slug: 'neu', label: 'Neu', hint: 'Unbenutzt — nur ohne Etikett oder Verpackung.' },
+  { slug: 'sehr-gut', label: 'Sehr gut', hint: 'Kaum benutzt, keine sichtbaren Mängel.' },
+  { slug: 'gut', label: 'Gut', hint: 'Benutzt, leichte Spuren — nichts fehlt, nichts stört.' },
+  { slug: 'in-ordnung', label: 'In Ordnung', hint: 'Deutliche Spuren, aber voll brauchbar. Nenn die Macken in der Beschreibung.' },
+  { slug: 'defekt', label: 'Defekt', hint: 'Kaputt oder unvollständig — schreib genau, was fehlt.' },
 ] as const;
 
 /**

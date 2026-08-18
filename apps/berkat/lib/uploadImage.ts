@@ -34,7 +34,7 @@ export type ImageKind = 'article' | 'cover';
  * einen anderen Ausschnitt — bei quadratischer Anzeige eines 3:4-Bildes fällt
  * ein Viertel der Höhe weg, und zwar oben und unten.
  */
-export type CropShape = 'square' | 'wide';
+export type CropShape = 'square' | 'portrait' | 'wide';
 
 const PREFIX: Record<ImageKind, string> = {
   article: 'products/images',
@@ -119,11 +119,18 @@ export async function pickImage(
     //
     // Daraus folgt die Aufteilung: Für eine quadratische Fläche ist
     // `allowsEditing` genau richtig und liefert auf BEIDEN Plattformen
-    // dasselbe. Für eine breite Fläche wäre ein Zuschnitt-Rahmen ein
+    // dasselbe. Für jede andere Form wäre ein Zuschnitt-Rahmen ein
     // Versprechen, das iOS nicht halten kann — der Verkäufer zöge ein Quadrat
     // und bekäme einen breiten Streifen daraus. Deshalb dort gar kein
     // Zuschnitt: Das ganze Bild wird geladen, und `contentFit="cover"` wählt
     // beim Zeichnen den Ausschnitt. Gleiches Ergebnis auf iOS und Android.
+    //
+    // `portrait` (seit 18.08.2026, Kartenformat 4:5) fällt aus demselben Grund
+    // in dieselbe Gruppe wie `wide`. Das ist hier sogar der gutmütige Fall: Ein
+    // Handyfoto im Hochformat hat 3:4, also fast genau die Kartenform — es
+    // verliert beim Zeichnen wenige Prozent oben und unten. Ein quadratischer
+    // Rahmen hätte dagegen zuerst ein Viertel der Höhe weggeschnitten und die
+    // Karte hätte davon nochmal seitlich genommen.
     allowsEditing: shape === 'square',
     aspect: [1, 1],
     // Gilt auch ohne Zuschnitt-Rahmen: Das Bild wird neu kodiert. Ein

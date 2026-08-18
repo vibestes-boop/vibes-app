@@ -129,7 +129,7 @@ export function StandingComposer({
     if (imageUrls.length >= MAX_IMAGES || uploading) return;
     setUploading(true);
     setUploadError(null);
-    void pickAndUpload('article', 'square')
+    void pickAndUpload('article', 'portrait')
       .then((url) => {
         if (url) setImageUrls((prev) => (prev.length >= MAX_IMAGES ? prev : [...prev, url]));
       })
@@ -301,6 +301,15 @@ export function StandingComposer({
           );
         })}
       </ScrollView>
+
+      {/* Der Maßstab zur gewählten Kachel. Ohne ihn heißt „Sehr gut" für jeden
+          Verkäufer etwas anderes — und gemessen wird er beim Privatverkauf
+          genau daran. */}
+      {condition ? (
+        <Text style={s.photoHint}>
+          {CONDITIONS.find((c) => c.slug === condition)?.hint}
+        </Text>
+      ) : null}
 
       {/* Nur PLZ und Ort, keine Straße: Für „ist das in meiner Nähe" reicht das,
           und eine genaue Adresse in einem öffentlich lesbaren Angebot wäre

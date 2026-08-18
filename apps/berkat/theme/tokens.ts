@@ -58,7 +58,25 @@ export const ui = {
   lineStrong: 'rgba(20,36,30,0.18)',
 
   brand: '#0E2A22',
-  /** Gold trägt auf hell KEINEN Text — nur Flächen mit dunkler Schrift darauf. */
+  /**
+   * Gold trägt auf hell KEINEN Text — nur Flächen mit dunkler Schrift darauf.
+   *
+   * ⚠️ UND: Gold gehört an Bildschirme mit GENAU EINEM Kaufweg — Live-Raum,
+   * Artikelseite, Kasse. Nicht in Raster.
+   *
+   * Am 18.08.2026 an Whatnot nachgemessen: Deren Kaufknopf im Regal ist
+   * `rgba(0,0,0,0.05)`, also fast unsichtbares Grau; ihr Signalgelb ist für
+   * „Folgen" reserviert. Der Grund ist Arithmetik, nicht Geschmack — bei
+   * fünfundzwanzig Artikeln untereinander sind fünfundzwanzig goldene Knöpfe
+   * keine Hervorhebung mehr, sondern eine Wand. Eine Signalfarbe wirkt nur,
+   * solange sie selten ist.
+   *
+   * Berkat hält die Regel heute dadurch ein, dass `ListingCard` gar keinen
+   * Kaufknopf hat (die Karte führt zum Artikel, gekauft wird dort). Wer das je
+   * ändert, macht den Knopf im Raster GRAU — sonst ist Gold nach dem ersten
+   * vollen Regal keine Auszeichnung mehr. Analyse: `WHATNOT-ANALYSE.md`,
+   * vierter Teil, Abschnitt 2.
+   */
   gold: '#E9A73C',
   goldInk: '#241703',
   /** Auf hell etwas dunkler als auf der Bühne, sonst reicht der Kontrast nicht. */
@@ -116,6 +134,30 @@ export const space = {
   md: 12,
   lg: 16,
   xl: 24,
+} as const;
+
+/**
+ * Seitenverhältnisse der Bildflächen. `width / height` — wie `aspectRatio` in
+ * React Native.
+ *
+ * ⚠️ Warum das ein Token ist und keine Zahl an sechs Stellen: Bis zum
+ * 18.08.2026 stand überall `aspectRatio: 1`. Das war eine Entscheidung, die nie
+ * jemand getroffen hat — sie war einfach der Vorgabewert des ersten Rasters und
+ * wurde fünfmal abgeschrieben.
+ *
+ * Whatnots App zeigt Ware hochkant, und das ist kein Geschmack: Ein Kleid, eine
+ * Abaya, ein Schuh, ein Mensch sind hochformatig. Bei gleicher Spaltenbreite
+ * zeigt `card` rund ein Viertel mehr Ware als ein Quadrat — auf einem
+ * Bildschirm, auf dem das Bild die eigentliche Auskunft ist.
+ *
+ * `tile` bleibt quadratisch: Arbeitsflächen (Bestellung, Zeilen-Vorschau)
+ * beantworten „welches meine ich", nicht „was schaue ich mir an" (HANDOFF 18).
+ */
+export const ratio = {
+  /** Stöber-Karten: Angebot, Show, Termin, Artikelseite. 4:5. */
+  card: 4 / 5,
+  /** Kleine Wiedererkennungsbilder in Listen und Bestellungen. */
+  tile: 1,
 } as const;
 
 /**

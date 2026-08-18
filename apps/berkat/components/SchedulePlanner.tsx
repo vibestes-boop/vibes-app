@@ -9,10 +9,17 @@
 // Nebeneffekt, der kein Nebeneffekt ist: `@react-native-community/datetimepicker`
 // wäre ein natives Modul und damit ein Build. Zwei Reihen Pressables sind es
 // nicht.
+//
+// Die Kacheln liegen seit dem 18.08.2026 in einem Blatt (`Modal`), nicht mehr
+// offen auf der Seite: Elf Kacheln plus zwei Hinweise waren ein halber
+// Bildschirm für eine Entscheidung („sehr lang und unübersichtlich", Zaur mit
+// Whatnot-Screenshots). Die Hauptseite zeigt jetzt nur das Ergebnis — eine
+// antippbare „Wann?"-Zeile — und das Blatt den Entscheidungsbaum.
 
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,7 +28,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarClock, ImagePlus, X } from 'lucide-react-native';
+import { CalendarClock, ChevronRight, ImagePlus, X } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { pickAndUpload } from '../lib/uploadImage';
 import { formatSlot, formatUntil, MAX_WEEKS, type PlannedShow } from '../lib/useSchedule';
@@ -50,6 +57,12 @@ const SOON = [
 const DAY_LABELS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 type Props = {
+  /**
+   * `true`, wenn der Planer in einem Blatt steckt, das schon eine Überschrift
+   * trägt (Verkaufen-Reiter seit 19.08.2026). Sonst stünde „Termin ankündigen"
+   * über „Nächsten Termin ankündigen" — dieselbe Aussage zweimal.
+   */
+  bare?: boolean;
   plans: PlannedShow[];
   busy: boolean;
   onPlan: (input: {
@@ -61,7 +74,7 @@ type Props = {
   onCancel: (id: string) => void;
 };
 
-export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
+export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel }: Props) {
   const [title, setTitle] = useState('');
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -73,6 +86,8 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
   const [weekly, setWeekly] = useState(true);
   /** Minuten ab jetzt, wenn eine spontane Sendung gewählt ist. Sonst `null`. */
   const [soon, setSoon] = useState<number | null>(null);
+  /** Das Blatt mit den Kacheln. Auf der Hauptseite steht nur das Ergebnis. */
+  const [whenOpen, setWhenOpen] = useState(false);
 
   // Die sieben wählbaren Tage. Einmal je Aufbau gerechnet — über Mitternacht
   // hinweg zeigt die Liste sonst „Heute" für gestern.
@@ -136,16 +151,33 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
   // `coverUrl` wird erst nach dem Hochladen gesetzt.
   const canPlan = title.trim().length > 0 && !tooSoon && !busy && !uploading;
 
+  // Was die „Wann?"-Zeile zeigt: das Ergebnis der Wahl, nicht den Baum.
+  const whenSummary =
+    soon !== null
+      ? (SOON.find((option) => option.minutes === soon)?.label ?? `in ${soon} Min`)
+      : `${formatSlot(target.toISOString())} · ${weekly ? 'jede Woche' : 'einmal'}`;
+  // Der Übernehmen-Knopf im Blatt sagt die Terminzahl dazu — „4 Termine" ist
+  // die Folge von „jede Woche", und genau die soll man vor dem Schließen sehen.
+  const applyLabel =
+    soon !== null
+      ? whenSummary
+      : `${formatSlot(target.toISOString())} · ${weekly ? `${MAX_WEEKS} Termine` : '1 Termin'}`;
+
   return (
     <View style={s.card}>
-      <View style={s.head}>
-        <CalendarClock size={18} color={ui.text} />
-        <Text style={s.title}>Nächsten Termin ankündigen</Text>
-      </View>
-      <Text style={s.body}>
-        Wer dir folgt, bekommt 15 Minuten vorher eine Erinnerung aufs Handy. Ein fester
-        Abend bringt die Leute wieder — mehr als jede einzelne gute Show.
-      </Text>
+      {/* Der eigene Kopf entfällt im Blatt: Dort steht „Termin ankündigen"
+          bereits in der Kopfzeile, und „Nächsten Termin ankündigen" darunter
+          wäre dieselbe Aussage zweimal. */}
+      {!bare ? (
+        <View style={s.head}>
+          <CalendarClock size={18} color={ui.text} />
+          <Text style={s.title}>Nächsten Termin ankündigen</Text>
+        </View>
+      ) : null}
+      {/* Ein Satz statt dreier Zeilen. Dass ein fester Abend die Leute
+          wiederbringt, ist wahr — aber es erklärt, bevor jemand gefragt hat
+          (sechste Whatnot-Analyse). */}
+      <Text style={s.body}>Wer dir folgt, wird 15 Minuten vorher erinnert.</Text>
 
       {/* Bild links, Titel rechts — dieselbe Anordnung wie bei „Artikel
           auflegen" und „Dauerhaft anbieten". Drei Formulare im selben Reiter,
@@ -161,7 +193,7 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
             // `cover` = Speicherort (`thumbnails/`), `square` = Form: Die Karte
             // im „Demnächst"-Streifen zeichnet quadratisch, genau wie die
             // Live-Karten darunter.
-            void pickAndUpload('cover', 'square')
+            void pickAndUpload('cover', 'portrait')
               .then((url) => {
                 if (url) setCoverUrl(url);
               })
@@ -205,104 +237,24 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
           wählt, bekommt serverseitig das Cover seiner letzten Show — deshalb
           steht hier „meistens", nicht „immer". */}
       {!coverUrl && !uploading ? (
-        <Text style={s.photoHint}>
-          Ohne Bild nehmen wir das Cover deiner letzten Show. Hast du noch keine, steht dein
-          Abend nur als Text auf der Startseite.
-        </Text>
+        <Text style={s.photoHint}>Ohne Bild nehmen wir das Cover deiner letzten Show.</Text>
       ) : null}
       {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
 
-      <Text style={s.label}>Wann?</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row}>
-        {days.map((day) => {
-          const active = day.offset === dayOffset;
-          return (
-            <Pressable
-              key={day.offset}
-              onPress={() => {
-                setDayOffset(day.offset);
-                // „In 30 Minuten" gibt es nur für heute — an einem anderen Tag
-                // wäre die Angabe sinnlos.
-                if (day.offset !== 0) setSoon(null);
-              }}
-              style={[s.dayTile, active && s.tileActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`${day.label} ${day.sub}`}
-            >
-              <Text style={[s.dayLabel, active && s.tileTextActive]}>{day.label}</Text>
-              <Text style={[s.daySub, active && s.tileSubActive]}>{day.sub}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row}>
-        {/* Spontan zuerst — wer heute noch senden will, hat es eiliger als der,
-            der den nächsten Samstag plant. Nur für heute. */}
-        {isToday
-          ? SOON.map((option) => {
-              const active = soon === option.minutes;
-              return (
-                <Pressable
-                  key={option.minutes}
-                  onPress={() => {
-                    setSoon(option.minutes);
-                    // Eine spontane Sendung ist keine Reihe.
-                    setWeekly(false);
-                  }}
-                  style={[s.timeTile, active && s.tileActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                >
-                  <Text style={[s.timeLabel, active && s.tileTextActive]}>{option.label}</Text>
-                </Pressable>
-              );
-            })
-          : null}
-
-        {times.map((value) => {
-          const active = soon === null && value === effectiveHour;
-          return (
-            <Pressable
-              key={value}
-              onPress={() => {
-                setHour(value);
-                setSoon(null);
-              }}
-              style={[s.timeTile, active && s.tileActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-            >
-              <Text style={[s.timeLabel, active && s.tileTextActive]}>{value}:00</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {/* Der Rhythmus ist die eigentliche Entscheidung, nicht der einzelne Tag —
-          deshalb steht er als eigene Zeile und nicht als Häkchen am Rand. */}
-      {soon === null ? (
-      <View style={s.repeatRow}>
-        {[
-          { weekly: false, label: 'Einmal' },
-          { weekly: true, label: `Jede Woche · ${MAX_WEEKS}×` },
-        ].map((option) => {
-          const active = option.weekly === weekly;
-          return (
-            <Pressable
-              key={option.label}
-              onPress={() => setWeekly(option.weekly)}
-              style={[s.repeatTile, active && s.tileActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-            >
-              <Text style={[s.repeatLabel, active && s.tileTextActive]}>{option.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      ) : null}
+      {/* Eine antippbare Zeile statt elf Kacheln: Die Hauptseite sagt, was
+          gewählt ist; geändert wird im Blatt darunter. */}
+      <Pressable
+        style={s.whenRow}
+        onPress={() => setWhenOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Wann: ${whenSummary} — ändern`}
+      >
+        <Text style={s.whenLabel}>Wann?</Text>
+        <Text style={s.whenValue} numberOfLines={1}>
+          {whenSummary}
+        </Text>
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
 
       <Pressable
         style={[s.primary, !canPlan && s.primaryOff]}
@@ -317,21 +269,9 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
         accessibilityLabel="Termin eintragen"
       >
         <Text style={s.primaryText}>
-          {tooSoon
-            ? 'Dieser Zeitpunkt ist schon vorbei'
-            : weekly
-              ? `Ab ${formatSlot(target.toISOString())} — jede Woche`
-              : `Für ${formatSlot(target.toISOString())} eintragen`}
+          {tooSoon ? 'Dieser Zeitpunkt ist schon vorbei' : 'Ankündigen'}
         </Text>
       </Pressable>
-
-      {weekly && !tooSoon ? (
-        <Text style={s.repeatHint}>
-          Trägt {MAX_WEEKS} Termine ein, immer {DAY_LABELS[target.getDay()]} um{' '}
-          {String(effectiveHour).padStart(2, '0')}:00. Weiter als 30 Tage lässt der Server nicht
-          zu — danach einfach neu eintragen.
-        </Text>
-      ) : null}
 
       {plans.length > 0 ? (
         <View style={s.list}>
@@ -370,6 +310,149 @@ export function SchedulePlanner({ plans, busy, onPlan, onCancel }: Props) {
           ))}
         </View>
       ) : null}
+
+      {/* ── Das Blatt mit den Kacheln — dasselbe Muster wie das
+          Bearbeiten-Blatt der Artikelseite (`pageSheet`: man sieht, dass man
+          über seinem Formular arbeitet). Die Kacheln selbst sind unverändert;
+          sie stehen nur eine Ebene tiefer. ──────────────────────────────── */}
+      <Modal
+        visible={whenOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setWhenOpen(false)}
+      >
+        <View style={s.sheet}>
+          <View style={s.sheetHead}>
+            <Text style={s.sheetTitle}>Wann sendest du?</Text>
+            <Pressable
+              hitSlop={10}
+              onPress={() => setWhenOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Schließen"
+            >
+              <X size={22} color={ui.text} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={s.sheetBody}>
+            <Text style={s.label}>Tag</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row}>
+              {days.map((day) => {
+                const active = day.offset === dayOffset;
+                return (
+                  <Pressable
+                    key={day.offset}
+                    onPress={() => {
+                      setDayOffset(day.offset);
+                      // „In 30 Minuten" gibt es nur für heute — an einem anderen Tag
+                      // wäre die Angabe sinnlos.
+                      if (day.offset !== 0) setSoon(null);
+                    }}
+                    style={[s.dayTile, active && s.tileActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`${day.label} ${day.sub}`}
+                  >
+                    <Text style={[s.dayLabel, active && s.tileTextActive]}>{day.label}</Text>
+                    <Text style={[s.daySub, active && s.tileSubActive]}>{day.sub}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <Text style={s.label}>Uhrzeit</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row}>
+              {/* Spontan zuerst — wer heute noch senden will, hat es eiliger als der,
+                  der den nächsten Samstag plant. Nur für heute. */}
+              {isToday
+                ? SOON.map((option) => {
+                    const active = soon === option.minutes;
+                    return (
+                      <Pressable
+                        key={option.minutes}
+                        onPress={() => {
+                          setSoon(option.minutes);
+                          // Eine spontane Sendung ist keine Reihe.
+                          setWeekly(false);
+                        }}
+                        style={[s.timeTile, active && s.tileActive]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                      >
+                        <Text style={[s.timeLabel, active && s.tileTextActive]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })
+                : null}
+
+              {times.map((value) => {
+                const active = soon === null && value === effectiveHour;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={() => {
+                      setHour(value);
+                      setSoon(null);
+                    }}
+                    style={[s.timeTile, active && s.tileActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[s.timeLabel, active && s.tileTextActive]}>{value}:00</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {/* Der Rhythmus ist die eigentliche Entscheidung, nicht der einzelne Tag —
+                deshalb steht er als eigene Zeile und nicht als Häkchen am Rand. */}
+            {soon === null ? (
+            <View style={s.repeatRow}>
+              {[
+                { weekly: false, label: 'Einmal' },
+                { weekly: true, label: `Jede Woche · ${MAX_WEEKS}×` },
+              ].map((option) => {
+                const active = option.weekly === weekly;
+                return (
+                  <Pressable
+                    key={option.label}
+                    onPress={() => setWeekly(option.weekly)}
+                    style={[s.repeatTile, active && s.tileActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[s.repeatLabel, active && s.tileTextActive]}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            ) : null}
+
+            {weekly && !tooSoon ? (
+              <Text style={s.repeatHint}>
+                Trägt {MAX_WEEKS} Termine ein, immer {DAY_LABELS[target.getDay()]} um{' '}
+                {String(effectiveHour).padStart(2, '0')}:00. Weiter als 30 Tage lässt der Server
+                nicht zu — danach einfach neu eintragen.
+              </Text>
+            ) : null}
+
+            {/* Schließt nur das Blatt — eingetragen wird auf der Hauptseite.
+                Bei einem toten Zeitpunkt gesperrt: Wer hier „übernehmen"
+                könnte, trüge eine Auswahl nach draußen, die der Server
+                ohnehin ablehnt. */}
+            <Pressable
+              style={[s.primary, tooSoon && s.primaryOff]}
+              disabled={tooSoon}
+              onPress={() => setWhenOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Auswahl übernehmen"
+            >
+              <Text style={s.primaryText}>
+                {tooSoon ? 'Dieser Zeitpunkt ist schon vorbei' : `Übernehmen: ${applyLabel}`}
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -416,6 +499,30 @@ const s = StyleSheet.create({
   },
   photoHint: { fontSize: 11, color: ui.textMuted, marginTop: space.sm, lineHeight: 16 },
   warn: { fontSize: 12, color: ui.live, marginTop: space.sm },
+
+  whenRow: {
+    marginTop: space.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: ui.sunken,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+  },
+  whenLabel: { fontSize: 13, color: ui.textMuted },
+  whenValue: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text, textAlign: 'right' },
+
+  sheet: { flex: 1, backgroundColor: ui.bg },
+  sheetHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+  },
+  sheetTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
+  sheetBody: { padding: space.lg, paddingBottom: space.xl * 2 },
 
   label: { fontSize: 12, color: ui.textMuted, marginTop: space.md },
   row: { marginTop: space.sm },

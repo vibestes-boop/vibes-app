@@ -13,7 +13,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { CalendarClock, Lock, Repeat } from 'lucide-react-native';
-import { ui, radius, space } from '../theme/tokens';
+import { ui, radius, ratio, space } from '../theme/tokens';
 import { formatSlot, formatUntil, nextPerSeries, type PlannedShow } from '../lib/useSchedule';
 import { Avatar } from './Avatar';
 import { BerkatMark } from './BerkatMark';
@@ -137,7 +137,7 @@ const s = StyleSheet.create({
   host: { flex: 1, minWidth: 0, fontSize: 12, fontWeight: '600', color: ui.textMuted },
 
   thumb: {
-    aspectRatio: 1,
+    aspectRatio: ratio.card,
     marginTop: space.sm,
     borderRadius: radius.md,
     backgroundColor: ui.sunken,

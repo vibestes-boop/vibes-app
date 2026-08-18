@@ -56,6 +56,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Heart,
@@ -96,7 +97,7 @@ import { BerkatMark } from '../../components/BerkatMark';
 import { ListingCard } from '../../components/ListingCard';
 import { OfferPanel } from '../../components/OfferPanel';
 import { StandingComposer } from '../../components/StandingComposer';
-import { radius, space, ui } from '../../theme/tokens';
+import { radius, ratio, space, ui } from '../../theme/tokens';
 
 /** Ein Hinweis, der einen Weg mitbringen kann statt nur einen Rat. */
 type Notice = { text: string; cta?: 'cart' };
@@ -169,6 +170,8 @@ export default function ListingScreen() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  /** Die Rechtsfolge unter der Anbieterkennzeichnung — zu, bis jemand fragt. */
+  const [legalOpen, setLegalOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
 
   // Galerie: EIN aktiver Index, gesetzt am ENDE der Scroll-Animation — nicht
@@ -487,10 +490,16 @@ export default function ListingScreen() {
           paddingBottom: space.xl,
         }}
       >
-        {/* ── Die Galerie. Quadratisch und volle Breite: Hier wird gestöbert,
-            und auf einer Stöber-Fläche IST das Bild der Inhalt (HANDOFF 18).
-            Geblättert wird seitenweise, der Punkt-Index folgt am ENDE der
-            Animation (onMomentumScrollEnd, Serlo-Lehre v1.26.8). ──────────── */}
+        {/* ── Die Galerie. Hochkant (`ratio.card`) und volle Breite: Hier wird
+            gestöbert, und auf einer Stöber-Fläche IST das Bild der Inhalt
+            (HANDOFF 18). Geblättert wird seitenweise, der Punkt-Index folgt am
+            ENDE der Animation (onMomentumScrollEnd, Serlo-Lehre v1.26.8).
+
+            ⚠️ Die Höhe der EINZELBILDER muss der Höhe der Fläche folgen. Beim
+            Umstellen auf Hochformat am 18.08.2026 stand hier weiter
+            `height: screenWidth` — die Fläche war 4:5 hoch, die Bilder darin
+            quadratisch, und unter jedem Foto klaffte ein sandfarbener
+            Streifen. ──────────────────────────────────────────────────────── */}
         <View style={styles.hero}>
           {images.length > 0 ? (
             <ScrollView
@@ -503,7 +512,7 @@ export default function ListingScreen() {
                 <Image
                   key={url}
                   source={{ uri: url }}
-                  style={{ width: screenWidth, height: screenWidth }}
+                  style={{ width: screenWidth, height: screenWidth / ratio.card }}
                   contentFit="cover"
                   transition={160}
                 />
@@ -559,16 +568,44 @@ export default function ListingScreen() {
               eine AGB nach §§ 305 ff. BGB, auch zwischen Privatleuten, und
               nach § 309 Nr. 7 BGB unwirksam — der Privatverkäufer stünde
               schlechter da als ohne unsere „Hilfe". Wir kennzeichnen nur, WER
-              verkauft, und sagen, was daraus folgt. ──────────────────────── */}
+              verkauft, und sagen, was daraus folgt.
+
+              ⚠️ SEIT 18.08.2026 EINE ZEILE STATT EINES KASTENS.
+              Zaurs Einwand: „Leute wollen beim Kaufen genießen, sie kommen
+              nicht, um eingeschüchtert zu werden." Richtig — und die Pflicht
+              betrifft, DASS die Angabe vor der Vertragserklärung dasteht,
+              nicht wie laut. Die Rechtsfolge liegt deshalb hinter einem Tipp:
+              sichtbar für jeden, der sie sucht, ohne den Weg zur Ware zu
+              verstellen.
+
+              Die Zeile selbst bleibt IMMER sichtbar. Sie ganz hinter den Tipp
+              zu legen wäre der Fehler, den Abschnitt 3 schon einmal
+              beschreibt — bei dieser Angabe ist Berkat bereits einmal
+              danebengelegen. ──────────────────────────────────────────────── */}
           {kindNote ? (
-            <View style={styles.legal}>
-              <Text style={styles.legalText}>{kindNote}</Text>
-              <Text style={styles.legalSub}>
-                {isPrivate
-                  ? 'Ein Privatverkauf zwischen zwei Menschen. Was der Verkäufer zum Zustand schreibt, gilt — Rückgabe ist Verhandlungssache.'
-                  : 'Gewerblicher Verkauf. 14 Tage Widerrufsrecht und gesetzliche Gewährleistung.'}
-              </Text>
-            </View>
+            <Pressable
+              style={styles.legalRow}
+              onPress={() => setLegalOpen((v) => !v)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: legalOpen }}
+              accessibilityLabel={`${kindNote} — was das bedeutet`}
+            >
+              <View style={styles.legalHead}>
+                <Text style={styles.legalText}>{kindNote}</Text>
+                <ChevronDown
+                  size={15}
+                  color={ui.textMuted}
+                  style={legalOpen ? styles.chevOpen : undefined}
+                />
+              </View>
+              {legalOpen ? (
+                <Text style={styles.legalSub}>
+                  {isPrivate
+                    ? 'Ein Privatverkauf zwischen zwei Menschen. Was der Verkäufer zum Zustand schreibt, gilt — Rückgabe ist Verhandlungssache.'
+                    : 'Gewerblicher Verkauf. 14 Tage Widerrufsrecht und gesetzliche Gewährleistung.'}
+                </Text>
+              ) : null}
+            </Pressable>
           ) : null}
 
           {/* ── Die Beschreibung. Bis heute unsichtbar. ──────────────────── */}
@@ -680,14 +717,31 @@ export default function ListingScreen() {
             </Text>
           </View>
 
-          {/* ── Anbieterangaben eines gewerblichen Verkäufers.
-              Bei einem gewerblichen Verkäufer sind Name und Anschrift
-              gesetzlich öffentlich. Fehlen sie, steht das offen da statt
-              still zu fehlen — HANDOFF 20 führt genau diesen Streifen als
-              „nicht gebaut". ─────────────────────────────────────────────── */}
-          {listing.seller_kind === 'business' ? (
+          {/* ── Anbieterangaben eines gewerblichen Verkäufers — NUR NOCH FÜR
+              IHN SELBST (seit 18.08.2026).
+
+              Vorher stand hier für JEDEN Betrachter entweder der volle
+              Impressumsblock oder, wenn er fehlte, ein roter Satz: „Dieser
+              Verkäufer hat seine Anbieterangaben noch nicht vollständig
+              hinterlegt." Beides war am falschen Ort:
+
+              • Der rote Satz warnt den KÄUFER vor einem Mangel, den er weder
+                verursacht hat noch beheben kann. Er sät Misstrauen gegen den
+                Verkäufer — und in Wahrheit fehlt bis heute das Formular, mit
+                dem der Verkäufer die Angaben überhaupt eintragen könnte
+                (Abschnitt 33, „die Sackgasse"). Wir warnten also vor unserer
+                eigenen Lücke.
+              • Der volle Block macht die Kaufseite behördlich. § 5 DDG
+                verlangt „leicht erkennbar, unmittelbar erreichbar und ständig
+                verfügbar" — ein Tipp auf den Verkäufer erfüllt das. Auf jeder
+                Artikelseite ausbreiten verlangt es nicht.
+
+              Für den Verkäufer selbst bleibt der Hinweis stehen: Dort ist er
+              handlungsleitend statt beunruhigend. Der Impressumsblock für
+              Käufer liegt jetzt auf dem Verkäufer-Profil. ────────────────── */}
+          {listing.seller_kind === 'business' && mine ? (
             <View style={styles.block}>
-              <Text style={styles.blockLabel}>Anbieterangaben</Text>
+              <Text style={styles.blockLabel}>Deine Anbieterangaben</Text>
               {/* ⚠️ DREI Zustände, nicht zwei. `missingBusinessFields` gibt für
                   „ich weiß nichts" (`null`) dasselbe leere Array zurück wie für
                   „alles da" — wer nur auf `missing.length` prüft, dreht
@@ -702,12 +756,13 @@ export default function ListingScreen() {
               {sellerLoading ? (
                 <ActivityIndicator style={{ alignSelf: 'flex-start' }} color={ui.textMuted} />
               ) : !sellerRow || missing.length ? (
+                // Nur noch der eine Zweig: Der Block rendert seit dem
+                // 18.08.2026 ausschließlich für den Verkäufer selbst, die
+                // Käufer-Fassung des Satzes gibt es nicht mehr.
                 <Text style={styles.legalWarn}>
-                  {mine
-                    ? `Unvollständig — es fehlen: ${
-                        missing.length ? missing.join(', ') : 'alle Angaben'
-                      }. Trag sie im Konto nach, sie stehen an jedem deiner Angebote.`
-                    : 'Dieser Verkäufer hat seine Anbieterangaben noch nicht vollständig hinterlegt.'}
+                  {`Unvollständig — es fehlen: ${
+                    missing.length ? missing.join(', ') : 'alle Angaben'
+                  }. Trag sie im Konto nach, sie stehen an jedem deiner Angebote.`}
                 </Text>
               ) : (
                 <Text style={styles.imprint}>
@@ -997,7 +1052,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
   pressed: { opacity: 0.7 },
 
-  hero: { width: '100%', aspectRatio: 1, backgroundColor: ui.sunken },
+  hero: { width: '100%', aspectRatio: ratio.card, backgroundColor: ui.sunken },
   heroEmpty: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   heroLock: {
     position: 'absolute',
@@ -1027,14 +1082,18 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, fontWeight: '600', color: ui.text },
   when: { fontSize: 12, color: ui.textMuted, marginTop: -space.sm },
 
-  legal: {
-    backgroundColor: ui.card,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
+  // Eine Zeile, kein Kasten: Die Pflichtangabe steht da, ohne den Weg zur
+  // Ware zu verstellen. Die Trennlinien halten sie als eigene Aussage lesbar,
+  // ohne sie zu umrahmen.
+  legalRow: {
+    paddingVertical: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: ui.line,
-    padding: space.md,
-    gap: 3,
+    gap: 4,
   },
+  legalHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chevOpen: { transform: [{ rotate: '180deg' }] },
   legalText: { fontSize: 13, fontWeight: '700', color: ui.text },
   legalSub: { fontSize: 12, color: ui.textMuted, lineHeight: 17 },
   legalWarn: { fontSize: 12, color: ui.live, lineHeight: 17 },
