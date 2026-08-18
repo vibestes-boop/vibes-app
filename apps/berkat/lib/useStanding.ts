@@ -89,6 +89,8 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       /** Alle Bilder in Reihenfolge, das erste ist das Cover. Max. 8 (Server-CHECK). */
       imageUrls?: string[];
       womenOnly?: boolean;
+      /** Nimmt Preisvorschläge an. Der Composer setzt ihn für Neues sichtbar auf an. */
+      acceptsOffers?: boolean;
       /** Slug aus `berkat_categories`. Ohne sie liegt der Artikel in keiner Kachel. */
       category?: string | null;
       /**
@@ -112,6 +114,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
         p_price_cents: input.priceCents,
         p_image_urls: input.imageUrls ?? [],
         p_women_only: input.womenOnly ?? false,
+        p_accepts_offers: input.acceptsOffers ?? false,
         p_category: input.category ?? null,
         p_description: input.description ?? null,
         p_condition: input.condition ?? null,
@@ -139,6 +142,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       priceCents: number;
       imageUrls?: string[];
       womenOnly?: boolean;
+      acceptsOffers?: boolean;
       category?: string | null;
       description?: string | null;
       condition?: string | null;
@@ -151,6 +155,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
         p_price_cents: input.priceCents,
         p_image_urls: input.imageUrls ?? [],
         p_women_only: input.womenOnly ?? false,
+        p_accepts_offers: input.acceptsOffers ?? false,
         p_category: input.category ?? null,
         p_description: input.description ?? null,
         p_condition: input.condition ?? null,
@@ -171,8 +176,18 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
   });
 
   const buy = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('buy_now_live_auction', { p_auction_id: id });
+    /**
+     * `offerId` löst eine angenommene Zusage ein — der Server rechnet dann mit
+     * dem vereinbarten statt dem Listenpreis. Ohne ihn der alte Weg,
+     * unverändert.
+     */
+    mutationFn: async (input: string | { id: string; offerId?: string }) => {
+      const id = typeof input === 'string' ? input : input.id;
+      const offerId = typeof input === 'string' ? null : (input.offerId ?? null);
+      const { error } = await supabase.rpc('buy_now_live_auction', {
+        p_auction_id: id,
+        p_offer_id: offerId,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -181,6 +196,10 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       // nachladen, sonst steht unter „Konto" weiter der alte Stand.
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'my-carts'] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'cart'] });
+      // Der Kauf erklärt alle offenen Vorschläge auf diesen Artikel für
+      // erledigt (serverseitig) — die Listen müssen das mitbekommen.
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'offers'] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'offer-count'] });
     },
   });
 

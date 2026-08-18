@@ -80,6 +80,12 @@ import {
 } from '../../lib/useBerkatSeller';
 import { listingImages, useListing, useSellerListings } from '../../lib/useListings';
 import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
+import {
+  offerErrorText,
+  useOfferActions,
+  useOffersForListing,
+  type Offer,
+} from '../../lib/useOffers';
 import { REPORT_REASONS, useSellerActions } from '../../lib/useSellerActions';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
 import { shippingHint, useShippingFrom } from '../../lib/useShipping';
@@ -88,6 +94,7 @@ import { useVouches, vouchSummary } from '../../lib/useVouch';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { ListingCard } from '../../components/ListingCard';
+import { OfferPanel } from '../../components/OfferPanel';
 import { StandingComposer } from '../../components/StandingComposer';
 import { radius, space, ui } from '../../theme/tokens';
 
@@ -197,6 +204,12 @@ export default function ListingScreen() {
 
   const sellerActions = useSellerActions(myUserId);
 
+  // Preisvorschläge. Die RLS gibt dem Käufer genau seinen, dem Verkäufer alle —
+  // eine Abfrage, zwei Sichten, keine Fallunterscheidung hier.
+  const { data: offers = [] } = useOffersForListing(id, myUserId);
+  const offerActions = useOfferActions(id, myUserId);
+  const [offerBusy, setOfferBusy] = useState(false);
+
   // Dieselbe Falle wie überall: Stack-Bildschirme bleiben aufgebaut. Wer von
   // hier auf das Profil geht, den Artikel dort zurückzieht und zurückkommt,
   // sähe sonst weiter einen Kaufknopf für etwas, das es nicht mehr gibt.
@@ -257,7 +270,7 @@ export default function ListingScreen() {
     setBusy(true);
     setNotice(null);
     try {
-      await actions.buy.mutateAsync(listing.id);
+      await actions.buy.mutateAsync({ id: listing.id });
       // Design-Gesetz 1: Ein Kauf ist ein Peak. Auge und Hand zusammen — und
       // danach ein WEG, keine Wegbeschreibung. Vorher endete der teuerste
       // Moment der App in einem Satz („Bezahlen kannst du unter ‚Konto'"), und
@@ -293,6 +306,51 @@ export default function ListingScreen() {
       setBusy(false);
     }
   }, [actions.cancel, listing]);
+
+  /**
+   * Ein Ruf für alle vier Vorschlag-Aktionen — sie teilen Anmeldung,
+   * Sperr-Zustand und Fehlerbehandlung. Die Meldung nutzt denselben
+   * Hinweis-Kasten wie der Kauf.
+   */
+  const runOffer = useCallback(
+    async (fn: () => Promise<unknown>, okText: string) => {
+      if (needsLogin()) return;
+      setOfferBusy(true);
+      setNotice(null);
+      try {
+        await fn();
+        setNotice({ text: okText });
+      } catch (err) {
+        setNotice({ text: offerErrorText(err instanceof Error ? err.message : String(err)) });
+      } finally {
+        setOfferBusy(false);
+      }
+    },
+    [needsLogin],
+  );
+
+  /**
+   * Eine angenommene Zusage einlösen. Derselbe Kaufweg wie sonst — die RPC
+   * bekommt nur zusätzlich die Vorschlag-Kennung und rechnet dann mit dem
+   * vereinbarten statt dem Listenpreis.
+   */
+  const onBuyAccepted = useCallback(
+    async (offer: Offer) => {
+      if (!listing || needsLogin()) return;
+      setOfferBusy(true);
+      setNotice(null);
+      try {
+        await actions.buy.mutateAsync({ id: listing.id, offerId: offer.id });
+        celebrate();
+        setNotice({ text: 'Im Paket. 🎉', cta: 'cart' });
+      } catch (err) {
+        setNotice({ text: standingErrorText(err instanceof Error ? err.message : String(err)) });
+      } finally {
+        setOfferBusy(false);
+      }
+    },
+    [actions.buy, listing, needsLogin],
+  );
 
   const onShare = useCallback(() => {
     if (!listing) return;
@@ -519,6 +577,45 @@ export default function ListingScreen() {
               <Text style={styles.blockLabel}>Beschreibung</Text>
               <Text style={styles.description}>{listing.description}</Text>
             </View>
+          ) : null}
+
+          {/* ── Preisvorschläge. Steht ÜBER der Verkäuferkarte und unter der
+              Beschreibung: Wer handeln will, hat den Artikel gelesen und noch
+              nicht auf den Menschen geschaut. Der Kaufknopf unten bleibt
+              unberührt — beides sind Wege zum selben Artikel, und keiner
+              verdrängt den anderen. ──────────────────────────────────────── */}
+          {!gone ? (
+            <OfferPanel
+              offers={offers}
+              isSeller={mine}
+              myUserId={myUserId}
+              priceCents={listing.buy_now_cents}
+              open={listing.accepts_offers}
+              busy={offerBusy}
+              onMake={(amount) =>
+                void runOffer(
+                  () => offerActions.make.mutateAsync(amount),
+                  'Vorschlag ist raus. 🤝',
+                )
+              }
+              onRespond={(offerId, action, counterCents) =>
+                void runOffer(
+                  () => offerActions.respond.mutateAsync({ offerId, action, counterCents }),
+                  action === 'accept'
+                    ? 'Angenommen — der Käufer kann jetzt zu diesem Preis kaufen.'
+                    : action === 'counter'
+                      ? 'Gegenvorschlag ist raus.'
+                      : 'Abgelehnt.',
+                )
+              }
+              onWithdraw={(offerId) =>
+                void runOffer(
+                  () => offerActions.withdraw.mutateAsync(offerId),
+                  'Zurückgezogen.',
+                )
+              }
+              onBuyAccepted={(offer) => void onBuyAccepted(offer)}
+            />
           ) : null}
 
           {/* ── Der Verkäufer. Das war bis heute das ZIEL jedes Tipps auf ein
@@ -824,6 +921,7 @@ export default function ListingScreen() {
                 title: listing.title,
                 priceCents: listing.buy_now_cents,
                 womenOnly: listing.women_only,
+                acceptsOffers: listing.accepts_offers,
                 category: listing.category,
                 imageUrls: images,
                 description: listing.description,

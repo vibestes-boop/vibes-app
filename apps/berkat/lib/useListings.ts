@@ -44,6 +44,8 @@ export type Listing = {
    */
   image_urls: string[];
   women_only: boolean;
+  /** Nimmt Preisvorschläge an (seit 20260818120000). Vorgabe `false`. */
+  accepts_offers: boolean;
   created_at: string;
   status: ListingStatus;
   /**
@@ -84,8 +86,8 @@ export type Listing = {
  * weil der Zeilentyp es nicht trug).
  */
 const LISTING_COLUMNS =
-  'id, seller_id, title, image_url, image_urls, buy_now_cents, women_only, created_at, status, ' +
-  'category, description, condition, postal_code, city, seller_kind';
+  'id, seller_id, title, image_url, image_urls, buy_now_cents, women_only, accepts_offers, ' +
+  'created_at, status, category, description, condition, postal_code, city, seller_kind';
 
 /**
  * Die Regal-Grenze, in jeder Listen-Abfrage dieselbe.

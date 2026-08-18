@@ -523,3 +523,109 @@ Gold auf Tiefgrün ist bewusst das Gegenteil von Whatnots Signalgelb — das lie
 4. Die Auktions-Migration: `live_auctions` + `live_bids`, Gebots-RPC mit Row-Lock, serverseitiger Zuschlag, Anti-Snipe-Verlängerung, Sammelkorb-Fenster
 
 Sag, ob Ähre und Farben bleiben oder ob du etwas anderes im Kopf hattest — danach lege ich los.
+
+---
+---
+
+# Zweite Analyse: die Nicht-Live-Seite (18.08.2026)
+
+> Die Analyse oben endet an der Live-Sendung. Sie ist damit vollständig für die
+> Frage „wie funktioniert Whatnot" — und **blind für die Frage, an der Berkat am
+> 17./18.08.2026 zwei Tage gearbeitet hat**: Was passiert, wenn niemand sendet?
+> Diese Ergänzung schließt die Lücke. Quellen am Ende, alle aus Whatnots
+> Hilfe-Center und Verkäufer-Dokumentation.
+
+## 0. Der Befund in einem Satz
+
+Whatnot hat **exakt dasselbe Zwei-Regale-Modell wie Berkat** — und sagt offen,
+dass das stille Regal schlecht sichtbar ist.
+
+## 1. Zwei Regale, benannt
+
+| Whatnot | Berkat |
+|---|---|
+| **Profile Shop** — Buy-It-Now, jederzeit kaufbar, erscheint in Kategorie-Browse **und Suche** | Regal (`session_id IS NULL`, `status='listed'`) |
+| **Live Shop** — Artikel, die einer Show zugeordnet sind | Show-Artikel (`session_id` gesetzt) |
+| Umschalter **„Reserve for Live"** | ❌ fehlt (HANDOFF 17 führt es als bewusste Lücke) |
+
+⚠️ **Whatnot hat die Semantik im Juli 2026 gedreht** — und die neue ist die
+bessere: Früher blieb ein reservierter Artikel *auch* im Profile Shop, heute
+**verschiebt** der Schalter ihn. Wer beides will, legt ohne Reservierung an und
+**importiert später in die Show**. Damit ist „wo liegt es" jederzeit eindeutig;
+die alte Fassung hatte einen Artikel an zwei Orten mit einer Wahrheit.
+
+Wer den Umschalter in Berkat baut, baut ihn so: ein `UPDATE` auf `session_id`,
+kein Duplikat.
+
+## 2. Was sie haben und wir nicht
+
+| Was | Bewertung für Berkat |
+|---|---|
+| **Preisvorschlag** („Accept offers", Schalter je Angebot: annehmen / kontern / ablehnen) | **Bauen.** Siehe Korrektur unten. |
+| **Varianten** (Größe/Farbe an EINEM Artikel) | Wichtig, aber erst mit echtem Verkäufer — Abaya, Hijab, Mode und Schuhe sind Berkats reale Kategorien, und ein Verkäufer mit fünf Größen legt heute fünf Angebote an. |
+| **„Sudden Death"** (Anti-Snipe als Schalter je Auktion) | Klein. Berkat verlängert immer; Whatnot lässt wählen. |
+| **Seller Hub**: Analytics (Käufer, Stream-Leistung, Erlöse, Retention), Sammel-Versandetiketten, CSV-Massenupload, Barcode-/Slab-Scan, **Snap Listings (Beta)** — Fotos rein, Titel und Beschreibung automatisch | Nur **Analytics** ist relevant. Der Rest sind Werkzeuge für Verkäufer mit hunderten Artikeln; die gibt es hier nicht. |
+| **Flash Sale** (befristeter Rabatt während der Show) | Später, gehört zum Live-Format. |
+| Volle Seller-Hub-Freischaltung **erst nach der ersten Show** | Interessantes Gating — Berkats „Deine ersten Schritte" macht dasselbe weicher. |
+
+## 3. Zwei Regeln, die sie härter ziehen
+
+**Mindestens ein Foto ist Pflicht**, Katalogbilder sind verboten, das Foto muss
+den Artikel **ganz und unverdeckt** zeigen. Berkat verlangt bewusst keins („wer
+abends schnell drei Sachen einstellt, bricht sonst nach dem ersten ab").
+
+Das bleibt für Phase 0 richtig — aber Whatnots Grund ist nicht Ästhetik, sondern
+**Streitfälle**: Wer falsch beschreibt, wird zurückbelastet, und die
+Käuferschutz-Richtlinie hängt am Foto. Sobald bei Berkat der erste Streit über
+einen Zustand entsteht, ist die Regel fällig.
+
+**Zustands-Leitfäden je Kategorie** (Sneaker, Taschen, Elektronik, Mode). Berkat
+hat sechs Zustands-Slugs und keinen Satz dazu, was „Sehr gut" heißt — bei einem
+Privatverkauf ohne Gewährleistung ist genau diese Angabe das, woran der
+Verkäufer gemessen wird. Der Composer sagt das sogar, liefert aber keinen Maßstab.
+
+## 4. ⚠️ Der Satz, der wehtut
+
+> *„Most buyers come to Whatnot expecting a live show, so visibility for still
+> listings can lag."*
+
+Whatnot macht 8 Mrd. $ GMV, hat 20 Mio. neue Konten im Jahr und seit Juli 2026
+eine zugekaufte KI-Empfehlungsmaschine — und schafft es **trotzdem nicht**, das
+stille Regal gut sichtbar zu machen. Berkats gesamte Marktplatz-Wette liegt auf
+genau diesem Regal, begründet mit „94 % der Zeit sendet niemand".
+
+Das entwertet die Wette nicht, aber es verschiebt sie. Der Unterschied ist real:
+Bei Whatnot **konkurriert** das stille Regal mit hunderten laufenden Shows um
+dieselbe Aufmerksamkeit. Bei Berkat gibt es diese Konkurrenz nicht — es gibt
+gar keine Shows. Das Regal ist hier nicht die zweite Wahl, sondern die einzige.
+
+**Die Lehre bleibt: Ein Regal erzeugt keine Nachfrage.** Es hält Nachfrage, die
+schon da ist. Bei Whatnot kommt sie aus dem Live-Feed. Bei Berkat muss sie von
+außen kommen, und dafür gibt es genau zwei gebaute Werkzeuge: den **Sendeplan**
+(Erinnerung an Follower) und den **geteilten Artikel-Link** (WhatsApp-Gruppen,
+seit 18.08. draußen). Der Link ist das erste Werkzeug, das Nachfrage *holt*
+statt sie umzuverteilen — und damit wichtiger, als seine Größe vermuten lässt.
+
+## 5. Korrektur einer eigenen Empfehlung
+
+Am 18.08.2026 stand in einer Shop-Analyse: *„Was ich ausdrücklich NICHT bauen
+würde: … strukturierter Preisvorschlag."* Begründet war das mit der
+Angebotszahl — es liegen zwei Artikel in der Datenbank.
+
+**Das war der falsche Maßstab.** Der Preisvorschlag ist keine Skalen-Funktion,
+sondern eine **Kultur**-Funktion: Handeln ist in dieser Community und auf
+Kleinanzeigen die Norm, nicht die Ausnahme. Und Berkat hat den Weg dafür bereits
+halb gebaut — der „Nachricht"-Knopf am Privatangebot ist genau das, nur
+unstrukturiert. Ein Vorschlag mit Betrag ist derselbe Weg mit Zahl statt
+Fließtext, plus einem Zustand, den beide Seiten sehen.
+
+Whatnot führt ihn als Schalter je Angebot: annehmen, kontern, ablehnen.
+
+## Quellen (Recherche 18.08.2026)
+
+- [Create product listings](https://help.whatnot.com/hc/en-us/articles/9779149424269-How-to-list-products-on-Whatnot) · [Adding and Managing Items in your Profile Shop](https://help.whatnot.com/hc/en-us/articles/9779149424269-Adding-and-Managing-Items-in-your-Profile-Shop)
+- [Receive and respond to offers on Buy It Now products](https://help.whatnot.com/hc/en-us/articles/14578719543821-Receive-and-respond-to-offers-on-Buy-It-Now-products)
+- [Whatnot Listing Guidelines](https://help.whatnot.com/hc/en-us/articles/360061195612-Whatnot-Listing-Guidelines) · [Listing conditions and expectations](https://help.whatnot.com/hc/en-us/articles/30211858455437-Listing-conditions-and-expectations-on-Whatnot)
+- [Variants for Sellers](https://help.whatnot.com/hc/en-us/articles/34889029544845-Variants-for-Sellers)
+- [Inside the Whatnot Seller Hub 2026 — CLOSO](https://closo.co/blogs/platform-specific-guides/inside-the-whatnot-seller-hub-a-survival-guide-for-live-auctions-in-2026)
+- [How does Whatnot work — nifty.ai](https://nifty.ai/post/how-does-whatnot-work) · [Whatnot app guide — Vendoo](https://blog.vendoo.co/whatnot-app-a-guide-for-sellers-and-buyers)

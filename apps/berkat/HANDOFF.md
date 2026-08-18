@@ -661,7 +661,7 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Dreiunddreißig Migrationen, **alle eingespielt und verzeichnet** — `supabase migration list`
+Vierunddreißig Migrationen, **alle eingespielt und verzeichnet** — `supabase migration list`
 zeigt am 18.08.2026 keine Lücke. Die Tabelle war bis dahin sechs Einträge im Rückstand (`20260815180000`
 bis `20260816090000` fehlten, obwohl die Abschnitte 14, 15 und 17 sie beschreiben); das ist
 nachgetragen.
@@ -706,6 +706,7 @@ list` keine Lücke zeigt (siehe Abschnitt 3).
 | `20260817120000_berkat_checkout_gate.sql` | `checkout_enabled` ist die **einzige** Wahrheit für den Kaufweg: Bestandsschutz für den Betreiber + `IS DISTINCT FROM true` im Wächter, damit auch „keine Zeile" sperrt — Abschnitt 22 |
 | `20260817130000_berkat_live_seller_kind.sql` | `create_live_auction` stempelt `seller_kind` (nur lesen, nie anlegen); `set_berkat_seller_kind` schreibt die Impressumsfelder per `COALESCE`, damit ein Typwechsel sie nicht löscht — Abschnitt 22 |
 | `20260817140000_berkat_shop_vollausbau.sql` | Mehrbild (`image_urls`), `update_standing_listing`, Merkliste `berkat_saved_listings` — Abschnitt 23 |
+| `20260818120000_berkat_offers.sql` | Preisvorschlag: `accepts_offers`, `berkat_offers`, drei RPCs, `buy_now_live_auction` mit `p_offer_id` — Abschnitt 24 |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -3258,3 +3259,86 @@ ohne Weiterleitung**; die Pages-Falle aus Abschnitt 8 greift also nicht.
 4. **Keine Umkreissuche, keine Abholung.** PLZ und Ort stehen an der Zeile; Abholung bräche
    `get_cart_shipping_options`, die Stripe-Adressabfrage und `mark_order_shipped` und gehört zu
    Connect in Phase 2.
+
+---
+
+## 24. Preisvorschlag — und eine korrigierte eigene Empfehlung (18.08.2026)
+
+Am selben Tag stand in einer Shop-Analyse noch: *„Was ich ausdrücklich NICHT bauen würde: …
+strukturierter Preisvorschlag."* Begründet war das mit der Angebotszahl — es liegen zwei Artikel
+in der Datenbank.
+
+**Der Maßstab war falsch.** Ein Preisvorschlag ist keine Skalen-Funktion, sondern eine
+**Kultur**-Funktion: Handeln ist in dieser Community und auf Kleinanzeigen die Norm, nicht die
+Ausnahme. Und Berkat hatte den Weg ohnehin halb gebaut — der „Nachricht"-Knopf am Privatangebot
+IST ein Preisvorschlag, nur unstrukturiert. Was fehlte, war die Zahl und ein Zustand, den beide
+Seiten sehen.
+
+Aufgefallen ist es bei der zweiten Whatnot-Analyse (`WHATNOT-ANALYSE.md`, Nachtrag vom 18.08.):
+Whatnot führt „Accept offers" als Schalter je Angebot, mit annehmen / kontern / ablehnen.
+
+### Wie es gebaut ist
+
+| Wo | Was |
+|---|---|
+| `20260818120000` | `live_auctions.accepts_offers`, Tabelle `berkat_offers`, drei RPCs, `buy_now_live_auction` mit `p_offer_id`, `create_/update_standing_listing` mit `p_accepts_offers` |
+| `lib/useOffers.ts` | Abfragen, Aktionen, Fehlertexte |
+| `components/OfferPanel.tsx` | beide Sichten in einer Komponente |
+| `StandingComposer` | Schalter „Preisvorschläge zulassen" |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Eine Komponente für Käufer und Verkäufer.** Das ist keine Bequemlichkeit, sondern die RLS:
+  `berkat_offers_select_party` gibt dem Käufer genau seinen Vorschlag und dem Verkäufer alle.
+  Dieselbe Abfrage, zwei Sichten — die Fallunterscheidung steht in der Datenbank, nicht im Client.
+- **`accept` ändert NICHTS am Preis des Angebots.** Eine Zusage gilt EINEM Käufer. Würde
+  `accept` den `buy_now_cents` senken, bekäme sie jeder — und der Verkäufer hätte einen Rabatt
+  verschenkt, den er einer Person zugesagt hat. Eingelöst wird sie über `p_offer_id` am Kaufweg,
+  der dann `LEAST(vereinbart, Listenpreis)` rechnet.
+- **Genau EIN offener Vorschlag je Käufer und Artikel**, als Teil-Index über
+  `status IN ('pending','countered')`. Ohne das wird aus Handeln ein Bombardement. Abgelehnte und
+  angenommene bleiben liegen — sie sind die Geschichte der Verhandlung, und wer abgelehnt wurde,
+  darf es noch einmal versuchen.
+- **Ein Vorschlag ÜBER dem Preis wird abgewiesen** (`offer_above_price`). Ihn anzunehmen wäre für
+  den Käufer schlechter als der Kaufknopf daneben. Dasselbe gilt für einen Gegenvorschlag auf den
+  vollen Preis: Das heißt „nein" und soll auch so heißen.
+- **Der Kauf erledigt alle offenen Vorschläge** auf diesen Artikel serverseitig. Ohne das warten
+  andere Käufer auf eine Antwort, die nie kommt.
+- **Das Abschalten des Schalters ebenfalls** — wer nicht mehr handeln will, beendet die laufenden
+  Verhandlungen, statt sie stumm hängen zu lassen.
+- **Auch eine ANGENOMMENE Zusage darf der Käufer zurückziehen.** Sie ist eine Einladung zum Kauf,
+  kein geschlossener Vertrag — der entsteht erst am Kaufknopf.
+- **Vorgabe: Schalter AN beim Anlegen, aus in der Datenbank.** Die Spalte hat `DEFAULT false` —
+  ein Angebot, das stillschweigend verhandelbar wird, wäre eine Aussage, die niemand getroffen hat
+  (dieselbe Lehre wie bei der Anbieterkennzeichnung, Abschnitt 3). Der Composer setzt ihn für NEUE
+  Angebote sichtbar auf an, weil Handeln hier die Norm ist; beim BEARBEITEN gilt, was am Angebot
+  steht — eine Vorgabe würde dort eine Entscheidung überschreiben.
+- **KEIN neuer `notifications`-Typ.** Ein Typ dort bräuchte neun Oberflächen auf einmal
+  (Abschnitt 9), und wer nur einen Teil anfasst, bekommt „Neue Aktivität auf Serlo". Ein Vorschlag
+  ist nicht eilig genug dafür — dieselbe Entscheidung wie bei den Belohnungen (Abschnitt 18).
+
+### ⚠️ Dritte Änderung am Kaufweg in zwei Tagen
+
+`buy_now_live_auction` wurde am 17.08. zweimal und am 18.08. ein drittes Mal neu erzeugt. Der
+Rumpf ist jedes Mal wörtlich der vorige, geändert ist nur der genannte Block — das Original lag
+jedes Mal daneben. Wer ein viertes Mal drangeht, macht es genauso: Die Funktion hat schon einmal
+`buy_now_gone`, den Eintrag in `live_bids`, `bid_count`, `ends_at` und den jsonb-Rückgabewert
+verloren.
+
+`DROP` + `CREATE` statt eines defaultierten Parameters an der alten Signatur, weil ein Default in
+Postgres eine **Überladung** erzeugt und zwei Überladungen PostgREST mehrdeutig machen (HTTP 300).
+
+### Geprüft (18.08.2026, 15:2x)
+
+Migration eingespielt (34/34, keine Lücke). Gegenproben: `berkat_offers` für `anon` dicht (42501),
+und **alle sechs** betroffenen Funktionen antworten ohne Anmeldung mit 401/42501 — je genau eine
+auflösbare Signatur, **kein HTTP 300**.
+
+Am Gerät: Schalter „Preisvorschläge zulassen" im Bearbeiten-Blatt, korrekt **aus** vorbefüllt
+(das Angebot stammt von vor der Migration), umgelegt, gespeichert — `accepts_offers = true` in der
+Datenbank belegt.
+
+**Ungeprüft:** das Vorschlag-Feld selbst. Es erscheint nur für einen FREMDEN Käufer; bei einem
+eigenen Angebot rendert die Komponente korrekt nichts, solange keine Vorschläge vorliegen. Damit
+hängt auch dieser Weg am zweiten Konto — wie der Kauf, wie „Nachricht statt Kaufen", wie das
+Merken. Das ist inzwischen der einzige offene Punkt, und er ist an allen vier Stellen derselbe.

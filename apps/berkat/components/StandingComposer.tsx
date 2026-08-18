@@ -45,6 +45,8 @@ export type ListingFormValues = {
   category: string | null;
   /** Alle Bilder in Reihenfolge — das erste ist das Cover. */
   imageUrls: string[];
+  /** Nimmt Preisvorschläge an. */
+  acceptsOffers: boolean;
   description: string | null;
   condition: string | null;
   postalCode: string | null;
@@ -85,6 +87,12 @@ export function StandingComposer({
     initial?.priceCents != null ? String(initial.priceCents / 100).replace('.', ',') : '',
   );
   const [womenOnly, setWomenOnly] = useState(initial?.womenOnly ?? false);
+  // Vorgabe AN beim Anlegen, weil Handeln in dieser Community die Norm ist —
+  // aber sichtbar und mit einem Tipp abschaltbar. Beim Bearbeiten gilt, was am
+  // Angebot steht; eine Vorgabe würde dort eine Entscheidung überschreiben.
+  const [acceptsOffers, setAcceptsOffers] = useState(
+    initial?.acceptsOffers ?? mode === 'create',
+  );
   const [category, setCategory] = useState<string | null>(initial?.category ?? null);
   const [openParent, setOpenParent] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>(initial?.imageUrls ?? []);
@@ -316,6 +324,20 @@ export function StandingComposer({
         />
       </View>
 
+      {/* Preisvorschläge. Steht bei den anderen Preis-Entscheidungen, nicht
+          bei den Rechtsangaben — es ist eine Verkaufs-, keine Rechtsfrage. */}
+      <View style={s.offerRow}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.offerLabel}>Preisvorschläge zulassen</Text>
+          <Text style={s.offerHint}>
+            {acceptsOffers
+              ? 'Käufer können dir einen Preis vorschlagen. Du kannst annehmen, kontern oder ablehnen.'
+              : 'Es gilt nur dein Festpreis.'}
+          </Text>
+        </View>
+        <Switch value={acceptsOffers} onValueChange={setAcceptsOffers} />
+      </View>
+
       {descOpen ? (
         <TextInput
           value={description}
@@ -389,6 +411,7 @@ export function StandingComposer({
             title,
             priceCents: cents!,
             womenOnly,
+            acceptsOffers,
             category,
             imageUrls,
             description: description.trim() || null,
@@ -400,6 +423,7 @@ export function StandingComposer({
             setTitle('');
             setPrice('');
             setWomenOnly(false);
+            setAcceptsOffers(true);
             setCategory(null);
             setOpenParent(null);
             setImageUrls([]);
@@ -502,6 +526,14 @@ const s = StyleSheet.create({
   },
 
   photoHint: { fontSize: 11, color: ui.textMuted, marginTop: space.sm, lineHeight: 16 },
+  offerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginTop: space.md,
+  },
+  offerLabel: { fontSize: 14, fontWeight: '600', color: ui.text },
+  offerHint: { fontSize: 11, color: ui.textMuted, marginTop: 2, lineHeight: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.md },
   switchWrap: { alignItems: 'center', gap: 2 },
   switchLabel: { fontSize: 11, color: ui.textMuted },
