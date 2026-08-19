@@ -18,11 +18,14 @@
 import { Tabs } from 'expo-router';
 import { Activity, CircleUser, House, LayoutGrid, Radio } from 'lucide-react-native';
 import { StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { useSession } from '../../lib/session';
 import { useOpenOrderCount } from '../../lib/useSellerOrders';
 import { ui, space } from '../../theme/tokens';
 
 export default function TabsLayout() {
+  // Das eigene Profilbild für den Konto-Reiter.
+  const avatarUrl = useSession((s) => s.profile?.avatar_url) ?? null;
   // Winzige Zählabfrage mit `head: true` — es wird keine einzige Zeile
   // übertragen. Sie hängt hier, weil das Layout immer gemountet ist.
   const myUserId = useSession((s) => s.userId);
@@ -80,7 +83,31 @@ export default function TabsLayout() {
         name="account"
         options={{
           title: 'Konto',
-          tabBarIcon: ({ color, size }) => <CircleUser size={size} color={color} />,
+          // ⚠️ Das eigene Gesicht statt eines Symbols (seit 19.08.2026).
+          // Es ist der einzige Reiter, der von MIR handelt — Whatnot zeigt dort
+          // ebenfalls den eigenen Avatar (fünfte Analyse). Ohne Bild bleibt das
+          // Symbol: Ein leerer Kreis mit Initiale wäre an dieser Größe nicht
+          // lesbar, und wer kein Foto hat, soll nicht dauerhaft daran erinnert
+          // werden.
+          //
+          // `useSession` statt eines eigenen Abrufs: Das Profil liegt beim
+          // Anmelden ohnehin im Speicher, und dieses Layout ist immer gemountet.
+          tabBarIcon: ({ color, size, focused }) =>
+            avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={[
+                  styles.tabAvatar,
+                  { width: size, height: size, borderRadius: size / 2 },
+                  // Nur im aktiven Zustand ein Ring — sonst sähe das Bild aus
+                  // wie ein Fremdkörper zwischen fünf Konturlinien.
+                  focused && { borderWidth: 2, borderColor: color },
+                ]}
+                contentFit="cover"
+              />
+            ) : (
+              <CircleUser size={size} color={color} />
+            ),
         }}
       />
     </Tabs>
@@ -88,6 +115,7 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  tabAvatar: { backgroundColor: ui.sunken },
   bar: {
     backgroundColor: ui.card,
     borderTopWidth: StyleSheet.hairlineWidth,

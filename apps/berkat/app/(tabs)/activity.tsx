@@ -11,6 +11,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  ChevronRight,
   Gavel,
   Gift,
   PartyPopper,
@@ -22,7 +23,8 @@ import {
 
 import { useSession } from '../../lib/session';
 import { useActivity, type ActivityItem, type ActivityKind } from '../../lib/useActivity';
-import { useProfiles } from '../../lib/useAuction';
+import { formatEuro, useProfiles } from '../../lib/useAuction';
+import { useMyBids } from '../../lib/useMyBids';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
@@ -70,23 +72,27 @@ export default function ActivityScreen() {
   const router = useRouter();
   const userId = useSession((s) => s.userId);
   const { data: items = [], isLoading, refetch } = useActivity(userId);
+  // Wo ich gerade mitbiete — eigener Takt, eigene Quelle. Läuft nichts, ist
+  // die Liste leer und der Kopf rendert nicht.
+  const { bids, outbid, refetch: refetchBids } = useMyBids(userId);
 
   const [pulling, setPulling] = useState(false);
   const onPull = useCallback(async () => {
     setPulling(true);
     try {
-      await refetch();
+      await Promise.all([refetch(), refetchBids()]);
     } finally {
       setPulling(false);
     }
-  }, [refetch]);
+  }, [refetch, refetchBids]);
 
   // Reiter bleiben aufgebaut — ohne das stünde beim Zurückwechseln der Stand
   // von vorhin da (HANDOFF 3).
   useFocusEffect(
     useCallback(() => {
       void refetch();
-    }, [refetch]),
+      void refetchBids();
+    }, [refetch, refetchBids]),
   );
 
   const userIds = useMemo(() => items.map((i) => i.userId), [items]);
@@ -116,10 +122,79 @@ export default function ActivityScreen() {
       <FlatList
         data={items}
         keyExtractor={(item: ActivityItem) => item.key}
+        // ⚠️ `emptyWrap` zentriert den Leerzustand über die ganze Höhe. Das
+        // darf nur greifen, wenn WIRKLICH nichts da ist — steht oben die
+        // Gebots-Liste, wäre sie sonst mittig im Nichts.
         contentContainerStyle={
-          items.length === 0
+          items.length === 0 && bids.length === 0
             ? styles.emptyWrap
             : { paddingBottom: insets.bottom + space.xl }
+        }
+        // ── Wo ich gerade mitbiete. Steht ÜBER dem Ereignis-Strom, weil es
+        //    das Einzige hier ist, das eine Handlung verlangen kann: Eine
+        //    Auktion läuft ab, ein Strom nicht.
+        //
+        //    Der Leerzustand dieses Bildschirms versprach seit dem 16.08.
+        //    „und wo du gerade mitbietest" — die Absicht war da, die Liste
+        //    fehlte (siebte Whatnot-Analyse).
+        ListHeaderComponent={
+          bids.length === 0 ? null : (
+            <View style={styles.bidsBlock}>
+              <Text style={styles.bidsLabel}>
+                {outbid > 0
+                  ? outbid === 1
+                    ? 'Du wurdest überboten'
+                    : `Du wurdest ${outbid}× überboten`
+                  : 'Du bietest gerade mit'}
+              </Text>
+              {bids.map((bid) => (
+                <Pressable
+                  key={bid.auctionId}
+                  style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
+                  // Zum Live-Raum, nicht zum Artikel: Wer überboten wurde, will
+                  // dorthin, wo er wieder bieten kann.
+                  onPress={() =>
+                    bid.sessionId ? router.push(`/live/${bid.sessionId}`) : undefined
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`${bid.title}, ${
+                    bid.leading ? 'du führst' : 'überboten'
+                  }, aktuell ${formatEuro(bid.currentCents)}`}
+                >
+                  {bid.imageUrl ? (
+                    <Image source={{ uri: bid.imageUrl }} style={styles.bidThumb} contentFit="cover" />
+                  ) : (
+                    <View style={styles.bidThumb} />
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={styles.bidTitleRow}>
+                      {/* Der Zustand zuerst, nicht der Titel: „Überboten" ist
+                          die Auskunft, der Artikelname nur die Zuordnung. */}
+                      <Text
+                        style={[styles.bidState, bid.leading ? styles.bidLeading : styles.bidOutbid]}
+                      >
+                        {bid.leading ? 'Du führst' : 'Überboten'}
+                      </Text>
+                      {bid.status === 'scheduled' ? (
+                        <Text style={styles.bidSoon}>startet noch</Text>
+                      ) : null}
+                    </View>
+                    <Text numberOfLines={1} style={styles.bidTitle}>
+                      {bid.title}
+                    </Text>
+                    <Text style={styles.bidMeta}>
+                      Aktuell {formatEuro(bid.currentCents)}
+                      {/* Das eigene Maximum steht nur da, wenn es eines gibt —
+                          wer von Hand bietet, hat keines, und eine leere
+                          Angabe wäre eine Frage statt einer Auskunft. */}
+                      {bid.maxCents != null ? ` · dein Maximum ${formatEuro(bid.maxCents)}` : ''}
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color={ui.textMuted} />
+                </Pressable>
+              ))}
+            </View>
+          )
         }
         refreshControl={
           <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={ui.textMuted} />
@@ -200,6 +275,29 @@ export default function ActivityScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ── Wo ich mitbiete. Eigener Block über dem Strom, mit Trennlinie
+  // darunter: Er gehört nicht zu den Ereignissen, er ist ein Zustand.
+  bidsBlock: {
+    paddingHorizontal: space.md,
+    paddingTop: space.sm,
+    paddingBottom: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
+    gap: space.sm,
+  },
+  bidsLabel: { fontSize: 12, fontWeight: '700', color: ui.textMuted },
+  bidRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  bidThumb: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: ui.sunken },
+  bidTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  bidState: { fontSize: 12, fontWeight: '700' },
+  // Grün heißt „alles gut, nichts zu tun". Rot ist in Berkat die laufende Uhr
+  // und die Dringlichkeit — überboten zu sein ist genau das.
+  bidLeading: { color: ui.success },
+  bidOutbid: { color: ui.live },
+  bidSoon: { fontSize: 11, color: ui.textMuted },
+  bidTitle: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 1 },
+  bidMeta: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
+
   screen: { flex: 1, backgroundColor: ui.bg },
   gate: { alignItems: 'center', justifyContent: 'center', gap: space.sm, padding: space.xl },
 

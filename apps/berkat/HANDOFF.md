@@ -18,7 +18,8 @@ Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründun
 was gilt.
 
 > **Der Design-Durchgang vom 18./19.08.2026** hat den größten Teil der App angefasst. Wer neu
-> einsteigt, liest **0 → 38 → 26** und danach bei Bedarf rückwärts.
+> einsteigt, liest **0 → 46** und danach bei Bedarf rückwärts. Abschnitt 46 ist der
+> Anschlusspunkt; 38 und 26 sind darin aufgegangen.
 >
 > Neu in dieser Runde: Startseite zeigt das Regal (27), Hochformat für alle Karten (28),
 > Entdeckungs-Leiste (29), Suche und Sortierung im Regal (30), Testware per Skript (31),
@@ -4490,3 +4491,653 @@ Store-Eintrag und Phase 0 stehen wie gehabt. Beim Stripe-Blocker ist **die Raten
 **Und der Satz, der über allem steht:** Der Engpass ist nicht mehr Wissen. Sechs Whatnot-Analysen
 liegen vor, der Funktionsabstand ist auf Varianten geschrumpft, und die App sieht mit Inhalt gut
 aus. Was fehlt, sind **fünf Verkäufer** — und eine siebte Analyse ersetzt keinen davon.
+
+---
+
+## 39. „Du führst / Überboten" — die eigenen Gebote werden sichtbar (19.08.2026)
+
+Aus der siebten Analyse, und der kleinste Eingriff mit echtem Nutzen.
+
+### Die Lücke
+
+Berkat hat Stellvertreter-Gebote seit `20260813220000`: Man setzt ein Höchstgebot, der Server
+bietet in Schritten mit. **Nur konnte man nirgends nachsehen, wie es steht.** Wer sein Maximum
+setzt und die App schließt, hatte keinen Ort, an dem steht, ob er noch führt — bei einer Auktion
+die einzige Frage, die zählt.
+
+Dasselbe Muster wie bei der Beschreibung (Abschnitt 3) und beim Impressum (36): Der Server kann es,
+die Oberfläche fragt nie danach. Der Leerzustand des Aktivitäts-Reiters versprach seit dem 16.08.
+sogar ausdrücklich „*und wo du gerade mitbietest*" — die Absicht war da, die Liste fehlte.
+
+### Was jetzt dasteht
+
+Über dem Ereignis-Strom, nur wenn etwas läuft:
+
+```
+Du wurdest überboten
+ [Bild]  Überboten          ⟵ rot
+         Abaya Dubai-Stil, Sand
+         Aktuell 42 € · dein Maximum 40 €        ›
+ [Bild]  Du führst          ⟵ grün
+         Oud-Parfüm 50 ml, angebrochen
+         Aktuell 18 € · dein Maximum 30 €        ›
+ [Bild]  Du führst  startet noch
+         Ring 585 Gold, Gr. 54
+         Aktuell 1 €                             ›
+```
+
+Vier Entscheidungen:
+
+- **Überboten steht oben.** Das ist der Zustand, der eine Handlung verlangt; wer führt, muss nichts
+  tun und will es nur wissen. Die Sortierung macht genau das (`Number(leading)`).
+- **Der Zustand vor dem Titel.** „Überboten" ist die Auskunft, der Artikelname nur die Zuordnung.
+- **Das eigene Maximum nur, wenn es eines gibt.** Wer von Hand bietet, hat keines — eine leere
+  Angabe wäre eine Frage statt einer Auskunft.
+- **Der Tipp führt in den Live-Raum**, nicht auf die Artikelseite: Wer überboten wurde, will
+  dorthin, wo er wieder bieten kann.
+
+Rot für „überboten" ist konsistent: In Berkat ist Rot die laufende Uhr und die Dringlichkeit
+(`ui.live`), Grün die Bestätigung (`ui.success`).
+
+### ⚠️ Zwei Quellen, sonst fehlt die Hälfte
+
+`lib/useMyBids.ts` fragt **beide** Tabellen ab: `live_bids` (von Hand geboten) und
+`live_auto_bids` (Höchstgebot hinterlegt). Wer nur die erste nimmt, verliert genau die Person, die
+die Liste am dringendsten braucht — wer sein Maximum gesetzt und nie selbst geboten hat, steht in
+`live_bids` überhaupt nicht und schaut auch nicht zu.
+
+Die Rechte passen ohne Migration: `live_bids` ist lesbar, solange die Session nicht Frauen-Only ist,
+und `live_auto_bids` hat `USING (auth.uid() = bidder_id)` — die eigenen Maxima sieht nur man selbst,
+fremde bleiben unsichtbar. **Kein neuer Zugriff, keine neue Policy.**
+
+Sortiert wird nach `ends_at` mit `nullsFirst: false`: Ein geplanter Artikel hat noch kein Ende und
+stünde sonst vor der laufenden Auktion, bei der es um Sekunden geht.
+
+### Geprüft
+
+Die Darstellung mit **vorübergehend eingesetzten Beispieldaten** am Simulator belegt: Reihenfolge
+(überboten zuerst), Farben, „startet noch" beim geplanten Artikel, das Maximum nur wo vorhanden.
+Danach zurückgebaut und gegengeprüft, dass der Block ohne laufende Gebote **gar nicht** rendert —
+auch der zentrierte Leerzustand des Reiters bleibt korrekt, weil er jetzt an beiden Listen hängt.
+
+`tsc` und `expo export` sauber, keine Migration, kein Build.
+
+**Nicht geprüft:** die Abfrage gegen echte Gebote. Dafür müsste eine Show laufen und jemand bieten —
+es gibt derzeit keine Auktion in der Datenbank. Der Weg dahin ist der Zwei-Konten-Durchlauf aus dem
+Leitfaden, Abschnitt 7.
+
+---
+
+## 40. Bilanz: was aus den sieben Analysen wurde (19.08.2026)
+
+Zaurs Frage am Ende der Runde: *„aus den Analyse-Erkenntnissen hast du einiges nicht gemacht oder"*
+— berechtigt. Diese Tabelle ist die Antwort und ersetzt das Durchsuchen von sieben Analysetexten.
+
+### Umgesetzt
+
+| Erkenntnis | Analyse | Abschnitt |
+|---|---|---|
+| Startseite zeigt das Regal statt eines Knopfes dorthin | 4 | 27 |
+| Hochformat für Stöber-Karten (`ratio.card`) | 4 (Zaurs Fund) | 28 |
+| Kategorie-Leiste als Entdeckung statt Show-Filter | 4-Nachtrag | 29 |
+| Suche und Sortierung im Regal | 5 | 30 |
+| Filter: Kategorie, Zustand, Ort, Preis | 5 | 32 |
+| Artikelseite entrümpelt, Impressum aufs Profil | 4 | 34, 35 |
+| Impressums-Formular (schließt die Sackgasse) | — | 36 |
+| Verkaufen-Reiter: zwei Türen statt zwei Formularen | 6 | 37 |
+| Erinnerungs-Zahl an Terminen | 6 | 37 |
+| Erklärtexte gekürzt | 6 | 37 |
+| „Du führst / Überboten" | 7 | 39 |
+| Eigener Avatar im Konto-Reiter | 5 | dieser |
+
+### Offen, weil größer als ein Nachmittag
+
+| Erkenntnis | Warum offen |
+|---|---|
+| **Varianten** (Größe/Farbe, „Optionen wählen") | Migration nötig; berührt Composer, Artikelseite, Kaufweg. Der einzige echte Funktionsrückstand. |
+| **Artikel vor der Show vorbereiten** + **Pre-Bid** | Migration auf der mit Serlo geteilten `live_sessions`. Audit liegt vor (26), Bauen unter Aufsicht. |
+| **Attribut-Chips** (Marke, Größe) | Braucht neue Spalten. Sinnvoll erst mit Varianten zusammen. |
+| **Glocke je Artikel** („sag mir, wenn der drankommt") | Braucht Tabelle + Push-Weg. Hängt an Pre-Bid. |
+| **Freigestellte Fotos in den Kategorie-Kacheln** | `theme/categoryArt.ts` ist vorbereitet — es fehlen zwölf Bilder. Zaur macht sie später. |
+| **Nicht-Zahler-Quote** als stille Kennzahl | Erst relevant, wenn echtes Geld fließt. Abfrage auf `auction_carts`, keine Anomalie-Erkennung. |
+| **Live-Raum gegen die App halten** (Vollbild, Chat ohne Kasten) | Braucht eine laufende Show; nie geprüft. |
+
+### Bewusst nicht gebaut
+
+| Erkenntnis | Begründung |
+|---|---|
+| **Account Health** (drei Verkäufer-Kennzahlen) | Heute drei Zahlen über null Vorgänge. |
+| **„Watch to earn"** | Widerspricht dem Design-Gesetz Nr. 4 — gesunde Bindung, keine Aufmerksamkeits-Ausbeutung. |
+| **Abgekürzte Zuschauerzahlen** (`2.1k`) | Bei zweistelligen Zahlen eine Behauptung. |
+| **Dunkelmodus** | Zwei feste Flächen sind eine Entscheidung (Abschnitt 4), keine Lücke. |
+| **Kaufknopf im Raster grau statt gold** | Berkat hat dort gar keinen — die Regel steht als Warnung in `theme/tokens.ts`, falls das je kippt. |
+| **Radien und Schriftgrößen vereinheitlichen** | Whatnot hat einen Radius und praktisch eine Schriftgröße. Das wäre ein Diff durch die halbe App für eine Geschmacksfrage — und Berkat ist eine Telefon-App, ihre 12 px wären hier zu klein. |
+| **Poster-Cover wie bei Whatnot** | Lässt sich nicht verordnen; entsteht, wenn Verkäufer merken, dass es sich lohnt. |
+
+### Der Avatar im Konto-Reiter
+
+Zweimal als „eine Zeile" bezeichnet und zweimal liegen gelassen — jetzt gebaut. Der Konto-Reiter
+zeigt das eigene Profilbild statt `CircleUser`; es ist der einzige Reiter, der von *mir* handelt.
+
+**Ohne Bild bleibt das Symbol.** Ein Kreis mit Initiale wäre bei 24 Punkten nicht lesbar, und wer
+kein Foto hat, soll nicht bei jedem Blick daran erinnert werden. Der Ring erscheint nur im aktiven
+Zustand — sonst sähe das Foto aus wie ein Fremdkörper zwischen fünf Konturlinien.
+
+Am Simulator ist der **Rückfall** belegt (Testkonto hat kein Bild → Symbol). Der Avatar-Fall selbst
+ist ungeprüft; dafür müsste ein Profilbild gesetzt sein.
+
+---
+
+## 41. Die sieben offenen Punkte — Entwurf statt Wunschliste (19.08.2026)
+
+Abschnitt 40 zählt sie auf, dieser entscheidet sie. Für jeden Punkt: die Frage dahinter, die
+Optionen, und was für **Berkat** richtig ist — nicht, was Whatnot tut.
+
+### ⚠️ Der Fund, der die Reihenfolge umwirft
+
+Der Audit in Abschnitt 26 prüfte einen Weg für „Artikel vor der Show": eine Vorab-Zeile in
+`live_sessions` mit `status = 'planned'`. Er kostet **vier Eingriffe auf einer mit Serlo geteilten
+Tabelle**, darunter der Go-Live-Push, der sonst still ausfiele.
+
+**Dieser Weg ist nicht nötig.** Drei Tatsachen, alle am 19.08.2026 gegengeprüft:
+
+1. `live_auctions.session_id` ist seit `20260815210000` **nullable** — ein Artikel darf ohne Show
+   existieren. Genau das sind die Dauerangebote.
+2. Für diesen Fall gibt es bereits eine **zweite Lese-Policy** (`live_auctions_select_standing`),
+   inklusive Frauen-Only-Schranke am Artikel statt an der Session.
+3. **Serlo benutzt `live_auctions` überhaupt nicht** — kein Treffer in `apps/web/`. Die Tabelle
+   gehört Berkat allein.
+
+Damit gilt: **Ein vorbereiteter Show-Artikel ist technisch dasselbe wie ein Dauerangebot** — eine
+Zeile ohne Session. Es braucht keine Geisterzeile in `live_sessions`, keinen neuen Session-Status,
+keinen der vier Eingriffe.
+
+**Empfohlenes Schema** (eine Spalte, eine Berkat-eigene Tabelle):
+
+```sql
+ALTER TABLE public.live_auctions
+  ADD COLUMN IF NOT EXISTS planned_for uuid REFERENCES public.scheduled_lives(id) ON DELETE SET NULL;
+```
+
+- `planned_for IS NULL` + `status='listed'` → Dauerangebot (unverändert)
+- `planned_for = <Termin>` + `status='scheduled'` → für diese Sendung vorbereitet
+- Beim Live-Gehen: `UPDATE live_auctions SET session_id = <neue Session> WHERE planned_for = <Termin>`
+
+`planned_for` bleibt danach stehen — es ist die Antwort auf „aus welchem Termin kam der Artikel".
+**Nullable ist Absicht:** Wer spontan sendet, ohne Termin vorbereitet zu haben, soll nicht
+ausgesperrt sein.
+
+⚠️ `live_auctions` hat **keine** eingefrorene Spaltenliste (das REVOKE traf `live_sessions`,
+`user_whip_ingresses`, `profiles`) — ein zusätzliches `GRANT SELECT (planned_for)` ist hier **nicht**
+nötig. Vor dem Bauen trotzdem prüfen, es kostet nichts.
+
+### 1. Varianten — die falsche Frage
+
+„Größe und Farbe an einem Artikel" klingt nach dem größten Rückstand. Beim Durchdenken kippt das.
+
+**Varianten setzen Bestand voraus.** Whatnots Blatt zeigt `Größe 10 · noch 4` — jede Variante hat
+eine Menge. `live_auctions` hat **kein** `stock`: Ein Angebot ist heute genau ein Stück, der Status
+springt beim Kauf auf `sold`. Wer Varianten will, braucht zuerst Mengenführung samt atomarem
+Dekrement — sonst verkauft man Größe M zweimal.
+
+**Und braucht Berkat das überhaupt?** Der Markt ist Secondhand und kleine Händler in der Diaspora.
+Eine gebrauchte Abaya gibt es genau einmal. Von den 36 Testartikeln wären **höchstens fünf**
+echte Serienware (Parfüm, Tasbih, Raumduft).
+
+**Empfehlung: keine Varianten. Ein Feld `size text` am Artikel.**
+
+Das löst, was die neun Artikel mit Größe im Titel wirklich brauchen: Sie soll **filterbar und
+sichtbar** sein, nicht im Titel versteckt. Kosten: eine Spalte, ein Eingabefeld, ein Filter-Chip.
+Keine Mengenführung, kein Race, kein neuer Kaufweg.
+
+Volle Varianten lohnen erst, wenn ein Händler mit echter Serienware kommt — dann ist es eine eigene
+Tabelle (`berkat_listing_variants`), **nie eine JSONB-Spalte**: Bestand muss man sperren können.
+
+### 2. Vorab-Artikel und Pre-Bid — der eigentliche Hebel
+
+Mit dem Schema oben zerfällt das in zwei Stufen, die getrennt Wert haben:
+
+**Stufe A — Artikel vorbereiten (klein).** Der Verkäufer legt Artikel zu einem Termin an. Die
+„Demnächst"-Karte zeigt sie. Käufer sehen, was kommt, und haben einen Grund, pünktlich zu sein.
+Kein Gebot, keine Policy-Änderung: Lesen ist schon erlaubt (Dauerangebots-Policy).
+
+**Stufe B — Pre-Bid (größer).** Gebote auf einen Artikel, der noch keiner Show gehört.
+
+⚠️ Hier liegt die Arbeit, und sie ist nicht offensichtlich:
+
+- `live_bids_select` prüft `JOIN live_sessions ON s.id = a.session_id`. Bei `session_id IS NULL`
+  ist der JOIN leer → **niemand sieht die Vorabgebote**, auch nicht der eigene. Braucht dieselbe
+  Zweit-Policy-Behandlung wie die Artikel.
+- `place_live_bid` prüft heute `ends_at` und den laufenden Zustand. Ein Vorabgebot hat kein Ende —
+  die RPC braucht einen zweiten Zweig, **und der darf den Anti-Snipe nicht anfassen**.
+- **Die Frage, die entschieden werden muss:** Was ist ein Vorabgebot beim Start? Zwei Lesarten —
+  (a) es ist das Startgebot und die Auktion beginnt dort, oder (b) es ist ein Höchstgebot, das der
+  Server abarbeitet. **Richtig ist (b)**: Berkat hat `set_max_bid` bereits, und ein Vorabgebot ist
+  genau das — „bis hierhin will ich gehen", nur früher gesetzt. Damit fällt fast die ganze Logik
+  weg; Pre-Bid wird ein `set_max_bid` auf einen Artikel ohne Session.
+
+Das ist die Lösung: **Pre-Bid ist kein neues Feature, sondern `set_max_bid` ohne laufende Show.**
+
+### 3. Attribut-Chips (Marke, Größe)
+
+Größe kommt aus Punkt 1. Marke wäre eine zweite Spalte — aber:
+
+⚠️ **Freitext ist für einen Filter wertlos.** „Nike", „nike", „NIKE", „Nike Air" ergeben vier
+Marken. Wer filtern will, braucht eine gepflegte Liste (wie `berkat_categories`) oder
+Normalisierung beim Speichern.
+
+**Empfehlung: jetzt nicht.** Bei 38 Artikeln filtert niemand nach Marke. Wenn es kommt, dann als
+gepflegte Liste, und dann zusammen mit der Frage, welche Marken die Community überhaupt handelt.
+
+### 4. Glocke je Artikel
+
+Hängt vollständig an Stufe A. Danach ist es klein:
+
+```sql
+CREATE TABLE berkat_auction_reminders (
+  auction_id uuid REFERENCES live_auctions(id) ON DELETE CASCADE,
+  user_id    uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  PRIMARY KEY (auction_id, user_id)
+);
+```
+
+Plus ein Push beim Aufruf des Artikels in der Show.
+
+**Der unterschätzte Teil ist nicht der Push, sondern die Zahl.** Sie sagt dem Verkäufer, **welcher
+Artikel Nachfrage hat, bevor er ihn aufruft** — er kann die Reihenfolge danach legen. Das ist der
+Grund, warum Whatnot sie dem Verkäufer zeigt, nicht nur dem Käufer.
+
+### 5. Freigestellte Fotos für die Kategorie-Kacheln
+
+Kein Entwurf nötig, nur Bilder. Was sie erfüllen müssen, damit sie in `theme/categoryArt.ts`
+passen: **freigestellt** (transparenter Hintergrund, PNG), quadratisch, mindestens 400 × 400,
+ein Gegenstand pro Bild, gleiche Blickrichtung. Der Farbton kommt aus der Datei, nicht aus dem Bild.
+
+### 6. Nicht-Zahler-Quote
+
+Eine Abfrage auf `auction_carts`: Zuschläge gegen bezahlte Körbe.
+
+⚠️ **Nicht öffentlich zeigen.** Eine Quote am Profil wäre ein Pranger, und in einer Gemeinschaft,
+in der man sich kennt, ist das ein Konflikt, kein Schutz. Sie gehört dem Betreiber.
+
+Berkat hat ohnehin den kulturell passenderen Hebel: **Wer nicht zahlt, verliert seine Bürgen.** Das
+ist kein Code, sondern eine Regel — und sie wirkt stärker als jede Zahl.
+
+### 7. Live-Raum gegen die App halten
+
+Kein Entwurf, nur Durchführung: eine Show starten und vergleichen (Vollbild, Chat ohne Kasten,
+beschriftete Icon-Spalte, Gebots-Knopf über die volle Breite). Gehört in denselben Durchlauf wie
+der Zwei-Konten-Test.
+
+### Die Reihenfolge, die sich daraus ergibt
+
+| | Was | Warum zuerst |
+|---|---|---|
+| **1** | `size`-Feld am Artikel | Eine Spalte, ein Feld, ein Chip. Löst neun Titel-Notlösungen. |
+| **2** | **Stufe A: Artikel vorbereiten** (`planned_for`) | Der Hebel. Eine Spalte auf einer Berkat-eigenen Tabelle statt vier Eingriffen auf einer geteilten. Macht die Zeit vor der Show verkaufsfähig. |
+| **3** | Glocke je Artikel | Klein, sobald A steht — und liefert dem Verkäufer das Nachfrage-Signal. |
+| **4** | **Stufe B: Pre-Bid** als `set_max_bid` ohne Session | Der Rest ist Policy-Arbeit an `live_bids`. |
+| **5** | Live-Raum prüfen | Braucht ohnehin eine Show — zusammen mit dem Zwei-Konten-Test. |
+| — | Varianten, Marken-Chips, Nicht-Zahler-Quote | Erst mit echten Verkäufern und echtem Geld. |
+
+**Der rote Faden:** Fünf der sieben Punkte hängen an *einer* Spalte — `planned_for`. Und dieser
+eine Schritt ist erheblich kleiner, als der Audit vom 18.08. vermuten ließ, weil er die geteilte
+Tabelle gar nicht anfassen muss.
+
+---
+
+## 42. Audit der eigenen Migrationen — vier Fehler, einer davon ein Leck (19.08.2026)
+
+Direkt nach dem Einspielen von `20260819100000` und `…110000` durchgeprüft. **Vier Funde, alle in
+meiner eigenen Arbeit von derselben Stunde**, keiner je in Benutzung — `prepare_live_auction`
+scheiterte ohnehin am ersten davon.
+
+### 1 · CHECK verhinderte die neue Funktion (blockierend)
+
+`live_auctions_shelf_check` erlaubt bei `session_id IS NULL` nur `listed`, `sold`, `cancelled`.
+`prepare_live_auction` schreibt dort `scheduled` — **jeder Aufruf hätte `23514` geworfen.** Die
+Funktion war angelegt, hatte ihre Rechte, und war zur Laufzeit unbrauchbar.
+
+Behoben in `20260819120000`.
+
+### 2 · ⚠️ Frauen-Only-Leck (schwerwiegend)
+
+`prepare_live_auction` setzte `women_only` nicht. Die Spalte hat `DEFAULT false`, und die Policy
+für Artikel ohne Session lautet `women_only = false OR seller_id = auth.uid() OR …`.
+
+**Die Warenliste einer Frauen-Only-Show wäre in der Vorbereitungsphase für jeden sichtbar
+gewesen** — Titel, Bild, Preis. Bis zum Start der Show, also genau während der Zeit, in der die
+Vorbereitung ihren Zweck hat.
+
+Dieselbe Fehlerklasse wie in Abschnitt 3, dritter Eintrag („Eine SECURITY-DEFINER-Funktion geht an
+der Frauen-Only-Grenze vorbei"). Dort war es ein Cover, hier die ganze Liste.
+
+**Die Lösung ist Erben, nicht Fragen.** `scheduled_lives` trägt selbst `women_only`; der Artikel
+übernimmt es vom Termin. Kein neuer Parameter, keine zweite Angabe, keine Gelegenheit, es zu
+vergessen. Behoben in `20260819130000`.
+
+### 3 · Fremde App konnte Artikel aufnehmen (Datenverlust)
+
+`claim_prepared_auctions` prüfte nur `host_id = auth.uid()`, nicht die App der Session. Wer in
+beiden Apps sendet, hätte seine Berkat-Artikel in eine **Serlo**-Session ziehen können. Kein
+Sicherheitsleck — aber die Artikel wären verschwunden: Serlo kennt `live_auctions` nicht, und
+Berkats Abfragen finden sie über die fremde Session nicht mehr.
+
+### 4 · `sort_index` konnte doppelt vergeben werden (klein)
+
+Aus `count(*)` gebildet: drei anlegen (0,1,2), den mittleren verwerfen, einen neuen anlegen → wieder
+2. Zwei Artikel mit demselben Index, Reihenfolge unbestimmt. Jetzt `max(sort_index) + 1`.
+
+### Was die vier gemeinsam haben
+
+**Ich habe die Zieltabelle nicht zu Ende gelesen.** Spalten ja — CHECK-Constraints nein,
+Policy-Folgen nein, App-Trennung nein. Alle vier Fehler wären beim Lesen von
+`20260815210000` (Dauerangebote) aufgefallen: Dort steht der CHECK, dort steht `women_only` am
+Artikel, dort steht die Begründung für die zweite Policy.
+
+**Die Regel daraus, für jede neue Zeile in eine bestehende Tabelle:**
+
+> Nicht „welche Spalten gibt es", sondern **„welche Zustände erlaubt diese Tabelle, und was folgt
+> aus ihnen für die Sichtbarkeit".** Die Spaltenliste steht in `SCHEMA.md`; die Antwort auf die
+> zweite Frage steht nur in der Migration, die den Zustand eingeführt hat.
+
+Und: **Eine Funktion, die sauber anlegt, ist nicht geprüft.** `db push` meldete Erfolg,
+`supabase migration list` zeigte grün, die Rechte saßen — der Widerspruch entsteht erst beim
+ersten INSERT. Ein Schema-Abzug (`db dump --linked`) hat beide Fehler in zwei Minuten sichtbar
+gemacht; er gehört nach jeder Migration, die eine geerbte Tabelle anfasst.
+
+### Client-Seite: keine Funde
+
+Geprüft: Abhängigkeitslisten der heutigen `useCallback`s, ob die Sortierung im Regal den
+Zwischenspeicher von React Query mutiert (nein — `filter()` gibt ein neues Feld), ob irgendwo ein
+`void supabase.rpc(…)` ohne `.then()` steht (nein; die drei Treffer sind Warnkommentare).
+
+⚠️ **Für den nächsten Schritt vorgemerkt:** `LISTING_COLUMNS` in `lib/useListings.ts` ist eine
+feste Spaltenliste. Wer `size` im Client zeigen will, muss sie **dort** ergänzen — sonst ist die
+Spalte da, die Abfrage holt sie nicht, und niemand sieht sie. Genau so war `description` zwei Tage
+lang unsichtbar (Abschnitt 3).
+
+---
+
+## 43. Gesamt-Audit gegen das Live-Schema (19.08.2026)
+
+Nicht gegen Vermutungen, sondern gegen einen frischen Abzug der echten Datenbank
+(`supabase db dump --linked`, 22.411 Zeilen, **mit** Rechten — der bleibt in `/tmp`, nie im Repo).
+
+### Was geprüft wurde und hält
+
+**1 · Ausführungsrechte für `anon` (die `credit_coins`-Falle).**
+154 Funktionen tragen ein `anon`-EXECUTE. Das klingt nach viel und ist es auch — aber die
+Verdachtsliste (Geld, Rechte, Löschen) wurde einzeln geöffnet:
+
+| Funktion | Absicherung im Rumpf |
+|---|---|
+| `admin_update_payout_status` | `IF NOT is_admin() THEN RAISE` ✓ |
+| `admin_get_payout_requests` | `IF NOT is_admin() THEN RAISE` ✓ |
+| `grant_moderator` | prüft `host_id <> auth.uid()` → `forbidden_not_host` ✓ |
+
+Und die Wurzel dieser Kette:
+
+```sql
+is_admin() → SELECT COALESCE((SELECT is_admin FROM profiles WHERE id = auth.uid()), FALSE)
+```
+
+Ohne Anmeldung ist `auth.uid()` NULL, der Unterausdruck leer, `COALESCE` liefert `FALSE`.
+**Die Absicherung hält.** Das anon-Recht ist unschön, aber nicht ausnutzbar.
+
+**2 · Spaltenrechte auf `profiles`.**
+36 Spalten für `anon`, 0 davon heikel — kein `push_token`, keine E-Mail, keine Telefonnummer. Die
+spaltenweise REVOKE-Strategie aus Abschnitt 3 funktioniert wie gedacht, auch wenn die
+Zeilen-Policy `USING (true)` lautet.
+
+**3 · Client-Arbeit dieser Runde.** Abhängigkeitslisten der `useCallback`s korrekt, keine Mutation
+des React-Query-Zwischenspeichers beim Sortieren, kein `void supabase.rpc(…)` ohne `.then()`.
+
+### Was prüfenswert bleibt
+
+**⚠️ `live_cohosts`, `live_polls`, `live_moderators` haben `USING (true)`.**
+
+Diese drei hängen an einer Session, erben deren `women_only` aber **nicht**. Wer sie liest, sieht
+`session_id` + `user_id` — also *dass* jemand in einer bestimmten Sendung CoHost oder Moderator
+war, auch wenn die Sendung selbst unsichtbar ist.
+
+Das ist **kein Inhalts-Leck** (Titel, Cover, Chat bleiben geschützt), sondern ein Metadaten-Leck:
+Teilnahme an einem geschützten Raum. In einer konservativen Gemeinschaft ist das nicht nichts.
+
+**Einordnung:** Serlo-Bestand, nicht von Berkat eingeführt; Berkat nutzt CoHosts und Polls nicht.
+Verwandt mit dem Befund in der Notiz „RLS Permissive-OR-Falle" (WOZ-Live-Leak, Juli 2026). **Nicht
+verifiziert** — dafür bräuchte es eine Probe mit einem ungeprüften Konto gegen eine echte
+WOZ-Session. Gehört auf die Liste, bevor Frauen-Only ernsthaft genutzt wird.
+
+**⚠️ `berkat_sellers` ist `USING (true)`.**
+Enthält die Impressumsangaben. Bei **gewerblichen** Verkäufern ist das öffentlich Pflicht
+(§ 5 DDG) und damit richtig. Bei **privaten** stehen dort `NULL`s — das Formular aus Abschnitt 36
+nullt die Felder beim Wechsel zurück auf privat ausdrücklich. Der Fall, der schiefgehen könnte:
+Daten per SQL eingetragen und der Typ danach auf privat gesetzt. Dann stünde eine Privatanschrift
+öffentlich. **Kein aktueller Fehler, aber ein Grund, `set_berkat_seller_kind` als einzigen
+Schreibweg zu behalten.**
+
+### Was noch fehlt und bewusst offen ist
+
+`size` und `planned_for` sind in der Datenbank, aber **im Client noch nirgends** — `LISTING_COLUMNS`
+in `lib/useListings.ts` kennt sie nicht. Das ist der nächste Bauschritt, keine Lücke. ⚠️ Wer sie
+nutzt, muss die Spaltenliste dort ergänzen; sonst existiert die Spalte, die Abfrage holt sie nicht,
+und niemand sieht sie — genau der Weg, auf dem `description` zwei Tage unsichtbar blieb.
+
+### Methodenhinweis für den nächsten Audit
+
+Der Abzug beantwortet in Minuten, was aus dem Quelltext nicht sicher zu erkennen ist: welche
+Rechte tatsächlich gelten, welche Policies wirklich existieren, ob eine Funktion so in der
+Datenbank steht wie in der Migration. Er lohnt nach **jeder** Migration auf einer geerbten oder
+geteilten Tabelle.
+
+```bash
+supabase db dump --linked --schema public --dry-run 2>/dev/null \
+  | sed -n '/^#!\/usr\/bin\/env bash/,$p' > /tmp/dump.sh
+bash /tmp/dump.sh > /tmp/schema_now.sql && rm /tmp/dump.sh
+```
+
+⚠️ Dieser Abzug enthält die **Rechte** und gehört deshalb nach `/tmp`, nie ins Repo — das Repo ist
+öffentlich, und die GRANT-Liste ist für einen Angreifer die Landkarte (CLAUDE.md Regel 10).
+
+---
+
+## 44. Die WOZ-Probe — gemessen statt vermutet (19.08.2026)
+
+Abschnitt 43 nannte `live_cohosts`, `live_polls` und `live_moderators` als möglichen
+Metadaten-Leck-Weg (`USING (true)`, kein Erben von `women_only`). Hier die Messung.
+
+### Der Aufbau
+
+Abgefragt wurde mit dem **öffentlichen anon-Schlüssel** — also genau der Perspektive eines
+Angreifers: nicht angemeldet, nicht Frauen-Only-geprüft, kein Host. Der Schlüssel steckt ohnehin in
+jeder ausgelieferten App, die Probe verrät nichts Neues.
+
+Das Verfahren: Alle `session_id`s sammeln, die diese Tabellen preisgeben, und gegen die Liste der
+Sessions halten, die `anon` regulär sehen darf. **Jede ID, die in der ersten Menge steht und in der
+zweiten fehlt, wäre eine durchgesickerte Existenz.**
+
+### Das Ergebnis
+
+| | |
+|---|---|
+| `live_sessions` für anon sichtbar | 241 (davon `women_only = true`: **0**) |
+| `live_cohosts` lesbar | 15 Zeilen · 15 Sessions · **0 versteckt** |
+| `live_polls` lesbar | 12 Zeilen · 11 Sessions · **0 versteckt** |
+| `live_moderators` lesbar | 0 Zeilen |
+| `live_comments` lesbar | 286 Zeilen · 80 Sessions · **0 versteckt** |
+| `auction_carts` | **gesperrt (401)** ✓ |
+| `berkat_tips` | 0 ✓ |
+
+**Kein aktives Leck.** Auch der Live-Chat — 286 Nachrichten sind für anon lesbar — stammt
+ausschließlich aus öffentlichen Sendungen.
+
+### ⚠️ Warum das Ergebnis weniger wert ist, als es aussieht
+
+Die Gegenprobe auf die Datenlage:
+
+| | |
+|---|---|
+| `scheduled_lives` mit `women_only` | 0 |
+| `live_auctions` mit `women_only` | 0 |
+| `profiles` mit `women_only_verified` | **1** |
+
+**Es gibt kein einziges Frauen-Only-Datum in der Datenbank.** Eine Sendung, ein Artikel, ein
+Termin — nichts. Die Probe konnte also gar nichts finden; sie beweist nur, dass an den
+öffentlichen Daten nichts vorbeiläuft.
+
+Der **strukturelle** Befund bleibt davon unberührt und folgt direkt aus der Policy-Definition:
+`live_cohosts_select` lautet `USING (true)` und erbt nichts von der Session. Bekommt morgen eine
+Frauen-Only-Sendung einen CoHost, ist diese Zeile für jeden lesbar. Das ist keine Vermutung,
+sondern liest sich aus der Policy ab.
+
+### ~~Empfehlung: den Fix jetzt NICHT bauen~~ — am selben Tag überholt
+
+Er wäre klein — Policy von `USING (true)` auf ein Session-Erbe umstellen, wie es
+`live_auctions_select` längst tut. Aber:
+
+```
+live_cohosts    → Serlo-Web 10 Dateien · Serlo-App 4 · Berkat 1
+live_polls      → Serlo-Web 11 Dateien · Serlo-App 1 · Berkat 1
+live_moderators → Serlo-Web  7 Dateien · Serlo-App 1 · Berkat 2
+```
+
+Das sind **intensiv genutzte Serlo-Flächen**. Eine verschärfte Policy, die einen Lesepfad dort
+nicht trifft, bricht ihn **still** — PostgREST liefert eine leere Menge statt eines Fehlers
+(Abschnitt 3, „Geerbte Serlo-Tabellen sind enger, als sie aussehen"). Der Nutzen wäre heute null,
+das Risiko trifft eine ausgelieferte App.
+
+**Der richtige Zeitpunkt ist der Tag, an dem die erste Frauen-Only-Show geplant wird** — dann mit
+Durchgang durch alle 22 Fundstellen. Bis dahin gehört es hierher, nicht in eine Migration.
+
+### Positiver Nebenbefund
+
+`auction_carts` antwortet `anon` mit **401**, `berkat_tips` mit 0 Zeilen. Die Geldpfade sind gegen
+unangemeldete Zugriffe dicht — unabhängig von den Policies darüber.
+
+---
+
+## 45. Die vier Kind-Tabellen erben jetzt die Frauen-Only-Schranke (19.08.2026)
+
+**Korrektur meiner eigenen Empfehlung aus Abschnitt 44.** Dort stand: Fix nicht jetzt bauen, weil
+die Tabellen zu Serlo gehören und ein stiller Bruch eine ausgelieferte App träfe.
+
+Zaur: *„auf serlo sind 0 user, keine echten user, man kann die fehler ruhig lösen, nicht warten auf
+women only show."*
+
+Damit fällt die Grundlage der Abwägung weg. **Der richtige Zeitpunkt ist jetzt** — ein stiller
+Bruch kostet heute nichts und nach dem Start alles. Die Empfehlung war nicht falsch begründet, sie
+beruhte auf einer falschen Annahme über die Nutzerlage.
+
+### Es waren vier, nicht drei
+
+Die systematische Suche über den Schema-Abzug (21 Tabellen mit `session_id`) fand eine mehr als der
+Audit in Abschnitt 43:
+
+```
+live_cohosts · live_polls · live_moderators · live_viewer_welcomes
+```
+
+Die übrigen 17 session-gebundenen Tabellen hatten bereits ordentliche Policies.
+
+### Warum der Eingriff risikoarm ist
+
+1. **Die Formel ist nicht neu.** Sie steht wortgleich auf `live_reactions` und läuft dort in Serlo
+   seit Monaten. Kopiert, nicht erfunden.
+2. **`session_id` ist in allen vier Tabellen `NOT NULL`.** Es kann keine verwaiste Zeile geben, die
+   durch das Erben unsichtbar würde — der häufigste Weg, wie eine verschärfte Policy Daten
+   verschluckt.
+3. **Nur SELECT.** `live_cohosts` und `live_polls` haben eigene INSERT/UPDATE/DELETE-Policies; die
+   bleiben unberührt.
+
+### Was sich ändert
+
+Wer die Kind-Zeilen einer Sendung liest, die er selbst nicht sehen darf, bekommt eine **leere
+Menge** statt Daten — kein Fehler, keine Meldung. Für öffentliche Sendungen ändert sich nichts, und
+nur die existieren heute. Die Gegenprobe steht in der Migration: `live_cohosts` muss als anon
+weiterhin 15 Zeilen liefern, `live_polls` 12.
+
+### Stand der Migrationen
+
+`20260819120000` (CHECK) und `20260819130000` (WOZ bei vorbereiteten Artikeln) sind **eingespielt**.
+Offen ist nur `20260819140000`.
+
+---
+
+## 46. Anschlusspunkt für den nächsten Chat (Stand 19.08.2026, Abend)
+
+**Hier anfangen.** Löst Abschnitt 38 ab (der wiederum 26 ablöste). Was dort an Aufgaben stand, ist
+abgearbeitet oder in diesem Abschnitt neu bewertet.
+
+### Der Zustand in fünf Zeilen
+
+| | |
+|---|---|
+| Migrationen | **39, alle eingespielt und verzeichnet**, keine Lücke |
+| `tsc --noEmit` / `expo export` | fehlerfrei |
+| Regal | 38 Artikel, sechs Verkäufer, einer gewerblich mit Impressum — **alles Testware** |
+| Letzter Commit | `c15d625` (Design-Durchgang). **Alles danach ist uncommittet** |
+| Build nötig? | nein — die ganze Runde lief über Metro |
+
+### ⚠️ Das Wichtigste zuerst: die Datenbank kann etwas, das die App nicht kennt
+
+Am 19.08. kamen zwei Spalten dazu, **beide ohne Client-Code**:
+
+- `live_auctions.size` — Größe als Freitext. Die RPCs `create_standing_listing` und
+  `update_standing_listing` nehmen sie bereits entgegen (`p_size`).
+- `live_auctions.planned_for` — Termin, für den ein Artikel vorbereitet ist. Dazu drei RPCs:
+  `prepare_live_auction`, `claim_prepared_auctions`, `discard_prepared_auction`.
+
+**Der nächste Bauschritt ist der Client dazu.** Und die erste Falle steht schon fest:
+
+> `LISTING_COLUMNS` in `lib/useListings.ts` ist eine **feste Spaltenliste**. Wer `size` anzeigen
+> will, muss sie **dort** ergänzen — sonst existiert die Spalte, die Abfrage holt sie nicht, und
+> niemand sieht sie. Genau so blieb `description` zwei Tage unsichtbar (Abschnitt 3).
+
+Konkret zu bauen:
+
+1. **Größe** — Feld im `StandingComposer`, Anzeige auf `ListingCard` und Artikelseite, Chip im
+   Filter-Blatt (`app/shop.tsx`). Neun der 36 Testartikel tragen die Größe im Titel; die gehört
+   dorthin.
+2. **Artikel vorbereiten** — im Verkaufen-Reiter hinter dem Termin: „Artikel für diesen Abend
+   vorbereiten". Beim Live-Gehen `claim_prepared_auctions` rufen (in `sell.tsx`, wo heute schon
+   `linkShowToPlan` läuft). Die „Demnächst"-Karte zeigt dann, was kommt.
+
+### Was in dieser Runde entschieden wurde (nicht neu diskutieren)
+
+- **Keine Varianten.** Sie setzen Bestandsführung voraus, `live_auctions` hat kein `stock`, und der
+  Markt ist Secondhand. Ein `size`-Feld löst neun von neun Fällen. Begründung: Abschnitt 41.
+- **Pre-Bid ist `set_max_bid` ohne Session**, kein neues Feature. Erst nach dem Vorbereiten bauen.
+- **Kein Account Health, kein „Watch to earn", keine abgekürzten Zahlen, kein Dunkelmodus** —
+  Begründungen in Abschnitt 40.
+- **Marken-Chips nicht**, solange „Nike/nike/NIKE" drei Marken wären (Abschnitt 41).
+
+### Die Blocker — unverändert bis auf einen Teilerfolg
+
+1. **Kein Store-Eintrag.** Nur Zaur kann TestFlight anstoßen (Apple-Anmeldung mit Zwei-Faktor).
+2. **Stripe:** Konto wiederhergestellt, Testbetrieb. ✅ **Ratenzahlung ist abgeschaltet** (Klarna,
+   Billie, Scalapay — Test und Live getrennt, 19.08.). Vor dem Go-Live noch einmal durchsehen:
+   Stripe schaltet neue Methoden bei Länder-Freischaltungen von selbst zu.
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass** — nicht Wissen,
+   nicht Funktionen.
+
+### Vor dem nächsten Commit
+
+Uncommittet sind: fünf Migrationen, `lib/useMyBids.ts`, `app/(tabs)/activity.tsx`,
+`app/(tabs)/_layout.tsx`, `HANDOFF.md`, `WHATNOT-ANALYSE.md`.
+
+⚠️ `apps/web/lib/data/live-host.ts` und `studio.ts` gehören **nicht** dazu — sie stammen aus einer
+separaten Hintergrund-Aufgabe zum Studio-Verlauf und lagen schon vor dieser Runde geändert im Baum.
+
+### Was diese Runde gelehrt hat
+
+Vier Fehler in eigenen Migrationen (Abschnitt 42), einer davon ein Frauen-Only-Leck. Alle vier
+hatten dieselbe Ursache: **die Zieltabelle nicht zu Ende gelesen** — Spalten ja, CHECK-Constraints
+nein, Policy-Folgen nein.
+
+> Vor jedem INSERT in eine bestehende Tabelle: nicht „welche Spalten gibt es", sondern **„welche
+> Zustände erlaubt sie, und was folgt daraus für die Sichtbarkeit".** Die Spaltenliste steht in
+> `SCHEMA.md`; die zweite Antwort steht nur in der Migration, die den Zustand eingeführt hat.
+
+Und das Werkzeug, das beide Fehler in zwei Minuten fand — ein Schema-Abzug gegen die Live-DB
+(Rezept am Ende von Abschnitt 43). Er gehört nach jeder Migration auf einer geerbten Tabelle.

@@ -1196,3 +1196,105 @@ nicht für Berkat — das erste ist eine Aufmerksamkeits-Prämie, die zur ethisc
 
 - `blog.teamwhatnot.com/unitedstates/sellerhome` — Seller Hub, Verkäufer-Profil und Live-Raum mit
   laufender Auktion, 19.08.2026
+
+---
+
+## Siebte Analyse: Vorabgebote, der Aktivitäts-Reiter und Scheingebote (19.08.2026)
+
+Quellen: `blog.teamwhatnot.com/unitedstates/new-tools-from-discovery-to-delivery` und
+`…/taking-on-shill-bidding`.
+
+### 1. Pre-Bid — bieten, bevor die Show läuft
+
+Die Shop-Liste einer **angekündigten** Show zeigt jeden Artikel mit `Qty`, Preis, „0 bids" und einem
+Knopf **„Pre-Bid"**. Daneben eine **Glocke mit Zähler** (`🔔 5`) — so viele Menschen wollen
+benachrichtigt werden, wenn dieser Artikel drankommt.
+
+**Das ist der wirtschaftliche Grund hinter der Reservieren-Lücke aus Abschnitt 26.** Artikel vor
+der Show anzulegen ist nicht nur Bequemlichkeit für den Verkäufer — es macht die Zeit **vor** der
+Sendung verkaufsfähig:
+
+- Der Käufer bindet sich, bevor die Show beginnt. Er hat dann einen Grund, pünktlich zu sein.
+- Der Verkäufer sieht an der Glockenzahl, **welcher Artikel Nachfrage hat**, bevor er ihn aufruft —
+  er kann die Reihenfolge danach legen.
+- Ein Artikel mit Vorabgeboten startet nicht bei null Interesse.
+
+Berkat kann heute nichts davon: `create_live_auction` verlangt eine laufende Session, also gibt es
+vor der Show keinen Artikel, auf den man bieten könnte.
+
+### 2. Der Aktivitäts-Reiter: Kontostand statt Ereignis-Strom
+
+Whatnots `Activity` hat vier Unterreiter — **`Purchases | Bids | Offers | Saved`** — und zeigt unter
+`Bids` die eigenen laufenden Gebote:
+
+```
+[Filter 1] [Upcoming] [All] [Outbid] [Winning]
+
+ [Bild]  🟢 Winning
+         90s Single Stitch Keep Swinging Duck…
+         Showtime: 4/1, 9:00 PM
+         Your Max: $3     Current Bid: $1
+
+ [Bild]  🔴 Outbid
+         90s Single Stitch Colt American Firear…
+         Showtime: 4/1, 9:00 PM
+         Current Bid: $6
+```
+
+Berkats Aktivität ist etwas anderes: ein **Ereignis-Strom** („Neu im Angebot", „X ist live",
+„jemand hat ins Regal gelegt"). Er beantwortet *was ist passiert*, Whatnots beantwortet *wo stehe
+ich*.
+
+⚠️ **Daraus folgt eine konkrete Lücke.** Berkat hat Stellvertreter-Gebote (`set_max_bid`,
+`live_auto_bids`, seit `20260813220000`) — aber **keinen Bildschirm, auf dem jemand sieht, wo er
+mitbietet.** Wer ein Höchstgebot setzt und die App schließt, hat keinen Ort, an dem steht, ob er
+noch führt. Das ist dasselbe Muster wie bei der Beschreibung und beim Impressum: Der Server kann
+es, die Oberfläche fragt nie danach.
+
+Die zwei Zeilen, die dort fehlen, sind genau die aus Whatnots Liste: **„Du führst" / „Überboten"**
+und **„Dein Höchstgebot: X"**.
+
+Nebenbefund aus dem Test mit Testware: Neun Meldungen „Neu im Angebot" untereinander, alle „vor 10
+Std", von zwei Verkäufern. Bei zwanzig Verkäufern wäre der Strom unlesbar. Er braucht früher oder
+später eine Bündelung („amir32 hat 6 Artikel eingestellt").
+
+### 3. Scheingebote — was Whatnot tut, und was Berkat hat
+
+Eigener Artikel im Blog (`taking-on-shill-bidding`). Shill Bidding heißt: bieten ohne Kaufabsicht,
+nur um den Preis zu treiben — durch den Verkäufer selbst **oder durch Vertraute**.
+
+Whatnots Maßnahmen, soweit sie sie offenlegen (sie sagen ausdrücklich, dass sie nicht alles
+verraten):
+
+| | |
+|---|---|
+| Erkennung | Konto-Informationen, **Geräte-Fingerprints**, Verbindungen zwischen Konten, Bieter- und Stornierungsmuster gegen Normalverhalten, Anomalie-Erkennung in Echtzeit |
+| Ausbau | Zahl der Signale zur proaktiven Erkennung **verfünffacht** |
+| Sanktion | bis zur dauerhaften Sperrung |
+| Ergebnis in sechs Monaten | Shill-Aktivität **−80 %**, Meldungen über verdächtiges Bieten **−45 %**, Trust-&-Safety-Team verdoppelt |
+
+**Berkats Stand:** `place_live_bid` wirft `seller_cannot_bid` — der Verkäufer kann nicht auf seine
+eigene Ware bieten, serverseitig geprüft, seit der ersten Migration. Das deckt den **direkten**
+Fall ab.
+
+Der Fall über **Vertraute** ist offen: Ein zweites Konto eines Freundes, das den Preis hochtreibt
+und am Ende nicht zahlt, wird von nichts erkannt. Was Berkat dagegen strukturell hat, ist das
+Bürgen-System — wer bürgt, hängt mit seinem Namen dran — und die Größe: In einer Gemeinschaft, in
+der man sich kennt, ist ein Komplize teurer als der Gewinn.
+
+**Kein Handlungsbedarf jetzt**, aber es gehört auf die Liste für den Tag, an dem echtes Geld
+fließt. Der billigste erste Schritt wäre nicht Erkennung, sondern eine **Kennzahl**: Wie oft gewinnt
+ein Konto und zahlt dann nicht? Das ist eine Abfrage auf `auction_carts`, keine Anomalie-Erkennung.
+
+### Was daraus folgt
+
+1. **Eigene Gebote sichtbar machen** — der kleinste Eingriff mit echtem Nutzen. Die Daten liegen in
+   `live_auto_bids` und `live_bids`; es fehlt eine Liste mit „Du führst / Überboten".
+2. **Pre-Bid** — hängt an der Reservieren-Lücke (Abschnitt 26) und ist deren eigentliche
+   Rechtfertigung. Erst Artikel vor der Show, dann Gebote darauf.
+3. **Nicht-Zahler-Quote** als stille Kennzahl, bevor Scheingebote ein Thema werden.
+
+## Quellen
+
+- `blog.teamwhatnot.com/unitedstates/new-tools-from-discovery-to-delivery` (Pre-Bid, Shop-Liste,
+  Aktivitäts-Reiter), `…/taking-on-shill-bidding` (Zahlen und Maßnahmen), 19.08.2026
