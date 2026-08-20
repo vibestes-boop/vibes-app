@@ -102,6 +102,52 @@ export function usePreparedByPlan(planIds: string[]) {
   return { ...query, byPlan };
 }
 
+/**
+ * Vorbereitet, aber ohne Termin — die Artikel, die sonst niemand mehr sieht.
+ *
+ * ⚠️ DIESE ANSICHT SCHLIESST EIN LOCH, DAS AM 19.08.2026 ZWEI ECHTE ZEILEN
+ * ERZEUGT HAT. `planned_for` ist `ON DELETE SET NULL`, und die Migration
+ * begründet das ausdrücklich: Wer seinen Termin absagt, soll seine Artikel nicht
+ * verlieren — sie sollen „zurückfallen in vorbereitet, ohne Termin".
+ *
+ * Nur gab es diese Ansicht nicht. `usePreparedByPlan` fragt ausschließlich nach
+ * den IDs KOMMENDER Termine; ein Artikel an einem abgesagten Termin taucht damit
+ * nirgends auf — nicht im Regal (dort filtert `shelfQuery` auf `status =
+ * 'listed'`), nicht im Vorbereiten-Blatt, nicht auf dem Profil. Er liegt in der
+ * Datenbank und ist über die App nicht einmal löschbar.
+ *
+ * Gefiltert wird im Client statt per `not.in`: Eine leere ID-Liste macht aus
+ * `not.in.()` einen Syntaxfehler, und die Menge ist klein (fünfzig je Termin ist
+ * die Serverobergrenze).
+ */
+export function useMyPreparedOrphans(userId: string | null, livePlanIds: string[]) {
+  const known = useMemo(() => new Set(livePlanIds), [livePlanIds]);
+
+  const query = useQuery({
+    queryKey: ['berkat', 'prepared-mine', userId],
+    enabled: Boolean(userId),
+    staleTime: 30_000,
+    queryFn: async (): Promise<PreparedAuction[]> => {
+      const { data, error } = await supabase
+        .from('live_auctions')
+        .select(PREPARED_COLUMNS)
+        .eq('seller_id', userId!)
+        .is('session_id', null)
+        .eq('status', 'scheduled')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as PreparedAuction[];
+    },
+  });
+
+  const orphans = useMemo(
+    () => (query.data ?? []).filter((a) => !a.planned_for || !known.has(a.planned_for)),
+    [query.data, known],
+  );
+
+  return { ...query, orphans };
+}
+
 export function prepareErrorText(message: string): string {
   if (message.includes('schedule_not_found'))
     return 'Diesen Termin gibt es nicht mehr. Lad die Seite neu.';
@@ -127,6 +173,11 @@ export function usePrepareActions() {
 
   const invalidate = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'prepared'] });
+    // Der zweite Ort, an dem dieselben Zeilen stehen: „vorbereitet, ohne
+    // Termin". Ohne das bliebe ein verworfener Artikel dort stehen — dieselbe
+    // Regel wie beim zurückgezogenen Dauerangebot (HANDOFF 18): Wer etwas an
+    // zwei Orten anzeigt, muss an beiden zurücksetzen.
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'prepared-mine'] });
   }, [queryClient]);
 
   const prepare = useMutation({

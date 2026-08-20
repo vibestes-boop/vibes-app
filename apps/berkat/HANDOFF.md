@@ -5711,3 +5711,113 @@ Alles, was ein **zweites Konto** braucht — dieselbe Wand wie in Abschnitt 50:
 
 Punkt 3 und 4 sind zugleich der Beweis, dass die Kette hält; bis dahin ist sie belegt, aber nicht
 gelaufen.
+
+---
+
+## 52. Die Gesamtanalyse — und zwei Löcher, die sie gefunden hat (19.08.2026, spät)
+
+Zaur: *„analysiere komplett berkat."* Gemessen gegen Code und Datenbank, nicht gegen dieses
+Dokument — das ist der Selbstbericht, interessant ist die Abweichung.
+
+### Der Umfang, gemessen
+
+| | |
+|---|---|
+| Quelltext | **27.940 Zeilen**, 23 Bildschirme, 35 Komponenten, 49 Hooks |
+| Datenbank | 34 Berkat-Migrationen, 53 Berkat-nahe Funktionen, 13 Tabellen |
+| Client ↔ DB | 45 RPC-Aufrufe, **alle 45 existieren** |
+
+### ⚠️ Fund 1: zwei verwaiste Artikel — und eine falsche Behauptung von mir
+
+In den Abschnitten 50 und 51 steht „Testdaten danach jeweils wieder entfernt". **Für die letzten
+zwei Durchgänge stimmte das nicht.** Ich hatte „Verwerfen" blind getippt und danach nur den
+Termin-Bildschirm kontrolliert, nicht die Artikelliste; die Taps gingen ins Leere. In der Datenbank
+lagen „Kupferkanne" und „Teekanne Kupfer".
+
+Damit war die Lücke aus Abschnitt 49 keine Theorie mehr: Ihre Termine waren abgesagt, also
+erschienen sie in **keiner** Ansicht — nicht im Regal (`status ≠ 'listed'`), nicht im
+Vorbereiten-Blatt (kein kommender Termin), nicht auf dem Profil. Sie existierten und waren über die
+App nicht einmal löschbar.
+
+**Behoben mit der Karte „Vorbereitet, ohne Termin"** im Verkaufen-Reiter (`useMyPreparedOrphans`).
+Sie zeigt, was an einem abgesagten Termin hängt, und lässt es verwerfen. Am Gerät durchgespielt:
+beide Zeilen erschienen, beide sind weg, die Karte verschwindet vollständig, und die Gegenprobe
+gegen die Datenbank sagt **0**.
+
+⚠️ **Zuordnen zu einem neuen Termin geht bewusst NICHT.** Dafür bräuchte es ein UPDATE auf
+`planned_for`, also eine eigene RPC — Schreibwege auf `live_auctions` laufen alle über den Server.
+Bis die existiert, ist „sehen und verwerfen" die ehrliche Hälfte; die Migration verspricht in ihrem
+Kommentar mehr, als der Client heute kann.
+
+**Die Lehre, die über den Einzelfall hinausgeht:** Ich habe eine Aufräum-Handlung getippt und
+danach den falschen Bildschirm kontrolliert. Wer am Simulator blind tippt, prüft **die Liste, in der
+etwas verschwinden soll** — nicht die daneben.
+
+### ⚠️ Fund 2: Preisvorschläge erreichten den Verkäufer nie
+
+`useOpenOfferCount` in `lib/useOffers.ts` trägt seit dem 18.08.2026 den Kommentar **„die Zahl für
+das Abzeichen"** — und kam im ganzen Projekt genau **einmal** vor: bei seiner eigenen Definition.
+
+Dazu kam die (für sich richtige) Entscheidung aus Abschnitt 24, keinen `notifications`-Typ
+anzulegen. Zusammen ergab das: kein Push, kein Eintrag in der Aktivität, kein Abzeichen. **Ein
+Käufer schickte einen Preisvorschlag, und der Verkäufer erfuhr es nur, wenn er zufällig genau diesen
+Artikel öffnete.** Dieselbe Fehlerklasse wie die zwei Tage unsichtbare Beschreibung und
+`sellerKindNote()` ohne Aufrufer (Abschnitt 3), nur eine Ebene höher: nicht ein Feld ohne Anzeige,
+sondern ein ganzes Feature ohne Ort.
+
+Behoben mit `app/offers.tsx` und einer dritten Job-Zeile im Verkaufen-Reiter.
+
+- **Hier wird nicht geantwortet, hier wird gefunden.** Annehmen, kontern und ablehnen bleiben im
+  `OfferPanel` auf der Artikelseite — an einer Stelle. Eine zweite Fassung derselben drei Knöpfe
+  wäre der Karten-Fehler aus Abschnitt 21 noch einmal, diesmal dort, wo über Geld entschieden wird.
+- **`countered` steht mit in der Liste, aber nicht im Abzeichen.** Die Liste zeigt die laufende
+  Verhandlung, das Abzeichen nur das Unbeantwortete — es soll auf null gehen können, sonst liest es
+  bald niemand mehr (die Lehre vom Bestell-Abzeichen).
+- **Die Zeile erscheint auch bei null** („keine"), das Abzeichen nicht. Wer Handeln zulässt, soll
+  sehen können, dass gerade niemand handelt; das ist eine Auskunft, keine Enttäuschung.
+- **Zwei Abfragen statt eines Embeds** — `berkat_offers → live_auctions` wäre ein echter
+  Fremdschlüssel, aber PostgREST-Embeds sind in diesem Projekt schon einmal still zu einer leeren
+  Liste geworden.
+
+### Was die Analyse sonst gefunden hat
+
+**Vier weitere tote Exporte**, alle harmlos: `reportError`, `pushAvailable`, `hasSupabaseConfig`,
+`EMPTY_SELLER_STATS` — je ein Vorkommen im ganzen Projekt.
+
+**`react-native-gesture-handler` liegt ungenutzt in der `package.json`** — ein natives Paket im
+Build, das nichts tut. Der Kommentar in `BidButton.tsx` weiß es sogar.
+
+### Was geprüft wurde und hält — der wichtigere Teil
+
+- **Keine schrankenlose Lese-Policy auf Auktionsdaten.** Die vier `USING (true)` treffen
+  Kategorien, Versandsätze, Bürgschaften und Impressumsangaben — alle vier öffentlich gewollt.
+  Gebote, Körbe, Maxima, Vormerkungen sind geschlossen.
+- **Die App-Trennung ist im Client vollständig.** Alle elf Zugriffe auf `live_sessions` sind
+  app-gefiltert oder gehen über den Primärschlüssel; `scheduled_lives`, `notifications`,
+  `push_tokens` durchgehend gefiltert.
+- **Kein `void supabase.rpc(…)` ohne `.then()`** — die Falle, die die Zuschauerzahl monatelang tot
+  hielt, ist nirgends zurück.
+- **Alle neun `console.*` sind `__DEV__`-geschützt**, und es gibt **null** TODO/FIXME.
+- **Jede Route hat mindestens ein Sprungziel** — die „Profil hatte keine Tür"-Klasse ist sauber.
+- **Sieben Funktionen mit `anon`-EXECUTE, keine ausnutzbar:** vier Trigger-Funktionen (ohne
+  Trigger-Kontext nicht sinnvoll aufrufbar), `berkat_server_time` gibt `now()` zurück,
+  `get_berkat_category_counts` ist gewollt öffentlich und `SECURITY INVOKER`. Untidy — die bekannte
+  DROP+CREATE-Drift — aber kein Loch.
+- **Drei Funktionen ohne gepinnten `search_path`**, alle drei `SECURITY INVOKER`. Der Angriffsweg,
+  den die Hausregel meint, ist damit zu.
+
+⚠️ **Eine Messung war zuerst falsch:** Mein erstes RPC-Muster verlangte den Aufruf auf einer Zeile
+und übersah `supabase\n.rpc('berkat_server_time')`. Es waren 45, nicht 43. Wer Aufrufstellen zählt,
+zählt auch die mehrzeiligen.
+
+### Die strukturelle Bilanz
+
+> **28.000 Zeilen, 45 RPCs, 34 Migrationen — und die Kernkette ist genau einmal gelaufen, am
+> 16.08.2026, zwanzig Minuten lang.**
+
+Alles seit dem 17.08. ist strukturell belegt und nie durchlaufen: Signaturen gezählt, Rechte
+geprüft, Rümpfe verglichen, Bildschirme gesehen. Was fehlt, ist ein zweiter Mensch, der bietet.
+
+Die Testware hat das an vier Stellen gelöst, weil sie fremde **Angebote** erzeugt. Für alles, was
+eine fremde **Handlung** braucht — Gebot, Vormerkung, Kauf, Push — löst sie es nicht. Das Verhältnis
+kippt seit drei Tagen: Es wird schneller gebaut als geprüft.

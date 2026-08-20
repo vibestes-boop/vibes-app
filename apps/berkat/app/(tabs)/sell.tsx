@@ -25,6 +25,7 @@ import {
   CalendarClock,
   Check,
   ChevronRight,
+  Handshake,
   ImagePlus,
   Package,
   Pencil,
@@ -58,6 +59,7 @@ import {
   useStudioActions,
 } from '../../lib/useStudio';
 import { useOpenOrderCount } from '../../lib/useSellerOrders';
+import { useOpenOfferCount } from '../../lib/useOffers';
 import {
   formatSlot,
   formatUntil,
@@ -70,6 +72,7 @@ import {
 import {
   claimPreparedAuctions,
   prepareErrorText,
+  useMyPreparedOrphans,
   usePreparedByPlan,
   usePrepareActions,
 } from '../../lib/usePrepared';
@@ -140,6 +143,10 @@ export default function SellScreen() {
   // was bereitliegt.
   const planIds = useMemo(() => plannedShows.map((p) => p.id), [plannedShows]);
   const { byPlan: preparedByPlan } = usePreparedByPlan(planIds);
+  // Vorbereitetes, dessen Termin abgesagt wurde. Ohne diese Liste liegt es in
+  // der Datenbank und ist über die App weder sicht- noch löschbar — am
+  // 19.08.2026 sind so zwei echte Zeilen entstanden.
+  const { orphans } = useMyPreparedOrphans(myUserId, planIds);
   const { prepare, discard, invalidate: invalidatePrepared } = usePrepareActions();
   /** Der Termin, für den gerade vorbereitet wird. `null` = Blatt zu. */
   const [prepareFor, setPrepareFor] = useState<string | null>(null);
@@ -153,6 +160,9 @@ export default function SellScreen() {
   // anzuzeigen.
   const { data: standing = [] } = useSellerListings(myUserId ?? undefined);
   const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
+  // ⚠️ Der Hook lag seit dem 18.08.2026 ungenutzt herum — sein eigener Kommentar
+  // sagt „die Zahl für das Abzeichen", und das Abzeichen gab es nie.
+  const { data: openOffers = 0 } = useOpenOfferCount(myUserId);
   // Wie viele Menschen eine Erinnerung bekommen, wenn ein Termin ansteht.
   // Berkat kennt kein „Show merken" wie Whatnot — die Erinnerung geht an die
   // Follower. Die Zahl beantwortet dieselbe Frage: Wen erreiche ich damit?
@@ -451,6 +461,69 @@ export default function SellScreen() {
               <Text style={styles.planHint}>
                 Tipp auf einen Termin, um Artikel dafür vorzubereiten.
               </Text>
+            </View>
+          ) : null}
+
+          {/* ── Vorbereitet, ohne Termin ────────────────────────────────────
+              ⚠️ Diese Karte schließt ein Loch, das am 19.08.2026 zwei echte
+              Zeilen erzeugt hat. `planned_for` ist `ON DELETE SET NULL`, damit
+              eine Absage die Vorbereitung nicht mitreißt — nur sah man sie
+              danach nirgends: nicht im Regal (dort zählt `status = 'listed'`),
+              nicht im Vorbereiten-Blatt (kein kommender Termin), nicht auf dem
+              Profil. Sie lagen in der Datenbank und waren über die App nicht
+              einmal löschbar.
+
+              Zuordnen zu einem neuen Termin geht hier bewusst NICHT: Dafür
+              bräuchte es ein UPDATE auf `planned_for`, also eine eigene RPC —
+              Schreibwege auf `live_auctions` laufen alle über den Server. Bis
+              die existiert, ist „sehen und verwerfen" die ehrliche Hälfte. */}
+          {orphans.length > 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Vorbereitet, ohne Termin</Text>
+              <Text style={styles.orphanHint}>
+                {orphans.length === 1
+                  ? 'Ein Artikel wartet auf einen Abend, den es nicht mehr gibt.'
+                  : `${orphans.length} Artikel warten auf einen Abend, den es nicht mehr gibt.`}{' '}
+                Leg einen neuen Termin an und bereite sie dort neu vor — oder wirf sie weg.
+              </Text>
+              {orphans.map((item) => (
+                <View key={item.id} style={styles.planRow}>
+                  {item.image_url ? (
+                    <Image source={{ uri: item.image_url }} style={styles.planThumb} contentFit="cover" />
+                  ) : (
+                    <View style={styles.planThumb} />
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={styles.planTitle}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.planWhen}>
+                      ab {formatEuro(item.start_price_cents)}
+                      {item.size ? ` · Gr. ${item.size}` : ''}
+                    </Text>
+                  </View>
+                  <Pressable
+                    hitSlop={8}
+                    disabled={discard.isPending}
+                    onPress={() =>
+                      void discard
+                        .mutateAsync(item.id)
+                        .then(() => setNotice(null))
+                        .catch((error: unknown) =>
+                          setNotice(
+                            prepareErrorText(
+                              error instanceof Error ? error.message : String(error),
+                            ),
+                          ),
+                        )
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.title} verwerfen`}
+                  >
+                    <Trash2 size={16} color={ui.textMuted} />
+                  </Pressable>
+                </View>
+              ))}
             </View>
           ) : null}
           {/* ── Das Show-Formular, jetzt im Blatt. Inhalt unverändert:
@@ -1010,6 +1083,41 @@ export default function SellScreen() {
             <ChevronRight size={18} color={ui.textMuted} />
           </Pressable>
 
+          {/* ── Preisvorschläge.
+              ⚠️ Diese Zeile schließt ein Loch vom 18.08.2026: Der Vorschlag
+              wurde gebaut, bekam bewusst keinen Push (HANDOFF 24) — und danach
+              gar keinen Ort. `useOpenOfferCount` trug seit dem ersten Tag den
+              Kommentar „die Zahl für das Abzeichen" und wurde nie aufgerufen.
+              Ein Käufer schickte einen Preis, und der Verkäufer erfuhr es nur,
+              wenn er zufällig genau diesen Artikel öffnete.
+
+              Die Zeile erscheint auch bei null — anders als das Abzeichen
+              rechts. Wer handeln zulässt, soll sehen können, dass gerade
+              niemand handelt; das ist eine Auskunft, keine Enttäuschung. */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.jobRow,
+              styles.jobRowSplit,
+              pressed && styles.jobRowPressed,
+            ]}
+            onPress={() => router.push('/offers')}
+            accessibilityRole="button"
+            accessibilityLabel={
+              openOffers > 0 ? `Preisvorschläge, ${openOffers} offen` : 'Preisvorschläge'
+            }
+          >
+            <Handshake size={19} color={ui.text} />
+            <Text style={styles.jobLabel}>Preisvorschläge</Text>
+            {openOffers > 0 ? (
+              <View style={styles.jobBadge}>
+                <Text style={styles.jobBadgeText}>{openOffers} offen</Text>
+              </View>
+            ) : (
+              <Text style={styles.jobMeta}>keine</Text>
+            )}
+            <ChevronRight size={18} color={ui.textMuted} />
+          </Pressable>
+
           <Pressable
             style={({ pressed }) => [
               styles.jobRow,
@@ -1311,6 +1419,7 @@ const styles = StyleSheet.create({
   planBell: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   planBellText: { fontSize: 12, color: ui.textMuted },
   planHint: { fontSize: 11, color: ui.textMuted, marginTop: space.md, lineHeight: 16 },
+  orphanHint: { fontSize: 12, color: ui.textMuted, marginTop: space.xs, lineHeight: 18 },
 
   sheet: { flex: 1, backgroundColor: ui.bg },
   sheetHead: {

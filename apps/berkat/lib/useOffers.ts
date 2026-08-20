@@ -99,6 +99,77 @@ export function useOpenOfferCount(userId: string | null) {
   });
 }
 
+/** Ein offener Vorschlag samt dem Artikel, um den es geht. */
+export type SellerOffer = Offer & {
+  title: string;
+  image_url: string | null;
+  /** Der Listenpreis — ohne ihn sagt „35 €" nichts über den Nachlass. */
+  buy_now_cents: number | null;
+};
+
+/**
+ * Alle Vorschläge, die auf MEINE Antwort warten — über alle Artikel hinweg.
+ *
+ * ⚠️ DIESE ABFRAGE SCHLIESST EIN LOCH VOM 18.08.2026. `useOpenOfferCount` trägt
+ * seit dem ersten Tag den Kommentar „die Zahl für das Abzeichen" — das Abzeichen
+ * wurde nie gebaut, und ein neuer `notifications`-Typ war bewusst abgelehnt
+ * (HANDOFF 24). Ergebnis: Ein Käufer schickte einen Preisvorschlag, und der
+ * Verkäufer erfuhr es nur, wenn er zufällig genau diesen Artikel öffnete.
+ *
+ * `countered` zählt mit, obwohl dort der KÄUFER am Zug ist: Der Verkäufer soll
+ * die laufende Verhandlung sehen, nicht nur die unbeantwortete. Das Abzeichen
+ * (`useOpenOfferCount`) zählt weiterhin nur `pending` — es soll auf null gehen
+ * können, sonst liest es bald niemand mehr (die Lehre vom Bestell-Abzeichen).
+ *
+ * Zwei Abfragen statt eines Embeds: `berkat_offers → live_auctions` wäre zwar
+ * ein echter Fremdschlüssel, aber PostgREST-Embeds sind in diesem Projekt schon
+ * einmal still zu einer leeren Liste geworden. Zwei Abfragen können das nicht.
+ */
+export function useSellerOffers(userId: string | null) {
+  return useQuery({
+    queryKey: ['berkat', 'seller-offers', userId],
+    enabled: Boolean(userId),
+    staleTime: 20_000,
+    queryFn: async (): Promise<SellerOffer[]> => {
+      const { data, error } = await supabase
+        .from('berkat_offers')
+        .select(OFFER_COLUMNS)
+        .eq('seller_id', userId!)
+        .in('status', ['pending', 'countered'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const offers = (data ?? []) as unknown as Offer[];
+      if (offers.length === 0) return [];
+
+      const ids = [...new Set(offers.map((o) => o.auction_id))];
+      const { data: rows, error: e2 } = await supabase
+        .from('live_auctions')
+        .select('id, title, image_url, buy_now_cents')
+        .in('id', ids);
+      if (e2) throw e2;
+
+      const byId = new Map(
+        ((rows ?? []) as { id: string; title: string; image_url: string | null; buy_now_cents: number | null }[])
+          .map((r) => [r.id, r]),
+      );
+
+      return offers.map((o) => {
+        const a = byId.get(o.auction_id);
+        return {
+          ...o,
+          // Fällt der Artikel weg (gelöscht, unsichtbar geworden), bleibt der
+          // Vorschlag trotzdem in der Liste — mit ehrlichem Platzhalter statt
+          // stillem Verschwinden.
+          title: a?.title ?? 'Artikel nicht mehr da',
+          image_url: a?.image_url ?? null,
+          buy_now_cents: a?.buy_now_cents ?? null,
+        };
+      });
+    },
+  });
+}
+
 export function offerErrorText(message: string): string {
   if (message.includes('offer_above_price'))
     return 'Dein Vorschlag liegt über dem Preis — dann kauf ihn lieber direkt. 🙂';
@@ -132,6 +203,10 @@ export function useOfferActions(auctionId: string | undefined, userId: string | 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'offers', auctionId] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'offer-count'] });
+    // Der dritte Ort seit dem 19.08.2026: die Liste aller offenen Vorschläge
+    // im Verkaufen-Bereich. Ohne das bliebe ein eben beantworteter Vorschlag
+    // dort stehen.
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'seller-offers'] });
     // Ein angenommener Vorschlag ändert den Kaufknopf auf der Artikelseite.
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'listing', auctionId] });
   };
