@@ -55,7 +55,9 @@ import { reviewWhen, useSellerReviews, type SellerReview } from '../../lib/useSe
 import { showWhen, useSellerShows } from '../../lib/useSellerShows';
 import { SITE_URL } from '../../lib/links';
 import { goBack } from '../../lib/nav';
+import { usePreparedByPlan } from '../../lib/usePrepared';
 import { Avatar } from '../../components/Avatar';
+import { LineupPreview } from '../../components/LineupPreview';
 import { ProfileEditSheet } from '../../components/ProfileEditSheet';
 import { RatingStars } from '../../components/RatingStars';
 import { VouchPanel } from '../../components/VouchPanel';
@@ -119,6 +121,14 @@ type ShowRow = {
   id: string;
   kind: 'announced' | 'past';
   sessionId: string | null;
+  /**
+   * Die `scheduled_lives`-ID — nur bei `announced`.
+   *
+   * Steht neben `id`, weil die dort ein Anzeige-Schlüssel ist (`a-…`/`p-…`,
+   * damit Ankündigung und Sendung sich in EINER Liste nicht überschneiden). Für
+   * die Zuordnung der vorbereiteten Artikel braucht es die echte ID.
+   */
+  planId: string | null;
   title: string | null;
   /**
    * Das Cover der gelaufenen Show.
@@ -358,6 +368,7 @@ export default function SellerScreen() {
       id: `a-${s.id}`,
       kind: 'announced' as const,
       sessionId: null,
+      planId: s.id,
       title: s.title,
       thumbnail: null,
       when: showWhen(s.scheduled_at),
@@ -367,6 +378,7 @@ export default function SellerScreen() {
       id: `p-${s.id}`,
       kind: 'past' as const,
       sessionId: s.id,
+      planId: null,
       title: s.title,
       thumbnail: s.thumbnail_url,
       // Fällt `started_at` aus (dürfte nicht vorkommen, die Spalte wird beim
@@ -384,6 +396,15 @@ export default function SellerScreen() {
   // Der nächste angekündigte Termin — die Abfrage sortiert bereits aufsteigend
   // und filtert die Vergangenheit weg, der erste Eintrag IST also der nächste.
   const nextPlanned = announced.data?.[0] ?? null;
+
+  // Was für die angekündigten Abende bereitliegt. EINE Abfrage für alle, wie im
+  // Verkaufen-Reiter und im „Demnächst"-Streifen — und dieselbe, also denselben
+  // Zwischenspeicher, wenn ein Besucher von der Startseite hierherkommt.
+  const announcedIds = useMemo(
+    () => (announced.data ?? []).map((s) => s.id),
+    [announced.data],
+  );
+  const { byPlan: lineupByPlan } = usePreparedByPlan(announcedIds);
 
   const listData = useMemo(
     (): TabItem[] =>
@@ -832,7 +853,9 @@ export default function SellerScreen() {
             // ── Live-Shows ────────────────────────────────────────────────
             if ('kind' in item) {
               const soon = item.kind === 'announced';
+              const lineup = item.planId ? (lineupByPlan.get(item.planId) ?? []) : [];
               return (
+                <View>
                 <Pressable
                   style={({ pressed }) => [styles.showRow, pressed && styles.rowPressed]}
                   // Eine vergangene Show hat keinen Raum mehr, in den man gehen
@@ -876,6 +899,14 @@ export default function SellerScreen() {
                   </View>
                   {item.women_only ? <Lock size={13} color={ui.success} /> : null}
                 </Pressable>
+
+                {/* Was an diesem Abend drankommt. Steht UNTER der Zeile und
+                    nicht darin: Die Zeile selbst ist bewusst tot (es gibt
+                    keinen Raum, in den sie führen könnte), die Kacheln
+                    darunter sind es nicht. Ein antippbares Kind in einem
+                    deaktivierten Elternteil wäre die fragilere Bauweise. */}
+                <LineupPreview items={lineup} when={item.when} />
+                </View>
               );
             }
 

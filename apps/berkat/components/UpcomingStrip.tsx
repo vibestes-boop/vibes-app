@@ -10,13 +10,18 @@
 // ist also die einzige Handlung, die hier etwas bewirkt. Eine eigene
 // Termin-Seite hätte einen Knopf gebraucht, den es nicht gibt.
 
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { CalendarClock, Lock, Repeat } from 'lucide-react-native';
 import { ui, radius, ratio, space } from '../theme/tokens';
 import { formatSlot, formatUntil, nextPerSeries, type PlannedShow } from '../lib/useSchedule';
+import { usePreparedByPlan } from '../lib/usePrepared';
 import { Avatar } from './Avatar';
 import { BerkatMark } from './BerkatMark';
+
+/** So viele Vorschaubilder passen auf eine 168 Punkte breite Karte. */
+const PEEK = 3;
 
 type Props = {
   shows: PlannedShow[];
@@ -29,6 +34,16 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
   // er beantwortet, ist „wann kommt als Nächstes was?", nicht „zeig mir einen
   // Kalender".
   const series = nextPerSeries(shows);
+
+  // ⚠️ Vor dem frühen `return` — Hooks dürfen nicht bedingt laufen.
+  //
+  // Gefragt wird nur nach den Terminen, die tatsächlich als Karte erscheinen
+  // (der jeweils nächste je Reihe), und in EINER Abfrage. Bei einer Reihe mit
+  // vier Terminen die Ware aller vier zu holen, um die des ersten zu zeigen,
+  // wäre viermal so viel für dasselbe Ergebnis.
+  const planIds = useMemo(() => series.map((s) => s.next.id), [series]);
+  const { byPlan } = usePreparedByPlan(planIds);
+
   if (series.length === 0) return null;
 
   return (
@@ -44,7 +59,9 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.row}
       >
-        {series.map(({ next: show, count }) => (
+        {series.map(({ next: show, count }) => {
+          const ready = byPlan.get(show.id) ?? [];
+          return (
           <Pressable
             key={show.id}
             style={s.card}
@@ -52,7 +69,7 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
             accessibilityRole="button"
             accessibilityLabel={`${show.title} — ${formatSlot(show.scheduled_at)}${
               count > 1 ? ', jede Woche' : ''
-            }`}
+            }${ready.length > 0 ? `, ${ready.length} Artikel` : ''}`}
           >
             <View style={s.cardHead}>
               <Avatar uri={show.host?.avatar_url} name={show.host?.username} size={26} />
@@ -96,6 +113,39 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
               <Text style={s.until}>{formatUntil(show.scheduled_at)}</Text>
             </View>
 
+            {/* ── Was an diesem Abend drankommt.
+                Bis zum 19.08.2026 hatte eine Ankündigung Titel, Bild und
+                Uhrzeit — und damit keinen Grund, pünktlich zu sein: Wer nicht
+                weiß, was kommt, verpasst auch nichts. Die drei Vorschaubilder
+                sind der ganze Zweck des Vorbereitens (HANDOFF 48).
+
+                Nur Bilder, kein Text darauf: Die Kontrast-Ausnahme über fremden
+                Fotos gilt hier so wenig wie beim Cover darüber. Die Zahl steht
+                daneben auf der ruhigen Fläche. ────────────────────────────── */}
+            {ready.length > 0 ? (
+              <View style={s.peekRow}>
+                {/* ⚠️ Nur Artikel MIT Foto bekommen eine Kachel. Am Gerät sofort
+                    sichtbar geworden: Ein vorbereiteter Artikel ohne Bild ergab
+                    ein leeres Quadrat, und drei davon nebeneinander sähen wie
+                    ein Ladefehler aus. Die Zahl daneben zählt trotzdem ALLE —
+                    sie ist die Auskunft, die Kacheln sind die Verlockung. */}
+                {ready
+                  .filter((item) => item.image_url)
+                  .slice(0, PEEK)
+                  .map((item) => (
+                    <View key={item.id} style={s.peek}>
+                      <Image
+                        source={{ uri: item.image_url! }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                        transition={120}
+                      />
+                    </View>
+                  ))}
+                <Text style={s.peekCount}>{ready.length} Artikel</Text>
+              </View>
+            ) : null}
+
             {/* Das eigentliche Ritual-Signal: nicht „heute um 20:00", sondern
                 „das ist immer so". Erst dadurch merkt sich jemand den Abend. */}
             {count > 1 ? (
@@ -105,7 +155,8 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
               </View>
             ) : null}
           </Pressable>
-        ))}
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -155,6 +206,17 @@ const s = StyleSheet.create({
   },
 
   when: { marginTop: space.sm, flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+
+  peekRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: space.sm },
+  peek: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+  },
+  peekCount: { fontSize: 11, color: ui.textMuted, marginLeft: 2 },
+
   weeklyPill: {
     flexDirection: 'row',
     alignItems: 'center',

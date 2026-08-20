@@ -34,9 +34,13 @@ import { euroToCents } from '../lib/useStudio';
 import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
 import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
+import { tidySize } from '../lib/useListings';
 
 /** Serverseitig als CHECK gespiegelt — wer hier erhöht, erhöht dort mit. */
 const MAX_IMAGES = 8;
+
+/** Ebenfalls gespiegelt: `live_auctions_size_len` (20260819100000). */
+const MAX_SIZE_LEN = 24;
 
 export type ListingFormValues = {
   title: string;
@@ -49,6 +53,8 @@ export type ListingFormValues = {
   acceptsOffers: boolean;
   description: string | null;
   condition: string | null;
+  /** Freitext („42", „M", „One Size"). Freiwillig — siehe das Feld unten. */
+  size: string | null;
   postalCode: string | null;
   city: string | null;
 };
@@ -100,6 +106,7 @@ export function StandingComposer({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [condition, setCondition] = useState<string | null>(initial?.condition ?? null);
+  const [size, setSize] = useState(initial?.size ?? '');
   const [postalCode, setPostalCode] = useState(initial?.postalCode ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -261,6 +268,17 @@ export function StandingComposer({
       ) : null}
       {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
 
+      {/* Preis und Größe teilen sich eine Zeile — beides kurze Fakten, und der
+          Verkaufen-Bereich ist am 19.08.2026 gerade erst gekürzt worden
+          (HANDOFF 37). Eine eigene Zeile für zwei Zeichen wäre der Rückschritt.
+
+          Die Größe ist FREITEXT und bleibt es: „42", „M", „74", „One Size",
+          „38/40" sind alle richtig, und welche Skala gilt, weiß nur der
+          Verkäufer. Eine gepflegte Liste müsste Konfektions-, Schuh- und
+          Kindergrößen gleichzeitig abbilden und wäre am ersten Tag
+          unvollständig — sie würde jemanden aussperren, dessen Größe sie nicht
+          kennt. Normalisiert wird später für den FILTER, nicht bei der
+          Eingabe. */}
       <View style={s.row}>
         <TextInput
           value={price}
@@ -269,6 +287,14 @@ export function StandingComposer({
           placeholderTextColor={ui.textMuted}
           keyboardType="decimal-pad"
           style={[s.input, { flex: 1, marginTop: 0 }]}
+        />
+        <TextInput
+          value={size}
+          onChangeText={setSize}
+          placeholder="Größe"
+          placeholderTextColor={ui.textMuted}
+          style={[s.input, { width: canWomenOnly ? 84 : 108, marginTop: 0 }]}
+          maxLength={MAX_SIZE_LEN}
         />
         {canWomenOnly ? (
           <View style={s.switchWrap}>
@@ -351,7 +377,10 @@ export function StandingComposer({
         <TextInput
           value={description}
           onChangeText={setDescription}
-          placeholder="Was sollte man wissen? Marke, Größe, Mängel …"
+          // „Größe" stand hier bis zum 19.08.2026 mit drin — und schickte damit
+          // genau dorthin, wo sie nicht hingehört: in Fließtext, unfilterbar.
+          // Seit es das Feld oben gibt, nennt der Platzhalter sie nicht mehr.
+          placeholder="Was sollte man wissen? Marke, Mängel, Material …"
           placeholderTextColor={ui.textMuted}
           style={[s.input, { minHeight: 90 }]}
           maxLength={2000}
@@ -425,6 +454,7 @@ export function StandingComposer({
             imageUrls,
             description: description.trim() || null,
             condition,
+            size: tidySize(size),
             postalCode: postalCode.trim() || null,
             city: city.trim() || null,
           });
@@ -438,6 +468,11 @@ export function StandingComposer({
             setImageUrls([]);
             setUploadError(null);
             setCondition(null);
+            // Die Größe wird zurückgesetzt, PLZ und Ort nicht: Wer fünf Sachen
+            // einstellt, wohnt bei allen fünf gleich — aber die Größe ist bei
+            // jedem Stück eine andere. Sie stehen zu lassen hieße, sie beim
+            // zweiten Artikel still falsch zu behaupten.
+            setSize('');
             setDescription('');
             setDescOpen(false);
             // PLZ und Ort bleiben ABSICHTLICH stehen: Wer abends fünf Sachen

@@ -101,14 +101,17 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       description?: string | null;
       /** Slug aus `CONDITIONS` in `useBerkatSeller.ts`. */
       condition?: string | null;
+      /** Freitext, max. 24 Zeichen (Server-CHECK). Siehe `Listing.size`. */
+      size?: string | null;
       postalCode?: string | null;
       city?: string | null;
     }) => {
-      // ⚠️ Neun Parameter seit Migration 20260816210000. Die RPC wurde dort per
-      // DROP + CREATE ersetzt, NICHT überladen — zwei Überladungen machen
-      // PostgREST mehrdeutig (HTTP 300). Ein älterer Client mit vier Parametern
-      // bekommt deshalb PGRST202; das ist hier gefahrlos, weil Berkat in keinem
-      // Store liegt und dieser Hook der einzige Aufrufer ist.
+      // ⚠️ Elf Parameter seit Migration 20260819100000 (vorher zehn, davor
+      // vier). Die RPC wurde jedes Mal per DROP + CREATE ersetzt, NICHT
+      // überladen — zwei Überladungen machen PostgREST mehrdeutig (HTTP 300).
+      // Ein älterer Client mit weniger Parametern bekommt deshalb PGRST202; das
+      // ist hier gefahrlos, weil Berkat in keinem Store liegt und dieser Hook
+      // der einzige Aufrufer ist.
       const { data, error } = await supabase.rpc('create_standing_listing', {
         p_title: input.title.trim(),
         p_price_cents: input.priceCents,
@@ -120,6 +123,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
         p_condition: input.condition ?? null,
         p_postal_code: input.postalCode ?? null,
         p_city: input.city ?? null,
+        p_size: input.size ?? null,
       });
       if (error) throw error;
       return data as string;
@@ -134,6 +138,11 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
    * gilt. Nur so lässt sich eine Beschreibung auch wieder LEEREN — ein
    * „NULL heißt behalten" könnte das nicht. `seller_kind` fasst die RPC
    * bewusst nicht an, den pflegt allein `set_berkat_seller_kind`.
+   *
+   * ⚠️ Daraus folgt eine Pflicht für JEDE neue Spalte: Sie muss in `initial`
+   * des Formulars stehen. Ein Bearbeiten-Blatt, das `size` nicht KENNT, schickt
+   * hier `null` — und löscht die Größe beim ersten Speichern, ohne dass jemand
+   * sie angefasst hätte. Derselbe Grund, aus dem `category` im Zeilentyp steht.
    */
   const update = useMutation({
     mutationFn: async (input: {
@@ -146,6 +155,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       category?: string | null;
       description?: string | null;
       condition?: string | null;
+      size?: string | null;
       postalCode?: string | null;
       city?: string | null;
     }) => {
@@ -161,6 +171,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
         p_condition: input.condition ?? null,
         p_postal_code: input.postalCode ?? null,
         p_city: input.city ?? null,
+        p_size: input.size ?? null,
       });
       if (error) throw error;
     },

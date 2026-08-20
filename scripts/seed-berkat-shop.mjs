@@ -124,41 +124,55 @@ async function rest(path, init = {}) {
 // Basar. Orte sind deutsche Städte mit tschetschenischer Gemeinde.
 const U = (id) => `https://images.unsplash.com/photo-${id}?w=900&h=1125&fit=crop&q=80`;
 
+// `s` ist die Größe (Spalte `live_auctions.size`, seit 20260819100000).
+//
+// ⚠️ Sie stand bis zum 19.08.2026 bei sechs Artikeln IM TITEL („Sneaker weiß,
+// Gr. 42"). Genau das war die Notlösung, die die Spalte abschafft — sie ist im
+// Titel weder filterbar noch vergleichbar und frisst den Platz, den der Titel
+// für die Sache selbst braucht. Die Titel sind deshalb gekürzt; die alten
+// stehen in `LEGACY_TITLES`, damit `--remove` auch Zeilen aus früheren Läufen
+// findet.
+//
+// Bewusst gemischt: Zahlen von 28 bis 74, dazu „L" und „One Size". Ein Regal,
+// in dem alle Größen zweistellige Zahlen sind, prüft weder die Sortierung im
+// Filter noch die Frage, ob eine Zeile mit „One Size" noch passt.
 const ITEMS = [
   // ── Mode / Abaya ──────────────────────────────────────────────────────────
-  { t: 'Abaya, schwarz mit Stickerei', c: 'abaya', p: 6900, k: 'neu-mit-etikett', o: true,
+  { t: 'Abaya, schwarz mit Stickerei', c: 'abaya', p: 6900, k: 'neu-mit-etikett', o: true, s: '38',
     city: 'Berlin', plz: '13353', img: ['1728487235101-664d87965931', '1760083545495-b297b1690672'],
     d: 'Klassischer Schnitt, weit fallend. Ungetragen, Etikett noch dran.' },
-  { t: 'Abaya Dubai-Stil, Sand', c: 'abaya', p: 8500, k: 'neu', o: true,
+  { t: 'Abaya Dubai-Stil, Sand', c: 'abaya', p: 8500, k: 'neu', o: true, s: '40',
     city: 'Frankfurt', plz: '60313', img: ['1772474500365-c2c520545f44'],
     d: 'Leichter Stoff, für den Sommer. Einmal anprobiert, nie getragen.' },
-  { t: 'Jilbab zweiteilig, dunkelblau', c: 'abaya', p: 5400, k: 'sehr-gut',
+  { t: 'Jilbab zweiteilig, dunkelblau', c: 'abaya', p: 5400, k: 'sehr-gut', s: '42',
     city: 'Köln', plz: '50823', img: ['1752794673269-dc356838c5fd'],
     d: 'Zweimal getragen, gewaschen. Keine Flecken, keine Fusseln.' },
-  { t: 'Hijab-Set, 3 Tücher', c: 'hijab', p: 2400, k: 'neu', o: true,
+  { t: 'Hijab-Set, 3 Tücher', c: 'hijab', p: 2400, k: 'neu', o: true, s: 'One Size',
     city: 'Hamburg', plz: '21073', img: ['1772474578035-bebcd90b355d', '1618407960998-7864dd928574'],
     d: 'Drei Farben: Creme, Rosé, Anthrazit. Chiffon, nicht durchsichtig.' },
-  { t: 'Kopftuch Seide, handrolliert', c: 'hijab', p: 3900, k: 'neu-mit-etikett',
+  { t: 'Kopftuch Seide, handrolliert', c: 'hijab', p: 3900, k: 'neu-mit-etikett', s: 'One Size',
     city: 'München', plz: '80331', img: ['1772474557170-4818d01d7bca'] },
-  { t: 'Abendkleid, bodenlang', c: 'abendmode', p: 11900, k: 'sehr-gut', o: true,
+  { t: 'Abendkleid, bodenlang', c: 'abendmode', p: 11900, k: 'sehr-gut', o: true, s: '38',
     city: 'Düsseldorf', plz: '40210', img: ['1724412665971-114bd351a42d'],
-    d: 'Einmal zu einer Hochzeit getragen. Größe 38, Innenfutter tadellos.' },
-  { t: 'Wintermantel Wolle, Camel', c: 'jacken', p: 7500, k: 'gut',
+    // „Größe 38" stand hier im Fließtext — dieselbe Notlösung wie im Titel,
+    // nur eine Zeile tiefer und noch unauffindbarer.
+    d: 'Einmal zu einer Hochzeit getragen. Innenfutter tadellos.' },
+  { t: 'Wintermantel Wolle, Camel', c: 'jacken', p: 7500, k: 'gut', s: '40',
     city: 'Berlin', plz: '12043', img: ['1736342182213-6c037467cb38'],
     d: 'Zwei Winter getragen. Ein Knopf wurde nachgenäht, sonst top.' },
-  { t: 'Herrenhemd Leinen, weiß', c: 'herrenmode', p: 2900, k: 'sehr-gut',
+  { t: 'Herrenhemd Leinen, weiß', c: 'herrenmode', p: 2900, k: 'sehr-gut', s: 'L',
     city: 'Essen', plz: '45127', img: ['1614028609503-590a6a47146a'] },
 
   // ── Schuhe ────────────────────────────────────────────────────────────────
-  { t: 'Sneaker weiß, Gr. 42', c: 'herrenschuhe', p: 5900, k: 'gut', o: true,
+  { t: 'Sneaker weiß', c: 'herrenschuhe', p: 5900, k: 'gut', o: true, s: '42',
     city: 'Dortmund', plz: '44135', img: ['1560769629-975ec94e6a86', '1605523741177-cd660595c2cf'],
     d: 'Sohle sauber, Obermaterial ohne Risse. Ein kleiner Fleck innen links.' },
-  { t: 'Laufschuhe, Gr. 39', c: 'damenschuhe', p: 4200, k: 'sehr-gut',
+  { t: 'Laufschuhe', c: 'damenschuhe', p: 4200, k: 'sehr-gut', s: '39',
     city: 'Hannover', plz: '30159', img: ['1656944227421-416b1d2186c9'] },
-  { t: 'Kinderschuhe Leder, Gr. 28', c: 'kinderschuhe', p: 1900, k: 'gut',
+  { t: 'Kinderschuhe Leder', c: 'kinderschuhe', p: 1900, k: 'gut', s: '28',
     city: 'Bremen', plz: '28195', img: ['1628413993904-94ecb60f1239'],
     d: 'Ein Winter getragen, Sohle noch gut. Innen leicht abgelaufen.' },
-  { t: 'Hausschuhe Filz, Gr. 40', c: 'hausschuhe', p: 1500, k: 'neu',
+  { t: 'Hausschuhe Filz', c: 'hausschuhe', p: 1500, k: 'neu', s: '40',
     city: 'Leipzig', plz: '04109', img: ['1618677831708-0e7fda3148b4'] },
 
   // ── Taschen ───────────────────────────────────────────────────────────────
@@ -173,7 +187,7 @@ const ITEMS = [
     city: 'Nürnberg', plz: '90402', img: ['1559563458-527698bf5295'] },
 
   // ── Schmuck & Uhren ───────────────────────────────────────────────────────
-  { t: 'Ring 585 Gold, Gr. 54', c: 'gold', p: 24900, k: 'sehr-gut',
+  { t: 'Ring 585 Gold', c: 'gold', p: 24900, k: 'sehr-gut', s: '54',
     city: 'Düsseldorf', plz: '40213', img: ['1543294001-f7cd5d7fb516', '1611955167811-4711904bb9f8'],
     d: 'Mit Prüfzeichen. Selten getragen, keine Kratzer am Band.' },
   { t: 'Kette Silber 925, 45 cm', c: 'silber', p: 4900, k: 'neu',
@@ -224,8 +238,27 @@ const ITEMS = [
     city: 'Hannover', plz: '30419', img: ['1660338183700-12388dc9aa4f'] },
   { t: 'Sprachkurs Arabisch, Buch + CD', c: 'lernen', p: 2900, k: 'gut',
     city: 'Leipzig', plz: '04277', img: ['1710367446263-512c6ececbc7'] },
-  { t: 'Babyjacke, Gr. 74', c: 'baby', p: 1400, k: 'sehr-gut',
+  { t: 'Babyjacke', c: 'baby', p: 1400, k: 'sehr-gut', s: '74',
     city: 'Bremen', plz: '28209', img: ['1710367446113-d1d3fb053256'] },
+];
+
+/**
+ * Titel, unter denen dieselben Artikel VOR dem 19.08.2026 angelegt wurden.
+ *
+ * Sie stehen hier nur fürs Aufräumen. Wer vorher geseedet hat, hat Zeilen mit
+ * „Gr. 42" im Titel in der Datenbank; `--remove` findet sie über das
+ * `[testware]`-Kennzeichen ohnehin — außer bei genau der Zeile, bei der das
+ * Kennzeichen am 18.08.2026 fehlte („Babyjacke, Gr. 74"). Genau für diesen Fall
+ * ist die Liste da: Ein Aufräumen, das eine bekannte Zeile stehen lässt, ist
+ * schlimmer als keines.
+ */
+const LEGACY_TITLES = [
+  'Sneaker weiß, Gr. 42',
+  'Laufschuhe, Gr. 39',
+  'Kinderschuhe Leder, Gr. 28',
+  'Hausschuhe Filz, Gr. 40',
+  'Ring 585 Gold, Gr. 54',
+  'Babyjacke, Gr. 74',
 ];
 
 async function main() {
@@ -253,7 +286,12 @@ async function main() {
     // `ITEMS` und ist damit unabhängig davon, was in der Datenbank gelandet
     // ist. Beides zusammen findet auch die Zeilen, bei denen einer der beiden
     // Wege versagt.
-    const titles = ITEMS.map((i) => i.t);
+    //
+    // ⚠️ `LEGACY_TITLES` muss mit, seit die Größen am 19.08.2026 aus den Titeln
+    // gewandert sind: Wer davor geseedet hat, hat „Sneaker weiß, Gr. 42" in der
+    // Datenbank — ein Titelvergleich gegen die NEUEN Namen fände ihn nicht.
+    // Wer künftig einen Titel ändert, hängt den alten dort an.
+    const titles = [...ITEMS.map((i) => i.t), ...LEGACY_TITLES];
     const inList = (vals) =>
       `(${vals.map((v) => `"${String(v).replace(/"/g, '\\"')}"`).join(',')})`;
 
@@ -353,6 +391,7 @@ async function main() {
       // sichtbar, aber nicht das Erste ist, was jemand liest.
       description: `${item.d ? item.d + ' ' : ''}${SEED_TAG}`,
       condition: item.k,
+      size: item.s ?? null,
       postal_code: item.plz,
       city: item.city,
       seller_kind: kindOf(n % profiles.length),

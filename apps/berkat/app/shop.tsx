@@ -149,13 +149,15 @@ export default function ShopScreen() {
   /** `null` = alle. Getrennte Zustände statt eines Objekts: Jeder wird einzeln gesetzt. */
   const [cat, setCat] = useState<string | null>(null);
   const [cond, setCond] = useState<string | null>(null);
+  const [size, setSize] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
 
-  const activeFilters = [cat, cond, city, maxPrice].filter((v) => v !== null).length;
+  const activeFilters = [cat, cond, size, city, maxPrice].filter((v) => v !== null).length;
   const resetFilters = useCallback(() => {
     setCat(null);
     setCond(null);
+    setSize(null);
     setCity(null);
     setMaxPrice(null);
   }, []);
@@ -181,6 +183,21 @@ export default function ShopScreen() {
       // Auf die Oberkategorie gerollt — siehe `parentOf`.
       cats: count((l) => (l.category ? (parentOf.get(l.category) ?? l.category) : null)),
       conds: count((l) => l.condition),
+      /**
+       * ⚠️ Größen werden NICHT nach Häufigkeit sortiert, als einzige Gruppe.
+       *
+       * Bei Kategorie, Zustand und Ort sucht man das Naheliegende — die
+       * häufigste Wahl zuerst ist dort die richtige Reihenfolge. Bei Größen
+       * sucht man die EIGENE, und die ist so oft selten wie häufig. Eine nach
+       * Häufigkeit geordnete Liste zwingt dann, alles zu lesen; „38 · 40 · 42 ·
+       * M · One Size" findet man mit einem Blick.
+       *
+       * `numeric: true` sortiert „38" vor „40" vor „100" — ohne das käme die
+       * Zeichenkettenordnung heraus („100" vor „38").
+       */
+      sizes: count((l) => l.size).sort((a, b) =>
+        a[0].localeCompare(b[0], 'de', { numeric: true, sensitivity: 'base' }),
+      ),
       cities: count((l) => l.city),
     };
   }, [listings, parentOf]);
@@ -205,15 +222,22 @@ export default function ShopScreen() {
       // Vergleich auf Elternebene: „Mode" muss auch „Abaya" durchlassen.
       if (cat && (!l.category || (parentOf.get(l.category) ?? l.category) !== cat)) return false;
       if (cond && l.condition !== cond) return false;
+      if (size && l.size !== size) return false;
       if (city && l.city !== city) return false;
       if (maxPrice !== null && l.buy_now_cents > maxPrice) return false;
       if (!needle) return true;
-      // Titel und Ort: Das sind die zwei Dinge, nach denen jemand im Regal
-      // sucht — „Abaya" oder „Berlin". Die Beschreibung bleibt draußen, sie
-      // würde bei drei Sätzen Fließtext zu viele Zufallstreffer liefern.
+      // Titel, Größe und Ort: die drei Dinge, nach denen jemand im Regal sucht —
+      // „Abaya", „42", „Berlin". Die Beschreibung bleibt draußen, sie würde bei
+      // drei Sätzen Fließtext zu viele Zufallstreffer liefern.
+      //
+      // Die Größe MUSS mit, seit es das Feld gibt (19.08.2026): Vorher stand sie
+      // im Titel und war damit auffindbar. Sie in eine eigene Spalte zu heben und
+      // die Suche nicht mitzuziehen hätte eine Fähigkeit weggenommen, die es
+      // schon gab — der Filter allein setzt voraus, dass jemand ihn öffnet.
       const inTitle = l.title.toLowerCase().includes(needle);
+      const inSize = (l.size ?? '').toLowerCase().includes(needle);
       const inCity = (l.city ?? '').toLowerCase().includes(needle);
-      return inTitle || inCity;
+      return inTitle || inSize || inCity;
     });
 
     if (sort === 'neu') return found;
@@ -225,7 +249,7 @@ export default function ShopScreen() {
         ? a.buy_now_cents - b.buy_now_cents
         : b.buy_now_cents - a.buy_now_cents,
     );
-  }, [listings, query, sort, cat, cond, city, maxPrice, parentOf]);
+  }, [listings, query, sort, cat, cond, size, city, maxPrice, parentOf]);
 
   // Die Reiter- und Stapel-Falle aus HANDOFF 3: Expo Router hält Bildschirme
   // aufgebaut. Wer ein Angebot kauft oder zurückzieht und zurückkommt, sähe es
@@ -383,7 +407,7 @@ export default function ShopScreen() {
                 {query.trim() && activeFilters > 0
                   ? 'Es liegt an der Suche, an den Filtern — oder an beidem zusammen.'
                   : query.trim()
-                    ? 'Gesucht wird in Titel und Ort. Versuch ein anderes Wort.'
+                    ? 'Gesucht wird in Titel, Größe und Ort. Versuch ein anderes Wort.'
                     : 'Die Filter sind zu eng. Nimm einen davon weg.'}
                 {` Im Regal liegen ${listings.length} Artikel.`}
               </Text>
@@ -473,6 +497,16 @@ export default function ShopScreen() {
               value={cat}
               onChange={setCat}
               display={(slug) => categoryNames.get(slug) ?? slug}
+            />
+            {/* Größe direkt nach der Kategorie: Wer „Mode" wählt, meint fast
+                immer als Nächstes seine Größe. Zustand und Ort verengen danach,
+                die Größe entscheidet. */}
+            <FilterGroup
+              label="Größe"
+              options={options.sizes}
+              value={size}
+              onChange={setSize}
+              display={(v) => v}
             />
             <FilterGroup
               label="Zustand"

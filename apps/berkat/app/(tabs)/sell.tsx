@@ -67,8 +67,15 @@ import {
   useMyPlannedShows,
   usePlanShow,
 } from '../../lib/useSchedule';
+import {
+  claimPreparedAuctions,
+  prepareErrorText,
+  usePreparedByPlan,
+  usePrepareActions,
+} from '../../lib/usePrepared';
 import { useFollowCounts } from '../../lib/useFollow';
 import { BerkatMark } from '../../components/BerkatMark';
+import { PrepareSheet } from '../../components/PrepareSheet';
 import { SchedulePlanner } from '../../components/SchedulePlanner';
 import { CategoryPicker } from '../../components/CategoryPicker';
 import { SellerStart, useProfileFilled, type StartStep } from '../../components/SellerStart';
@@ -125,6 +132,20 @@ export default function SellScreen() {
 
   const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
   const { plan: planShow, cancel: cancelPlan } = usePlanShow(myUserId);
+
+  // ── Vorbereitete Artikel ──────────────────────────────────────────────────
+  // EINE Abfrage für alle eigenen Termine, nicht eine je Karte. Das Blatt
+  // bekommt daraus seinen Ausschnitt, die Terminzeile ihre Zahl — beide lesen
+  // denselben Zwischenspeicher, es gibt also keine zwei Wahrheiten darüber,
+  // was bereitliegt.
+  const planIds = useMemo(() => plannedShows.map((p) => p.id), [plannedShows]);
+  const { byPlan: preparedByPlan } = usePreparedByPlan(planIds);
+  const { prepare, discard, invalidate: invalidatePrepared } = usePrepareActions();
+  /** Der Termin, für den gerade vorbereitet wird. `null` = Blatt zu. */
+  const [prepareFor, setPrepareFor] = useState<string | null>(null);
+  /** Eigener Hinweis-Zustand — der des Reiters läge hinter dem Blatt. */
+  const [prepareNotice, setPrepareNotice] = useState<string | null>(null);
+  const preparePlan = plannedShows.find((p) => p.id === prepareFor) ?? null;
 
   // Regal und Bestellungen werden hier nur noch GEZÄHLT — bearbeitet werden sie
   // auf `/shelf` und `/orders`. Die Listen selbst zu laden hieße, fünfzig
@@ -377,32 +398,59 @@ export default function SellScreen() {
           {plannedShows.length > 0 ? (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Deine nächsten Termine</Text>
-              {plannedShows.slice(0, 4).map((plan) => (
-                <View key={plan.id} style={styles.planRow}>
-                  {plan.cover_url ? (
-                    <Image source={{ uri: plan.cover_url }} style={styles.planThumb} contentFit="cover" />
-                  ) : (
-                    <View style={styles.planThumb} />
-                  )}
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={styles.planTitle}>
-                      {plan.title}
-                    </Text>
-                    <Text style={styles.planWhen}>
-                      {formatSlot(plan.scheduled_at)} · {formatUntil(plan.scheduled_at)}
-                    </Text>
-                  </View>
-                  {/* Nur wenn jemand folgt. „0 werden erinnert" wäre eine
-                      Enttäuschung in Zahlenform — dieselbe Regel wie bei den
-                      Kategorie-Zählern. */}
-                  {followers > 0 ? (
-                    <View style={styles.planBell}>
-                      <Bell size={12} color={ui.textMuted} />
-                      <Text style={styles.planBellText}>{followers}</Text>
+              {plannedShows.slice(0, 4).map((plan) => {
+                const ready = preparedByPlan.get(plan.id)?.length ?? 0;
+                return (
+                  <Pressable
+                    key={plan.id}
+                    style={({ pressed }) => [styles.planRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => setPrepareFor(plan.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      ready > 0
+                        ? `${plan.title}, ${ready} Artikel vorbereitet — bearbeiten`
+                        : `${plan.title} — Artikel vorbereiten`
+                    }
+                  >
+                    {plan.cover_url ? (
+                      <Image source={{ uri: plan.cover_url }} style={styles.planThumb} contentFit="cover" />
+                    ) : (
+                      <View style={styles.planThumb} />
+                    )}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={styles.planTitle}>
+                        {plan.title}
+                      </Text>
+                      {/* Die Zahl steht in der Zeitzeile und nicht als weiteres
+                          Abzeichen rechts: Dort sitzt schon die Glocke, und drei
+                          Dinge am rechten Rand sind eines zu viel. „3 Artikel
+                          bereit" liest sich außerdem als Zustand des Abends —
+                          genau das ist es. */}
+                      <Text numberOfLines={1} style={styles.planWhen}>
+                        {formatSlot(plan.scheduled_at)} · {formatUntil(plan.scheduled_at)}
+                        {ready > 0 ? ` · ${ready} Artikel bereit` : ''}
+                      </Text>
                     </View>
-                  ) : null}
-                </View>
-              ))}
+                    {/* Nur wenn jemand folgt. „0 werden erinnert" wäre eine
+                        Enttäuschung in Zahlenform — dieselbe Regel wie bei den
+                        Kategorie-Zählern. */}
+                    {followers > 0 ? (
+                      <View style={styles.planBell}>
+                        <Bell size={12} color={ui.textMuted} />
+                        <Text style={styles.planBellText}>{followers}</Text>
+                      </View>
+                    ) : null}
+                    <ChevronRight size={16} color={ui.textMuted} />
+                  </Pressable>
+                );
+              })}
+              {/* Einmal gesagt statt an jeder Zeile. Ohne diesen Satz sieht die
+                  Karte aus wie eine reine Anzeige, und der ganze Weg zum
+                  Vorbereiten bliebe unentdeckt — dieselbe Lücke wie beim
+                  Profil, das acht Sprungziele hatte und keine eigene Tür. */}
+              <Text style={styles.planHint}>
+                Tipp auf einen Termin, um Artikel dafür vorzubereiten.
+              </Text>
             </View>
           ) : null}
           {/* ── Das Show-Formular, jetzt im Blatt. Inhalt unverändert:
@@ -501,7 +549,27 @@ export default function SellScreen() {
                   // Verknüpfen darf den Gastgeber nicht aus seiner eigenen
                   // Sendung werfen.
                   const due = matchingPlan(plannedShows, Date.now());
-                  if (due) await linkShowToPlan(due.id, sessionId);
+                  if (due) {
+                    await linkShowToPlan(due.id, sessionId);
+                    // Und was für diesen Abend vorbereitet wurde, wandert jetzt
+                    // in die Show. Verschieben, nicht kopieren — es ist derselbe
+                    // Artikel, er hat nur ab jetzt eine Session.
+                    //
+                    // ⚠️ NUR mit Termin-ID. Der Server könnte auch alles
+                    // Vorbereitete übernehmen (`p_planned_for = NULL`); das
+                    // würde bei einer spontanen Sendung auch verschlucken, was
+                    // für kommenden Samstag bereitliegt — und weil verschoben
+                    // statt kopiert wird, wäre die Vorbereitung des nächsten
+                    // Abends danach weg. Begründung in `usePrepared.ts`.
+                    await claimPreparedAuctions(sessionId, due.id);
+                    // Ohne das stünden die Artikel weiter als „bereit" an der
+                    // Terminzeile, obwohl sie längst in der Show liegen.
+                    // Bewusst KEINE Erfolgsmeldung: Der Gastgeber wird gleich in
+                    // den Raum geschoben und sieht sie dort in der
+                    // Warteschlange — ein Hinweis auf dem Reiter, den er gerade
+                    // verlässt, stünde nach dem Ende der Show noch da.
+                    invalidatePrepared();
+                  }
 
                   // Zurücksetzen, damit nach dem Beenden nicht der alte Name
                   // und das alte Cover in der leeren Maske stehen.
@@ -582,6 +650,47 @@ export default function SellScreen() {
               </ScrollView>
             </View>
           </Modal>
+
+          {/* ── Artikel für einen angekündigten Abend vorbereiten.
+              Steht hier und nicht im Studio: Der Sinn ist ja gerade, dass es
+              OHNE laufende Sendung geht — dieselbe Begründung wie beim
+              `StandingComposer` im Regal. ─────────────────────────────────── */}
+          <PrepareSheet
+            plan={preparePlan}
+            items={preparePlan ? (preparedByPlan.get(preparePlan.id) ?? []) : []}
+            busy={prepare.isPending || discard.isPending}
+            notice={prepareNotice}
+            onDismissNotice={() => setPrepareNotice(null)}
+            onClose={() => {
+              setPrepareFor(null);
+              // Sonst steht der Fehler von vorhin da, wenn der nächste Termin
+              // geöffnet wird — an einem Abend, mit dem er nichts zu tun hat.
+              setPrepareNotice(null);
+            }}
+            onPrepare={(input) =>
+              void prepare
+                .mutateAsync({ planId: preparePlan!.id, ...input })
+                // Kein Erfolgs-Hinweis: Der Artikel erscheint eine Zeile
+                // darüber in der Liste. Das ist die unmittelbarere Antwort als
+                // ein Satz, der sie verdeckt.
+                .then(() => setPrepareNotice(null))
+                .catch((error: unknown) =>
+                  setPrepareNotice(
+                    prepareErrorText(error instanceof Error ? error.message : String(error)),
+                  ),
+                )
+            }
+            onDiscard={(item) =>
+              void discard
+                .mutateAsync(item.id)
+                .then(() => setPrepareNotice(null))
+                .catch((error: unknown) =>
+                  setPrepareNotice(
+                    prepareErrorText(error instanceof Error ? error.message : String(error)),
+                  ),
+                )
+            }
+          />
           </>
         ) : (
           <>
@@ -1201,6 +1310,7 @@ const styles = StyleSheet.create({
   // davon", nicht „so viele kommen".
   planBell: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   planBellText: { fontSize: 12, color: ui.textMuted },
+  planHint: { fontSize: 11, color: ui.textMuted, marginTop: space.md, lineHeight: 16 },
 
   sheet: { flex: 1, backgroundColor: ui.bg },
   sheetHead: {

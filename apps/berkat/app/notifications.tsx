@@ -23,6 +23,7 @@ import {
   Bell,
   CalendarClock,
   ChevronLeft,
+  Gavel,
   Hourglass,
   PackageCheck,
   PartyPopper,
@@ -49,6 +50,10 @@ function present(type: string): { Icon: typeof Bell; title: string; tint: string
       return { Icon: Hourglass, title: 'Dein Sammelkorb wartet', tint: ui.gold };
     case 'order_shipped':
       return { Icon: Truck, title: 'Unterwegs zu dir', tint: ui.success };
+    // Rot, als einzige Käufer-Meldung: In Berkat ist Rot die laufende Uhr, und
+    // genau darum geht es hier — der Artikel wird gerade aufgerufen.
+    case 'auction_up':
+      return { Icon: Gavel, title: 'Dein Artikel ist dran', tint: ui.live };
     // ── Ab hier VERKÄUFER-Ereignisse ────────────────────────────────────────
     // Bis zum 16.08.2026 fielen sie in den Standard-Zweig und hießen „Neu bei
     // Berkat" — für eine Meldung, die „pack das Paket" bedeutet, ist das keine
@@ -102,6 +107,10 @@ function targetFor(item: BerkatNotification): string {
     case 'order_paid':
     case 'new_order':
       return '/orders';
+    // Der Artikel läuft JETZT. Jeder Zwischenschritt kostet Sekunden, die es
+    // bei einer Zwanzig-Sekunden-Auktion nicht gibt — deshalb direkt in den
+    // Raum, nicht auf ein Profil oder eine Liste.
+    case 'auction_up':
     case 'live':
       return item.session_id ? `/live/${item.session_id}` : '/(tabs)/';
     // Zur Erinnerung an einen Termin gibt es noch keine Show — der einzige

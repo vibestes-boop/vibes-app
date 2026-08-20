@@ -23,7 +23,15 @@ import { supabase } from './supabase';
 export type BerkatNotificationType =
   | 'auction_won'
   | 'order_payment_reminder'
-  | 'order_shipped';
+  | 'order_shipped'
+  /**
+   * Der vorgemerkte Artikel wird JETZT aufgerufen (seit `20260819160000`).
+   *
+   * ⚠️ Die einzige Berkat-Meldung mit einer Halbwertszeit von Sekunden — eine
+   * Auktion dauert zwanzig. Deshalb trägt sie `session_id`: Ein Tipp landet im
+   * laufenden Raum, nicht auf einer Übersicht.
+   */
+  | 'auction_up';
 
 export type BerkatNotification = {
   id: string;

@@ -466,7 +466,11 @@ export default function ListingScreen() {
 
   const images = listingImages(listing);
 
+  // Größe zuerst — bei Kleidung und Schuhen ist sie die Frage, die vor allen
+  // anderen beantwortet werden muss. Dieselbe Reihenfolge wie in `listingMeta`,
+  // damit Karte und Artikelseite dieselbe Auskunft in derselben Ordnung geben.
   const meta = [
+    listing.size ? `Gr. ${listing.size}` : null,
     conditionLabel(listing.condition),
     [listing.postal_code, listing.city].filter(Boolean).join(' ') || null,
   ].filter(Boolean) as string[];
@@ -981,6 +985,10 @@ export default function ListingScreen() {
                 imageUrls: images,
                 description: listing.description,
                 condition: listing.condition,
+                // ⚠️ Pflicht, nicht Zugabe: Das Bearbeiten ist VOLLERSATZ. Ein
+                // Feld, das hier fehlt, kommt als `null` am Server an und wird
+                // gelöscht — ohne dass der Verkäufer es angefasst hätte.
+                size: listing.size,
                 postalCode: listing.postal_code,
                 city: listing.city,
               }}

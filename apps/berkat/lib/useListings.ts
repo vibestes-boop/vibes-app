@@ -65,6 +65,21 @@ export type Listing = {
   description: string | null;
   /** Slug aus `CONDITIONS` in `useBerkatSeller.ts` — nicht der Anzeigename. */
   condition: string | null;
+  /**
+   * Größe als FREITEXT (seit 20260819100000, max. 24 Zeichen): „42", „M", „74",
+   * „One Size", „38/40".
+   *
+   * Bewusst keine gepflegte Liste und ausdrücklich KEIN Varianten-System:
+   * `live_auctions` hat kein `stock`, ein Angebot ist genau ein Stück. Varianten
+   * setzen Mengenführung samt atomarem Dekrement voraus, sonst verkauft man
+   * Größe M zweimal — und der Markt ist Secondhand, wo es jedes Stück einmal
+   * gibt. Begründung: HANDOFF 41, Migration 20260819100000.
+   *
+   * Vorher stand die Größe bei neun von 36 Artikeln IM TITEL. Das war nicht
+   * filterbar, nicht vergleichbar, und es fraß den Platz, den der Titel für die
+   * Sache selbst braucht.
+   */
+  size: string | null;
   postal_code: string | null;
   city: string | null;
   /**
@@ -87,7 +102,7 @@ export type Listing = {
  */
 const LISTING_COLUMNS =
   'id, seller_id, title, image_url, image_urls, buy_now_cents, women_only, accepts_offers, ' +
-  'created_at, status, category, description, condition, postal_code, city, seller_kind';
+  'created_at, status, category, description, condition, size, postal_code, city, seller_kind';
 
 /**
  * Die Regal-Grenze, in jeder Listen-Abfrage dieselbe.
@@ -302,12 +317,49 @@ export async function fetchListingsByIds(ids: string[]): Promise<Listing[]> {
   return asListings(data);
 }
 
-/** Zustand und Ort als eine Zeile — oder nichts. */
+/**
+ * „m" → „M", „xl" → „XL" — „One Size" bleibt „One Size".
+ *
+ * Konfektionsgrößen schreibt man groß, und niemand greift für einen einzelnen
+ * Buchstaben zur Umschalttaste. Die Grenze bei drei Zeichen ist der Punkt, an
+ * dem das sicher ist: XS, S, M, L, XL, XXL sind alles, was es an
+ * Buchstabengrößen gibt. Ab vier Zeichen ist es ein Wort — und ein Wort zu
+ * schreien ist keine Normalisierung. Zahlen bleiben unberührt.
+ *
+ * ⚠️ Der erste Versuch war `autoCapitalize="characters"` am Eingabefeld. Am
+ * Simulator sofort sichtbar geworden, warum das falsch ist: Aus „One Size" wurde
+ * „ONE SIZE", und das stünde danach auf jeder Karte. Die Tastatur ist der
+ * falsche Ort für eine Regel, die nur für kurze Werte gilt.
+ *
+ * ⚠️ Steht HIER und nicht in einem der Formulare: Eine Größe entsteht an ZWEI
+ * Stellen — im `StandingComposer` (Regal) und im `PrepareSheet` (Show). Zwei
+ * Abschriften würden dieselbe Eingabe verschieden speichern, und die
+ * Filtergruppe im Regal hätte danach „M" und „m" als zwei Größen.
+ */
+export function tidySize(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  return /^[a-zA-Z]{1,3}$/.test(v) ? v.toUpperCase() : v;
+}
+
+/**
+ * Größe, Zustand und Ort als eine Zeile — oder nichts.
+ *
+ * Die Größe steht VORNE, und das ist keine Geschmacksfrage: Bei Kleidung und
+ * Schuhen entscheidet sie zuerst. Ein Artikel in der falschen Größe ist für den
+ * Leser erledigt, egal wie gut sein Zustand und wie nah sein Ort ist.
+ *
+ * „Gr." davor, weil eine nackte „42" neben einem Preis wie eine zweite Zahl
+ * aussieht. Bei „One Size" oder „M" wäre das Kürzel überflüssig — es steht
+ * trotzdem, weil eine Zeile, die mal so und mal so aussieht, schwerer zu lesen
+ * ist als eine gleichförmige.
+ */
 export function listingMeta(
-  listing: Pick<Listing, 'condition' | 'postal_code' | 'city'>,
+  listing: Pick<Listing, 'condition' | 'size' | 'postal_code' | 'city'>,
   conditionText: string | null,
 ): string | null {
   const teile = [
+    listing.size ? `Gr. ${listing.size}` : null,
     conditionText,
     [listing.postal_code, listing.city].filter(Boolean).join(' ') || null,
   ].filter(Boolean);

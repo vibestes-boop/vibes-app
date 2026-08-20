@@ -5059,8 +5059,19 @@ weiterhin 15 Zeilen liefern, `live_polls` 12.
 
 ### Stand der Migrationen
 
-`20260819120000` (CHECK) und `20260819130000` (WOZ bei vorbereiteten Artikeln) sind **eingespielt**.
-Offen ist nur `20260819140000`.
+Alle drei sind **eingespielt**: `20260819120000` (CHECK), `20260819130000` (WOZ bei vorbereiteten
+Artikeln) und `20260819140000` (diese hier).
+
+**Am 19.08.2026 abends gegen die echte Datenbank nachgeprüft**, nicht nur gegen die
+Tracking-Tabelle — die hat hier schon einmal gelogen (Abschnitt 3). Im frischen Abzug
+(`db dump --linked`, nach `/tmp`, danach gelöscht) tragen alle vier Policies das Session-Erbe,
+RLS ist auf allen vier aktiv, und **keine zweite permissive `USING (true)`-Policy** liegt daneben —
+die hätte die neue Schranke per ODER wieder ausgehebelt. Die Gegenprobe der Migration hält
+zeichengenau: als anon weiterhin `live_cohosts` 15, `live_polls` 12, `live_comments` 286.
+
+⚠️ **Was das nicht beweist:** dass die Schranke bei einer echten Frauen-Only-Sendung greift. Es gibt
+weiterhin null WOZ-Daten (Abschnitt 44). Der strukturelle Fix ist drin und liest sich aus der Policy
+ab; der Wirkungsnachweis kommt mit der ersten WOZ-Show.
 
 ---
 
@@ -5096,12 +5107,9 @@ Am 19.08. kamen zwei Spalten dazu, **beide ohne Client-Code**:
 
 Konkret zu bauen:
 
-1. **Größe** — Feld im `StandingComposer`, Anzeige auf `ListingCard` und Artikelseite, Chip im
-   Filter-Blatt (`app/shop.tsx`). Neun der 36 Testartikel tragen die Größe im Titel; die gehört
-   dorthin.
-2. **Artikel vorbereiten** — im Verkaufen-Reiter hinter dem Termin: „Artikel für diesen Abend
-   vorbereiten". Beim Live-Gehen `claim_prepared_auctions` rufen (in `sell.tsx`, wo heute schon
-   `linkShowToPlan` läuft). Die „Demnächst"-Karte zeigt dann, was kommt.
+1. ~~**Größe**~~ — **erledigt am 19.08.2026, Abschnitt 47.**
+2. ~~**Artikel vorbereiten**~~ — **erledigt am 19.08.2026, Abschnitt 48.** Offen bleibt daraus nur
+   die Übernahme beim Live-Gehen, die eine echte Sendung braucht.
 
 ### Was in dieser Runde entschieden wurde (nicht neu diskutieren)
 
@@ -5141,3 +5149,565 @@ nein, Policy-Folgen nein.
 
 Und das Werkzeug, das beide Fehler in zwei Minuten fand — ein Schema-Abzug gegen die Live-DB
 (Rezept am Ende von Abschnitt 43). Er gehört nach jeder Migration auf einer geerbten Tabelle.
+
+---
+
+## 47. Die Größe kommt aus dem Titel heraus (19.08.2026, abends)
+
+Punkt 1 aus Abschnitt 46. Die Spalte `live_auctions.size` lag seit dem Vormittag in der Datenbank,
+die RPCs nahmen `p_size` entgegen — **im Client kannte sie niemand.** Genau der Zustand, den
+Abschnitt 46 als „die Datenbank kann etwas, das die App nicht kennt" überschrieben hat.
+
+### Was jetzt geht
+
+| Fläche | Was |
+|---|---|
+| `lib/useListings.ts` | `size` im Typ **und** in `LISTING_COLUMNS` |
+| `lib/useStanding.ts` | `size` in beiden Mutationen, `p_size` an beide RPCs |
+| `components/StandingComposer.tsx` | Eingabefeld neben dem Preis, `tidySize()` beim Abschicken |
+| `components/ListingCard.tsx` | „Gr. 42" in der Meta-Zeile — über `listingMeta`, also automatisch auf allen fünf Flächen |
+| `app/listing/[id].tsx` | Chip neben Zustand und Ort, und `size` im Bearbeiten-Blatt |
+| `app/shop.tsx` | Filtergruppe „Größe", und die Suche findet sie |
+| `scripts/seed-berkat-shop.mjs` | 14 der 36 Testartikel bekommen eine Größe, sechs Titel werden kürzer |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Die Größe steht VORNE in der Meta-Zeile**, vor Zustand und Ort. Bei Kleidung und Schuhen
+  entscheidet sie zuerst: Ein Artikel in der falschen Größe ist erledigt, egal wie gut sein Zustand
+  und wie nah sein Ort ist. Artikelseite und Karte benutzen dieselbe Reihenfolge — zwei Ordnungen
+  für dieselbe Auskunft wären eine zu viel.
+- **„Gr." als Präfix**, obwohl es bei „One Size" überflüssig ist. Eine nackte „42" neben einem Preis
+  liest sich wie eine zweite Zahl; und eine Zeile, die mal so und mal so aussieht, ist schwerer zu
+  lesen als eine gleichförmige.
+- **Preis und Größe teilen sich eine Zeile.** Der Verkaufen-Bereich ist am selben Tag gerade erst
+  gekürzt worden (Abschnitt 37) — eine eigene Zeile für zwei Zeichen wäre der Rückschritt gewesen.
+- **Der Beschreibungs-Platzhalter sagt nicht mehr „Größe".** Er lautete „Marke, Größe, Mängel …"
+  und schickte damit genau dorthin, wo die Angabe nicht hingehört: in Fließtext, unfilterbar. Wer
+  ein Feld baut und den alten Umweg stehen lässt, hat beides.
+- **Größen werden im Filter NICHT nach Häufigkeit sortiert** — als einzige Gruppe. Bei Kategorie,
+  Zustand und Ort sucht man das Naheliegende; bei Größen sucht man die **eigene**, und die ist so
+  oft selten wie häufig. `28 · 38 · 39 · 40 · 42 · 54 · 74 · L · One Size` findet man mit einem
+  Blick, eine nach Häufigkeit geordnete Liste muss man ganz lesen. `numeric: true` ist dabei
+  Pflicht, sonst stünde „100" vor „38".
+- **Die Suche zieht mit.** Vorher stand die Größe im Titel und war damit auffindbar. Sie in eine
+  eigene Spalte zu heben und die Suche nicht mitzuziehen hätte eine Fähigkeit **weggenommen** — der
+  Filter allein setzt voraus, dass jemand ihn öffnet. Der Leerzustand sagt jetzt „Titel, Größe und
+  Ort".
+- **Beim Anlegen wird die Größe zurückgesetzt, PLZ und Ort nicht.** Wer abends fünf Sachen
+  einstellt, wohnt bei allen fünf gleich — aber jedes Stück hat eine andere Größe. Sie stehen zu
+  lassen hieße, sie beim zweiten Artikel still falsch zu behaupten.
+- **Keine gepflegte Liste, kein Varianten-System.** Begründung steht im Kopf von
+  `20260819100000` und in Abschnitt 41: `live_auctions` hat kein `stock`.
+
+### ⚠️ Zwei Fallen, die dieser Schritt sichtbar gemacht hat
+
+**1. Vollersatz frisst, was das Formular nicht kennt.** `update_standing_listing` ersetzt alle
+Felder. Ein Bearbeiten-Blatt ohne `size` in `initial` hätte beim ersten Speichern die Größe
+gelöscht — ohne dass der Verkäufer sie angefasst hätte. Dieselbe Mechanik, aus der `category`
+seinerzeit in den Zeilentyp musste. Steht jetzt als Warnung an der Mutation.
+
+**2. `autoCapitalize="characters"` war falsch — am Simulator in zehn Sekunden sichtbar.**
+Der erste Entwurf setzte es ans Feld, damit „m" zu „M" wird. Getippt wurde „One Size", im Feld stand
+**„ONE SIZE"** — und das hätte danach auf jeder Karte gestanden. Die Tastatur ist der falsche Ort
+für eine Regel, die nur für kurze Werte gilt. Jetzt normalisiert `tidySize()` beim Abschicken:
+höchstens drei Buchstaben → Großbuchstaben (`m` → `M`, `xl` → `XL`), alles andere bleibt wie
+getippt. Zahlen sind ohnehin unberührt.
+
+> **Merksatz:** Eine Schreibregel gehört dorthin, wo der Wert entsteht — nicht an die Tastatur, die
+> ihn nicht kennt.
+
+### Testware: die Größe wandert aus den Titeln
+
+`scripts/seed-berkat-shop.mjs` legte sechs Artikel als „Sneaker weiß, **Gr. 42**" an — die
+Notlösung, die diese Spalte abschafft. Die Titel sind gekürzt, die Größe steht im Feld, und beim
+Abendkleid ist sie zusätzlich aus dem Beschreibungstext heraus („Größe 38, Innenfutter tadellos").
+
+Vierzehn der 36 Artikel tragen jetzt eine Größe, bewusst gemischt: Zahlen von 28 bis 74, dazu „L"
+und „One Size". Ein Regal, in dem alle Größen zweistellige Zahlen sind, prüft weder die Sortierung
+noch die Frage, ob eine Zeile mit „One Size" noch passt.
+
+⚠️ **`LEGACY_TITLES` ist deshalb neu** und darf nicht wegfallen: Wer vor dem 19.08.2026 geseedet
+hat, hat „Babyjacke, Gr. 74" in der Datenbank, und ein Titelvergleich gegen die **neuen** Namen
+fände sie nicht. Genau diese Zeile war es, die am 18.08. beim Aufräumen liegenblieb, weil ihr das
+`[testware]`-Kennzeichen fehlte (Abschnitt 35). Wer künftig einen Titel ändert, hängt den alten dort
+an.
+
+### Geprüft
+
+Gegen die **echte Datenbank** (frischer Abzug, nach `/tmp`, danach gelöscht):
+
+- `live_auctions.size text` samt `CHECK … <= 24` ist da.
+- `create_standing_listing` und `update_standing_listing` haben **je genau eine** Signatur, beide
+  enden auf `p_size text` — kein **HTTP 300**. Die Parameternamen stimmen zeichengenau mit dem
+  überein, was der Client schickt.
+- Rechte: `REVOKE ALL … FROM PUBLIC` + `GRANT … TO authenticated, service_role`, **kein `anon`** —
+  die `credit_coins`-Falle greift hier nicht.
+- Die neue Spaltenliste liest sich als anon mit **HTTP 200**. `live_auctions` hat keine
+  eingefrorene Spaltenliste, ein eigenes `GRANT SELECT (size)` war also nicht nötig (geprüft, nicht
+  angenommen).
+
+Am **Simulator** durchgespielt: Das Feld steht neben dem Preis, ohne ihn zu quetschen, und die
+Eingabe wird nicht mehr geschrien. Vor dem neuen Seed-Lauf fehlte die Filtergruppe „Größe"
+**korrekt** — `FilterGroup` blendet sich unter zwei Werten aus, und es gab noch keinen Artikel mit
+Größe. Nach dem Seed steht sie da; der Durchgang dazu weiter unten.
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build.
+
+### Am echten Datenstand belegt (19.08.2026, 22:14)
+
+Zaur hat den Seed neu gefahren (`--remove`, dann neu — 37 raus, 36 rein). Damit standen 14 Artikel
+mit Größe im Regal, und die vier Wege, die vorher nur logisch belegt waren, sind am Simulator
+durchgespielt:
+
+| Weg | Beleg |
+|---|---|
+| **Karte** | „Babyjacke" — Titel ohne Größe — darunter **„Gr. 74 · Sehr gut · 28209 Bremen"** |
+| **Artikelseite** | drei Chips: **„Gr. 38" · „Neu mit Etikett" · „13353 Berlin"**, Größe zuerst |
+| **Filter** | Gruppe „Größe" zwischen Kategorie und Zustand, Reihenfolge `28 · 38 · 39 · 40 · 42 · 54 · 74 · L · One Size` — also **nicht** nach Häufigkeit, sonst stünde „40 3" vorn. Tipp auf „40" → Knopf „3 Artikel zeigen", danach Kopfzeile „3 Treffer", Chip „Filter · 1", alle drei Karten `Gr. 40` |
+| **Suche** | „One" → 2 Treffer, beide `Gr. One Size`. **In keinem der beiden Titel steht „One"** — der Treffer kommt allein aus der Größenspalte. Das ist der eigentliche Beweis, dass die Suche die neue Spalte wirklich liest |
+
+### Zwei Beobachtungen aus demselben Durchgang
+
+**1. Die Meta-Zeile schneidet jetzt öfter ab — an der richtigen Stelle.** Sie ist einzeilig, und mit
+der Größe davor wird sie länger: „Gr. One Size · Neu · 21073 Hamb…". Gekürzt wird also der **Ort**,
+und das ist genau die gewollte Folge der Reihenfolge — abgeschnitten wird, was am wenigsten
+entscheidet. Wer die Reihenfolge je umstellt, verschiebt damit auch, was verlorengeht.
+
+**2. ⚠️ Freitext kennt keine Skala.** Der Filter „40" liefert eine Abaya (Konfektion 40) und
+Hausschuhe (Schuhgröße 40) nebeneinander. Das ist kein Fehler, sondern der Preis der Freitext-
+Entscheidung: Ohne Skala am Wert lässt sich Konfektion nicht von Schuh trennen. Das Gegenmittel
+liegt schon da — Kategorie **und** Größe zusammen filtern („Schuhe" + „40"). Eine Skala pro Größe
+wäre erst dann sinnvoll, wenn jemand tatsächlich darüber stolpert; sie kostet ein zweites Feld an
+jedem Angebot.
+
+### Was weiterhin ungeprüft ist
+
+`tidySize()` **am Schreibweg**: dass aus einem getippten „m" in der Datenbank „M" wird. Die Anzeige
+ist geprüft (aus „One Size" wird nichts mehr geschrien), der gespeicherte Wert nicht — dafür müsste
+ein Angebot angelegt oder bearbeitet werden. Reines Client-Rechnen ohne Serverbeteiligung, also das
+kleinste verbliebene Risiko dieser Runde.
+
+### Was als Nächstes fehlt
+
+Unverändert Punkt 2 aus Abschnitt 46: **Artikel vor der Show vorbereiten** (`planned_for`). Die
+Spalte und die drei RPCs liegen seit dem 19.08. in der Datenbank, der Client kennt auch sie noch
+nicht. Und dieselbe Falle gilt dort noch einmal — wer `planned_for` im Client zeigen will, ergänzt
+`LISTING_COLUMNS`.
+
+---
+
+## 48. Artikel vor der Show vorbereiten (19.08.2026, nachts)
+
+Punkt 2 aus Abschnitt 46 und der Hebel, an dem laut Abschnitt 41 **fünf der sieben offenen Punkte**
+hängen. Die Spalte `planned_for` und drei RPCs lagen seit dem Vormittag in der Datenbank; der Client
+kannte sie nicht.
+
+Bis hierher entstand jeder Show-Artikel **im Raum**: Der Verkäufer stand vor der Kamera, vor
+Publikum, und tippte dort Titel, Startpreis und Mindestschritt. Das kostet vier Dinge auf einmal —
+tote Sendezeit, nichts zum Vorab-Ansehen, keinen Grund pünktlich zu sein, keine Vorbereitung
+(Abschnitt 26).
+
+### Was gebaut ist
+
+| Wo | Was |
+|---|---|
+| `lib/usePrepared.ts` | **neu** — Typ, Spaltenliste, eine Abfrage nach Termin gruppiert, `prepare`/`discard`, `claimPreparedAuctions` |
+| `components/PrepareSheet.tsx` | **neu** — das Blatt: was bereitliegt, und ein Formular wie „Artikel auflegen" im Studio |
+| `app/(tabs)/sell.tsx` | Terminzeilen sind antippbar und tragen „N Artikel bereit"; beim Live-Gehen wird übernommen |
+| `components/UpcomingStrip.tsx` | die „Demnächst"-Karte zeigt bis zu drei Vorschaubilder und die Zahl |
+| `lib/useListings.ts` | `tidySize()` ist dorthin gewandert — zwei Formulare erzeugen jetzt Größen, eine Regel |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **⚠️ Übernommen wird NUR mit Termin-ID.** `claim_prepared_auctions` erlaubt serverseitig auch
+  `p_planned_for = NULL` und zieht dann **alles** Vorbereitete in die Show. Der Client benutzt das
+  bewusst nie: Eine spontane Sendung würde damit auch verschlucken, was für kommenden Samstag
+  bereitliegt — und weil die RPC **verschiebt statt zu kopieren**, wäre die Vorbereitung des
+  nächsten Abends danach weg. Wer ohne passenden Termin sendet, bekommt nichts übernommen. Das ist
+  die richtige Antwort, nicht die bequeme.
+- **Kein Erfolgs-Hinweis beim Übernehmen.** Der Gastgeber wird im selben Atemzug in den Raum
+  geschoben und sieht die Artikel dort in der Warteschlange. Ein Hinweis auf dem Reiter, den er
+  gerade verlässt, stünde nach dem Ende der Show noch da.
+- **Das Blatt trägt seinen eigenen Hinweis-Zustand.** Ein `pageSheet` liegt über der ganzen Seite —
+  ein Fehler, den der Verkaufen-Reiter setzt, wäre verdeckt, und der Verkäufer bekäme ihn erst zu
+  sehen, wenn er zumacht, dann ohne Zusammenhang.
+- **Verwerfen fragt nach, Zurückziehen im Regal nicht.** `discard_prepared_auction` **löscht** die
+  Zeile; es gibt kein `cancelled`, aus dem man sie zurückholen könnte, und ein gerade hochgeladenes
+  Foto geht mit. Ein Fehltipp am Zeilenrand kostet hier echte Arbeit, im Regal nur einen
+  Statuswechsel.
+- **Die Zahl steht in der Zeitzeile, nicht als drittes Abzeichen rechts.** Dort sitzt schon die
+  Glocke mit der Erinnerungs-Zahl. „Morgen 20:00 · in 21 Std · 1 Artikel bereit" liest sich
+  außerdem als Zustand des Abends — genau das ist es.
+- **Das Formular fragt NICHT nach Kategorie und Zustand**, obwohl `prepare_live_auction` beides
+  entgegennimmt. `create_live_auction` — derselbe Artikel, spontan aufgelegt — kennt beide Felder
+  gar nicht; ein vorbereiteter Artikel wäre sonst reicher als ein spontaner, und zwei Wege zur
+  selben Sache liefen auseinander. Wer sie will, ergänzt Formular und RPC-Aufruf gemeinsam.
+- **Eine Abfrage für alle Termine**, nach Termin gruppiert — nicht eine je Karte. Der Streifen auf
+  der Startseite zeigt bis zu zwölf; zwölf Abfragen für eine Zeile Text wären die
+  Kostenhygiene-Sünde, vor der die Notizen warnen. Verkaufen-Reiter und Blatt lesen denselben
+  Zwischenspeicher, es gibt also keine zwei Wahrheiten darüber, was bereitliegt.
+- **Kein `GRANT SELECT (planned_for)` nötig** — `live_auctions` hat keine eingefrorene Spaltenliste
+  (CLAUDE.md Regel 11 betrifft `live_sessions`, `user_whip_ingresses`, `profiles`). Geprüft, nicht
+  angenommen.
+
+### Zwei Nachbesserungen aus dem Hinsehen
+
+**1. Leere Bildkacheln im Streifen.** Ein vorbereiteter Artikel ohne Foto ergab ein leeres Quadrat
+auf der „Demnächst"-Karte; drei davon nebeneinander sähen wie ein Ladefehler aus. Jetzt bekommen
+nur Artikel **mit** Foto eine Kachel — die Zahl daneben zählt trotzdem alle. Die Kacheln sind die
+Verlockung, die Zahl ist die Auskunft.
+
+**2. `tidySize()` lag im falschen Haus.** Sie stand im `StandingComposer`, und das `PrepareSheet`
+speicherte roh. Dieselbe Eingabe „m" wäre damit je nach Formular als „M" oder „m" in der Datenbank
+gelandet — und die Filtergruppe im Regal hätte danach zwei Größen. Die Funktion steht jetzt in
+`lib/useListings.ts`, wo auch die Spalte beschrieben ist, und beide Formulare rufen sie.
+
+### Geprüft
+
+Gegen die **echte Datenbank** (frischer Abzug, nach `/tmp`, danach gelöscht): `planned_for` samt
+partiellem Index, der erweiterte `live_auctions_shelf_check` (`scheduled` bei `session_id IS NULL`
+erlaubt), und alle drei RPCs mit **je genau einer** Signatur, **kein `anon`**-EXECUTE. Ebenfalls
+belegt: die drei Audit-Korrekturen aus `20260819130000` stehen wirklich im Live-Code —
+`women_only` wird vom Termin geerbt, `sort_index` kommt aus `max(…) + 1`, und
+`claim_prepared_auctions` filtert auf `app = 'berkat'`.
+
+Am **Simulator am echten Datenstand durchgespielt** — Termin angelegt, Artikel vorbereitet, wieder
+verworfen, Termin abgesagt; der Datenstand ist danach unverändert:
+
+| Weg | Beleg |
+|---|---|
+| Terminzeile | antippbar, Chevron, „Morgen 20:00 · in 21 Std · **1 Artikel bereit**" |
+| Blatt | Kopf mit Termin und Uhrzeit, Leerzustand, Formular wie im Studio + Größe |
+| Vorbereiten | „1 Artikel bereit · Lud Probe 5 ml · ab 1 € · Gr. M", Formular setzt sich zurück |
+| „Demnächst"-Karte | zeigt „1 Artikel" unter der Uhrzeit |
+| Verwerfen | Rückfrage „Artikel verwerfen?", danach zurück im Leerzustand |
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build.
+
+### ⚠️ Was ungeprüft bleibt
+
+**Die Übernahme selbst** (`claim_prepared_auctions`) — der Kern des Ganzen. Sie feuert erst beim
+Live-Gehen zu einem Termin im ±2-Stunden-Fenster, und ein Start löst über `follows` echte
+Benachrichtigungen aus; das gehört nicht in einen Testlauf, den niemand erwartet (dieselbe
+Begründung wie bei der Anbieterkennzeichnung im Live-Raum, Abschnitt 22).
+
+Der Weg dahin, wenn er drankommt: Termin auf „in 30 Min" legen, zwei, drei Artikel vorbereiten,
+dann „Show starten" — die Warteschlange im Studio muss sie ohne weiteres Zutun enthalten, und die
+Terminzeile darf danach **nicht** mehr „N Artikel bereit" sagen.
+
+Ebenfalls offen: **Pre-Bid** (Stufe B aus Abschnitt 41). Sie ist jetzt der nächste sinnvolle
+Schritt, weil Stufe A steht — und laut Abschnitt 41 kein neues Feature, sondern `set_max_bid` auf
+einen Artikel ohne Session. Die Arbeit liegt in der Zweit-Policy für `live_bids`, nicht in der RPC.
+
+---
+
+## 49. Der Käufer sieht, was kommt (19.08.2026, nachts)
+
+Abschnitt 48 hat die Verkäufer-Hälfte gebaut. Der Sinn liegt aber auf der anderen Seite — *„Käufer
+sehen die Artikel vor dem Start, das ist der Grund, warum sich 1 und 2 lohnen"* (Abschnitt 26,
+Schritt 3). Bis hierher fehlte genau das: Die „Demnächst"-Karte zeigte drei Vorschaubilder und eine
+Zahl, aber wer wissen wollte, **was** kommt, kam nirgends hin.
+
+### Wo es steht
+
+Auf dem **Verkäufer-Profil, Reiter „Termine & Shows"** — also genau dort, wo der Tipp auf eine
+„Demnächst"-Karte ohnehin landet (`?tab=shows`, seit Abschnitt 13). Unter jeder angekündigten Show
+steht jetzt „N Artikel dabei" und eine Reihe Kacheln mit Bild, Titel und **„ab X €"**. Ein Tipp
+öffnet ein Blatt mit dem großen Bild, Größe, Mindestschritt und — wenn gesetzt — dem Sofortkaufpreis.
+
+`components/LineupPreview.tsx` trägt Reihe und Blatt zusammen; das Profil bekommt dadurch drei
+Zeilen und keinen neuen Zustand.
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **⚠️ Kein Weg auf `/listing/<id>` und keine eigene Route.** Ein vorbereiteter Artikel ist nichts,
+  was man kaufen kann: Startpreis statt Festpreis, keine laufende Uhr, keine Session. Die
+  Artikelseite ist die Fläche für die **Vertragserklärung** (Abschnitt 21) — hier gibt es keine.
+  Ein Blatt sagt „schau her, das kommt", ohne einen Kaufknopf zu versprechen, den es nicht gibt.
+- **„ab 5 €" statt „5 €".** Es ist ein Startpreis. Ohne das „ab" läse sich die Zahl wie ein
+  Festpreis, und die Enttäuschung käme erst in der Show.
+- **Die Zeile bleibt tot, die Kacheln darunter nicht.** Eine angekündigte Show hat keinen Raum, in
+  den sie führen könnte; die Zeile ist deshalb weiterhin `disabled`. Die Kacheln stehen **darunter**
+  als Geschwister statt darin — ein antippbares Kind in einem deaktivierten Elternteil wäre die
+  fragilere Bauweise.
+- **Der ehrliche Satz im Blatt:** „Geboten wird live, morgen 20:00. Folge dem Verkäufer, dann
+  erinnern wir dich 15 Minuten vorher." Ohne ihn sähe das Blatt aus wie eine Artikelseite, auf der
+  nur der Kaufknopf fehlt — und der Besucher suchte ihn. Zugleich führt der Satz zur einzigen
+  Handlung, die hier etwas bewirkt: folgen.
+- **Dieselbe Abfrage wie überall.** `usePreparedByPlan` liegt schon im Zwischenspeicher, wenn ein
+  Besucher von der Startseite kommt — der Streifen hat sie für dieselben Termine geladen.
+
+### Geprüft
+
+Am Simulator am echten Datenstand, mit anschließendem Aufräumen (Termin und beide Artikel sind
+wieder weg, der Datenstand ist unverändert):
+
+- Startseite → „Demnächst"-Karte zeigt **„2 Artikel"**, und **ohne** leere Bildkacheln (beide
+  Testartikel hatten kein Foto — die Nachbesserung aus Abschnitt 48 greift)
+- Tipp auf die Karte → Profil öffnet auf „Termine & Shows"
+- unter der Ankündigung: **„2 Artikel dabei"**, Kacheln „Bakhoor Set · ab 5 €" und „… · ab 1 €"
+- Tipp auf eine Kachel → Blatt „Kommt in der Show" mit Preis, Titel, Chips **„Gr. 38"** und
+  **„Schritt 1 €"** und dem Hinweis-Satz
+- Verwerfen im Verkäufer-Blatt entfernt sie auch hier
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build.
+
+### ⚠️ Eine Lücke, die dabei sichtbar wurde: verwaiste Vorbereitung
+
+`planned_for` ist `ON DELETE SET NULL`, und die Migration begründet das ausdrücklich: Wer seinen
+Termin absagt, soll seine Artikel **nicht** verlieren — sie sollen „zurückfallen in *vorbereitet,
+ohne Termin*" und der nächsten Show zuzuordnen sein.
+
+**Diese Ansicht gibt es im Client nicht.** `usePreparedByPlan` fragt ausschließlich nach den IDs
+kommender Termine; ein Artikel ohne Termin (oder an einem abgesagten) taucht damit **nirgends** auf:
+nicht im Regal (dort filtert `shelfQuery` auf `status = 'listed'`), nicht im Blatt, nicht auf dem
+Profil. Er liegt in der Datenbank und ist unsichtbar — genau die Fehlerklasse aus Abschnitt 3
+(„Ein Feld, das geschrieben und nie gelesen wird"), nur eine Ebene höher.
+
+Heute folgenlos, weil `cancel_scheduled_live` den Termin auf `cancelled` setzt statt ihn zu löschen,
+der Fremdschlüssel also gar nicht auslöst. Es wird zum Problem, sobald jemand eine Termin-Zeile
+wirklich löscht. **Der Fix ist klein und gehört zum nächsten Schritt:** eine zweite Abfrage
+„vorbereitet, ohne Termin" im Verkaufen-Reiter, mit einem Knopf „einem Termin zuordnen".
+
+### Was als Nächstes ansteht
+
+Damit sind die Stufen A (vorbereiten) und die Käufer-Sicht darauf fertig. Aus der Reihenfolge in
+Abschnitt 41 bleiben:
+
+1. **Glocke je Artikel** („sag mir, wenn der drankommt") — jetzt klein, weil es die Fläche gibt:
+   Der Knopf gehört in das Blatt aus diesem Abschnitt. Braucht eine Tabelle
+   (`berkat_auction_reminders`) und einen Push beim Aufruf des Artikels. Der unterschätzte Teil ist
+   nicht der Push, sondern **die Zahl für den Verkäufer**: Sie sagt ihm, welcher Artikel Nachfrage
+   hat, bevor er ihn aufruft.
+2. **Pre-Bid** — laut Abschnitt 41 kein neues Feature, sondern `set_max_bid` auf einen Artikel ohne
+   Session. Die Arbeit liegt in der Zweit-Policy für `live_bids`, nicht in der RPC.
+3. **Verwaiste Vorbereitung** (siehe oben).
+
+---
+
+## 50. Vorabgebot — Stufe B (19.08.2026, nachts)
+
+Punkt 2 aus der Reihenfolge in Abschnitt 41. Wer um 20:00 nicht kann, hatte keine Möglichkeit,
+trotzdem mitzubieten — und schaute deshalb gar nicht erst hin. Die angekündigte Show war ein
+Termin, kein Angebot.
+
+### Stand: eingespielt am 19.08.2026 — nach ausdrücklicher Freigabe
+
+`supabase/migrations/20260819150000_berkat_prebid.sql` ist per `supabase db push` gefahren,
+`migration list` zeigt **40 Migrationen, keine Lücke**.
+
+⚠️ **Der Push wurde zunächst blockiert, und das war richtig.** Die Migration ersetzt zwei
+Geldweg-Funktionen (`set_max_bid`, `start_live_auction`) in der Produktions-Datenbank — das ist eine
+Freigabe-Entscheidung, kein Nebenprodukt eines „mach weiter". Wer hier wieder ansetzt, holt sie
+ausdrücklich ein.
+
+### Der Audit vom 18.08. lag daneben — zugunsten des einfacheren Wegs
+
+Abschnitt 41 erwartete Policy-Arbeit an `live_bids`: *„Bei `session_id IS NULL` ist der JOIN leer →
+niemand sieht die Vorabgebote."* Das stimmt und ist trotzdem gegenstandslos, weil **während der
+Vorbereitung gar nicht aufgelöst wird**:
+
+```sql
+-- resolve_auto_bids, erste Zeile:
+IF NOT FOUND OR a.status <> 'running' THEN RETURN; END IF;
+```
+
+Es entsteht also keine `live_bids`-Zeile, solange der Artikel nur vorbereitet ist. Aufgelöst wird
+beim **Start** der Auktion — dann hat sie eine Session, und die bestehende Policy greift wie immer.
+**Keine neue Policy, kein Zweit-Gate, kein Sonderweg.** Der Preis dafür ist eine Zeile in
+`start_live_auction`.
+
+### Was in der Migration steht
+
+| | |
+|---|---|
+| `set_max_bid` | zweiter erlaubter Zustand: `scheduled` **und** `session_id IS NULL`. Kein `ends_at`-Check (es gibt keine Uhr), keine Auflösung. Rückgabe trägt `prebid` |
+| `cancel_prebid` | Zurückziehen — **nur** solange die Auktion nicht läuft |
+| `start_live_auction` | ruft nach dem Statuswechsel `resolve_auto_bids`; `next_min_cents` wird neu gerechnet |
+| `get_prebid_counts` | die Anzahl je Artikel, **nur für den eigenen Verkäufer** |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **`session_id IS NULL` ist nicht überflüssig.** Ein Artikel, der in einer LAUFENDEN Show wartet,
+  hat ebenfalls `status = 'scheduled'`. Auf den darf man nicht vorab bieten: Dort entscheidet der
+  Gastgeber Sekunden später über Start und Dauer, und ein „Vorabgebot" wäre in Wahrheit ein Gebot
+  ohne Uhr. Vorabgebote gehören zur Vorbereitung, nicht zur Warteschlange.
+- **Zurückziehen geht — vor dem Start, und nur da.** Ein Gebot in einer laufenden Auktion ist eine
+  bindende Willenserklärung, deshalb kennt `set_max_bid` auch nur den Weg nach oben. Vor der
+  Eröffnung gibt es aber keinen Wettbewerb, den ein Rückzug entwerten könnte, und zwischen
+  „übermorgen" und „jetzt" darf sich eine Meinung ändern. Sobald `status = 'running'`, wirft
+  `cancel_prebid` — und sagt „geht nicht mehr", nicht „gibt es nicht": Dass die Show läuft, ist
+  ohnehin öffentlich.
+- **Der Verkäufer bekommt die ANZAHL, nie die Beträge.** `live_auto_bids` ist bewusst für niemanden
+  außer den Bieter lesbar — wer fremde Maxima kennt, überbietet sie exakt, und Stellvertreter-Bieten
+  wäre wertlos. `get_prebid_counts` gibt deshalb nur `count(*)` heraus und nur für eigene Artikel.
+  Dieselbe Trennung wie bei `get_seller_rating` (Schnitt statt Einzelbewertungen).
+- **Und genau diese Zahl ist der unterschätzte Teil** (Abschnitt 41, Punkt 4): Sie sagt dem
+  Verkäufer, worauf jemand wartet, **bevor** er es aufruft — er kann die Reihenfolge des Abends
+  danach legen. Sie steht deshalb im Vorbereiten-Blatt an der Artikelzeile, in Grün: gute Nachricht,
+  aber kein Kaufweg (dieselbe Trennung wie bei den Bürgen).
+- **Der Knopf ist gold.** Ein Vorabgebot ist ein Gebot, kein Merkzettel — es gehört in die Farbe des
+  Kaufwegs, obwohl es auf einer Vorschau-Fläche sitzt. Der Text sagt es zusätzlich: „Sag, wie weit
+  du gehen würdest. Wir bieten für dich mit — in Schritten, nie mehr als nötig."
+- **Beide Funktionen wörtlich kopiert.** `set_max_bid` und `start_live_auction` sind per
+  `CREATE OR REPLACE` mit dem alten Rumpf neu erzeugt; geändert ist nur der jeweils benannte Block.
+  Dieselbe Vorsicht wie bei `buy_now_live_auction`, die schon einmal bei einer Neufassung
+  `buy_now_gone`, den Eintrag in `live_bids`, `bid_count`, `ends_at` und den Rückgabewert verloren
+  hat. Gleiche Signaturen, also kein DROP und keine GRANT-Falle.
+
+### Client
+
+| Wo | Was |
+|---|---|
+| `lib/usePrebid.ts` | **neu** — eigenes Maximum lesen, setzen, zurückziehen, Anzahl für den Verkäufer |
+| `components/LineupPreview.tsx` | `PrebidPanel` im Blatt: Eingabe und Knopf, danach „Dein Höchstgebot: X €" mit Rückzug |
+| `components/PrepareSheet.tsx` | „N Vorabgebote" an der Artikelzeile des Verkäufers |
+
+`PrebidPanel` ist eine **eigene Komponente**, nicht ein Block im Blatt: Ihre Hooks laufen dadurch nur,
+solange das Blatt offen ist — und der frühe `return null` in `LineupPreview` (keine Artikel) kann
+keine Hook-Reihenfolge brechen. Am eigenen Artikel rendert sie gar nichts; der Server lehnt das
+ohnehin ab (`seller_cannot_bid`), und ein Feld anzubieten, das garantiert scheitert, wäre eine
+Einladung ins Leere.
+
+### Geprüft
+
+Gegen die **echte Datenbank** (frischer Abzug, nach `/tmp`, danach gelöscht):
+
+| | |
+|---|---|
+| `set_max_bid` · `cancel_prebid` · `start_live_auction` · `get_prebid_counts` | **je genau eine** Signatur, kein **HTTP 300** |
+| Rechte | alle vier **ohne `anon`**, `authenticated` gesetzt — die `credit_coins`-Falle greift nicht |
+| `resolve_auto_bids` | weiterhin für **niemanden** ausführbar (nur intern aus SECURITY-DEFINER-Funktionen) |
+| Rümpfe | der Vorabgebot-Zweig steht im Live-Code (`v_prebid`, `session_id IS NULL`), und `start_live_auction` ruft `resolve_auto_bids` samt neu gerechnetem `next_min_cents` |
+
+Am **Simulator** (Termin + Artikel angelegt, danach beides wieder entfernt): Das Blatt öffnet, und
+das Gebots-Feld erscheint **korrekt nicht** — es ist der eigene Artikel. Kein Absturz durch die neue
+Komponente, keine Hook-Reihenfolge gebrochen.
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Kein Build nötig.
+
+### ⚠️ Was ungeprüft bleibt — und warum es dasselbe Hindernis ist wie immer
+
+**Der Gebotsweg selbst.** Auf eigene Artikel kann niemand bieten (`seller_cannot_bid`), also braucht
+jede der folgenden Proben ein **zweites Konto**:
+
+1. Vorabgebot abgeben → `prebid: true`, **keine** `live_bids`-Zeile vor dem Start
+2. Vorabgebot auf einen Artikel in der Warteschlange einer laufenden Show → `auction_not_running`
+3. Start der Auktion → der Vorabbieter führt, Preis = Startpreis (bei genau einem Gebot)
+4. Zurückziehen vor dem Start geht, danach `prebid_locked`
+5. „N Vorabgebote" im Vorbereiten-Blatt des Verkäufers
+
+Das ist derselbe offene Punkt wie bei Kauf, Merken und Preisvorschlag (Abschnitt 26) — nur dass die
+Testware ihn dort gelöst hat, weil sie **fremde Angebote** erzeugt. Hier reicht das nicht: Ein
+Vorabgebot muss ein zweiter **Mensch** abgeben, nicht ein zweiter Datensatz. Punkt 3 braucht
+zusätzlich eine echte Sendung.
+
+Der Rest der Kette ist geprüft: Die Funktionen liegen richtig in der Datenbank, die Rechte stimmen,
+und der Client ruft die Parameter, die sie erwarten.
+
+---
+
+## 51. Die Glocke je Artikel — und der erste neue Meldungstyp seit langem (19.08.2026, nachts)
+
+Punkt 1 aus der Reihenfolge in Abschnitt 41, und der leiseste der drei Wege auf einen vorbereiteten
+Artikel. Ein Vorabgebot (Abschnitt 50) sagt „bis hierhin gehe ich" und ist ein Gebot; eine
+Vormerkung sagt nur „ruf mich, wenn es soweit ist" und verpflichtet zu nichts. Wer genau EINEN
+Artikel will, will meistens das zweite.
+
+Migration `20260819160000_berkat_auction_reminders.sql`, eingespielt nach ausdrücklicher Freigabe —
+sie fasst wieder `start_live_auction` an.
+
+### ⚠️ Ein neuer `notifications`-Typ, und warum er diesmal gerechtfertigt ist
+
+Zweimal wurde er hier **abgelehnt**: bei den Belohnungen (Abschnitt 18) und beim Preisvorschlag
+(Abschnitt 24), beide Male mit derselben Begründung — *„ein Typ braucht neun Oberflächen, und wer
+nur einen Teil anfasst, bekommt ‚Neue Aktivität auf Serlo'."* Die Begründung gilt weiter. Sie trifft
+hier nur nicht zu:
+
+> Eine Belohnung ist nicht eilig, ein Preisvorschlag auch nicht — beide können im Aktivitäts-Reiter
+> warten. **Diese Meldung hat eine Halbwertszeit von Sekunden.** Eine Auktion dauert zwanzig; eine
+> Nachricht, die erst beim nächsten App-Start gelesen wird, ist wertlos.
+
+**Und es sind auch nicht neun Oberflächen.** Nachgesehen statt angenommen:
+
+| Oberfläche | Nötig? |
+|---|---|
+| `notifications_type_check` | ✅ in der Migration |
+| `CASE` in `fn_send_push_on_notification` | ✅ in der Migration |
+| Berkats Meldungsliste (Text, Symbol, Ziel) | ✅ `app/notifications.tsx` |
+| Berkats Typ-Union | ✅ `lib/useNotifications.ts` |
+| Serlos Meldungsliste | ❌ — sie hat einen Standardzweig für Unbekanntes. ⚠️ Sie filtert **nicht** auf `app`, zeigt Berkat-Meldungen also schon heute mit (gilt seit `auction_won`, nicht neu) |
+| `send-push-notification` (MESSAGES, TYPE_TO_PREF, deriveWebUrl/Tag) | ❌ — dieser Weg ist seit `20260701050000` tot, der SQL-`CASE` feuert (Abschnitt 9) |
+| Serlos i18n | ❌ — Serlo rendert den Typ nicht namentlich |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Der Fan-out hängt in `start_live_auction`, nicht in einem Cron.** „Dein Artikel ist dran" ist
+  genau dann wahr, wenn die Auktion öffnet — jede Verzögerung macht die Meldung falsch. Ein
+  mengenbasiertes `INSERT … SELECT` statt einer Schleife, und der Push geht über **pg_net, also
+  asynchron**: Der Start wartet auf nichts. Bei fünfzig Vormerkungen sind es fünfzig
+  Warteschlangen-Einträge, keine fünfzig HTTP-Aufrufe.
+- **`app = 'berkat'` ist Pflicht.** Ohne das ginge die Meldung nach der Voreinstellung an das
+  **Serlo**-Gerät (`20260814190000`) — genau der Fehler, den die App-Trennung beheben sollte.
+- **`session_id` mitgeben ist der eigentliche Nutzen.** Ein Tipp landet im laufenden Raum, nicht auf
+  einer Übersicht. Bei zwanzig Sekunden Auktion ist jeder Zwischenschritt einer zu viel.
+- **Die Vormerkung wird beim Start VERBRAUCHT** (gelöscht). Sie hat genau einen Zweck, und der ist
+  dann erfüllt — sie stehen zu lassen hieße, dem Verkäufer beim nächsten Blick eine Nachfrage
+  anzuzeigen, die längst bedient ist.
+- **Geschrieben wird ohne RPC, direkt auf der Tabelle** — anders als bei allem Geldnahen. Die Zeile
+  trägt keine Beträge und keine Rechtsfolge, und die INSERT-Policy erledigt die ganze Prüfung: nur
+  die eigene Nutzer-ID, nur ein **fremder** vorbereiteter Artikel, und die Frauen-Only-Schranke wird
+  vom Artikel **geerbt** statt wiederholt (die Lehre aus `20260819130000`).
+- **Der Fehlertext unterscheidet die drei Ablehnungsgründe NICHT.** Eigener Artikel, kein
+  vorbereiteter Artikel, Frauen-Only ohne Freigabe laufen alle in `42501` und in denselben Satz.
+  Sie auseinanderzuhalten hieße, dem Aufrufer zu verraten, welcher zutrifft — bei Frauen-Only wäre
+  das genau das Leck, das die Policy verhindert.
+- **Der Verkäufer bekommt die Anzahl, nie die Namen.** In einer Gemeinschaft, in der man sich kennt,
+  ist „ich will das haben" nichts, was der Verkäufer namentlich wissen muss.
+- **Zwei Zähl-Abfragen statt einer kombinierten.** `get_prebid_counts` liegt seit einer Stunde
+  draußen und ist richtig; sie zu droppen und durch eine gemeinsame zu ersetzen wäre für eine
+  gesparte Abfrage der falsche Tausch — DROP am Geldweg kostet die GRANT-Falle. Zusammengesetzt wird
+  im Client: „2 Vorabgebote · 5 warten", Gebote zuerst, weil sie das stärkere Signal sind.
+- **Rot in der Meldungsliste**, als einzige Käufer-Meldung. In Berkat ist Rot die laufende Uhr — und
+  genau darum geht es.
+
+### Die Migration ist maschinell zusammengesetzt
+
+`fn_send_push_on_notification` und `start_live_auction` sind **nicht abgetippt**, sondern aus einem
+frischen `supabase db dump` übernommen und per Skript an genau einer Stelle ergänzt. Bei beiden
+Funktionen sind hier schon einmal spätere Änderungen verlorengegangen.
+
+⚠️ **Beim ersten Versuch hat das `awk` zu viel eingesammelt** — der Rumpf endet auf `END $$;`, nicht
+auf einem alleinstehenden `$$;`, und die Bereichsregel lief in zwei fremde Funktionen hinein
+(`submit_order_review`, `timeout_chat_user`). Aufgefallen nur, weil ich die CREATE-Zeilen **gezählt**
+habe: vier statt zwei. Wer Funktionsrümpfe aus einem Abzug schneidet, zählt danach nach.
+
+### Geprüft
+
+Gegen die **echte Datenbank** (frischer Abzug, danach gelöscht):
+
+- `notifications_type_check` trägt **31** Typen inklusive `auction_up` — die `UNION`-Konstruktion hat
+  keinen bestehenden verloren
+- Tabelle + alle drei Policies stehen; als **anon** antwortet sie mit **401/42501**
+- `start_live_auction` enthält Fan-out **und** Aufräumen, `fn_send_push_on_notification` den neuen
+  Zweig
+- `get_reminder_counts`: **kein `anon`**, `authenticated` gesetzt
+
+Am **Simulator** (Termin + Artikel angelegt, danach beides entfernt): Das Blatt öffnet, und **weder
+Glocke noch Gebots-Feld** erscheinen — es ist der eigene Artikel, beide Komponenten geben `null`
+zurück. Kein Absturz, keine Hook-Reihenfolge gebrochen.
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Kein Build nötig.
+
+### ⚠️ Was ungeprüft bleibt
+
+Alles, was ein **zweites Konto** braucht — dieselbe Wand wie in Abschnitt 50:
+
+1. Vormerken an einem fremden Artikel (die Glocke erscheint nur dort)
+2. „N warten" im Vorbereiten-Blatt des Verkäufers
+3. Der Fan-out beim Start: Meldung entsteht, Vormerkung ist danach weg
+4. **Der Push selbst** — er braucht zusätzlich ein echtes Gerät und eine echte Sendung. Auf dem
+   Simulator gibt es kein Push (`Device.isDevice`, Abschnitt 9).
+
+Punkt 3 und 4 sind zugleich der Beweis, dass die Kette hält; bis dahin ist sie belegt, aber nicht
+gelaufen.
