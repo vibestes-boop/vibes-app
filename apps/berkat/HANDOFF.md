@@ -582,6 +582,64 @@ Nachladen aus, während der Nutzer schon dasitzt?"** Gibt es darauf keine Antwor
 Der Aktualisierungs-Kreisel springt sonst bei jedem Hintergrund-Abruf an. Für Ziehen-zum-Aktualisieren
 immer einen eigenen `pulling`-Zustand nehmen.
 
+### Berkat borgte sich Babel bei Serlo — und merkte es erst im Cloud-Build
+
+Am 21.08.2026 beim ersten `production`-Build. EAS meldete zweimal dasselbe:
+
+```
+Unknown error. See logs of the Bundle JavaScript build phase for more information.
+```
+
+Die echte Ursache stand im Log und nirgends sonst:
+
+```
+Cannot find module 'babel-preset-expo'
+```
+
+`babel.config.js` verlangt das Preset **beim bloßen Namen**, und es steht in Berkats
+`package.json` nicht drin. Lokal fällt das nicht auf, weil Node die Ordner **nach oben**
+durchsucht und eine Ebene höher fündig wird:
+
+```
+require.resolve('babel-preset-expo')
+  →  /Users/zaurhatuev/vibes-app/node_modules/babel-preset-expo   ← SERLOS node_modules
+```
+
+Auf EAS gibt es die nicht — dort wird `npm install` nur in `apps/berkat` ausgeführt. Babel läuft
+den Baum hoch, findet nichts, und der Bundler stirbt beim ersten Modul.
+
+⚠️ **Die Isolation galt für Metro, nicht für Babel.** `metro.config.js` trägt seit jeher den
+Kommentar *„Bewusst eigenständig: Berkat hat eigene node_modules und schaut NICHT ins Repo-Root."*
+Das stimmt — für Metro. **Babel benutzt gewöhnliche Node-Auflösung und kennt diese Absicht nicht.**
+Zwei Werkzeuge im selben Build, zwei Auflösungswege, und nur einer war abgesichert.
+
+Dieselbe Familie wie der Vercel-Ausfall von `apps/web`: lokal grün, in der Cloud tot, weil eine
+Abhängigkeit nur in der Wurzel lag. **Für jede Unter-App im Monorepo gilt: Was eine
+Konfigurationsdatei beim Namen verlangt, muss in ihrer eigenen `package.json` stehen** — auch
+wenn es „sowieso über `expo` mitkommt". Es kommt mit, aber **verschachtelt** unter
+`node_modules/expo/node_modules/`, und dorthin schaut die Auflösung vom Projektwurzel-Ordner aus
+nicht.
+
+Behoben mit einer Zeile in `apps/berkat/package.json`:
+
+```json
+"babel-preset-expo": "~54.0.12"
+```
+
+Die Probe, die das findet, **bevor** ein Build zwei Minuten kostet:
+
+```bash
+node -e "const r=require.resolve('babel-preset-expo',{paths:[process.cwd()]});
+console.log(r.includes('/apps/berkat/node_modules/') ? 'eigen' : 'AUS DER WURZEL')"
+```
+
+Am 21.08. wurden damit **alle** Build-Zeit-Abhängigkeiten durchgeprüft (acht `app.json`-Plugins
+plus Babel, Metro, Expo): Bis auf dieses eine liegt alles in `apps/berkat`. ⚠️ Ein zweites Leck
+bleibt bekannt und harmlos: `@expo/metro-config` löst lokal ebenfalls aus der Wurzel auf. Es ist
+folgenlos, weil `metro.config.js` `expo/metro-config` verlangt (den öffentlichen Eingang), und
+der findet die verschachtelte Fassung — im EAS-Log nachweisbar. Wer es je **beim direkten Namen**
+verlangt, muss es deklarieren.
+
 ### Sentry reißt den Store-Build ab — in einer Phase, die nach JavaScript aussieht
 
 Am 21.08.2026 beim allerersten `production`-Build zugeschlagen. Meldung:
@@ -601,6 +659,15 @@ NODE_ENV=production npx expo export:embed --platform ios --dev false \
 
 3697 Module, keine Fehler. Der erste Hinweis stand als Warnung mitten im Ausgabestrom:
 `[@sentry/react-native/expo] Missing config for organization, project.`
+
+⚠️ **Nachtrag 21.08.2026: Das war NICHT die Ursache des ersten Fehlschlags.** Die echte stand
+einen Absatz höher (`babel-preset-expo`), und die Sentry-Zeile im Log war bloß eine Warnung. Ich
+hatte sie für den Befund gehalten, weil sie zur Fehlermeldung passte — **eine Warnung, die zur
+Vermutung passt, ist noch kein Beweis.** Der Fehler stand die ganze Zeit im Log; ich hatte ihn nur
+nicht geholt (Rezept unten).
+
+Der Sentry-Befund bleibt trotzdem gültig und die Änderung notwendig: Sie hätte den Build in der
+**nächsten** Phase gerissen, sobald das Bündeln durchläuft.
 
 Ursache: Das Sentry-Plugin **schreibt die Xcode-Phase um**, die den Bundler ausführt
 (`plugin/build/withSentryIOS.js:42`, greift sich `Bundle React Native code and images`, und `:72`
@@ -635,6 +702,44 @@ Quellkarten stehen dort verkürzte Namen.
 Dann `organization` und `project` in die Plugin-Konfiguration, `SENTRY_AUTH_TOKEN` als
 EAS-Geheimnis (`eas secret:create`), und diese Zeile wieder raus. Ein Auth-Token gehört **nie** in
 die `eas.json` — das Repo ist öffentlich.
+
+### EAS-Build-Logs holen, statt aus der Fehlermeldung zu raten
+
+Die Meldung, die die CLI ausspuckt, ist eine Phasen-Überschrift, **kein Fehler**. Am 21.08.2026
+hat mich das zwei Fehlversuche gekostet: „See logs of the Bundle JavaScript build phase" klang nach
+JavaScript, war aber ein fehlendes Babel-Preset. Der echte Text lag die ganze Zeit im Log.
+
+Der Weg dorthin, ohne Browser und ohne Anmeldung:
+
+```bash
+npx eas build:view <build-id> --json 2>/dev/null \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).logFiles[0]))" \
+  > /tmp/logurl.txt
+curl -s "$(cat /tmp/logurl.txt)" -o /tmp/build.log
+node -e "require('fs').writeFileSync('/tmp/build.txt', require('zlib').brotliDecompressSync(require('fs').readFileSync('/tmp/build.log')))"
+```
+
+Danach ist `/tmp/build.txt` NDJSON — je Zeile ein Objekt mit `phase` und `msg`:
+
+```bash
+node -e "
+require('fs').readFileSync('/tmp/build.txt','utf8').trim().split('\n')
+  .map(l=>JSON.parse(l)).filter(l=>/BUNDLE|ERROR|FAIL/i.test(l.phase||''))
+  .forEach(l=>console.log((l.msg||'').trimEnd()))"
+```
+
+Drei Fallen dabei, alle selbst hineingetreten:
+
+- **Der Log ist Brotli-komprimiert**, nicht gzip (`x-goog-stored-content-encoding: br`). `gunzip`
+  und `zlib.gunzipSync` scheitern wortlos oder liefern drei Bytes. Nodes
+  `zlib.brotliDecompressSync` kann es ohne Zusatzpaket.
+- **Die signierte URL lebt 15 Minuten** (`X-Goog-Expires=900`) — frisch holen, nicht aufheben.
+- **`eas build:view` will ein Projektverzeichnis.** Aus `/tmp` heraus antwortet es
+  „Run this command inside a project directory" — und das kommt als Text, nicht als JSON.
+
+**Der schnellste Vorab-Hinweis ist die Laufzeit.** `eas build:view` zeigt Start und Ende: Ein
+Build, der WebRTC kompiliert, braucht zwanzig Minuten. **Was in unter zwei Minuten stirbt, ist nie
+am Kompilieren gescheitert** — dann lohnt der Blick gar nicht erst in Richtung Xcode.
 
 ### npm bricht ohne `legacy-peer-deps` ab
 
