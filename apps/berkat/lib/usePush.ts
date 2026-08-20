@@ -151,11 +151,16 @@ export function usePushRegistration(): void {
         | undefined;
       if (!data?.type) return;
       router.push(
-        notificationTarget({
-          type: data.type,
-          sessionId: data.sessionId,
-          senderId: data.senderId,
-        }) as never,
+        notificationTarget(
+          {
+            type: data.type,
+            sessionId: data.sessionId,
+            senderId: data.senderId,
+          },
+          // Von außen, kalt: Käufer-Meldungen ohne Frist landen in der Liste,
+          // nicht im Konto — sonst ist der Rest des Offenen aus dem Blick.
+          'push',
+        ) as never,
       );
     });
 

@@ -93,11 +93,16 @@ function Row({ item }: { item: BerkatNotification }) {
     <Pressable
       style={[styles.row, !item.read && styles.rowUnread]}
       onPress={() => router.push(
-          notificationTarget({
-            type: item.type,
-            sessionId: item.session_id,
-            senderId: item.sender_id,
-          }) as never,
+          notificationTarget(
+            {
+              type: item.type,
+              sessionId: item.session_id,
+              senderId: item.sender_id,
+            },
+            // Wir stehen schon in der Liste — für Käufer-Meldungen ist das
+            // Konto das Ziel, die Liste wäre hier ein Sprung auf der Stelle.
+            'list',
+          ) as never,
         )}
     >
       <View style={[styles.iconWrap, { backgroundColor: `${tint}22` }]}>

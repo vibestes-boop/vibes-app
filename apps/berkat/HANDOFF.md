@@ -91,9 +91,20 @@ was gilt.
 
 ### Drei Blocker — keiner davon ist Code
 
-1. **Kein Store-Eintrag.** Berkat ist in keinem Store. Verkäufer und Publikum **können die App nicht
-   installieren**; alles Gebaute ist für genau eine Person erreichbar. TestFlight braucht Apples
-   Anmeldung mit Zwei-Faktor — das kann nur Zaur.
+1. **Kein Build im Store — der Eintrag selbst existiert.** ⚠️ **Richtigstellung 20.08.2026:** Hier
+   stand „Berkat ist in keinem Store". Das war falsch. In App Store Connect liegt
+   **„Berkat: Live-Auktionen", Status *iOS 1.0 In Vorbereitung zur Übermittlung*** — die App-ID
+   `6802102343` in `eas.json` gehört ihr (Serlos ist `6760790424`, es ist also keine Kopie).
+   Was fehlt, ist ein **hochgeladener Build**, nicht der Eintrag.
+
+   Verkäufer und Publikum können die App weiterhin nicht installieren; alles Gebaute ist für genau
+   eine Person erreichbar. Der Weg dahin ist kürzer als gedacht — aber er hat einen Riegel davor:
+
+   ⚠️ **Der Apple-Developer-Lizenzvertrag ist aktualisiert und nicht akzeptiert.** App Store Connect
+   meldet es beim Öffnen: Ohne Zustimmung des **Accountinhabers** lassen sich weder bestehende Apps
+   aktualisieren noch neue einreichen. `eas submit` scheitert daran — und zwar erst **nach** einem
+   fertigen Build, also an der teuersten Stelle. Zuerst akzeptieren, dann bauen. Das kann nur Zaur
+   (Account-Login mit Zwei-Faktor), wie auch der Build selbst.
 2. **Stripe-Zugang.** Konto ist `acct_1Tk85WDimgI7k5Md` („brandwerkx"), die Wiederherstellung läuft
    per Ausweis. Alles ist **Testbetrieb** (`cs_test_`, nie echtes Geld).
    ✅ **Ratenzahlung ist seit dem 19.08.2026 abgeschaltet** — Klarna, Billie und Scalapay, in Test-
@@ -5881,6 +5892,42 @@ Wer einen Typ anlegt, ergänzt ihn **dort** — und Liste wie Push haben ihn.
 > **Merksatz:** Kein Test hätte das gefunden, kein `grep`, kein `tsc`. Nur ein Mensch, der auf eine
 > echte Meldung tippt.
 
+#### ⚠️ Nachtrag 20.08.2026: dieser Fix hat beim Zusammenlegen etwas kassiert
+
+Beim Vorbereiten der Geräte-Probe aufgefallen, **bevor** sie lief — und das ist der einzige Grund,
+warum es überhaupt auffiel: Die Probe hätte einen halb kaputten Fix abgenommen.
+
+Die beiden alten Fassungen waren nicht durchgehend widersprüchlich. Bei **drei** Typen wichen sie
+mit Absicht voneinander ab:
+
+| Typ | `targetFor` (Glocke) | `routeFor` (Push) |
+|---|---|---|
+| `auction_won`, `order_payment_reminder`, `order_shipped` | `/(tabs)/account` | **`/notifications`** |
+
+Der Grund stand als Kommentar am gelöschten `routeFor`, datiert auf den 14.08.2026: *„In die Liste,
+nicht direkt ins Konto. Wer den Push antippt, hat oft mehr als eine Meldung offen … Direkt dorthin
+zu springen ließ die Meldung selbst verschwinden."* Die Vereinheitlichung warf alle drei in den
+`default`-Zweig — und damit war eine gemessene Entscheidung lautlos weg. **Ein Fehler behoben, ein
+älterer wieder eingebaut.**
+
+Genau die Klasse, vor der dieses Dokument bei `buy_now_live_auction` dreimal warnt (Abschnitte 20,
+22, 24): *„Wer hier etwas ändert, legt vorher das Original daneben."* Beim Zusammenlegen zweier
+Fassungen heißt das zusätzlich: **jede Abweichung erst als Absicht lesen, dann als Versehen.** Ein
+`grep` sieht nur, dass zwei Zweige verschieden sind, nicht warum.
+
+Behoben mit einem zweiten Parameter an `notificationTarget`. Die Regel dahinter gilt jetzt für alle
+Typen und steht im Kopf der Funktion:
+
+> **Eilig und mit eigenem Ziel** (laufende Auktion, zu packende Bestellung) → direkt dorthin, egal
+> woher der Tipp kam. **Käufer-Sachen ohne Frist** → aus der Glocke ins Konto, aus einem Push in
+> die Liste.
+
+`from` hat bewusst **keine Voreinstellung** — dieselbe Vorsicht wie bei `CropShape` (Abschnitt 3):
+Nur die Aufrufstelle weiß, woher der Tipp kam. Nebenbei bekommt `order_review` dadurch zum ersten
+Mal ein sinnvolles Push-Ziel; vorher war es einer der sechs Typen ganz ohne.
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build.
+
 ### ⚠️ Fund 2: Zwei Sammelkörbe, die aussahen wie ein Fehler
 
 Zaurs Beobachtung: *„die stehen getrennt, kein Hinweis dass es ein Korb ist und Gesamtkosten."*
@@ -5928,15 +5975,19 @@ und eine Warnung wäre nur ein Vorwurf.
 
 `tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build.
 
-⚠️ **Die drei Reparaturen sind NICHT am Gerät geprüft.** Alle drei brauchen den Käufer-Zustand, und
-der liegt auf Zaurs iPhone:
+Von den drei Reparaturen ist **eine am Gerät belegt**, zwei stehen aus — sie brauchen den
+Käufer-Zustand, und der liegt auf Zaurs iPhone:
 
-1. **Push-Tap** braucht einen frischen Push nach einem Neuladen des Bündels
-2. **Korb-Anzeige** braucht einen Blick ins Konto nach dem Neuladen — er beantwortet zugleich, ob
-   der eine Korb wirklich `checkout_pending` ist. Steht der Hinweis an keinem der beiden, sind
-   **beide offen**, der Teil-Index hat nicht gegriffen, und dann ist es ein echter Fehler im
-   Sammelkorb selbst
-3. **Die Rückfrage** feuert nur, solange der Verkäufer sendet — sie braucht eine laufende Show
+1. **Push-Tap** — offen, braucht einen frischen Push nach einem Neuladen des Bündels
+2. ~~**Korb-Anzeige**~~ — ✅ **am 20.08.2026 am Gerät bestätigt.** Der Hinweis „Zum Bezahlen
+   vorgemerkt" steht an **einem** der beiden Körbe. Damit ist zweierlei belegt: Die Abfrage holt
+   `status` und der Bildschirm unterscheidet die Zustände — **und der Teil-Index
+   `auction_carts_one_open` hat gegriffen.** Genau ein Korb ist `open`, der andere
+   `checkout_pending`. Der Verdacht aus Abschnitt 54 („steht der Hinweis an keinem, ist es ein
+   echter Fehler im Sammelkorb") ist damit ausgeräumt — die zwei Körbe waren die ganze Zeit
+   richtig, sie waren nur ununterscheidbar
+3. **Die Rückfrage** — offen, feuert nur, solange der Verkäufer sendet (`cart.status === 'open'
+   && sellerLive`), sie braucht also eine laufende Show
 
 ---
 
@@ -5956,18 +6007,100 @@ der liegt auf Zaurs iPhone:
 
 ### Das Erste, was zu tun ist
 
-**Die drei Reparaturen aus Abschnitt 53 am Gerät prüfen.** Sie sind gebaut, typgeprüft und
-ungeprüft. Die Korb-Anzeige ist dabei die wichtigste, weil ihr Ergebnis eine Frage beantwortet:
+**Die Reparaturen aus Abschnitt 53 am Gerät prüfen.** Sie sind gebaut, typgeprüft — und nur eine
+davon belegt.
 
-> Steht der Hinweis „Zum Bezahlen vorgemerkt" an einem der beiden Körbe? Wenn an **keinem** — dann
-> sind beide offen, der Teil-Index `auction_carts_one_open` hat nicht gegriffen, und das ist ein
-> echter Fehler im Sammelkorb. Dem sofort nachgehen.
+✅ **Die wichtigste ist beantwortet (20.08.2026):** Der Hinweis „Zum Bezahlen vorgemerkt" steht an
+**einem** der beiden Körbe. Der Teil-Index `auction_carts_one_open` hat also gegriffen, der
+Sammelkorb ist in Ordnung, und die Anzeige unterscheidet die Zustände jetzt. Der Fehlerverdacht
+ist weg.
+
+**Offen bleiben zwei**, beide auf Zaurs iPhone:
+
+- **Push-Tap** — Bündel neu laden, dann eine echte Meldung antippen. Sie muss jetzt öffnen; vorher
+  kannte `routeFor` nur drei von acht Typen (Fund 1 in Abschnitt 53). ⚠️ **Am 20.08. nachgebessert**
+  — der Fix hatte beim Zusammenlegen die Push-Ziele von `auction_won`, `order_payment_reminder` und
+  `order_shipped` verschluckt; siehe den Nachtrag in Abschnitt 53. Zu prüfen sind deshalb **zwei**
+  Fälle: ein Zuschlag muss aus dem Push in die **Liste** führen, aus der Glocke ins **Konto**.
+- **Die Rückfrage vor dem Bezahlen** — feuert nur bei `status = 'open'` **und** sendendem
+  Verkäufer, braucht also eine laufende Show. Gehört in denselben Durchlauf wie Punkt 4 unten
+  (Live-Raum gegen Whatnots App halten).
+
+### TestFlight — geprüft am 20.08.2026, der Weg steht
+
+Der Store-Eintrag existiert (siehe Blocker 1 unten). Die `app.json` wurde gegen die **generierte
+`Info.plist`** geprüft, nicht gegen die Absicht — und sie ist store-fertig:
+
+| Prüfpunkt | Stand |
+|---|---|
+| `ITSAppUsesNonExemptEncryption` | ✅ `false` — der Klassiker, an dem Einreichungen hängen |
+| Kamera / Mikrofon / Fotos | ✅ alle drei **auf Deutsch** in der `Info.plist`. `expo-image-picker` hat sie **nicht** mit englischen Vorgaben überschrieben — das war die eigentliche Sorge |
+| `NSPhotoLibraryAddUsageDescription` | ✅ fehlt zu Recht — Berkat liest aus der Mediathek, schreibt nie hinein |
+| `PrivacyInfo.xcprivacy` | ✅ vorhanden (Expo erzeugt es, LiveKits WebRTC bringt sein eigenes mit) |
+| `UIUserInterfaceStyle: Light` | ✅ passt zu den zwei festen Flächen (Abschnitt 4) |
+
+**Ein Fehlalarm fürs Protokoll:** `assets/icon.png` hat einen Alpha-Kanal, was sonst `ITMS-90717`
+auslöst. Hier folgenlos — Expo flacht die Transparenz beim Prebuild ab (`hasAlpha: no` im
+gebauten `App-Icon-1024x1024@1x.png`), und Serlos Quell-Icon hat ebenfalls Alpha und liegt im
+Store. **Nicht das Quell-Asset prüfen, sondern das gebaute.**
+
+Ebenso folgenlos: Der lokale `ios/`-Ordner trägt noch `CFBundleShortVersionString 0.1.0`. Er ist
+gitignored, EAS lädt ihn nicht hoch und macht einen frischen Prebuild aus der `app.json` (1.0.0).
+
+**Die Schritte, zwei davon nur Zaur:**
+
+1. **Lizenzvertrag akzeptieren** (Account-Login) — sonst scheitert `eas submit` erst *nach* dem Build
+2. `eas build --profile production --platform ios` — **nicht** `preview` (das ist `distribution:
+   internal`, also Ad-hoc und nicht TestFlight-fähig) und **ohne** `--non-interactive`, weil EAS
+   fürs Store-Provisioning die Apple-Anmeldung mit Zwei-Faktor will
+3. `eas submit --platform ios --profile production` — die `ascAppId` steht in der `eas.json`
+4. **Externe TestFlight-Gruppe** (Einladungslink). Internes Testing ginge sofort, macht aber jeden
+   Verkäufer zum App-Store-Connect-Benutzer — das mutet man fünf Händlern nicht zu.
+
+⚠️ **Beta App Review braucht ein Demo-Konto.** Berkat ist hinter einer Anmeldung, man sieht ohne
+Konto **gar nichts**. Ohne hinterlegte Zugangsdaten unter „Test-Informationen" ist die Ablehnung
+sicher, und sie kostet einen Tag.
+
+⚠️ **Die Build-Nummer-Falle.** `production` steht auf `autoIncrement: false`, `appVersionSource` ist
+`local`, `buildNumber` ist `"1"`. Der erste Upload geht durch, den zweiten lehnt Apple wegen
+doppelter Nummer ab — dann in der `app.json` von Hand hochzählen.
+
+Randnotiz, kein Blocker: ASC führt die Version als **1.0**, die `app.json` als **1.0.0**. Für
+TestFlight egal; es fällt erst auf, wenn der Build an den App-Store-Versionseintrag soll.
+
+**Nebeneffekt, der zählt:** Mit diesem Build wird **Sentry zum ersten Mal scharf** (Abschnitt 16 —
+das `production`-Profil trägt die DSN). Ab fremden Geräten will man das haben.
+
+### Entscheidung 20.08.2026: die Testware bleibt im Regal
+
+Zaurs Entscheidung für den TestFlight-Start. Die Empfehlung lautete anders (leeres Regal, damit die
+eigenen Angebote der fünf Verkäufer sichtbar sind) — sie ist getroffen, hier steht nur die Folge:
+
+**Auf allen 36 Testartikeln steht „Nachricht schreiben", nicht „Kaufen."** Der Kaufknopf hängt an
+`berkat_sellers.checkout_enabled`, und das Seed-Skript setzt es bewusst nicht (Abschnitt 33). Ein
+Tester sieht damit ein volles Regal, in dem nichts kaufbar ist.
+
+**Damit dreht sich Punkt 1 der Liste unten um: Der Kaufknopf wird durch diese Entscheidung
+wichtiger, nicht unwichtiger.** Wenn die Testware das Schaufenster ist, braucht mindestens ein
+Seed-Verkäufer eine Kassen-Freigabe.
+
+Vorbereitet als `supabase/_ops/kassen-freigabe-testware.sql` — **nicht ausgeführt**, das ist ein
+Schreibvorgang in die Produktions-DB und eine Freigabe-Entscheidung. Sie trifft **nur den
+gewerblichen** Testverkäufer: Die fünf privaten dürfen ohne Stripe Connect gar kein Geld über die
+Plattform bekommen (ZAG, Abschnitt 20), und der gewerbliche hat als einziger ein vollständiges
+Impressum. Danach stehen im Regal beide Zustände nebeneinander — sechs kaufbare Artikel, dreißig
+mit Kontaktweg. Das ist das richtige Produktverhalten, nicht ein halber Zustand.
+
+⚠️ **Vor dem Stripe-Echtbetrieb zurücknehmen.** Heute ist Testmodus, es fließt kein echtes Geld.
+Live geschaltet wären diese sechs Artikel **wirklich** kaufbar — für Ware, die es nicht gibt. Der
+Rückweg steht als Abschnitt 3 in derselben Datei.
 
 ### Danach, nach Nutzen sortiert
 
-1. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg. Er erscheint erst mit
-   `berkat_sellers.checkout_enabled`, und das ist eine bewusste Admin-Entscheidung mit einem
-   Schreibvorgang in die Produktions-DB.
+1. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg, und seit der
+   Testware-Entscheidung vom 20.08. der dringlichste Punkt der Liste. Das SQL liegt fertig in
+   `supabase/_ops/kassen-freigabe-testware.sql`; es fehlt nur die Freigabe. Danach ist der Kauf
+   endlich am fremden Artikel durchspielbar — der Punkt, der seit Abschnitt 26 offen ist.
 2. **Vorbereitetes einem neuen Termin zuordnen** — die Karte „Vorbereitet, ohne Termin" zeigt und
    verwirft, aber ordnet nicht zu. Braucht eine RPC (`UPDATE live_auctions.planned_for`), weil
    Schreibwege auf `live_auctions` alle über den Server laufen.
@@ -5982,12 +6115,15 @@ ungeprüft. Die Korb-Anzeige ist dabei die wichtigste, weil ihr Ergebnis eine Fr
 Keine Varianten (Abschnitt 41) · kein Account Health, kein „Watch to earn", keine abgekürzten
 Zahlen, kein Dunkelmodus (40) · keine Marken-Chips (41) · kein Push für Preisvorschläge (24).
 
-### Die Blocker — unverändert
+### Die Blocker — Nr. 1 hat sich am 20.08.2026 verschoben
 
-1. **Kein Store-Eintrag.** Nur Zaur kann TestFlight anstoßen.
+1. **Kein Build im Store.** Der ASC-Eintrag existiert („In Vorbereitung zur Übermittlung",
+   20.08.2026 gesehen) — es fehlt der Upload. ⚠️ **Davor liegt der nicht akzeptierte
+   Apple-Lizenzvertrag**, sonst scheitert `eas submit` nach dem Build. Beides nur Zaur.
 2. **Stripe:** Testbetrieb, Ratenzahlung ist aus. Vor dem Go-Live die Zahlungsmethoden noch einmal
    durchsehen.
-3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass.**
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass** — und er hängt an
+   Punkt 1: Man kann niemanden für eine App gewinnen, die er nicht installieren kann.
 
 ### Was diese Nacht gelehrt hat
 

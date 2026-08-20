@@ -55,12 +55,37 @@ export type BerkatNotificationType =
  * (`sessionId` statt `session_id`) — deshalb nimmt diese Funktion ein minimales
  * Objekt statt einer ganzen Zeile. Wer einen neuen Typ anlegt, ergänzt ihn
  * **hier**, und beide Wege haben ihn.
+ *
+ * ⚠️ **Nachtrag 20.08.2026: die Vereinheitlichung war zuerst zu grob.** Bei drei
+ * Typen unterschieden sich die beiden alten Fassungen nicht aus Versehen,
+ * sondern mit Grund: `auction_won`, `order_payment_reminder` und
+ * `order_shipped` führten aus einem PUSH auf `/notifications`, aus der Glocke
+ * dagegen ins Konto. Der Kommentar am gelöschten `routeFor` sagte auch warum —
+ * „wer den Push antippt, hat oft mehr als eine Meldung offen … direkt ins Konto
+ * zu springen ließ die Meldung selbst verschwinden", gefunden am 14.08.2026.
+ * Beim Zusammenlegen fielen alle drei in den `default`-Zweig, und diese
+ * Entscheidung war lautlos weg.
+ *
+ * Deshalb der zweite Parameter. Die Regel dahinter gilt für alle Typen:
+ *
+ * > **Eilig und mit eigenem Ziel** (laufende Auktion, zu packende Bestellung) →
+ * > direkt dorthin, egal woher der Tipp kam.
+ * > **Käufer-Sachen ohne Frist** → aus der Glocke ins Konto, aus einem Push in
+ * > die Liste. Aus der Liste heraus wäre die Liste kein Ziel, und von außen
+ * > kommend ist sie der Ort, an dem auch alles andere Offene steht.
+ *
+ * `from` hat bewusst **keine Voreinstellung** — dieselbe Vorsicht wie bei
+ * `CropShape` (HANDOFF 3): Nur die Aufrufstelle weiß, woher der Tipp kam, und
+ * eine Vorgabe würde die falsche Hälfte still bedienen.
  */
-export function notificationTarget(n: {
-  type: string | null | undefined;
-  sessionId?: string | null;
-  senderId?: string | null;
-}): string {
+export function notificationTarget(
+  n: {
+    type: string | null | undefined;
+    sessionId?: string | null;
+    senderId?: string | null;
+  },
+  from: 'push' | 'list',
+): string {
   switch (n.type) {
     // Der Verkäufer packt und trägt die Sendungsnummer ein. Bis zum 16.08.2026
     // führte das auf `/(tabs)/sell` — also an den Anfang eines Reiters, unter
@@ -78,8 +103,9 @@ export function notificationTarget(n: {
     case 'scheduled_live_reminder':
       return n.senderId ? `/seller/${n.senderId}` : '/(tabs)/';
     // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
+    // Siehe die Regel im Kopf: von außen in die Liste, aus der Liste ins Konto.
     default:
-      return '/(tabs)/account';
+      return from === 'push' ? '/notifications' : '/(tabs)/account';
   }
 }
 
