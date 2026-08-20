@@ -2799,13 +2799,30 @@ Im Simulator durchgegangen und von Zaur bestätigt:
 - **Drei Bildschirme hat noch niemand geöffnet:** `/order/[id]` (Bestell-Detail), `/shelf` (eigenes
   Regal) und `/rewards` (Einladungen).
 
-### Ein Ärgernis fürs Protokoll
+### ~~Ein Ärgernis fürs Protokoll~~ — die Beunruhigung war unbegründet (21.08.2026)
 
-`npx expo export` wählt den Einstiegspunkt **nicht deterministisch**: mal `index.ts`
+Hier stand: *„`npx expo export` wählt den Einstiegspunkt nicht deterministisch: mal `index.ts`
 (3938 Module), mal `expo-router/entry.js` (3671). Der Unterschied sind die ~270 Module des
-LiveKit-`registerGlobals`-Blocks, den nur `index.ts` lädt — und `index.ts` ist laut
-`package.json` der richtige Einstieg. Beide Läufe sind fehlerfrei, die Ursache ist ungeklärt.
-Ob `eas update` davon betroffen ist, wurde **nicht** geprüft.
+LiveKit-`registerGlobals`-Blocks, den nur `index.ts` lädt — und `index.ts` ist laut `package.json`
+der richtige Einstieg."*
+
+**Beide Hälften des Satzes sind falsch.** Am 21.08.2026 beim Store-Build nachgesehen:
+
+- `package.json` nennt als `main` **`expo-router/entry`**, nicht `index.ts`.
+- **`index.ts` existiert gar nicht.** Es gibt keinen zweiten Einstieg, also auch keine
+  Nichtdeterminiertheit.
+- Der LiveKit-Block hängt nicht an einem Einstiegspunkt, sondern an `app/_layout.tsx`: Zeile 14
+  importiert `../lib/report`, Zeile 15 `../lib/livekit`, und `lib/livekit.ts` setzt den
+  `DOMException`-Ersatz (Zeile 16–23) vor `registerGlobals()` (Zeile 32–33). Genau die
+  Reihenfolge, die Abschnitt 16 verlangt.
+
+Gegengeprüft am fertigen Produktions-Bündel: `DOMException` kommt elfmal darin vor,
+`registerGlobals` viermal. **Es war nie etwas verloren.**
+
+> **Die Lehre:** Eine offene Frage im Übergabedokument („Ursache ungeklärt") altert schlechter als
+> ein Fehler — sie sieht Jahre später noch nach einem Risiko aus, das jemand prüfen müsste. Diese
+> hier hat mich am 21.08. einen Absatz Beunruhigung gekostet, bevor drei Befehle sie erledigten.
+> **Wer eine Frage offen lässt, schreibt dazu, womit man sie beantwortet.**
 
 ---
 
