@@ -33,6 +33,56 @@ export type BerkatNotificationType =
    */
   | 'auction_up';
 
+/**
+ * Wohin ein Antippen führt — für die LISTE und für den PUSH.
+ *
+ * ⚠️ DIESE FUNKTION GIBT ES, WEIL ES SIE ZWEIMAL GAB.
+ * Am 19.08.2026 im Zwei-Konten-Durchlauf gefunden: Der Push „🔨 Dein Artikel
+ * ist dran" kam an, und ein Tipp darauf öffnete **nichts**. Aus der Glocke
+ * heraus funktionierte derselbe Weg.
+ *
+ * Die Ursache waren zwei Wahrheiten über dasselbe Ziel. `app/notifications.tsx`
+ * pflegte ein `targetFor` mit acht Fällen — inklusive „direkt in den Raum" —,
+ * während `routeFor` in `usePush.ts` seit dem 14.08. drei Typen kannte und für
+ * alles andere `null` lieferte. `null` heißt: kein `router.push`, also öffnet
+ * der Tipp nur die App. Betroffen waren `auction_up`, `order_paid`, `new_order`,
+ * `scheduled_live_reminder`, `live` und `order_review` — die halbe Liste.
+ *
+ * Am teuersten bei `auction_up`: Die Meldung hat eine Halbwertszeit von
+ * Sekunden, und der ganze Zweck war, den Umweg über eine Übersicht zu sparen.
+ *
+ * Der Push liefert seine Felder in einer anderen Schreibweise als die Tabelle
+ * (`sessionId` statt `session_id`) — deshalb nimmt diese Funktion ein minimales
+ * Objekt statt einer ganzen Zeile. Wer einen neuen Typ anlegt, ergänzt ihn
+ * **hier**, und beide Wege haben ihn.
+ */
+export function notificationTarget(n: {
+  type: string | null | undefined;
+  sessionId?: string | null;
+  senderId?: string | null;
+}): string {
+  switch (n.type) {
+    // Der Verkäufer packt und trägt die Sendungsnummer ein. Bis zum 16.08.2026
+    // führte das auf `/(tabs)/sell` — also an den Anfang eines Reiters, unter
+    // dem die Bestellungen ganz unten lagen.
+    case 'order_paid':
+    case 'new_order':
+      return '/orders';
+    // Der Artikel läuft JETZT. Jeder Zwischenschritt kostet Sekunden, die es
+    // bei einer Zwanzig-Sekunden-Auktion nicht gibt.
+    case 'auction_up':
+    case 'live':
+      return n.sessionId ? `/live/${n.sessionId}` : '/(tabs)/';
+    // Zur Erinnerung an einen Termin gibt es noch keine Show — der einzige
+    // sinnvolle Ort ist der Verkäufer, der ihn angekündigt hat.
+    case 'scheduled_live_reminder':
+      return n.senderId ? `/seller/${n.senderId}` : '/(tabs)/';
+    // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
+    default:
+      return '/(tabs)/account';
+  }
+}
+
 export type BerkatNotification = {
   id: string;
   type: string;

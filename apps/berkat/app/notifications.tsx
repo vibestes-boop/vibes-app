@@ -34,6 +34,7 @@ import {
 import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import {
+  notificationTarget,
   useBerkatNotifications,
   useMarkAllRead,
   useUnreadCount,
@@ -85,51 +86,19 @@ function whenLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 }
 
-/**
- * Wohin ein Antippen führt.
- *
- * Bis zum 16.08.2026 landete **jede** Meldung im Konto. Das stimmte, solange es
- * nur die drei Käufer-Ereignisse gab — inzwischen bekommt auch der VERKÄUFER
- * Meldungen, und „Bezahlt — bitte packen" schickte ihn in den Käufer-Bereich,
- * wo es kein Feld für die Sendungsnummer gibt. Genau so gemeldet.
- *
- * Regel: Das Ziel ist der Ort, an dem man das TUN kann, was die Meldung sagt.
- */
-function targetFor(item: BerkatNotification): string {
-  switch (item.type) {
-    // Der Verkäufer packt und trägt die Sendungsnummer ein.
-    //
-    // Bis zum 16.08.2026 führte das auf `/(tabs)/sell` — also an den Anfang
-    // eines Reiters, unter dem die Bestellungen ganz unten lagen, hinter zwei
-    // Formularen und dem Regal. Man landete im Show-Formular und musste
-    // scrollen. Jetzt trifft die Meldung den Ort, an dem die Handlung
-    // stattfindet — genau das verlangt die Regel über dieser Funktion.
-    case 'order_paid':
-    case 'new_order':
-      return '/orders';
-    // Der Artikel läuft JETZT. Jeder Zwischenschritt kostet Sekunden, die es
-    // bei einer Zwanzig-Sekunden-Auktion nicht gibt — deshalb direkt in den
-    // Raum, nicht auf ein Profil oder eine Liste.
-    case 'auction_up':
-    case 'live':
-      return item.session_id ? `/live/${item.session_id}` : '/(tabs)/';
-    // Zur Erinnerung an einen Termin gibt es noch keine Show — der einzige
-    // sinnvolle Ort ist der Verkäufer, der ihn angekündigt hat.
-    case 'scheduled_live_reminder':
-      return item.sender_id ? `/seller/${item.sender_id}` : '/(tabs)/';
-    // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
-    default:
-      return '/(tabs)/account';
-  }
-}
-
 function Row({ item }: { item: BerkatNotification }) {
   const { Icon, title, tint } = present(item.type);
 
   return (
     <Pressable
       style={[styles.row, !item.read && styles.rowUnread]}
-      onPress={() => router.push(targetFor(item) as never)}
+      onPress={() => router.push(
+          notificationTarget({
+            type: item.type,
+            sessionId: item.session_id,
+            senderId: item.sender_id,
+          }) as never,
+        )}
     >
       <View style={[styles.iconWrap, { backgroundColor: `${tint}22` }]}>
         <Icon size={19} color={tint} />

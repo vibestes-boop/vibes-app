@@ -5821,3 +5821,180 @@ geprüft, Rümpfe verglichen, Bildschirme gesehen. Was fehlt, ist ein zweiter Me
 Die Testware hat das an vier Stellen gelöst, weil sie fremde **Angebote** erzeugt. Für alles, was
 eine fremde **Handlung** braucht — Gebot, Vormerkung, Kauf, Push — löst sie es nicht. Das Verhältnis
 kippt seit drei Tagen: Es wird schneller gebaut als geprüft.
+
+---
+
+## 53. Der Zwei-Konten-Durchlauf — fünf Belege und drei Funde (19.08.2026, Abend)
+
+Der Punkt, der seit Abschnitt 26 offen war. Zaur auf dem iPhone als `zaur` (Käufer), ich im
+Simulator als `berkattest` (Verkäufer). **Die Rollenverteilung ist nicht beliebig:** Push gibt es nur
+auf einem echten Gerät (`Device.isDevice`), und fast alles Offene endet in einer Meldung an den
+Käufer — genau die Umkehrung, die Abschnitt 9 verlangt.
+
+Aufbau: Termin „in 1 Std", drei vorbereitete Artikel (1 €, 5 €, 1 €). Der mittlere bekam ein
+Vorabgebot über 20 €, der erste eine Vormerkung.
+
+### Was damit belegt ist
+
+| | Beleg |
+|---|---|
+| **Vorabgebot vor der Show** | `set_max_bid` auf einen Artikel ohne Session nimmt an; Zurückziehen und neu Setzen laufen |
+| **Vormerkung an fremdem Artikel** | Glocke schreibt, obwohl es ein fremder vorbereiteter Artikel ist — die INSERT-Policy greift wie gebaut |
+| **Die zwei Zahlen beim Verkäufer** | „1 warten" am einen, „1 Vorabgebot" am anderen, **artikelgenau**; der dritte blieb leer |
+| **Übernahme beim Live-Gehen** | Nach „Show starten" lagen alle **drei** ohne Zutun in der Warteschlange, die Terminzeile sagte nicht mehr „bereit" |
+| **Fan-out + Push aufs echte Gerät** | **„🔨 Dein Artikel ist dran · Rassig Holy 99 · ab 1.00 €"** kam auf dem iPhone an |
+| **Auflösung des Vorabgebots beim Start** | Eine Sekunde nach dem Start stand da: **„zaur hat das Höchstgebot!" · 5 €** — ohne dass der Käufer etwas getan hat |
+
+Der Endstand aus der Datenbank, und er ist der sauberste Teil:
+
+```
+Rassig Holy 99       unsold   ab 1€ → —    Gebote:0   Dauer:30s
+Kupferner Kanne      sold     ab 5€ → 5€   Gebote:1   Dauer:30s   ← das Vorabgebot
+Gebetszeiten Silber  sold     ab 1€ → 1€   Gebote:1   Dauer:30s
+```
+
+**Genau ein Gebot** bei der Kanne, erzeugt vom Server, zum Startpreis — die geschlossene Form von
+`resolve_auto_bids`, ausgelöst durch `start_live_auction`. Das ist Stufe B, vollständig.
+
+⚠️ **Anti-Snipe hat nicht ausgelöst** — alle drei liefen exakt 30 Sekunden. Kein Fehler, nur ein
+Test, der nicht scharf wurde; belegt ist er seit Abschnitt 19.
+
+### ⚠️ Fund 1: Der Tipp auf einen Push öffnete nichts
+
+Zaurs Satz: *„ich habe da drauf geklickt und es hat nichts geöffnet, dann habe ich in der Glocke
+darauf geklickt und dann öffnete es sich."*
+
+Zwei Wahrheiten über dasselbe Ziel:
+
+| | |
+|---|---|
+| `targetFor` in `app/notifications.tsx` | **acht** Fälle, inklusive „direkt in den Raum" |
+| `routeFor` in `lib/usePush.ts` | **drei** Fälle, sonst `null` — und `null` heißt: kein `router.push` |
+
+Betroffen waren `auction_up`, `order_paid`, `new_order`, `scheduled_live_reminder`, `live` und
+`order_review` — die halbe Liste. Am teuersten bei `auction_up`: Die Meldung hat eine Halbwertszeit
+von Sekunden, und der ganze Zweck war, den Umweg über eine Übersicht zu sparen.
+
+**Behoben:** `notificationTarget()` liegt jetzt in `lib/useNotifications.ts`, beide Wege rufen sie.
+Wer einen Typ anlegt, ergänzt ihn **dort** — und Liste wie Push haben ihn.
+
+> **Merksatz:** Kein Test hätte das gefunden, kein `grep`, kein `tsc`. Nur ein Mensch, der auf eine
+> echte Meldung tippt.
+
+### ⚠️ Fund 2: Zwei Sammelkörbe, die aussahen wie ein Fehler
+
+Zaurs Beobachtung: *„die stehen getrennt, kein Hinweis dass es ein Korb ist und Gesamtkosten."*
+Zwei Körbe desselben Verkäufers, gleich aussehend, jeder mit eigenem goldenem Bezahlknopf und
+eigenem „zzgl. Versand ab 4,90 €" — in einer App, deren Hauptversprechen der Sammelkorb ist.
+
+**Beide Körbe waren richtig.** Der Teil-Index `auction_carts_one_open` lässt pro
+Käufer/Verkäufer-Paar nur EINEN offenen Korb zu; einer der beiden war also `checkout_pending` —
+eingefroren, weil er zur Kasse getragen wurde (der Geldfehler-Fix vom 14.08., Abschnitt 4).
+
+**Nur sah man das nicht.** `useMyCarts` in `app/(tabs)/account.tsx` selektierte
+`id, seller_id, closes_at` — **ohne `status`**. Der Bildschirm konnte die zwei Zustände gar nicht
+unterscheiden. Wieder die Klasse aus Abschnitt 3: Die Spalte war da, die Abfrage holte sie nicht.
+
+Behoben: `status` wird geholt, der eingefrorene Korb trägt den Satz „Zum Bezahlen vorgemerkt —
+dieses Paket nimmt nichts mehr auf. Was du danach gewinnst, kommt in ein neues, mit eigenem
+Versand", und sein Knopf heißt **„Bezahlen fortsetzen · 5 €"**.
+
+### Fund 3: die Regel, die nur an einer Stelle galt — und die Entscheidung dazu
+
+Der Hinweis macht es ehrlich, aber nicht billiger: **Ein abgebrochener Bezahlvorgang zerschneidet
+den Sammelkorb endgültig**, und der Käufer zahlt zweimal Versand.
+
+⚠️ **„Bezahlung abbrechen" wurde bewusst NICHT gebaut.** Zu einem eingefrorenen Korb gehört eine
+Stripe-Sitzung, die 24 Stunden gültig bleibt. Ein Auftauen ohne `sessions.expire` in der Edge
+Function **und** eine Härtung im Webhook erlaubt eine Zahlung auf eine stornierte Bestellung — drei
+Geldweg-Flächen für einen Fall, der heute keinen echten Nutzer trifft. Wer das später baut, braucht
+alle drei.
+
+Gebaut wurde stattdessen das, wozu dieses Dokument sich längst durchgedacht hatte:
+
+> **Abschnitt 11:** *„Warum es KEINEN Bezahl-Knopf neben der laufenden Auktion gibt … wer mitten in
+> der Show bezahlt, zahlt beim nächsten Gewinn ein zweites Mal Versand."*
+
+Die Begründung stand da — die Regel war aber **nur im Live-Raum** umgesetzt. Der Konto-Reiter hat
+den Knopf trotzdem, einen Tab entfernt, und genau dort ist Zaur hineingelaufen. Jetzt fragt die App
+nach, **solange der Verkäufer sendet**: „Der Verkäufer sendet noch — wenn du jetzt bezahlst, ist
+dieses Paket zu." mit „Warten" / „Trotzdem bezahlen".
+
+Kein Riegel, nur eine sichtbare Entscheidung — dieselbe Linie wie beim Verwerfen eines vorbereiteten
+Artikels. Ein bereits eingefrorener Korb fragt nicht noch einmal: Dort ist der Schaden eingetreten,
+und eine Warnung wäre nur ein Vorwurf.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build.
+
+⚠️ **Die drei Reparaturen sind NICHT am Gerät geprüft.** Alle drei brauchen den Käufer-Zustand, und
+der liegt auf Zaurs iPhone:
+
+1. **Push-Tap** braucht einen frischen Push nach einem Neuladen des Bündels
+2. **Korb-Anzeige** braucht einen Blick ins Konto nach dem Neuladen — er beantwortet zugleich, ob
+   der eine Korb wirklich `checkout_pending` ist. Steht der Hinweis an keinem der beiden, sind
+   **beide offen**, der Teil-Index hat nicht gegriffen, und dann ist es ein echter Fehler im
+   Sammelkorb selbst
+3. **Die Rückfrage** feuert nur, solange der Verkäufer sendet — sie braucht eine laufende Show
+
+---
+
+## 54. Anschlusspunkt für den nächsten Chat (Stand 19.08.2026, Nacht)
+
+**Hier anfangen.** Löst Abschnitt 46 ab.
+
+### Der Zustand
+
+| | |
+|---|---|
+| Migrationen | **41, alle eingespielt**, keine Lücke |
+| `tsc` / `expo export` | fehlerfrei |
+| Build nötig? | nein — die ganze Runde lief über Metro |
+| Regal | 38 Artikel, sechs Verkäufer — **Testware**, `scripts/seed-berkat-shop.mjs --remove` |
+| Offen bei `zaur` | zwei Sammelkörbe (5 € + 1 €), laufen in 24 h von selbst ab |
+
+### Das Erste, was zu tun ist
+
+**Die drei Reparaturen aus Abschnitt 53 am Gerät prüfen.** Sie sind gebaut, typgeprüft und
+ungeprüft. Die Korb-Anzeige ist dabei die wichtigste, weil ihr Ergebnis eine Frage beantwortet:
+
+> Steht der Hinweis „Zum Bezahlen vorgemerkt" an einem der beiden Körbe? Wenn an **keinem** — dann
+> sind beide offen, der Teil-Index `auction_carts_one_open` hat nicht gegriffen, und das ist ein
+> echter Fehler im Sammelkorb. Dem sofort nachgehen.
+
+### Danach, nach Nutzen sortiert
+
+1. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg. Er erscheint erst mit
+   `berkat_sellers.checkout_enabled`, und das ist eine bewusste Admin-Entscheidung mit einem
+   Schreibvorgang in die Produktions-DB.
+2. **Vorbereitetes einem neuen Termin zuordnen** — die Karte „Vorbereitet, ohne Termin" zeigt und
+   verwirft, aber ordnet nicht zu. Braucht eine RPC (`UPDATE live_auctions.planned_for`), weil
+   Schreibwege auf `live_auctions` alle über den Server laufen.
+3. **„Bezahlung abbrechen"** am eingefrorenen Korb — die vollständige Antwort auf Fund 3. Braucht
+   RPC **+** `sessions.expire` in `create-checkout-session` **+** Webhook-Härtung. Nicht weniger.
+4. **Live-Raum gegen Whatnots App halten** (Vollbild, Chat ohne Kasten) — braucht ohnehin eine Show.
+5. **Kleinkram:** „Entwurf speichern" beim Einstellen · Anti-Snipe-Zeit wählbar · Bilder umsortieren
+   (bräuchte `react-native-gesture-handler` → Build) · zwölf freigestellte Kategorie-Fotos.
+
+### Nicht neu diskutieren
+
+Keine Varianten (Abschnitt 41) · kein Account Health, kein „Watch to earn", keine abgekürzten
+Zahlen, kein Dunkelmodus (40) · keine Marken-Chips (41) · kein Push für Preisvorschläge (24).
+
+### Die Blocker — unverändert
+
+1. **Kein Store-Eintrag.** Nur Zaur kann TestFlight anstoßen.
+2. **Stripe:** Testbetrieb, Ratenzahlung ist aus. Vor dem Go-Live die Zahlungsmethoden noch einmal
+   durchsehen.
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass.**
+
+### Was diese Nacht gelehrt hat
+
+Drei Fehler in einer Stunde, und **keinen davon** hätte ein Werkzeug gefunden. Kein `tsc`, kein
+`grep`, kein Schema-Abzug, keine Analyse über 28.000 Zeilen. Gefunden hat sie ein Mensch, der auf
+eine Meldung tippte und in sein Konto schaute.
+
+> Die Gesamtanalyse in Abschnitt 52 hat fünf tote Exporte gefunden und bestätigt, dass die Substanz
+> hält. Ein Durchlauf zu zweit hat in derselben Zeit drei Fehler gefunden, die Nutzer treffen.
+> **Wer wählen muss, prüft mit Menschen, nicht mit Skripten.**

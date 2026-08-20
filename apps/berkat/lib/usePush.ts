@@ -27,6 +27,7 @@ import { router } from 'expo-router';
 
 import { supabase } from './supabase';
 import { useSession } from './session';
+import { notificationTarget } from './useNotifications';
 
 // Expo Go hat die nativen Module nicht. Ein statischer Import würde die App
 // schon beim Laden der Datei töten, lange bevor irgendetwas mit Push passiert.
@@ -56,20 +57,6 @@ if (Notifications) {
 }
 
 /** Wohin führt ein Tipp auf die Meldung? */
-function routeFor(type: unknown): string | null {
-  switch (type) {
-    // In die Liste, nicht direkt ins Konto. Wer den Push antippt, hat oft mehr
-    // als eine Meldung offen — und aus der Liste führt jede Zeile weiter ins
-    // Konto. Direkt dorthin zu springen ließ die Meldung selbst verschwinden;
-    // genau das fiel beim ersten Durchlauf am 14.08.2026 auf.
-    case 'auction_won':
-    case 'order_payment_reminder':
-    case 'order_shipped':
-      return '/notifications';
-    default:
-      return null;
-  }
-}
 
 /**
  * Registriert das Gerät und verkabelt das Antippen. Einmal im Wurzel-Layout
@@ -154,8 +141,22 @@ export function usePushRegistration(): void {
     if (!Notifications) return;
 
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const target = routeFor(response.notification.request.content.data?.type);
-      if (target) router.push(target as never);
+      // ⚠️ Die Zielbestimmung liegt in `useNotifications.ts` — GEMEINSAM mit der
+      // Meldungsliste. Hier stand bis zum 19.08.2026 eine eigene Fassung, die
+      // drei von acht Typen kannte und für den Rest `null` lieferte: Der Tipp
+      // auf einen Push öffnete dann nur die App. Am Gerät gefunden, nicht im
+      // Code — siehe den Kopf von `notificationTarget`.
+      const data = response.notification.request.content.data as
+        | { type?: string; sessionId?: string | null; senderId?: string | null }
+        | undefined;
+      if (!data?.type) return;
+      router.push(
+        notificationTarget({
+          type: data.type,
+          sessionId: data.sessionId,
+          senderId: data.senderId,
+        }) as never,
+      );
     });
 
     return () => sub.remove();

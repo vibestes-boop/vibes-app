@@ -3,7 +3,15 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronRight,
@@ -39,10 +47,60 @@ type OpenCart = {
   id: string;
   seller_id: string;
   closes_at: string;
+  /**
+   * `open` sammelt weiter, `checkout_pending` ist eingefroren.
+   *
+   * ⚠️ Der Unterschied ist für den Käufer teuer, nicht kosmetisch: Ein
+   * eingefrorener Korb nimmt NICHTS mehr auf (`checkout_auction_cart`,
+   * HANDOFF 4). Was danach gewonnen wird, landet in einem neuen Paket — mit
+   * eigenem Versand. Wer das nicht sieht, hält zwei Körbe für einen Fehler
+   * und zahlt zweimal 4,90 €.
+   */
+  status: string;
   itemCount: number;
   totalCents: number;
   items: CartItem[];
 };
+
+/**
+ * Welche dieser Verkäufer senden GERADE.
+ *
+ * ⚠️ Die Frage klingt nach Kosmetik und ist die teuerste auf diesem Bildschirm.
+ * `checkout_auction_cart` friert den Korb ein (HANDOFF 4) — wer bezahlt,
+ * während der Verkäufer noch sendet, bekommt jeden weiteren Zuschlag in ein
+ * NEUES Paket und zahlt ein zweites Mal Versand. Genau das ist am 19.08.2026
+ * im Zwei-Konten-Durchlauf passiert.
+ *
+ * HANDOFF 11 hat diese Regel längst aufgeschrieben — als Begründung dafür,
+ * dass es im Live-Raum keinen Bezahlknopf gibt. Nur steht hier einer, einen
+ * Reiter entfernt, und die Regel wurde nie mitgezogen.
+ *
+ * Eine Abfrage für alle Verkäufer auf einmal; ohne Körbe läuft sie nicht.
+ */
+function useLiveSellers(sellerIds: string[]) {
+  const key = [...new Set(sellerIds)].sort().join(',');
+  return useQuery({
+    queryKey: ['berkat', 'carts-live-sellers', key],
+    enabled: key.length > 0,
+    staleTime: 20_000,
+    // Eine Show kann während des Hinschauens enden — dann soll die Warnung weg.
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await supabase
+        .from('live_sessions')
+        .select('host_id')
+        .in('host_id', key.split(','))
+        .eq('app', 'berkat')
+        .eq('status', 'active');
+      if (error) {
+        // Fehlt die Auskunft, warnen wir lieber nicht, als falsch zu warnen.
+        if (__DEV__) console.warn('[Berkat] Live-Verkäufer:', error.message);
+        return new Set();
+      }
+      return new Set(((data ?? []) as { host_id: string }[]).map((r) => r.host_id));
+    },
+  });
+}
 
 /** Offene Sammelkörbe des Käufers — je Verkäufer einer, jeder wird ein Paket. */
 function useMyCarts(userId: string | null) {
@@ -57,7 +115,14 @@ function useMyCarts(userId: string | null) {
     queryFn: async (): Promise<OpenCart[]> => {
       const { data: carts, error } = await supabase
         .from('auction_carts')
-        .select('id, seller_id, closes_at')
+        // ⚠️ `status` MUSS mit. Bis zum 19.08.2026 fehlte er, und damit konnte
+        // der Bildschirm einen offenen Korb nicht von einem eingefrorenen
+        // unterscheiden — beide sahen identisch aus, mit eigenem Bezahlknopf
+        // und eigenem „zzgl. Versand". Am Gerät gemeldet: „die stehen
+        // getrennt, kein Hinweis dass es ein Korb ist". Genau die
+        // Fehlerklasse aus HANDOFF 3: Die Spalte war da, die Abfrage holte
+        // sie nicht.
+        .select('id, seller_id, closes_at, status')
         .eq('buyer_id', userId!)
         // `checkout_pending` gehört dazu: Der Korb ist eingefroren, weil er
         // schon zur Kasse getragen wurde — die Zahlung steht aber noch aus.
@@ -66,7 +131,12 @@ function useMyCarts(userId: string | null) {
         .order('closes_at', { ascending: true });
       if (error) throw error;
 
-      const rows = (carts ?? []) as { id: string; seller_id: string; closes_at: string }[];
+      const rows = (carts ?? []) as {
+        id: string;
+        seller_id: string;
+        closes_at: string;
+        status: string;
+      }[];
       if (rows.length === 0) return [];
 
       const { data: won, error: wonError } = await supabase
@@ -111,6 +181,7 @@ export default function AccountScreen() {
   const { serverNow } = useServerClock();
 
   const { data: carts = [], refetch: refetchCarts } = useMyCarts(myUserId);
+  const { data: liveSellers } = useLiveSellers(carts.map((c) => c.seller_id));
   const { data: orders = [], refetch: refetchOrders } = useMyOrders(myUserId);
   const { data: unreadMessages = 0, refetch: refetchUnread } = useUnreadMessageCount(myUserId);
   const { data: rewards, refetch: refetchRewards } = useMyRewards(myUserId);
@@ -148,12 +219,47 @@ export default function AccountScreen() {
   const [payingId, setPayingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const pay = async (cartId: string) => {
+  const startCheckout = async (cartId: string) => {
     setPayingId(cartId);
     setNotice(null);
     const result = await checkout(cartId);
     setPayingId(null);
     if (!result.ok) setNotice(result.message);
+  };
+
+  /**
+   * ⚠️ Rückfrage, solange der Verkäufer sendet.
+   *
+   * Bezahlen friert den Korb ein — jeder weitere Zuschlag landet dann in einem
+   * NEUEN Paket, mit eigenem Versand. Solange die Show läuft, ist genau das der
+   * wahrscheinliche Fall, und der Käufer kann es nicht wissen.
+   *
+   * Kein Riegel, nur eine Frage: Wer wirklich jetzt zahlen will (etwa weil er
+   * gleich weg muss), darf das. Die teure Entscheidung wird nur sichtbar
+   * gemacht, nicht verboten — dieselbe Linie wie beim Verwerfen eines
+   * vorbereiteten Artikels.
+   *
+   * Ein bereits eingefrorener Korb fragt NICHT noch einmal: Dort ist der Schaden
+   * schon eingetreten, und eine Warnung wäre nur noch ein Vorwurf.
+   */
+  const pay = async (cartId: string) => {
+    const cart = carts.find((c) => c.id === cartId);
+    const sellerLive = cart ? liveSellers?.has(cart.seller_id) : false;
+
+    if (!cart || cart.status !== 'open' || !sellerLive) {
+      await startCheckout(cartId);
+      return;
+    }
+
+    Alert.alert(
+      'Der Verkäufer sendet noch',
+      'Wenn du jetzt bezahlst, ist dieses Paket zu. Alles, was du danach in der Show '
+        + 'gewinnst, kommt in ein neues — mit eigenem Versand.',
+      [
+        { text: 'Warten', style: 'cancel' },
+        { text: 'Trotzdem bezahlen', onPress: () => void startCheckout(cartId) },
+      ],
+    );
   };
 
   if (!myUserId) {
@@ -318,6 +424,24 @@ export default function AccountScreen() {
               {formatCartWindow(cart.closes_at, serverNow)}
             </Text>
 
+            {/* ⚠️ Der eingefrorene Korb muss sich erklären.
+                Am 19.08.2026 am Gerät gemeldet: Zwei Körbe desselben
+                Verkäufers standen untereinander, gleich aussehend, jeder mit
+                eigenem Bezahlknopf und eigenem „zzgl. Versand" — „kein Hinweis,
+                dass es ein Korb ist".
+
+                Beide Körbe waren richtig: Der erste war zur Kasse getragen und
+                damit eingefroren (`checkout_pending`, HANDOFF 4), der zweite
+                nahm den nächsten Zuschlag auf. Nur SAH man das nicht. Und die
+                Folge ist teuer, nicht kosmetisch — zwei Pakete heißt zweimal
+                Versand. Wer das nicht weiß, hält es für einen Fehler. */}
+            {cart.status === 'checkout_pending' ? (
+              <Text style={styles.cartFrozen}>
+                Zum Bezahlen vorgemerkt — dieses Paket nimmt nichts mehr auf. Was du danach
+                gewinnst, kommt in ein neues, mit eigenem Versand.
+              </Text>
+            ) : null}
+
             {/* Was drin liegt, als Bilderreihe. Ein offenes Paket war vorher
                 nur eine Zahl — man sah nicht, wofür man gleich bezahlt. */}
             {cart.items.length > 0 ? (
@@ -349,13 +473,19 @@ export default function AccountScreen() {
               disabled={payingId !== null}
               onPress={() => void pay(cart.id)}
               accessibilityRole="button"
-              accessibilityLabel={`${formatEuro(cart.totalCents)} bezahlen`}
+              accessibilityLabel={
+                cart.status === 'checkout_pending'
+                  ? `Bezahlen fortsetzen, ${formatEuro(cart.totalCents)}`
+                  : `${formatEuro(cart.totalCents)} bezahlen`
+              }
             >
               {payingId === cart.id ? (
                 <ActivityIndicator color={ui.goldInk} />
               ) : (
                 <Text style={styles.payButtonText}>
-                  {formatEuro(cart.totalCents)} bezahlen
+                  {cart.status === 'checkout_pending'
+                    ? `Bezahlen fortsetzen · ${formatEuro(cart.totalCents)}`
+                    : `${formatEuro(cart.totalCents)} bezahlen`}
                 </Text>
               )}
             </Pressable>
@@ -574,6 +704,9 @@ const styles = StyleSheet.create({
   cartMore: { backgroundColor: ui.lineStrong },
   cartMoreText: { fontSize: 12, fontWeight: '700', color: ui.card },
   cardTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: ui.text },
+  // Rot wäre falsch — es ist kein Fehler, sondern eine Folge. Gedämpft, aber
+  // nicht überlesbar: Sie erklärt einen zweiten Versandposten.
+  cartFrozen: { fontSize: 12, color: ui.textMuted, marginTop: space.sm, lineHeight: 17 },
   cartTotal: { fontSize: 16, fontWeight: '700', color: ui.text },
 
   orderStatus: { fontSize: 13, fontWeight: '600', color: ui.success },
