@@ -582,6 +582,60 @@ Nachladen aus, während der Nutzer schon dasitzt?"** Gibt es darauf keine Antwor
 Der Aktualisierungs-Kreisel springt sonst bei jedem Hintergrund-Abruf an. Für Ziehen-zum-Aktualisieren
 immer einen eigenen `pulling`-Zustand nehmen.
 
+### Sentry reißt den Store-Build ab — in einer Phase, die nach JavaScript aussieht
+
+Am 21.08.2026 beim allerersten `production`-Build zugeschlagen. Meldung:
+
+```
+🍏 iOS build failed:
+Unknown error. See logs of the Bundle JavaScript build phase for more information.
+```
+
+**Die Meldung zeigt in die falsche Richtung.** Am JavaScript lag es nicht — derselbe Bundler läuft
+lokal fehlerfrei durch:
+
+```bash
+NODE_ENV=production npx expo export:embed --platform ios --dev false \
+  --bundle-output /tmp/main.jsbundle --assets-dest /tmp/assets
+```
+
+3697 Module, keine Fehler. Der erste Hinweis stand als Warnung mitten im Ausgabestrom:
+`[@sentry/react-native/expo] Missing config for organization, project.`
+
+Ursache: Das Sentry-Plugin **schreibt die Xcode-Phase um**, die den Bundler ausführt
+(`plugin/build/withSentryIOS.js:42`, greift sich `Bundle React Native code and images`, und `:72`
+ersetzt deren Shell-Skript). Fehlen Organisation, Projekt und Auth-Token, kommt `sentry-cli` nicht
+durch — und `scripts/sentry-xcode.sh:58` setzt dann **`exitCode=1`**. Der Build stirbt am
+Quellkarten-Upload, gemeldet als Bündelungsfehler.
+
+**Der Zeitstempel war der schnellste Hinweis:** gestartet 00:09:31, gescheitert 00:10:40 — **69
+Sekunden**. Ein Build, der WebRTC kompiliert, braucht zwanzig Minuten. Was in einer Minute stirbt,
+ist nie am Kompilieren gescheitert. `eas build:view <id>` zeigt beide Zeiten.
+
+**Warum der Vergleich mit Serlo zuerst in die Irre führte:** Serlo baut aus demselben Stack
+erfolgreich und hat dieselbe DSN in der `eas.json` — aber **`@sentry/react-native` steht nicht in
+seiner `plugins`-Liste**. Berkat ist die einzige der beiden Apps mit dem Config-Plugin. Zwei Apps
+zu vergleichen trägt nur so weit, wie ihre Konfiguration wirklich gleich ist; hier war die
+entscheidende Zeile die, die fehlte.
+
+Behoben mit einer Zeile in `eas.json`, in `preview` **und** `production`:
+
+```json
+"SENTRY_DISABLE_AUTO_UPLOAD": "true"
+```
+
+`sentry-xcode.sh:64` überspringt damit den Upload und ruft den normalen Bundler
+(`$REACT_NATIVE_XCODE`) auf. **Was dabei NICHT verlorengeht:** die Fehlerüberwachung selbst. Das
+native Modul wird über die `package.json` verlinkt, `Sentry.init()` läuft, und der eigentliche Wert
+nach Abschnitt 16 — die **abgefangenen** Fehler aus `reportProblem()` mit Status, Code und
+Begründung — kommt unverändert an. Verloren geht nur die Entminifizierung der Stapel: Ohne
+Quellkarten stehen dort verkürzte Namen.
+
+⚠️ **Zurückdrehen, sobald es einen Sentry-Zugang gibt** (Abschnitt 16 nennt genau den als fehlend).
+Dann `organization` und `project` in die Plugin-Konfiguration, `SENTRY_AUTH_TOKEN` als
+EAS-Geheimnis (`eas secret:create`), und diese Zeile wieder raus. Ein Auth-Token gehört **nie** in
+die `eas.json` — das Repo ist öffentlich.
+
 ### npm bricht ohne `legacy-peer-deps` ab
 
 Expo SDK 54 pinnt `react@19.1.0`, `react-dom@19.2.8` kommt transitiv herein und verlangt
