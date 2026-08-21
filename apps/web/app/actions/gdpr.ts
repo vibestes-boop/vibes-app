@@ -16,10 +16,26 @@ import { createClient } from '@/lib/supabase/server';
 //
 //  `deleteMyAccount(confirmation)` → Ruft `public.delete_own_account()` RPC auf.
 //                             RPC ist `SECURITY DEFINER`, Gate: `auth.uid()`.
-//                             Löscht `auth.users` → Cascade auf `profiles`,
-//                             `posts`, `follows`, `likes`, etc. (FK ON DELETE
-//                             CASCADE). Bestätigungs-String muss „ACCOUNT
-//                             LÖSCHEN" sein — Tipp-Friktion gegen Misklicks.
+//                             Bestätigungs-String muss „ACCOUNT LÖSCHEN" sein —
+//                             Tipp-Friktion gegen Misklicks.
+//
+//  ⚠️ KORRIGIERT 21.08.2026. Hier stand: „Löscht `auth.users` → Cascade auf
+//  `profiles`, `posts`, `follows`, `likes`, etc." Das beschrieb das damalige
+//  Verhalten korrekt — und genau das war der Fehler. Die Cascade-Kette reichte
+//  über `profiles` bis zu `product_orders` (buyer UND seller), `berkat_tips`
+//  und `coin_purchases`. Löschte ein KÄUFER sein Konto, verschwand damit der
+//  Verkaufsbeleg des VERKÄUFERS: fremde Daten, und dazu aufbewahrungspflichtig
+//  nach § 147 AO / § 257 HGB (sechs bis zehn Jahre).
+//
+//  Seit `20260821140000_account_deletion_anonymises.sql` ANONYMISIERT die RPC:
+//  Identität und Persönliches gehen, Geschäftsbelege bleiben an einem
+//  namenlosen Profil, der Login wird über `banned_until` zugemacht. Art. 17
+//  Abs. 3 lit. b DSGVO deckt das ausdrücklich — die Löschpflicht entfällt,
+//  soweit eine rechtliche Verpflichtung die Verarbeitung erfordert.
+//
+//  Zwei Blocker, beide vorübergehend: offener Sammelkorb und bezahlte, nicht
+//  versendete Bestellungen als Verkäufer. Sie kommen als `account_delete_*`
+//  aus der RPC und werden unten in Sätze übersetzt.
 // -----------------------------------------------------------------------------
 
 export type ActionResult<T = null> =
@@ -216,6 +232,26 @@ export async function exportMyData(): Promise<ActionResult<UserDataExport>> {
 // Account-Löschung
 // -----------------------------------------------------------------------------
 
+/**
+ * Die zwei Blocker aus `delete_own_account()` in Sätze, die sagen, was zu tun
+ * ist. Beide sind VORÜBERGEHEND und lösen sich von selbst — der Korb läuft in
+ * 24 Stunden ab, die Bestellung ist nach dem Versand erledigt.
+ *
+ * Ohne diese Übersetzung stünde dem Nutzer `account_delete_open_cart` im
+ * Gesicht: eine Fehlermeldung, die weder sagt was los ist noch was hilft.
+ */
+function deletionErrorText(message: string): string {
+  if (message.includes('account_delete_open_cart')) {
+    return 'Dein Sammelkorb ist noch offen. Bezahle ihn — oder warte, bis er von '
+      + 'selbst abläuft, das dauert höchstens 24 Stunden. Danach geht es.';
+  }
+  if (message.includes('account_delete_unshipped')) {
+    return 'Jemand hat bei dir bezahlt und wartet auf sein Paket. Versende es erst — '
+      + 'danach kannst du dein Konto löschen.';
+  }
+  return `Löschung fehlgeschlagen: ${message}`;
+}
+
 const DELETE_CONFIRMATION = 'ACCOUNT LÖSCHEN';
 
 /**
@@ -248,20 +284,21 @@ export async function deleteMyAccount(
     return { ok: false, error: 'Nicht eingeloggt.' };
   }
 
-  // RPC löscht `auth.users` row via SECURITY DEFINER → Cascade über alle FKs.
+  // Anonymisiert Identität und Persönliches, sperrt den Login und lässt die
+  // Geschäftsbelege stehen. Siehe den Kopf dieser Datei — bis zum 21.08.2026
+  // löschte sie stattdessen `auth.users` und riss die Belege Dritter mit.
   const { error: rpcError } = await supabase.rpc('delete_own_account');
 
   if (rpcError) {
-    return {
-      ok: false,
-      error: `Löschung fehlgeschlagen: ${rpcError.message}`,
-    };
+    return { ok: false, error: deletionErrorText(rpcError.message) };
   }
 
   // Session-Cookies löschen. WICHTIG: scope 'local' — der Default ('global')
   // ruft Supabase server-seitig auf, um alle Sessions zu widerrufen; da der
-  // User aber gerade gelöscht wurde, schlägt dieser Call fehl und die Cookies
+  // User aber gerade gesperrt wurde, schlägt dieser Call fehl und die Cookies
   // blieben stehen → das noch gültige JWT ließ das Profil-Menü weiter anzeigen.
+  // (Die RPC räumt `auth.sessions` und `auth.refresh_tokens` ohnehin selbst —
+  // serverseitig ist die Sitzung also schon tot, bevor das hier läuft.)
   // 'local' entfernt nur die lokalen Cookies (kein Server-Call) → sauber weg.
   await supabase.auth.signOut({ scope: 'local' });
 

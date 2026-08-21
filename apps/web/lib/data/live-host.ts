@@ -75,13 +75,10 @@ export interface PastSession {
   battle_opponent_avatar: string | null;
 }
 
+// Nur noch die Analytik-Spalten — Titel, Status, Zeiten und Peak kommen seit der
+// App-Trennung aus `live_sessions` (siehe Kommentar in `getMyPastSessions`).
 type CreatorLiveHistoryRow = {
   session_id: string;
-  title: string | null;
-  started_at: string;
-  ended_at: string | null;
-  peak_viewers: number | null;
-  status: string;
   duration_secs: number | null;
   total_gift_diamonds: number | null;
   gift_count: number | null;
@@ -93,11 +90,16 @@ type CreatorLiveHistoryRow = {
   battle_opponent_avatar: string | null;
 };
 
-type LiveSessionExtraRow = {
+type LiveSessionBaseRow = {
   id: string;
+  title: string | null;
+  status: string;
+  started_at: string;
+  ended_at: string | null;
   thumbnail_url: string | null;
   room_name: string | null;
   viewer_count: number | null;
+  peak_viewer_count: number | null;
 };
 
 export const getMyPastSessions = cache(
@@ -108,54 +110,80 @@ export const getMyPastSessions = cache(
     } = await supabase.auth.getUser();
     if (!user) return [];
 
-    // Use creator_live_history view for rich per-session analytics
-    // (gift totals, comment count, battle result) — same data as mobile live-history screen.
-    const { data } = await supabase
+    // Die Reihenfolge der beiden Abfragen ist umgedreht, und das ist der Fix:
+    //
+    // `creator_live_history` (20260418040000) hat KEIN `WHERE` und gibt die
+    // Spalte `app` nicht aus — auf der View lässt sich also gar nicht nach App
+    // filtern. Ohne Filter standen vergangene BERKAT-Shows in Serlos Studio
+    // unter „Vergangene Sessions"; die App-Trennung von 20260814280000 war hier
+    // nicht durchgezogen. Kein Datenleck (security_invoker + host_id), aber die
+    // falsche App.
+    //
+    // Erst `live_sessions` zu fragen löst das ohne Migration an einer View, die
+    // die ausgelieferte Serlo-App mitbenutzt. Nachträglich filtern würde nicht
+    // reichen: Dann verbrauchten die Berkat-Zeilen das Fenster von `limit`
+    // schon in der View-Abfrage, und wer viel in Berkat sendet, sähe in Serlos
+    // Studio nur eine Handvoll eigener Streams. So sind es genau die letzten
+    // `limit` SERLO-Sessions, die die View danach nur noch anreichert.
+    //
+    // `app` ist für den Client lesbar — Spaltenrecht aus 20260814290000. Ohne
+    // das wäre schon der Filter ein `42501`, denn Postgres verlangt SELECT auch
+    // auf Spalten, die nur in der WHERE-Bedingung stehen.
+    const { data: sessions } = await supabase
+      .from('live_sessions')
+      // `peak_viewer_count:peak_viewers` — Alias wie in `getMyActiveLiveSession`.
+      .select(
+        'id, title, status, started_at, ended_at,' +
+        'thumbnail_url, room_name, viewer_count, peak_viewer_count:peak_viewers',
+      )
+      .eq('host_id', user.id)
+      .eq('app', 'serlo')
+      .order('started_at', { ascending: false })
+      .limit(limit);
+
+    const base = (sessions ?? []) as unknown as LiveSessionBaseRow[];
+    if (base.length === 0) return [];
+
+    // Anreicherung aus der View: Gift-Summen, Kommentar-Count, Battle-Ergebnis
+    // — dieselben Kennzahlen wie im nativen live-history-Screen.
+    const { data: history } = await supabase
       .from('creator_live_history')
       .select(
-        'session_id, title, started_at, ended_at, peak_viewers, status, duration_secs,' +
+        'session_id, duration_secs,' +
         'total_gift_diamonds, gift_count, comment_count,' +
         'battle_result, battle_host_score, battle_guest_score,' +
         'battle_opponent_name, battle_opponent_avatar',
       )
       .eq('host_id', user.id)
-      .order('started_at', { ascending: false })
-      .limit(limit);
+      .in('session_id', base.map((s) => s.id));
 
-    if (!data) return [];
-
-    // Fetch thumbnails separately from live_sessions (not in the view)
-    const rows = data as unknown as CreatorLiveHistoryRow[];
-    const ids = rows.map((r) => r.session_id);
-    const { data: sessions } = await supabase
-      .from('live_sessions')
-      .select('id, thumbnail_url, room_name, viewer_count')
-      .in('id', ids);
-    const sessionMap = new Map(
-      ((sessions ?? []) as LiveSessionExtraRow[]).map((s) => [s.id, s]),
+    const historyMap = new Map(
+      ((history ?? []) as unknown as CreatorLiveHistoryRow[]).map((h) => [h.session_id, h]),
     );
 
-    return rows.map((row) => {
-      const extra = sessionMap.get(row.session_id);
+    // Über `base` gemappt, nicht über die View: `.in()` garantiert keine
+    // Reihenfolge, `base` ist bereits nach `started_at` sortiert.
+    return base.map((s) => {
+      const h = historyMap.get(s.id);
       return {
-        id:                  row.session_id,
-        room_name:           extra?.room_name ?? '',
-        title:               row.title ?? null,
-        thumbnail_url:       extra?.thumbnail_url ?? null,
-        started_at:          row.started_at,
-        ended_at:            row.ended_at ?? null,
-        peak_viewer_count:   row.peak_viewers ?? 0,
-        viewer_count:        extra?.viewer_count ?? 0,
-        status:              row.status,
-        duration_secs:       row.duration_secs ?? null,
-        total_gift_diamonds: row.total_gift_diamonds ?? 0,
-        gift_count:          row.gift_count ?? 0,
-        comment_count:       row.comment_count ?? 0,
-        battle_result:       row.battle_result ?? null,
-        battle_host_score:   row.battle_host_score ?? null,
-        battle_guest_score:  row.battle_guest_score ?? null,
-        battle_opponent_name:   row.battle_opponent_name ?? null,
-        battle_opponent_avatar: row.battle_opponent_avatar ?? null,
+        id:                  s.id,
+        room_name:           s.room_name ?? '',
+        title:               s.title ?? null,
+        thumbnail_url:       s.thumbnail_url ?? null,
+        started_at:          s.started_at,
+        ended_at:            s.ended_at ?? null,
+        peak_viewer_count:   s.peak_viewer_count ?? 0,
+        viewer_count:        s.viewer_count ?? 0,
+        status:              s.status,
+        duration_secs:       h?.duration_secs ?? null,
+        total_gift_diamonds: h?.total_gift_diamonds ?? 0,
+        gift_count:          h?.gift_count ?? 0,
+        comment_count:       h?.comment_count ?? 0,
+        battle_result:       h?.battle_result ?? null,
+        battle_host_score:   h?.battle_host_score ?? null,
+        battle_guest_score:  h?.battle_guest_score ?? null,
+        battle_opponent_name:   h?.battle_opponent_name ?? null,
+        battle_opponent_avatar: h?.battle_opponent_avatar ?? null,
       } as PastSession;
     });
   },

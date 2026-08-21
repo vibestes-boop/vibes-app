@@ -66,7 +66,23 @@ export function DeleteAccountCard() {
           <p className="font-medium text-foreground">
             Das kann nicht rückgängig gemacht werden.
           </p>
-          <p className="mt-1 text-muted-foreground">
+          {/* ⚠️ Ergänzt 21.08.2026. Bis dahin stand hier nur „nicht rückgängig"
+              — und die Löschung riss Geschäftsbelege mit, auch die des
+              Gegenübers. Seit `20260821140000` wird anonymisiert statt
+              vernichtet, und dann MUSS hier stehen, was bleibt: Ein Nutzer, der
+              „Konto löschen" liest und später seine Bestellung beim Verkäufer
+              wiederfindet, hält uns sonst für unehrlich. */}
+          <p className="mt-2 text-muted-foreground">
+            Dein Name, dein Bild und alles Persönliche werden gelöscht, und du kommst
+            nicht mehr hinein.{' '}
+            <span className="text-foreground">
+              Bestellungen und Zahlungen bleiben — ohne deinen Namen.
+            </span>{' '}
+            Ein Kauf ist ein Beleg für zwei Menschen: Würden wir ihn löschen, verlöre
+            auch dein Gegenüber seinen Nachweis, und das Gesetz verlangt, dass
+            Rechnungen aufbewahrt werden.
+          </p>
+          <p className="mt-2 text-muted-foreground">
             Tippe zur Bestätigung exakt{' '}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
               {CONFIRMATION}

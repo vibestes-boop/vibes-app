@@ -523,19 +523,56 @@ export interface MyLiveSession {
   status: string | null;
 }
 
+// Dauer einer Session — spiegelt exakt die Formel der View `creator_live_history`
+// (supabase/migrations/20260418040000_live_analytics_history.sql):
+//   GREATEST(0, EXTRACT(EPOCH FROM (COALESCE(ended_at, NOW()) - started_at))::INT)
+// Laufende Sessions zählen also gegen "jetzt" hoch, genau wie serverseitig.
+function liveDurationSecs(startedAt: string | null, endedAt: string | null): number | null {
+  if (!startedAt) return null;
+  const startedMs = Date.parse(startedAt);
+  if (Number.isNaN(startedMs)) return null;
+
+  const endedMs = endedAt ? Date.parse(endedAt) : Date.now();
+  if (Number.isNaN(endedMs)) return null;
+
+  return Math.max(0, Math.round((endedMs - startedMs) / 1000));
+}
+
 export const getMyLiveSessions = cache(async (limit = 50): Promise<MyLiveSession[]> => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data } = await supabase
+  // ⚠️ `duration_secs` ist KEINE Spalte auf `live_sessions` — die Dauer existiert
+  // nur als berechneter Ausdruck in der View `creator_live_history`. Sie hier zu
+  // selektieren ließ PostgREST mit 42703 ("column live_sessions.duration_secs
+  // does not exist") antworten; `data` war null und der alte `?? []`-Fallback
+  // verschluckte das zu einer dauerhaft leeren LIVE-Analyse-Tabelle. Wir holen
+  // deshalb nur echte Spalten und rechnen die Dauer unten selbst aus.
+  //
+  // ⚠️ Spaltenrechte: `live_sessions` hat seit 20260814260000 SPALTEN-Grants
+  // statt eines Tabellen-Grants (versteckt `ingress_stream_key`). Jede Spalte im
+  // Select UND in den Filtern/Order braucht ein eigenes GRANT SELECT — hier sind
+  // id/title/thumbnail_url/started_at/ended_at/viewer_count/peak_viewers/status
+  // sowie host_id + app abgedeckt. Niemals das Tabellen-Recht wiederherstellen.
+  const { data, error } = await supabase
     .from('live_sessions')
-    .select('id, title, thumbnail_url, started_at, ended_at, duration_secs, viewer_count, peak_viewer_count:peak_viewers, status')
+    .select('id, title, thumbnail_url, started_at, ended_at, viewer_count, peak_viewer_count:peak_viewers, status')
     .eq('host_id', user.id)
     // Session-Historie im Serlo-Studio zeigt keine Berkat-Auktionen.
     .eq('app', 'serlo')
     .order('started_at', { ascending: false })
     .limit(limit);
 
-  return (data ?? []) as MyLiveSession[];
+  // Nicht mehr still schlucken: ein fehlgeschlagener Read sah bisher exakt aus
+  // wie "Creator hatte noch nie einen Stream".
+  if (error || !data) {
+    console.error('[studio] getMyLiveSessions failed:', error?.message ?? 'no data');
+    return [];
+  }
+
+  return data.map((s) => ({
+    ...s,
+    duration_secs: liveDurationSecs(s.started_at, s.ended_at),
+  })) as MyLiveSession[];
 });

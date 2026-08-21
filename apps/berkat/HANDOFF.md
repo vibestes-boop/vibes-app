@@ -6879,14 +6879,41 @@ Textzeile im Konto-Reiter bleibt dagegen gedämpft: Ein Dauer-Alarmzeichen dort 
 `tsc --noEmit` und `expo export --platform ios` fehlerfrei. Dollar-Quoting paarig, kein
 `DELETE FROM auth.users` mehr im Code (nur noch im erklärenden Kommentar).
 
-⚠️ **NICHT eingespielt.** Die Migration ersetzt eine Funktion, die **Serlos ausgelieferte Web-App
-aufruft** — das ist eine Freigabe-Entscheidung, keine Nebensache. Sechs Gegenproben stehen am Ende
-der Datei.
+✅ **Eingespielt am 21.08.2026 nach ausdrücklicher Freigabe.** `migration list` zeigt
+`20260821140000` in beiden Spalten. Am frischen Abzug gegengeprüft:
 
-⚠️ **Nicht durchgespielt, und das ist heikler als sonst.** Die Probe verlangt ein Konto, das man
-danach nicht mehr hat. Der richtige Weg: **ein eigens angelegtes Wegwerf-Konto**, dazu vorher ein
-Zuschlag und eine Bestellung, damit die Gegenproben 4 und 5 überhaupt etwas messen können — sonst
-prüft man, ob null Zeilen null Zeilen bleiben. Gehört in Gruppe B der Prüfliste (Abschnitt 56).
+| | |
+|---|---|
+| `DELETE FROM auth.users` im Code | ✅ weg (nur noch in einem Warnkommentar) |
+| `banned_until`, geleerte Sitzungen | ✅ im Live-Code |
+| beide Blocker | ✅ im Live-Code |
+| `anon`-Ausführungsrecht | ✅ entzogen (`authenticated` und `service_role` behalten es) |
+| `profiles.deleted_at` samt `GRANT SELECT` | ✅ da |
+
+**Serlos Web ist mitkorrigiert.** `gdpr.ts` beschrieb das Cascade-Verhalten als Feature — der
+Kommentar ist ersetzt, die zwei Blocker werden in Sätze übersetzt statt als `account_delete_*`
+durchgereicht, und `delete-account-card.tsx` sagt dem Nutzer jetzt, **was bleibt und warum**. Ohne
+das wäre das Schweigen die neue Unwahrheit gewesen: Wer „Konto löschen" liest und seine Bestellung
+später beim Verkäufer wiederfindet, hält uns für unehrlich. `tsc` in `apps/web` fehlerfrei.
+
+⚠️ **Der Durchlauf steht noch aus — und ich kann ihn nicht selbst machen.**
+`delete_own_account()` läuft auf `auth.uid()`. Aus dem SQL-Editor und mit dem
+service_role-Schlüssel ist das NULL, die Funktion antwortet dann mit `not_authenticated`. Auslösen
+lässt sie sich nur aus einer angemeldeten Sitzung — und sich für einen Menschen anzumelden ist
+nichts, was ein Assistent tut.
+
+Das ist kein Verlust: **Der Weg über die App ist ohnehin der bessere Test**, weil er den Bildschirm,
+die RPC und das Abmelden zusammen prüft.
+
+Alles Drumherum liegt fertig in `supabase/_ops/loeschung-pruefen.sql` — Konto auswählen, vorher
+messen, in der App löschen, nachher messen. **Der Kern der Probe ist die letzte Abfrage:** Sie holt
+zu jeder Bestellung des gelöschten Kontos die Gegenseite. Steht dort weiterhin ein Name und ein
+Beleg, während die eine Seite `geloescht-xxxxxxxx` heißt, ist genau der Fehler behoben, um den es
+ging.
+
+⚠️ **Ein Konto mit Bestellungen oder Zuschlägen nehmen.** Bei einem leeren misst die Probe nur, ob
+null Zeilen null Zeilen bleiben. Die Auswahl-Abfrage in Schritt 1 sortiert danach — und zeigt in
+denselben Zeilen, ob ein Blocker greifen würde. Gehört in Gruppe B der Prüfliste (Abschnitt 56).
 
 ⚠️ **Serlos Web-Oberfläche ist nicht angefasst.** `gdpr.ts` ruft dieselbe RPC und funktioniert
 weiter, aber sein Text („Cascade via FKs purged alle User-Daten") beschreibt jetzt das Falsche und
