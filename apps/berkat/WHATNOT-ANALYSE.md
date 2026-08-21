@@ -1442,3 +1442,652 @@ und an der Sprache ist er umgekehrt.
   (20.08.2026), deutsche Store-Screenshots, abgerufen am 21.08.2026 über
   `itunes.apple.com/search?term=whatnot&entity=software&country=de`
 - Bewertung zum Zeitpunkt des Abrufs: 4,59 bei 7.187 Bewertungen (deutscher Store)
+
+---
+
+## Neunte Analyse: die Regeln hinter der App — Geld, Streit und Versand (21.08.2026)
+
+### 0. Der Befund in einem Satz
+
+**Die acht bisherigen Analysen haben Whatnots Oberfläche vermessen; diese hier hat zum ersten Mal
+das Regelwerk dahinter gelesen — und der Abstand liegt nicht bei den Funktionen, sondern bei den
+drei Sätzen, die Whatnot für den Fall aufgeschrieben hat, dass etwas schiefgeht: wer erstattet,
+wer haftet, bis wann darf man sich melden. Berkat hat diese Sätze nicht, und ab dem ersten fremden
+Verkäufer sind sie die erste Frage.**
+
+Zweiter Befund, unbequemer: **Eine ganze Reihe der Empfehlungen, die die Vorarbeit als „jetzt
+bauen" ausgibt, ist längst gebaut.** Vorabgebote mitsamt Verkäufer-Ansicht, der Ereignis-Strom im
+Umsatz-Blatt, der Versandeinzug an der Kasse — alles im Repo, alles nachprüfbar. Das ist derselbe
+Fehler wie in der achten Analyse („Ein Vergleich gegen die eigene App ist wertlos, wenn man sie
+aus dem Gedächtnis vergleicht"), diesmal in größerem Maßstab. Abschnitt 2 räumt das auf, bevor
+Abschnitt 3 etwas empfiehlt.
+
+---
+
+### 1. Die Quellen — und was sie nicht hergeben
+
+Diese Runde stützt sich auf fünf verschiedene Sorten Material, und die sind **unterschiedlich viel
+wert**. Das ist keine Formalie: Drei Viertel der eindrucksvollen Zahlen stammen aus der schwächsten
+Sorte.
+
+| Sorte | Was daraus folgt |
+|---|---|
+| **Store-Screenshots** (DE/US/FR/NL, v26.34.5) | gesehen. Belastbar für Oberfläche und Wortlaut. |
+| **Hilfe-Center**, `help.whatnot.com`, Stand Juli/August 2026 | gelesen. Belastbar für Regeln, Fristen, Beträge. |
+| **Web-Fassung** `whatnot.com/de-DE` | gesehen. Belastbar für Filter, Artikel- und Profilaufbau. |
+| **Verkäufer-Blog** `blog.teamwhatnot.com` | **Werbung.** Whatnots Zweck dort ist, Verkäufer zu gewinnen. |
+| **App-Store-Rezensionen** (128 DE, 500 US, 450 GB) | Meinungen. Belastbar als Häufung, nicht als Einzelfall. |
+
+**Fünfzehn Funde der Vorarbeit ruhen ausschließlich auf dem Blog** — der siebenfache Umsatz durch
+Vorabgebote, +45 % Bestellwert, 475 € pro Stunde in Deutschland, 40- bis 70-facher Ertrag durch
+Sendefrequenz, −80 % Scheingebote, −83 % Nachbelastungen. Keine davon ist geprüft, keine hat einen
+Bildschirm dahinter, und alle stammen von der Partei, die daraus Werbung macht. Der Satz „die
+7-fach-Zahl ist der stärkste belegte Hebel im ganzen Material" ist deshalb falsch: Sie ist
+**behauptet**, nicht belegt. Als Erwartungs-Messlatte („so viel glauben Verkäufer verdienen zu
+können") taugt sie; als Begründung für eine Bauentscheidung nicht.
+
+#### Was nur vermutet ist — und vermutet bleibt
+
+- Die **„56"** am Shop-Symbol im Live-Raum. Belegt ist nur, dass dort eine Zahl steht.
+- Der Filter **„Label"** im Verkäufer-Blatt (in DE und FR unübersetzt geblieben — spricht für einen
+  internen Begriff, vermutlich Versandetikett).
+- Der **Doppelpfeil** auf dem Gebotsknopf (vermutlich eine Wisch-Andeutung).
+- **„3 Mrd. € = Europa-Summe"** — DE, FR und NL nennen dieselbe Zahl, der Schluss ist naheliegend,
+  aber nirgends geschrieben.
+
+#### Eine Vermutung ist inzwischen belegt
+
+Die achte Runde notierte, ein einzelner gelb gesetzter Chat-Kommentar sei „vermutlich eine
+Frage-Hervorhebung". Das steht im Hilfe-Center: Chat-Filter `Questions`, und Fragen werden
+zusätzlich gelb hervorgehoben (`help.whatnot.com/hc/en-us/articles/23951958152461`, Stand
+21.04.2026). **Nicht mehr vermutet.**
+
+#### Wo die Suche ins Leere lief
+
+Ehrlich benannt, weil die Lücken erklären, warum manches unten fehlt:
+
+1. **Der Feed der App** — der wichtigste Bildschirm einer Live-Shopping-App. Die Web-Fassung hat
+   keinen: `whatnot.com/de-DE/browse` enthält null Links auf `/live/`, es ist das Gegenstück zum
+   App-Reiter „Kategorien", nicht zur Startseite. Wer den Whatnot-Feed beurteilen will, darf das
+   Web dafür nicht heranziehen.
+2. **Android und der Play Store** — kommen im gesamten Material nicht vor.
+3. **Technische Qualität**: Streamstabilität, Latenz, Bildqualität, Akku, Abstürze. Für eine
+   LiveKit-App wäre das die operativ wertvollste Quelle, und sie wurde nicht angefasst.
+4. **Die ersten sechzig Sekunden** — Registrierung, Interessenauswahl, Telefonprüfung.
+
+#### Zwei Korrekturen an der Vorarbeit, die Empfehlungen kippen
+
+- **Premier Shop** war aus einem Suchtreffer-Schnipsel zitiert (die Seite selbst antwortete 403).
+  Gelesen (`.../articles/31084236928909`, Stand 18.08.2026) sieht es anders aus: Zugang verlangt in
+  90 Tagen **10 Sendungen, 250 Bestellungen und 50.000 € Umsatz**, die Leistungshürden sind
+  **95 % pünktlich und 99 % mangelfrei**. Das ist kein Qualitätsprogramm für kleine Verkäufer,
+  sondern ein Volumenprogramm mit Service-Anstrich. Die Empfehlung „für Berkat übernehmbar" beruhte
+  auf der halben Regel.
+- **Zwei Schwellenwert-Sätze wurden verwechselt.** 80 % / 95 % sind die Sanktions**untergrenzen**
+  im Account-Health-Dashboard (`.../articles/34468945178381`) — die Grenze zum Rauswurf, nicht ein
+  Ziel. 95 % / 99 % sind die Premier-Hürden. Die Vorarbeit nennt 80/95 „die Schwellen" und empfiehlt
+  sie als Ankerwerte.
+- **Provisionssatz.** „Aus 8 % werden 7,2 %" rechnet mit dem **US-Satz**. In EU/UK liegt die
+  Provision bei **6,67 % + MwSt** (`.../articles/4847069165965`, Stand 11.08.2026); dort wären es
+  6,0 %.
+
+#### Ein Widerspruch im Material, den ich nicht auflösen kann
+
+Drei Funde beschreiben **drei unvereinbare Bündelungs-Modelle** als Whatnots Verhalten:
+
+1. automatische Bündelung **pro Show** mit Differenzberechnung vor dem Kauf
+   (`help.whatnot.com/hc/de/articles/21927521730317`),
+2. **Weekly Bundling** mit beidseitigem Opt-in, in Deutschland freigeschaltet
+   (`.../articles/37012119661709`, Stand 13.05.2026),
+3. „gebündelt wird das Paket, **nicht die Abrechnung**" — Belege pro Artikel
+   (`Troubleshoot shipping costs as a buyer`).
+
+Zwei dieser Funde vergeben gegensätzliche Urteile über Berkat, und derselbe Mechanismus
+(*incremental shipping*) wird einmal als Vorbild und einmal als Ursache der Beschwerden verkauft.
+**Was ein deutscher Käufer heute tatsächlich erlebt, ist aus diesem Material nicht zu beantworten.**
+Ich führe es als offen und stütze darauf keine Empfehlung.
+
+---
+
+### 2. Was Berkat schon hat — der entlastende Teil
+
+Alles hier am Quelltext gegengeprüft, nicht geschätzt. Vier Punkte davon stehen in der Vorarbeit
+als Lücke.
+
+#### 2.1 Vier Empfehlungen sind bereits gebaut
+
+| Empfehlung der Vorarbeit | Stand im Repo |
+|---|---|
+| „Vorabgebote als Verkäufer-Ansicht" | `components/PrepareSheet.tsx:56` zeigt **„2 Vorabgebote · 5 warten"** artikelgenau; `lib/usePrebid.ts`, Migration `20260819150000_berkat_prebid.sql` |
+| „Ereignis-Strom im Verkäufer-Blatt" | `lib/useShowEarnings.ts:31` liefert `events` mit `kind: 'sale' \| 'tip'`, `components/EarningsSheet.tsx` rendert sie mit Avatar, Name und Zeit |
+| „Versand an der Kasse wirklich einziehen" | `supabase/functions/create-checkout-session/index.ts:214` ruft `get_cart_shipping_options_for_checkout` und setzt `shipping_options[…]`; `app/order/[id].tsx:140` zeigt `order.shipping_cents` |
+| „Bestellanzahl neben den Umsatz" | bewusst abgelehnt und begründet, siehe 2.2 |
+
+Der Versand-Punkt ist der lehrreichste: Die Vorarbeit zitiert den **Kommentarkopf** von
+`20260815180000_berkat_shipping_rates.sql` („die Kasse zieht noch nichts ein") und hält ihn für den
+Ist-Zustand. Der Kopf beschreibt den Stand **an dem Tag, an dem die Datei geschrieben wurde**; die
+Kasse zog eine Migration später nach (`20260815190000_shipping_options_service_role.sql`, sonst
+`42501` zur Laufzeit). **Migrations-Kommentare sind Zeitzeugen, kein Systemzustand.**
+
+#### 2.2 „Bestellungen" wäre in Berkat schlicht falsch
+
+Whatnot zeigt „Verkäufe 1310 € · Bestellungen 108". Die Vorarbeit empfiehlt, die zweite Zahl zu
+übernehmen — „108 Bestellungen erzählt an einem schwachen Abend eine freundlichere Geschichte".
+`components/EarningsSheet.tsx` hat die Frage bereits entschieden, und zwar richtig: Ein Sammelkorb
+bleibt 24 Stunden offen und wird erst danach zur Bestellung. **Während der Sendung gibt es keine
+einzige.** Deshalb steht dort „Zuschläge" — die Zahl, die zählt, was gerade wirklich passiert ist.
+Whatnots Zahl ist nur deshalb möglich, weil dort jeder Kauf sofort eine Bestellung ist.
+
+#### 2.3 Der klarste Vorsprung: Anbieterkennzeichnung und Impressum
+
+Whatnots deutscher Hilfe-Artikel zum Impressum (`help.whatnot.com/hc/de/articles/24898437653261`)
+zählt die sechs Pflichtangaben korrekt auf — und löst das Problem dann mit einem Satz: der
+Verkäufer bekomme „in deiner Whatnot Bio genügend Platz für ein Impressum". Ein **Freitextfeld**.
+Keine Prüfung, keine Unterscheidung privat/gewerblich, keine Rechtsfolge. Der Artikel trägt den
+Stand **13. März 2024** und ist damit der mit Abstand älteste im ganzen Verkäuferbereich, während
+Gebühren, Versand und Käuferschutz im August 2026 aktualisiert wurden.
+
+Auf zwei geprüften Artikelseiten (`whatnot.com/de-DE/listing/…`) fand sich kein Wort zu
+privat/gewerblich, keine Widerrufsbelehrung, kein Verkäufer-Impressum. Berkat hat strukturierte
+Felder mit ausgewiesener Rechtsfolge nach Art. 246d EGBGB. **Das ist ein Anwerbe-Argument gegenüber
+Verkäufern, die Abmahnungen fürchten — kein Kopiervorschlag.**
+
+Eine Einschränkung, die dazugehört: Geprüft ist die **Anzeige**. Die *Erhebung* hat Whatnot sehr
+wohl — Rechtsname wie im Ausweis, Fulfillment-Adresse und behördliche Ausweisprüfung beim
+Verkäufer-Antrag (`.../articles/8442834600333`, Stand 10.08.2026). Und bei GPSR, DAC7 und DSA
+Art. 30 liegt Whatnot vor Berkat. Der Vorsprung ist real, aber schmaler als dreimal behauptet.
+
+#### 2.4 Weitere Bestätigungen ohne Handlungsbedarf
+
+- **Sammelkorb gegen Weekly Bundling.** Berkat ist architektonisch voraus: kein doppeltes Opt-in,
+  24 Stunden statt einer Woche, Einfrieren an der Kasse. Whatnots Anleitung besteht zur Hälfte aus
+  Warnungen, wie man offene und geschlossene Bündel nicht verwechselt, und empfiehlt, Etiketten
+  Montagfrüh zu ziehen.
+- **Gold = Kauf, Rot = live, Grün = Bestätigung.** Deckt sich mit dem Marktführer (Gebotsknopf
+  gelb, Live-Pille rot, Umsatzzahl grün). Berkats Farbgesetz ist bestätigt. Einzige Abweichung:
+  Whatnot färbt „Verkauft" **rot** — das würde Berkats Regel verwässern, dort passt Gold oder Grün.
+- **Ziehbahn statt Tipp.** Whatnot hat in v26.34.0 (August 2026) noch versehentliche Gebote
+  („ich habe nur gescrollt, da wechselte der Knopf auf Bieten") und fehlendes Zuschlag-Feedback
+  („es zeigt nicht deutlich, wenn du gewonnen hast, also bietest du gegen dich selbst" — der
+  Rezensent kaufte fünf Paar desselben Schuhs). Berkat hat beides gelöst: `BidButton.tsx` macht aus
+  „Du führst" keinen Knopf, `AuctionPanel.tsx` zeigt „hat den Zuschlag!". Das darf ohne
+  Übertreibung in der Store-Beschreibung stehen.
+- **Die Nische ist nicht leer — aber sie ist französisch.** Die Suche nach „abaya" liefert im
+  deutschen Store aktive Verkäufer mit genau diesem Sortiment (Abaya 50 €, „Tapis Nabawi" 35–45 €,
+  Koran-Hüllen 25 €, „Musc Nabawi" 50 €). Beschreibungen wie *„toute taille dispos 52 au 60"* —
+  ohne deutschsprachige Ansprache, ohne Bürgen, ohne Frauen-Only. **Der Satz „für diese Gemeinschaft
+  gibt es nichts" stimmt so nicht; der Abstand ist Sprache und Vertrauensform, nicht Sortiment.**
+- **Deutschland ist Whatnots schwächster großer Markt.** 7.188 Bewertungen bei 4,59 gegen 1.003.258
+  bei 4,74 in den USA, 68.531 in UK, 33.419 in Frankreich. Mit Österreich (674) und der Schweiz
+  (343) kommt der ganze DACH-Raum auf rund 8.200. Unterstützte Sprachen: NL, EN, FR, DE, JA — kein
+  Russisch, kein Türkisch, kein Arabisch, obwohl die App im russischen und türkischen Store
+  verfügbar ist.
+
+#### 2.5 Eine Korrektur an der eigenen Fundlage: Berkat hat Sterne
+
+Zwei Funde bauen den Gegensatz auf „Whatnot antwortet mit einer Dezimalzahl, Berkat mit Namen von
+Bürgen". Das stimmt nicht: `components/RatingStars.tsx`, `components/ReviewSheet.tsx` und die
+Migration `20260816160000_berkat_seller_reviews_public.sql` existieren, `app/seller/[id].tsx`
+rendert `stats.rating` im Profilkopf. **Berkat hat beide Währungen.** Die Frage ist damit nicht
+„Sterne kopieren oder nicht", sondern: welche der beiden führt, wenn sie sich widersprechen.
+
+Ebenso halb erledigt ist die empfohlene „Vertrauenszeile im Live-Kopf": `app/live/[id].tsx:1051`
+übergibt `vouchLine={vouchSummary(vouches)}` bereits — nur an das `SellerSheet`, also **ein Antippen
+tief**. Das ist eine Platzierungsfrage, keine Neuentwicklung.
+
+---
+
+### 3. Die Funde, nach Nutzen
+
+Die Sortierung folgt einer einzigen Frage: **Warum sendet ein Verkäufer kein zweites Mal?** Alles,
+was darauf nicht einzahlt, ist nicht A.
+
+#### Korb A — jetzt
+
+**A1 · Der Kauf-Knopf muss bei fremder Ware funktionieren**
+*Whatnot:* Es gibt keine Kasse. Zahlungsmittel und Lieferadresse liegen **vor dem ersten Gebot** im
+Konto; der Zuschlag belastet die Karte, die zum Zeitpunkt der Gebotsabgabe Standard war. Die Regel
+im Hilfe-Center heißt wörtlich „you bid, you buy" (`.../articles/14932924544141`).
+*Berkat:* `20260817120000_berkat_checkout_gate.sql` — `checkout_enabled` ist die ZAG-Schranke, kein
+Eintrag heißt **gesperrt**. Ein fremder Verkäufer landet heute zwangsläufig bei `contact_seller`,
+also bei „Nachricht schreiben" statt „Kaufen".
+*Folgt daraus:* Ein Verkäufer, dessen Zuschlag in einer DM endet, jagt sein Geld hinterher — der
+zuverlässigste Weg, nach einer Sendung aufzuhören. Stripe Connect ist laut
+`STRATEGIE-VERKAEUFER-UND-GELD.md` zu Recht Monat 6+; die Entscheidung, die **jetzt** ansteht, ist
+eine andere: **auf welchem legalen Weg der Kauf-Knopf im Testlauf funktioniert.** Realistisch:
+Kommission, Berkat ist Verkäufer. Das ist eine Entscheidung, kein Bildschirm.
+
+**A2 · Zahlungsmittel vor dem ersten Gebot, Zuschlag = Kauf**
+*Whatnot:* Gebote sind bindend und nicht zurückziehbar; der nicht zahlende Käufer existiert dort
+nicht, weil er strukturell nicht entstehen kann. Statt eines Mahnwesens gibt es einen Storno-Weg:
+Käufer beantragt binnen **24 Stunden**, Verkäufer antwortet binnen **48 Stunden**, keine Antwort =
+Kauf steht (`.../articles/9810585575693`).
+*Berkat:* Die Existenz von `20260814200000_berkat_payment_reminder` ist der Beweis, dass es den
+nicht zahlenden Höchstbietenden gibt.
+*Folgt daraus:* Nichts entmutigt einen Verkäufer schneller als ein gefeierter Zuschlag, der nie Geld
+wird. Die drei Zahlen 24 h / 48 h / „keine Antwort = Kauf steht" sind ein fertig kalibrierter
+Ablauf. Der kleine Trick dazu: **solange ein Stornoantrag offen ist, lässt sich kein Versandetikett
+erzeugen** — verhindert Doppelarbeit.
+
+**A3 · Gestufter Versand mit Brief-Preis, ein Beleg, ein Packzettel**
+*Whatnot DE, offen im Hilfe-Center:* Brief 20 g **1,19 €** · Brief 50 g 1,38 € · Brief 500 g 2,25 €
+· Paket 1 kg 4,10 € · 2 kg 6,17 € · 5 kg 6,56 € (`.../hc/de/articles/21927521730317`). Die
+Versandprofile sind als **Gegenstände** formuliert, nicht als Gramm: „Artikel in Größe M (z. B.
+Jeans, Pullover)", „Einzelner kleiner Schuhkarton", „Rechteckige Schmuckbox".
+*Berkat:* Der Einzug läuft (siehe 2.1) — aber `berkat_shipping_rates` kennt eine Pauschale **pro
+Zone**, nicht mehrere Stufen.
+*Folgt daraus:* Bei 6-€-Secondhand entscheidet der Versandpreis, ob überhaupt etwas verkauft wird.
+Der Abstand zwischen 1,19 € und einer Paketpauschale ist bei einem Kopftuch der Unterschied zwischen
+kaufbar und unverkäuflich. Die Tabelle hat bereits `label` und `sort_index`, also ist das eine
+Zeilen-Ergänzung, kein Umbau. **Zweiter Teil, wichtiger:** Der Sammelkorb bündelt drei Zuschläge in
+ein Paket — dann braucht er auch **einen Packzettel mit den Attributen je Artikel**, sonst packt der
+Verkäufer aus dem Gedächtnis. Whatnot lässt die Attribute ausdrücklich bis auf den Packzettel
+durchlaufen; das ist der Teil dieser Blog-Meldung, der auch ohne die Werbezahlen daneben stimmt.
+
+**A4 · Zwei Ereignisarten im Umsatz-Blatt ergänzen, plus @-Knopf**
+*Whatnot:* Ein filterbarer Strom im Verkäufer-Blatt (Alle / Auktion / Geschenk / Angebote / Label)
+und eine Zuschauerliste mit Aktivitäts-Reiter: Raids, **neue Follower**, Trinkgelder,
+Auktionsgewinne, Käufe. Neben jedem Namen ein **@-Knopf**, der den Zuschauer im Chat markiert.
+*Berkat:* `lib/useShowEarnings.ts` kennt `sale` und `tip`. Es fehlen **neuer Follower** und
+**Preisvorschlag** — beide existieren bereits als Vorgang (`20260818120000_berkat_offers.sql`).
+*Folgt daraus:* Die Arbeit ist zu 70 % getan; was fehlt, sind zwei Zeilen im selben Strom. Der
+@-Knopf ist die eigentliche Entdeckung: den Käufer beim Namen im Chat ansprechen, ohne ihn
+abzutippen. **Namen nennen ist in dieser Gemeinschaft der ganze Verkauf**, und das ist genau
+Berkats Tonfall.
+
+**A5 · Auktionsdauer und Nachschlagzeit als Verkäufer-Stellschrauben**
+*Whatnot:* Beim Start einer Auktion setzt der Verkäufer drei Werte — Startgebot, Mindestdauer und
+**„Counter bid time"**: wenn weniger als 10 Sekunden übrig sind, setzt jedes neue Gebot den Timer
+auf **diesen frei gewählten Wert** zurück. Optional „Sudden Death": Ende bei 00:01 ohne
+Verlängerung, im Käufer-Bild mit einem 💀 markiert (`.../articles/9779931101837`).
+*Berkat:* +10 Sekunden fest.
+*Folgt daraus:* Die 10 Sekunden sind bei Whatnot die **Auslöseschwelle**, nicht die Verlängerung —
+zwei Stellschrauben, nicht eine. 40 Kinderjacken und ein teures Einzelstück brauchen verschiedenes
+Tempo, und eine Sendung, die sich totzieht, verliert das Publikum, das die zweite tragen müsste.
+⚠️ **Wechselwirkung:** Die Ziehbahn dauert länger als ein Tipp; sehr kurze Werte wären unfair. Eine
+Untergrenze gehört in dieselbe Änderung.
+*(Der separat gemeldete „Sieben-Sekunden-Timer" beschreibt vermutlich dieselbe Stellschraube, gibt
+aber selbst einen Datumskonflikt zu — 05.05.2026 gegen Mai 2024. Ich stütze nichts darauf.)*
+
+**A6 · Entwurf speichern, plus zwei Angebots-Klassen**
+*Whatnot:* „Publish" **oder** „Save Draft"; Entwürfe liegen unter Inventory → Drafts. Einbahnstraße:
+ein veröffentlichtes Angebot lässt sich nicht in einen Entwurf zurückverwandeln, nur deaktivieren.
+Und die Typentrennung für Angebote aus einer laufenden Sendung heraus: **Quality Listing**
+(wiederverwendbar, in der Suche auffindbar) gegen **Temporary Listing** (nur Grunddaten, verfällt
+mit der Sendung) — Entwürfe gibt es für Temporary Listings ausdrücklich nicht
+(`.../articles/9779149424269`, Stand 07.08.2026).
+*Folgt daraus:* Das ist die Antwort auf einen Konflikt, den Berkat auch hat: Der Verkäufer will
+während der Sendung in zwanzig Sekunden etwas einstellen, die Plattform will saubere Daten fürs
+Regal. Whatnot löst das **nicht** mit weniger Pflichtfeldern für alle, sondern mit zwei Klassen und
+einem Anreiz — Suche und Flash-Sale nur für die gute Version. 15 Einzelstücke in einer vollen Maske
+sind zwei Stunden Tipparbeit vor einer 60-Minuten-Sendung, und Vorbereitungsaufwand ist der
+Abbruchgrund, den Zaurs eigene Strategie unter „Zu aufwendig" führt.
+*Gegengewicht, das dazugehört:* Whatnot schreibt selbst, rund 90 % ihrer Angebote seien generisch
+(„item as shown"), aber **91 % der Neukäufer** hätten ihren ersten Kauf auf einem nicht-generischen
+Angebot gemacht. Das ist eine Blog-Zahl und damit Selbstauskunft — aber sie ist ein Argument
+dagegen, das Schnell-Angebot zu weit abzumagern.
+
+**A7 · Probesendung und ein überlebensfähiger Stream**
+*Whatnot:* „Rehearsal Mode" für simulierte Auktionen ohne echte Sendung; „Closing the app or browser
+only pauses your show" — Beenden ist ein bewusster Akt über More → End Show; eine beendete Sendung
+lässt sich **innerhalb von 2 Stunden neu starten** (`.../articles/9778927885581`).
+*Folgt daraus:* Fünf Menschen, die noch nie live vor Fremden gesprochen haben, brauchen einen Raum
+zum Üben — in einer Gemeinschaft, in der man sich kennt, ist die Hemmschwelle **höher**, nicht
+niedriger. Und ein Absturz mitten in einer laufenden Auktion mit wartenden Bietern ist der teuerste
+Moment im ganzen Produkt. Das Neustartfenster ist die Versicherung dagegen.
+
+**A8 · Vor der Tür sichtbar machen, was heute Abend drankommt**
+*Whatnot:* Auf jeder Karte einer angekündigten Sendung sitzt ein Lesezeichen-Knopf mit **Zahl**
+(aria-label „Diese Show merken"; gesehen: 287, 457, 123, 305, 5). Das Merken ist anonym — sichtbar
+ist nur die Summe. Derselbe Knopf merkt drei Dinge: eine Sendung, ein einzelnes Angebot **oder eine
+Suche**; die gespeicherte Suche meldet sich, wenn neue passende Artikel eingestellt werden
+(`.../hc/de/articles/9780885421069`).
+*Berkat:* Merkliste und Glocke je Artikel gibt es; die Merken-Zahl am Termin und die gespeicherte
+Suche nicht.
+*Folgt daraus:* Die Merken-Zahl macht aus einem Termin ein Ereignis und ist ein `COUNT` auf einer
+Tabelle, die es für die Erinnerung ohnehin geben muss. ⚠️ **Berkats eigene Regel greift hier:**
+„2 gemerkt" entmutigt — erst ab einer Schwelle anzeigen. Die **gespeicherte Suche** ist der stärkere
+der beiden Funde: Sie ist das einzige Werkzeug im ganzen Material, das eine erfolglose Suche in
+einen späteren Besuch verwandelt, statt sie zu verlieren. In einem dünn besetzten Regal ist das mehr
+wert als in einem vollen.
+
+**A9 · Obergrenze für Erinnerungs-Pushes**
+*Whatnot:* Auf dem Verkäuferprofil sitzt eine Glocke mit drei Stufen — Alle / **Personalisiert** /
+Keine. Personalisiert ist ausdrücklich der **Standard** (`.../hc/de/articles/9429224729101`).
+*Folgt daraus:* Whatnot hat die Erfahrung schon gemacht und drosselt per Voreinstellung. Bei einem
+Verkäufer, der dreimal die Woche sendet, ist „jedes Mal" der schnellste Weg, die Push-Berechtigung
+zu verlieren. Bei einem Verkäufer folgenlos; ab dem dritten, dem dieselben Leute folgen, wird es der
+Grund, warum in Woche 5 niemand mehr kommt. Die Auffanglösung ist nicht Personalisierung, sondern
+eine **Obergrenze pro Nutzer und Tag**.
+
+**A10 · Ein Gewinnspiel-Gewinn muss eine echte Bestellung erzeugen**
+*Whatnot:* Drei unabhängige Stellen im Material beschreiben dieselbe Lücke. Der Analytics-Artikel:
+„Orders — **Gewinnspiele zählen nicht**". Die Gebührenseite: bei 0 € Bestellwert keine Provision,
+den Versand trägt der Verkäufer. Und die Rezensionen: „Die Gewinnspiele sind das Schlimmste — sie
+halten Leute in der Show und schicken dann nichts" (US, 18.08.2026, 3★); „mehrere
+Gewinnspiel-Artikel wurden nie versendet" (US, 10.08.2026, 1★).
+*Berkat:* `draw_live_giveaway` (`20260813233000_berkat_giveaways.sql:219`) setzt `status='drawn'`
+und `winner_id` — **mehr nicht**. Keine Bestellung, keine Adresse, keine Versandpflicht, kein
+Nachweis. Der Gewinn läuft an Sammelkorb und `mark_shipped` vorbei.
+*Folgt daraus:* Die Ziehung selbst ist bei Berkat sauberer als bei Whatnot — sie läuft serverseitig
+als `SECURITY DEFINER`, der Gastgeber kann den Gewinner nicht bestimmen. Aber die zweite Hälfte ist
+die, über die sich Leute beschweren. Wer sie schließt — **Gewinn erzeugt eine Bestellung mit 0 €
+Warenwert im normalen Versandpfad** — hat den häufigsten Manipulationsvorwurf gegen Whatnot
+strukturell ausgeschlossen statt nur verboten. Drei Blickwinkel hatten je ein Drittel dieses
+Befunds; zusammengesetzt ist es der billigste Fund der Runde.
+
+**A11 · Fester wöchentlicher Sendeplatz als Bedingung des Testlaufs** — *Betrieb, kein Code.*
+Die Frequenz-These (3–4 Sendungen pro Woche gegen 1–2 im Monat) ist **Whatnots Selbstauskunft** und
+nicht geprüft. Sie taugt trotzdem als Arbeitshypothese, weil sie zu dem passt, was Berkat ohnehin
+gebaut hat: Sendeplan, wöchentliche Reihen, Erinnerungs-Push. Die ehrliche Fassung lautet: *Prüfe
+sie nach vier Wochen am eigenen Sendeplan, statt sie zu glauben.* Die Zusage „jede Woche derselbe
+Slot" ist die richtige Testlauf-Bedingung, auch wenn die Zahl daneben Werbung ist.
+
+**A12 · Ein benannter Mensch, der auf Deutsch binnen 24 Stunden antwortet** — *Betrieb, kein Code.*
+Whatnots Support ist E-Mail und Textbaustein: kein Telefon, kein Live-Chat mit Menschen; 37 von 517
+negativen Rezensionen (7,2 %) drehen sich darum, 23 davon seit Juni 2026. Zwei Bilder daraus: „einige
+Tage nach der Anfrage kam nur eine Umfrage, wie zufrieden man mit dem Support sei, und das Ticket
+wurde geschlossen" (DE, 09.07.2025); die Aufforderung, auf die Support-Mail zu antworten — deren
+Antwort mehrfach als unzustellbar zurückkam (GB, 13.08.2026). Der teure Teil skaliert erst bei
+Zehntausenden. Bis dahin ist ein erreichbarer Mensch der billigste Vorsprung im ganzen Material —
+und die Ticket-Schließung-mit-Umfrage ist genau die kalte Geste, die Design-Gesetz „Fehler nie kalt"
+verbietet.
+
+#### Korb B — vor dem ersten fremden Verkäufer
+
+Gate für den Start des Testlaufs, nicht Motor. Läuft der Testlauf als Kommission (Berkat ist
+Verkäufer), zeigen die meisten dieser Pflichten auf Zaur — das macht sie **einfacher, nicht
+kleiner**.
+
+- **Käuferschutz als EIN einhaltbarer Satz.** Whatnot verbrennt darauf einen von fünf deutschen
+  Store-Screenshots — und zwar an **Position 2 von 5**, während er im US- und UK-Store an Position 5
+  steht und in Frankreich und den Niederlanden ganz fehlt (samt zugehörigem Absatz im
+  Beschreibungstext). Der Marktführer glaubt also, dass deutsche Käufer zuerst Sicherheit und dann
+  Sortiment kaufen. Der Satz selbst ist kurz: *„Wir unterstützen dich, wenn dein Artikel beschädigt
+  ankommt, fehlt, oder nicht der Beschreibung entspricht."* Genau drei Fälle. **Es braucht keine
+  Schlichtungsmaschine, um anzufangen — es braucht einen Satz, den man halten kann.** Die Bürgen
+  beantworten „wem kann ich glauben", nicht „wer zahlt, wenn nichts ankommt".
+- **Haftungsmatrix mit der Kategorie „unklar → Plattform trägt"**
+  (`.../articles/360061195412`). Der wichtigste Gedanke ist nicht die Liste, sondern dass eine
+  Erstattung an den Käufer **nicht automatisch heißt, der Verkäufer sei schuld**. In einer
+  Gemeinschaft, in der man sich kennt, ist ein Verfahren ohne Schuldreflex kulturell wichtiger als
+  das Geld.
+- **Fristen: das FRÜHERE aus 30 Tagen ab Kauf oder 14 Tagen ab Zustellung** — Trinkgelder
+  **ausdrücklich ausgenommen** (`.../articles/360061194552`). Die Konstruktion ist der Kniff: Sie
+  deckelt gleichzeitig die Hängepartie beim nie zugestellten Paket und die Prüffrist nach Erhalt.
+  Der Trinkgeld-Ausschluss betrifft Berkat direkt — ohne ihn ist jedes Trinkgeld ein offener
+  Erstattungsanspruch. Ebenfalls dort für Deutschland ausformuliert: Rücksendekosten trägt der
+  Käufer und werden von der Erstattung abgezogen.
+- **Widerrufsfähigkeit am EINZELNEN Angebot**, nicht nur am Anbieter, plus benannter Knopf in den
+  Bestelldetails („Withdraw and return item"). Bei Berkat ist die Ableitung **billiger als bei
+  Whatnot**, weil die Anbieterart bereits strukturiert erfasst ist. Dazu die Zusage an den
+  Verkäufer: **Widerruf zählt nicht gegen deine Bewertung** — sonst erlebt ein Verkäufer, den man
+  persönlich kennt, den Widerruf als Kränkung.
+- **Storno-Ablauf mit Pflicht-Grund, Notizfeld an den Käufer, Erlass der ersten Gebühr.**
+  Secondhand-Einzelstücke sind genau die Warenart, bei der „doch nicht mehr da" garantiert vorkommt.
+  Whatnot verlangt einen Grund und legt dem Verkäufer die Worte in den Mund (1–2 Sätze, sachlich,
+  klarer nächster Schritt, mit Beispieltext) statt ihn schweigen zu lassen. Ein stornierter Zuschlag
+  ist der kälteste Moment, den ein Käufer erleben kann.
+- ⚠️ **Keine reine Stornoquote als Kennzahl.** Ein Lehrstück über Anreize: Whatnot berechnet 3 € oder
+  3 % und droht bei hoher Quote mit Kontostrafen — mit dem Ergebnis, dass Verkäufer **grundsätzlich
+  jede Stornierung ablehnen**. Genau das schildert die Käuferseite mehrfach (US 13.08.2026, GB
+  27.07.2026, DE 25.06.2026). Die Quote sollte schlechte Verkäufer treffen und macht stattdessen aus
+  jedem einen, der niemals storniert. Für Berkat sofort relevant, weil der Sammelkorb 24 Stunden
+  offen ist: Das Zeitfenster für „ich habe mich vertan" ist da, die Regel dafür fehlt.
+- **Erstattung fallbezogen entscheiden, nie kontobezogen.** Die schärfste Beschwerde im ganzen
+  Datensatz, sieben direkte Treffer über drei Länder: „nun heißt es, es sei keine Rückerstattung
+  möglich aufgrund meines Verlaufes" (DE, 07.01.2025); „je mehr du kaufst, desto mehr Pakete kommen
+  nicht an" (US, 18.08.2026). Whatnots eigene Richtlinie stützt es: Käufer mit Anzeichen von
+  Erstattungs-Missbrauch können abgelehnt werden, die Beurteilung liegt vollständig in Whatnots
+  Ermessen, eine Zahl wird nicht veröffentlicht. **Das trifft ausgerechnet die besten Kunden — und
+  in einer Diaspora-Gemeinschaft wandert so eine Geschichte in einem Abend durch alle Gruppen.**
+- **Beweislast bei „zugestellt, aber nie angekommen" nicht beim Käufer.** Auspack-Video als
+  zulässiger Beweis, feste statt verschiebbarer Frist. Berkat hat `mark_shipped`, aber keine Regel
+  für den Fall danach. Ein Käufer reichte Zeitleiste, Screenshots und Video ein — statt darauf
+  einzugehen, verwies Whatnots Team auf seine „Aktivität" (GB, 29.07.2026).
+- **Abgabe-Beleg beim Einliefern** (Foto oder Scan des Etiketts in der App). Braucht keinen
+  Zahlungsdienstleister und keine Schlichtungsinstanz und entschärft den häufigsten Streitfall,
+  bevor überhaupt geschlichtet wird. *(Die Wirkungszahlen dazu — −60 % Tickets, −71 % „nie
+  versendet" — stammen aus dem Blog und sind Selbstauskunft.)*
+- **Gefahrgut beim Einstellen klären.** Whatnots Hazmat-Liste nennt Lithium-Batterien, **Parfum**
+  und Nagellack. Berkat schließt Elektro und Batterien aus, **Parfüm aber nicht** — und Parfüm ist
+  im Paketversand beschränkt. Das muss geklärt sein, bevor jemand Musc verschickt.
+- **Konditionen des Testlaufs vorher schriftlich.** Die sauberste Abwanderungs-Geschichte im
+  Material: Ein kleiner Verkäufer entschied sich wegen einer ausgelobten Startprämie von 150 € für
+  Whatnot, machte 500 € Umsatz — und bekam die Prämie nicht, weil sein Stream „privat und nicht
+  öffentlich" gewesen sei (DE, 08.02.2025, 1★). Sein Schluss: „Habe jetzt schon keine Lust mehr und
+  das Streamen wieder aufgegeben." Eine ausgelobte Zahl mit nachgeschobenem Ablehnungsgrund.
+  „0 % dauerhaft" ist ein Versprechen und gehört als solches festgehalten.
+- **Konto in der App löschbar, Zahlungsart entfernbar.** Bei Whatnot geht beides nicht: „man kann
+  seine Zahlungsinformationen nur ändern, indem man sie ersetzt … das Konto kann man nicht löschen"
+  (DE, 20.03.2025). Für Berkat ist das **kein Vergleichspunkt, sondern ein Prüfblocker**: Apples
+  Richtlinie 5.1.1(v) verlangt eine Löschmöglichkeit in der App, DSGVO Art. 17 verlangt die
+  Löschung. `grep` über `apps/berkat` findet **keinen Löschpfad**. Die App liegt seit heute in
+  TestFlight; das kommt bei der Prüfung.
+- **Nie ohne nennbaren Grund sperren, Einspruch ohne Login erreichbar.** Zwölf Treffer, darunter
+  Sperren Minuten nach der Anmeldung. In einer kleinen Gemeinschaft ist eine grundlose Sperre nicht
+  ein verlorener Nutzer, sondern eine Familie.
+- **Vertrauenszeile im Live-Kopf — dorthin, wo Whatnot die Sternzahl setzt.** Bei Whatnot steht
+  unter dem Verkäufernamen dauerhaft ein Stern mit Dezimalzahl (5.0, 4.8, 4.9), ohne Antippen, in
+  jedem Land an derselben Stelle. Nicht die Zahl kopieren — die **Platzierung**. Berkat übergibt
+  `vouchLine` bereits, nur ein Antippen tief.
+- ⚠️ **Ein Bürge bietet beim Verbürgten nicht mit.** Berkats Nähe wirkt in beide Richtungen: Ein
+  Verkäufer-Teardown beschreibt genau den Effekt des offenen Bietens unter Klarnamen — befreundete
+  Konten treiben Preise hoch, und umgekehrt bietet niemand gegen einen Bekannten, was die Erlöse
+  drückt. Das ist der Preis des Bürgen-Modells und gehört bedacht, bevor der erste fremde Verkäufer
+  da ist.
+- **Altersfrage bewusst entscheiden.** Whatnot trägt 12+ in allen neun geprüften Ländern, und das
+  Feld `advisories` enthält **genau einen** Eintrag: „Frequent/Intense Contests". Keine Gewalt, keine
+  Sprache, kein simuliertes Glücksspiel — die häufigen Gewinnspiele allein tragen die Einstufung.
+  Berkat schließt Zufallsmechaniken aus und wäre bei seltenen Gewinnspielen niedriger einstufbar.
+  **Zweite Hälfte derselben Frage:** Whatnot verlangt mindestens 13 Jahre. In `apps/berkat` gibt es
+  weder Geburtsdatum noch Altersabfrage — bei einer Auktion ist das nicht kosmetisch, §§ 106/110 BGB
+  machen das Gebot eines Fünfzehnjährigen schwebend unwirksam.
+- **Adressänderung bei offenem Sammelkorb.** Bei Whatnot erzeugt sie ein neues Bündel, die alten
+  Bestellungen gehen an die alte Anschrift. Im 24-Stunden-Fenster ein realistischer Fall.
+
+#### Korb C — später
+
+Richtig, aber setzt Publikum, Verkäuferzahl oder Datenmenge voraus, die es nicht gibt.
+
+- **Video-Quittung.** Der stärkste Einzelfund, den kein Blickwinkel gehoben hat: Whatnot legt an
+  jede Bestellung den **Ausschnitt der Aufzeichnung, in dem genau dieser Artikel aufgerufen wurde**
+  — 60 Tage, für Käufer in der App, für Verkäufer im Hub (`.../articles/12165139226893`, Stand
+  17.03.2026). Das ist Streitbeweis („so wurde es gezeigt und gesagt") und Freude in einem, und es
+  hängt an der Auktion, nicht an einer Replay-Infrastruktur. Es setzt aber Aufzeichnung voraus, und
+  die steht auf Berkats Fehlliste — deshalb C und nicht A.
+- **Kamera-Nahaufnahme im Live-Raum.** Whatnot hat Zoom in drei Stufen (0,5× / normal / nah), beide
+  Werkzeuge standardmäßig aus (`.../articles/7692049973133`). Für Secondhand — Stoff, Naht, Makel
+  zeigen — ist die Nahaufnahme das eigentliche Verkaufswerkzeug. In Berkats Live-Raum gibt es nur
+  den Kamerawechsel. Kein Abbruchgrund, aber näher an A als der Rest dieser Liste.
+- **Unbeantwortete Suchen dem Verkäufer zeigen.** „Danach wurde gefragt, es gab nichts" ist bei
+  kleinem Bestand aussagekräftiger als eine Bestenliste — und die naheliegende Kleinform von
+  Whatnots Trend-Ansicht aus 900.000 Suchen täglich, die bei Berkats Größe nur entmutigen würde.
+- **„Mehr von diesem Verkäufer" unter dem Artikel** — auf Whatnots Artikelseite stehen dort zehn
+  weitere Angebote mit Preis. Erhöht den Korb mit einer Abfrage, wirkt aber erst bei gefülltem Regal.
+- **Chat-Filter „Fragen"/„Käufer", `/slow`, `/hide`, Mute-Words pro Sendung.** Löst ein Problem, das
+  erst bei Erfolg auftritt: In einem schnellen Chat gehen genau die zwei Nachrichtenarten unter, die
+  Geld bringen. `/hide` — eine Nachricht, die nur Verkäufer und Moderatoren sehen — ist der Teil,
+  der für Frauen-Only-Räume später wirklich zählt: leise abstimmen, ohne zweite App.
+- **Kaufknopf wird zwischen zwei Artikeln zum Zustandstext.** Der Sprachvergleich zeigt, wie viel an
+  einem Wort hängt: „Warte auf den nächsten Artikel" (US) hält den Zuschauer im Raum, „Auktion is
+  beendet" (DE) gibt ihm die Erlaubnis zu gehen. Wenn Berkat dort eine Lücke hat, gehört der
+  vorwärtsgewandte Satz hin — möglichst mit dem Namen des nächsten Artikels.
+- **Marke als eigene Filter-Achse.** Berkat filtert Kategorie, Größe, Zustand, Ort, Preis. Bei
+  Secondhand-Mode ist die Marke oft das, was der Käufer eintippt. Ein Freitextfeld mit Vorschlägen
+  genügt, lohnt aber erst bei dreistelliger Angebotszahl.
+- **Zustandsvokabular pro Kategorie.** Whatnots deutsche CSV-Vorlage führt **157 kategoriespezifische
+  Zustands-Sets**: „Near Mint" für eine Jacke ist Unsinn, „Neu mit Etikett" für eine Vase auch.
+  Richtig, aber Berkats 61 Unterkategorien sind heute wichtiger als die Feinheit.
+- **Facetten aus dem vorhandenen Bestand erzeugen, nicht aus dem Katalog.** Whatnots Shop-Reiter
+  eines Verkäufers zeigt bei Zustand nur die drei Werte, die dieser Verkäufer wirklich hat. Ein
+  Filter „Größe 46" mit null Treffern ist schlimmer als kein Filter — er sieht aus wie ein leeres
+  Geschäft. Dasselbe gilt für die Zuschauerzahl an der Kategorie-Kachel: **nur zeigen, wenn sie
+  größer null ist**, nie „0 Zuschauer" schreiben.
+- **Sortierung „Zuschauer: wenige zuerst".** Auf Whatnots Kategorieseite ein echter Hebel für kleine
+  Verkäufer, die sonst nie oben stehen. Bei fünf Sendungen sieht man ohnehin alle.
+- **Abholung mit Übergabecode.** Für eine ortsdichte Diaspora wäre sie der Normalfall, nicht die
+  Ausnahme, und der Code ist zugleich der Übergabe-Beweis, den Berkat sonst nirgends hat (7 Tage
+  Frist, danach automatisch abgeschlossen). **Sie steht hier statt in A, weil `HANDOFF.md` sie
+  begründet abgelehnt hat**: Sie bräche `get_cart_shipping_options`, die Stripe-Adressabfrage und
+  `mark_order_shipped`. Wer sie baut, fasst den Geldweg ein zweites Mal an. ⚠️ Whatnots **öffentliche
+  Abholadresse** ist ausdrücklich nicht zu übernehmen — in Frauen-Only-Kontexten kann die
+  Wohnadresse einer Verkäuferin nicht im Stream stehen. Treffpunkt statt Adresse, oder Adresse erst
+  nach dem Zuschlag an genau einen Käufer.
+- **Team-Rollen.** Whatnot hat vier (Owner / Admin / Seller / **Support** — Versand und Nachrichten,
+  aber ausdrücklich kein Live). Ohne Rollen heißt Mithilfe heute: Zugangsdaten weitergeben. Für
+  Familienbetriebe und Frauen-Only die richtige Vorlage, nur nicht in Woche 1.
+- **Wero als Zahlungsart.** Das europäische Sofortzahlverfahren der Banken steht in Whatnots
+  deutscher Liste. Direkt vom Konto, weder Karte noch Kredit — der natürliche Gegenentwurf zu BNPL
+  und religiös der sauberste Weg. Gehört auf den Tisch, wenn der Zahlungsweg ohnehin angefasst wird.
+- **Auszahlung „4 Tage nach Label-Erstellung".** Whatnot hat für **Deutschland als einziges Land**
+  keine Kopplung an die Zustellbestätigung — vermutlich weil deutsche Zustelldaten unzuverlässig
+  sind. Das ist die fertige Antwort auf die schwerste Connect-Frage (wann gibt man das Geld frei,
+  ohne den Käuferschutz zu verlieren), aber Connect ist Monat 6+.
+- **Gebührensätze** (6,67 % + MwSt auf den Artikelpreis, 2,42 % + 0,25 € auf den **Gesamtbetrag
+  inklusive Versand**). Die zweite Zahl ist die, die Verkäufer nicht erwarten — Whatnot beantwortet
+  sie mit einer eigenen FAQ-Zeile. Im Testlauf gilt 0 %; wer sie später einführt, sollte sie heute
+  benennen können.
+- **Account Health als stille Betreiber-Kennzahl** (Anker: 80 % pünktlich, 95 % mangelfrei — die
+  Sanktionsgrenzen, nicht die Ziele). Dazu die kostenlose Entwurfsregel, die Whatnot am 13.02.2026
+  selbst nachgezogen hat: **eine Kennzahl darf nur messen, was der Verkäufer beeinflussen kann.**
+  Verkäufer, die pünktlich abgaben, wurden vorher von verspäteten Carrier-Scans bestraft.
+- **„Estimated" gegen „Completed Earnings"** im Verkäufer-Dashboard. Ein Verkäufer, der Geld
+  erwartet, will wissen **wann** — nicht wie hoch die Kurve ist. Braucht einen Auszahlungsweg.
+- **Nachricht-Anfragen von Fremden getrennt.** Bei Berkat wiegt das schwerer als bei Whatnot: Weil
+  Privatangebote „Nachricht schreiben" statt „Kaufen" zeigen, **ist der Posteingang der
+  Verkaufskanal**. Bemerkenswert dazu: Whatnot verbietet in DMs ausdrücklich Zahlung, Verkauf und
+  Kontaktdaten außerhalb der Plattform — „wir können Streit nicht schlichten, wenn er außerhalb
+  stattfindet". Berkat drängt den Privathandel derzeit genau dorthin. Das ist keine Empfehlung,
+  sondern eine Konsequenz von A1: Mit einem funktionierenden Kauf-Knopf löst sich es von selbst.
+
+---
+
+### 4. Was ausdrücklich NICHT zu übernehmen ist
+
+- **Mystery Box, Blind Box, Breaks, „Überraschungssets".** Steht auf der Ausschlussliste, und das
+  Material stützt die Entscheidung, statt sie nur zu bestätigen: Whatnot muss Zufallsprodukte in
+  **mindestens fünf getrennten Richtlinien** gesondert behandeln — aus dem verkäufergeführten
+  Support herausnehmen, vom Widerrufsrecht ausnehmen, eine eigene Wertermittlung mit
+  letztverbindlicher Entscheidung aufbauen, einen eigenen Stornoweg für nicht gefüllte Breaks bauen,
+  eine eigene Kategorie-Richtlinie für Münzen schreiben. Das ist der laufende Regelaufwand, den der
+  Verzicht spart, **sichtbar an den Ausnahmelisten, nicht behauptet.**
+  ⚠️ **Ableitung, die fehlte:** Deutsche Rezensenten zählen auch **Käufer-Gewinnspiele** zum
+  Loscharakter, weil sie als Köder vor dem Einsatz stehen. Berkats Gewinnspiel muss deshalb strikt
+  einsatzfrei bleiben — kein Kauf, kein Kommentarzwang, keine Kopplung an ein Gebot. Und das Verbot
+  gehört in die **Einstellregeln**, sonst kommt „Überraschungspaket" als selbst eingestellter Artikel
+  durch die Hintertür.
+- **Klarna, Affirm, BNPL.** Riba, rote Linie. Whatnot führt beides in der deutschen Liste.
+- **Guthaben oder Gutscheine mit Geldwert als Zahlmittel.** 22 Beschwerden in vier Ländern, vier
+  verschiedene Fehlerbilder: 10 £ Guthaben **und** 12 £ von der Karte abgebucht; „20 € Gutschein
+  stand da, und jetzt soll ich 9 € bezahlen"; Guthaben gilt nur für die Ware, nicht den Versand.
+  Berkat ist durch den Coin-Ausschluss strukturell immun. Die einzige offene Flanke ist die Anzeige
+  in `app/rewards.tsx`: **Wenn dort je ein Betrag steht, muss der angezeigte der abgerechnete sein**,
+  und es muss vorher dastehen, ob Versand mitgedeckt ist.
+- **Rewards Club mit Saison-Reset und „Häufigkeit der Aufrufe".** Aufgebauten Status alle drei Monate
+  wegzunehmen erzeugt Verlustangst; Belohnung fürs bloße Zuschauen ist Aufmerksamkeits-Prämie.
+  Beides verstößt gegen die ethische Linie. Der brauchbare Kern — **Zugang zu geschlossenen
+  Sendungen für Stammkunden** — passt dagegen zu Frauen-Only und ist Zugehörigkeit statt Rabattjagd;
+  er gehört nach C, sobald es einen Stammkundenstamm gibt.
+- **Community Boost.** Der Fund, den kein Blickwinkel gehoben hat und der am dichtesten an Berkats
+  Grenze liegt: Zuschauer zahlen Beiträge, die „wie Trinkgeld funktionieren, aber auf einen
+  Werbe-Boost mitten in der Sendung einzahlen" (`.../articles/30706277083021`, 30.07.2026) — mit
+  Zielbalken, animiertem Rahmen, „Booster"-Abzeichen. Ziel-Mechanik plus Status plus Geld ohne Ware,
+  direkt neben Berkats echtem Trinkgeld. **Nicht bauen.** Berkats Trinkgeld ist Dank, kein Einsatz.
+- **Bezahlte Sichtbarkeit / Boost-Ranking.** Whatnots Promote Tools verteilen Plätze im Feed über
+  eine **Gebotsauktion** („based on your bid competitiveness"), nur US/CA/UK. Der meistgenannte
+  Abwanderungsgrund kleiner Verkäufer ist genau das: Geld ausgeben, um überhaupt vorzukommen. *(Zur
+  Ehrlichkeit: Die Rezensenten-Klage „Sichtbarkeit ist käuflich" ist für den deutschen Markt derzeit
+  gar nicht zutreffend, weil das Produkt dort nicht verfügbar ist.)*
+- **„Lifetime Spend Distribution", Rewards-Stufen der Anwesenden, Peer-Benchmarks.** Dem Verkäufer
+  zu zeigen, wie zahlungskräftig die gerade Anwesenden sind, ist in einer Gemeinschaft, in der man
+  sich beim Namen kennt, eine Zumutung — Whatnot verbirgt es selbst, wenn zu wenige im Raum sind.
+- **Öffentliche Fünf-Stufen-Ampel mit Sperrandrohung.** Eine Beschämungsmaschine unter Menschen, die
+  sich persönlich kennen. Die Zahlen führt der Betreiber; dem Verkäufer zeigt man den nächsten
+  Schritt. *(Whatnot selbst zeigt beide Quoten nur dem Verkäufer, nicht den Käufern — das ist der
+  übernehmbare Teil.)*
+- **Varianten und Bestandsführung.** Bis zu 2.000 Kombinationen pro Angebot. Bei Secondhand
+  existiert jedes Stück einmal; Whatnot führt das Feld selbst nur als Optionalfeld. Der einzige
+  interessante Splitter ist die **Größenanfrage während der Sendung** — bei Berkat keine
+  Variantenauswahl, sondern ein leichtes Signal „Hast du das in 38?", das im Chat sonst untergeht.
+- **Shopify-Vertriebskanal und Warenwirtschafts-Schnittstelle.** Zielt auf Serienhändler mit
+  Lagersystem — weder Berkats Markt noch mit dem Verzicht auf Bestandsführung vereinbar. Die
+  Reihenfolge lautet: erst Auszahlung, dann alles andere.
+- **CSV-Massenimport.** Setzt Desktop und öffentlich erreichbare Bild-URLs voraus, die Berkats
+  Verkäuferinnen am Handy nicht haben. Der Weg zur schnellen Massenanlage führt über die Kamera.
+  *(Zwei Spalten der deutschen Vorlage sind trotzdem eine Notiz wert: „Stückpreis" — der
+  Einkaufspreis, aus dem Whatnot die Marge rechnet — und „Artikelnummer".)*
+
+---
+
+### 5. Was daraus folgt
+
+1. **Entscheiden, wie im Testlauf Geld fließt** — Kommission, Berkat als Verkäufer. Ohne das endet
+   jeder Zuschlag bei fremder Ware in einer DM, und `checkout_enabled` sperrt korrekt, aber tödlich.
+   Keine Zeile Code, aber die Voraussetzung für alles Weitere.
+2. **Den Käuferschutz-Satz schreiben** — drei benannte Fälle, eine Zusage, die man halten kann.
+   Whatnot stellt ihn im deutschen Store an Position 2 von 5; das ist der Hinweis, wie sehr dieser
+   Markt zuerst Sicherheit kauft. Dazu die zwei Fristen (30 / 14, das Frühere) und der
+   Trinkgeld-Ausschluss. Fällig **vor** dem ersten Drittverkäufer.
+3. **Die zwei Prüf-Blocker schließen**, bevor die App aus TestFlight herauswächst: **Kontolöschung
+   in der App** (Apple 5.1.1(v), DSGVO Art. 17 — heute nicht vorhanden) und die **Altersfrage**
+   (Whatnot: mindestens 13; Berkat hat kein Geburtsdatum, und ein Gebot Minderjähriger ist nach
+   §§ 106/110 BGB schwebend unwirksam).
+4. **Den Gewinnspiel-Gewinn in den normalen Versandpfad legen.** `draw_live_giveaway` setzt heute nur
+   `winner_id`; eine Bestellung mit 0 € Warenwert schließt den häufigsten Manipulationsvorwurf gegen
+   Whatnot strukturell, statt ihn nur zu verbieten. Der billigste Fund dieser Runde.
+5. **Versand in Stufen, mit Brief-Preis, und ein Packzettel je Sammelkorb-Paket.** Der Einzug läuft
+   bereits; was fehlt, sind Zeilen in `berkat_shipping_rates` und ein Zettel, der das Paket
+   beschreibt. Bei 6-€-Ware entscheidet das darüber, ob überhaupt etwas verkauft wird.
+
+*Nicht auf dieser Liste, obwohl die Vorarbeit es fordert:* Vorabgebots-Ansicht, Ereignis-Strom und
+Versandeinzug — die stehen im Repo. Und die Empfehlung, „Bestellungen" neben den Umsatz zu setzen,
+war schon einmal geprüft und richtig abgelehnt.
+
+---
+
+### Quellen
+
+**App Store, v26.34.5 (veröffentlicht 20.08.2026), abgerufen 21.08.2026**
+- `itunes.apple.com/search?term=whatnot&entity=software&country=…` für us, gb, de, fr, nl, ca, au,
+  at, ch — Felder `description`, `advisories`, `contentAdvisoryRating`, `averageUserRating`,
+  `userRatingCount`, `languageCodesISO2A`
+- Store-Screenshots DE (5), US (5), FR (4) über `1000x0w.png`; der Käuferschutz-Screenshot fehlt in
+  FR und NL vollständig
+- Rezensions-RSS: 128 DE, 500 US, 450 GB (`sortBy=mostRecent`), roh gelesen
+
+**Hilfe-Center `help.whatnot.com` (Stand jeweils angegeben)**
+- `/articles/4847069165965` Gebühren EU/UK (11.08.2026) · `/articles/360061604191` Auszahlung
+  (13.08.2026) · `/articles/9778927885581` Show anlegen (10.08.2026) · `/articles/9779931101837`
+  Auktion starten (18.07.2026) · `/articles/14932924544141` Bieten (14.05.2026)
+- `/articles/360061194552` Käuferschutz (17.06.2026) · `/articles/360061195412` Verkäuferschutz
+  (17.06.2026) · `/articles/360061603971` Storno (12.08.2026) · `/articles/9810585575693`
+  Storno annehmen/ablehnen (13.08.2026)
+- `/articles/9779149424269` Angebote anlegen (07.08.2026) · `/articles/37012119661709` Weekly
+  Bundling (13.05.2026) · `/articles/26310231704333` Free Pickup (21.01.2026) ·
+  `/articles/34468945178381` Account Health (18.08.2026) · `/articles/31084236928909` Premier Shop
+  (18.08.2026) · `/articles/8442834600333` Verkäufer-Antrag (10.08.2026)
+- `/articles/23951958152461` Show-Management inkl. Frage-Hervorhebung (21.04.2026) ·
+  `/articles/21988369770637` Moderations-Befehle (18.03.2026) · `/articles/47552166935181`
+  Live-Analytics (15.08.2026) · `/articles/12165139226893` Aufzeichnung und Video-Quittung
+  (17.03.2026) · `/articles/7692049973133` Kamera-Werkzeuge (19.03.2026) ·
+  `/articles/30706277083021` Community Boost (30.07.2026)
+- Deutsch: `/hc/de/articles/24898437653261` Impressum (**13.03.2024**) ·
+  `/hc/de/articles/21927521730317` Versandpreise DE · `/hc/de/articles/9429224729101`
+  Benachrichtigungen · `/hc/de/articles/9780885421069` Lesezeichen ·
+  `/hc/de/articles/37362516423053` Zahlungsmethoden
+
+**Web `whatnot.com/de-DE`, 21.08.2026** — `/browse` (DOM-Zählung: 0 Links auf `/live/`),
+`/tag/womens_fashion` (Filtergruppen einzeln aufgeklappt), `/search?query=abaya`, zwei
+Artikelseiten, `/user/dealhubuk` mit `/shop` und `/reviews`
+
+**Verkäufer-Blog `blog.teamwhatnot.com` — Selbstauskunft, ungeprüft.** Alle Wachstums- und
+Wirkungszahlen dieser Analyse, die aus dieser Quelle stammen, sind im Text als solche gekennzeichnet.
+
+**Berkat-Repo, am 21.08.2026 gegengeprüft** — `components/PrepareSheet.tsx`,
+`components/EarningsSheet.tsx`, `lib/useShowEarnings.ts`, `lib/usePrebid.ts`,
+`components/RatingStars.tsx`, `app/live/[id].tsx:1051`, `app/order/[id].tsx:140`,
+`supabase/functions/create-checkout-session/index.ts:203-225`, Migrationen `20260813233000`
+(Gewinnspiele), `20260815180000`/`20260815190000` (Versand), `20260816160000` (Bewertungen),
+`20260817120000` (Kassen-Schranke), `20260819150000` (Vorabgebote); `HANDOFF.md` Abschnitt
+„Was bewusst NICHT gebaut wurde"

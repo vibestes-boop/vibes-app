@@ -6287,29 +6287,76 @@ Rückweg steht als Abschnitt 3 in derselben Datei.
    Offen bleibt daraus nur die Probe am Gerät, und die braucht eine echte Sendung mit einem
    zweiten Konto.
 
-2. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg, und seit der
+2. ⚠️ **Zwei Prüf-Blocker, seit die App in TestFlight liegt** — neu am 21.08.2026, und der erste
+   ist ein Versäumnis von mir: Ich hatte ihn am 20.08. im Gespräch genannt und **nie
+   aufgeschrieben.**
+
+   - **Kein „Konto löschen" in der App.** Berkat hat eine Registrierung (`app/login.tsx:104`), im
+     Konto-Reiter steht aber nur „Abmelden". Apples Richtlinie **5.1.1(v)** verlangt die
+     Löschmöglichkeit in der App, **DSGVO Art. 17** die Löschung an sich. Ein `grep` über
+     `apps/berkat` findet keinen Löschpfad. Bei der Beta App Review wird das mal geprüft, mal
+     nicht — beim Store-Release **sicher**. Braucht eine Edge Function
+     (`auth.admin.deleteUser` verlangt `service_role`) plus einen Bildschirm.
+   - **Keine Altersabfrage.** Weder Geburtsdatum noch Mindestalter, nachgeprüft. Whatnot verlangt
+     mindestens 13 Jahre. Bei einer **Auktion** ist das nicht kosmetisch: Nach **§§ 106/110 BGB**
+     ist das Gebot eines Minderjährigen schwebend unwirksam — bei einer bindenden
+     Willenserklärung über echtes Geld ist das ein offener Rechtsmangel, kein Formfehler.
+
+3. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg, und seit der
    Testware-Entscheidung vom 20.08. besonders sichtbar. Das SQL liegt fertig in
    `supabase/_ops/kassen-freigabe-testware.sql`; es fehlt nur die Freigabe. Danach ist der Kauf
    endlich am fremden Artikel durchspielbar — der Punkt, der seit Abschnitt 26 offen ist.
 
-3. **Käuferschutz-Zusage formulieren** — ebenfalls aus der achten Analyse, und **kein Code,
-   sondern eine Entscheidung.** Whatnot verbrennt einen von fünf Store-Screenshots auf
-   „Wir unterstützen dich, wenn dein Artikel beschädigt ankommt, fehlt, oder nicht der
-   Beschreibung entspricht." Berkats Kernargument ist Vertrauen — die Bürgen (Abschnitt 15)
-   beantworten „wem kann ich glauben", aber niemand beantwortet **„wer zahlt, wenn nichts
-   ankommt"**. Solange Zaur der einzige Verkäufer ist, folgenlos; ab dem ersten Drittverkäufer die
-   erste Frage, die jemand stellt. Gehört zu Abschnitt 25 („Durchsetzungsseite").
-4. **Vorbereitetes einem neuen Termin zuordnen** — die Karte „Vorbereitet, ohne Termin" zeigt und
+   ⚠️ **Die neunte Analyse stellt die Frage dahinter schärfer:** `checkout_enabled` sperrt bei
+   einem fremden Verkäufer **korrekt, aber tödlich** — sein Zuschlag endet in einer
+   Direktnachricht, und er jagt seinem Geld hinterher. Stripe Connect ist zu Recht Monat 6+; zu
+   entscheiden ist deshalb, **auf welchem legalen Weg der Kaufknopf im Testlauf funktioniert.**
+   Realistisch: Kommission, Berkat ist Verkäufer. Das ist eine Entscheidung, kein Bildschirm — und
+   sie steht vor allem anderen.
+
+4. **Der Gewinnspiel-Gewinn erzeugt keine Bestellung** — neu, und am Quelltext belegt:
+   `draw_live_giveaway` (`20260813233000:31`) setzt `status='drawn'` und `winner_id`, **mehr
+   nicht**. Kein Korb, keine Adresse, keine Versandpflicht, kein Nachweis; ein `grep` über alle
+   Migrationen findet keine Verbindung zwischen Gewinnspiel und Versandpfad.
+
+   Die Ziehung selbst ist **sauberer als bei Whatnot** (serverseitig, `SECURITY DEFINER`, der
+   Gastgeber kann den Gewinner nicht bestimmen). Aber die zweite Hälfte ist die, über die sich
+   Whatnots Nutzer beschweren — „sie halten Leute in der Show und schicken dann nichts". Wer den
+   Gewinn als **Bestellung mit 0 € Warenwert** in den normalen Versandpfad legt, schließt den
+   häufigsten Manipulationsvorwurf **strukturell** statt ihn nur zu verbieten.
+
+5. **Käuferschutz-Zusage formulieren** — aus der achten Analyse, von der neunten geschärft, und
+   **kein Code, sondern eine Entscheidung.** Whatnot stellt den Satz im **deutschen** Store an
+   **Position 2 von 5** — in den USA und UK erst an Position 5, in Frankreich und den Niederlanden
+   gar nicht. Der Marktführer glaubt also, dass deutsche Käufer zuerst Sicherheit kaufen und dann
+   Sortiment. Der Satz nennt genau drei Fälle: *„beschädigt angekommen, fehlt, oder nicht der
+   Beschreibung entsprechend."* **Es braucht keine Schlichtungsmaschine, um anzufangen — es
+   braucht einen Satz, den man halten kann.** Dazu zwei fertig kalibrierte Zahlen: Frist ist **das
+   Frühere aus 30 Tagen ab Kauf und 14 Tagen ab Zustellung**, und **Trinkgelder sind ausdrücklich
+   ausgenommen** — ohne diesen Ausschluss ist jedes Trinkgeld ein offener Erstattungsanspruch. Die
+   Bürgen (Abschnitt 15) beantworten „wem kann ich glauben", nicht „wer zahlt, wenn nichts ankommt".
+6. **Versand in Stufen statt einer Pauschale** — neu aus der neunten Analyse. Whatnot DE fährt
+   offen ausgewiesen Brief 20 g **1,19 €** · Brief 500 g 2,25 € · Paket 1 kg 4,10 € · 2 kg 6,17 €
+   und formuliert die Profile als **Gegenstände** statt Gramm („Artikel in Größe M, z. B. Jeans").
+   Berkat kennt eine Pauschale **pro Zone**. Bei 6-€-Secondhand entscheidet der Versandpreis, ob
+   überhaupt etwas verkauft wird — zwischen 1,19 € und einer Paketpauschale liegt bei einem
+   Kopftuch der Unterschied zwischen kaufbar und unverkäuflich. ✅ **Nachgeprüft:**
+   `berkat_shipping_rates` hat `label` und `sort_index` bereits (`20260815180000`) — eine
+   Zeilen-Ergänzung, kein Umbau. Zweiter Teil: Wer drei Zuschläge in ein Paket bündelt, braucht
+   einen **Packzettel**, sonst packt der Verkäufer aus dem Gedächtnis.
+7. **Vorbereitetes einem neuen Termin zuordnen** — die Karte „Vorbereitet, ohne Termin" zeigt und
    verwirft, aber ordnet nicht zu. Braucht eine RPC (`UPDATE live_auctions.planned_for`), weil
    Schreibwege auf `live_auctions` alle über den Server laufen.
-5. **„Bezahlung abbrechen"** am eingefrorenen Korb — die vollständige Antwort auf Fund 3. Braucht
+8. **„Bezahlung abbrechen"** am eingefrorenen Korb — die vollständige Antwort auf Fund 3. Braucht
    RPC **+** `sessions.expire` in `create-checkout-session` **+** Webhook-Härtung. Nicht weniger.
-6. **Live-Raum gegen Whatnots App halten** — die achte Analyse hat das für **sechs von sieben**
-   Flächen schon erledigt (Reiter, Kachel, Gebots-Knopf, Icon-Spalte, Verkauft-Zustand,
-   Meta-Zeile: alle deckungsgleich oder reicher). Offen bleibt nur, was eine laufende Sendung
-   braucht — plus der dritte Knopf-Zustand **„Warten auf den nächsten Artikel"** zwischen zwei
-   Artikeln, falls Berkat dort heute nichts sagt.
-7. **Kleinkram:** „Entwurf speichern" beim Einstellen · Anti-Snipe-Zeit wählbar · Bilder umsortieren
+9. **Live-Raum gegen Whatnots App halten** — die achte Analyse hat **sechs von sieben** Flächen
+   schon erledigt (alle deckungsgleich oder reicher). Offen bleibt, was eine laufende Sendung
+   braucht — plus der dritte Knopf-Zustand zwischen zwei Artikeln. Die neunte Analyse liefert den
+   Sprachvergleich dazu: **„Warte auf den nächsten Artikel"** (US) hält den Zuschauer im Raum,
+   **„Auktion is beendet"** (DE) gibt ihm die Erlaubnis zu gehen.
+10. **Kleinkram:** „Entwurf speichern" beim Einstellen · Anti-Snipe-Zeit wählbar (⚠️ bei Whatnot
+    sind es **zwei** Stellschrauben — Auslöseschwelle *und* Verlängerung; wegen der Ziehbahn gehört
+    eine Untergrenze in dieselbe Änderung) · Bilder umsortieren
    (bräuchte `react-native-gesture-handler` → Build) · zwölf freigestellte Kategorie-Fotos.
 
 ### Nicht neu diskutieren
@@ -6506,6 +6553,7 @@ Simulator dem Verkäufer (Abschnitt 9, am 19.08. so gelaufen).
 
 | | Was |
 |---|---|
+| F0 | ⚠️ **Zwei Prüf-Blocker, die kein Test löst, sondern Bauen** (21.08.2026): **Konto löschen in der App** fehlt — Apple 5.1.1(v) und DSGVO Art. 17; braucht eine Edge Function, weil `auth.admin.deleteUser` `service_role` verlangt. Und **keine Altersabfrage** — bei einer Auktion nicht kosmetisch: §§ 106/110 BGB machen das Gebot Minderjähriger schwebend unwirksam (Abschnitt 54, Punkt 2) |
 | F1 | **AGB und Widerrufsbelehrung anwaltlich prüfen.** Beides sind Entwürfe. Eine fehlerhafte Belehrung verlängert die Frist auf zwölf Monate und vierzehn Tage (Abschnitt 25) |
 | F2 | **Käuferschutz-Zusage formulieren** — Entscheidung, kein Code (Abschnitt 54, Punkt 3) |
 
