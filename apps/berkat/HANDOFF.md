@@ -6223,6 +6223,16 @@ Store. **Nicht das Quell-Asset prüfen, sondern das gebaute.**
 Ebenso folgenlos: Der lokale `ios/`-Ordner trägt noch `CFBundleShortVersionString 0.1.0`. Er ist
 gitignored, EAS lädt ihn nicht hoch und macht einen frischen Prebuild aus der `app.json` (1.0.0).
 
+✅ **Stand 21.08.2026, 12:40 Uhr: Der Build liegt in TestFlight.** `1.0.0 (1)`, Upload
+„Abgeschlossen", Status **„Bereit zur Übermittlung"**, kein Compliance-Hinweis (die Erklärung in
+der `Info.plist` greift). Der Weg von der `app.json` bis zu einem installierbaren Paket ist damit
+zum ersten Mal ganz gelaufen — nach zwei Fehlversuchen, beide in Abschnitt 3 dokumentiert
+(`babel-preset-expo` und Sentry).
+
+⚠️ **Ein TestFlight-Build läuft nach 90 Tagen ab.** Phase 0 ist auf acht Wochen angelegt (56 Tage) —
+**ein Build deckt sie also ab, aber ohne viel Luft.** Wer erst in einem Monat mit den fünf
+Verkäufern beginnt, braucht mittendrin einen zweiten. Dann greift die Build-Nummer-Falle unten.
+
 **Die Schritte, zwei davon nur Zaur:**
 
 1. **Lizenzvertrag akzeptieren** (Account-Login) — sonst scheitert `eas submit` erst *nach* dem Build
