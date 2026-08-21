@@ -134,6 +134,11 @@ Deno.serve(async (req: Request) => {
       scheduled_live_reminder:   'live',
       gift:                      'gifts',
       auction_won:               'orders',
+      // ⚠️ Nachgetragen 21.08.2026. Beide fehlten hier, seit sie in SQL
+      // angelegt wurden — ohne Eintrag greift der Abschalt-Wächter nicht und
+      // die Meldung ist für den Empfänger nicht abstellbar.
+      auction_up:                'orders',
+      saved_search_hit:          'orders',
       new_order:                 'orders',
       preorder_interest:         'orders',
       preorder_round_open:       'orders',
@@ -213,6 +218,14 @@ Deno.serve(async (req: Request) => {
       auction_won: {
         title: '🎉 Лот твой — ты выиграл(а)!',
         body: record.comment_text ?? 'Товар уже в твоей корзине',
+      },
+      auction_up: {
+        title: '🔨 Твой лот сейчас разыгрывают',
+        body: record.comment_text ?? 'Аукцион идёт — делай ставку',
+      },
+      saved_search_hit: {
+        title: '🔎 То, что ты искал(а)',
+        body: record.comment_text ?? 'Появилось кое-что по твоему запросу',
       },
       order_payment_requested: {
         title: '💶 Пора оплатить',
@@ -297,6 +310,16 @@ Deno.serve(async (req: Request) => {
       auction_won: {
         title: '🎉 Zuschlag — du hast gewonnen!',
         body: record.comment_text ?? 'Dein Artikel liegt im Sammelkorb',
+      },
+      // Texte identisch zum SQL-CASE in `fn_send_push_on_notification` halten,
+      // sonst sagen nativer und Web-Push dasselbe Ereignis verschieden an.
+      auction_up: {
+        title: '🔨 Dein Artikel ist dran',
+        body: record.comment_text ?? 'Die Auktion läuft — jetzt mitbieten',
+      },
+      saved_search_hit: {
+        title: '🔎 Das hast du gesucht',
+        body: record.comment_text ?? 'Etwas Neues passt zu deiner Suche',
       },
       order_payment_requested: {
         title: '💶 Zeit zu bezahlen',
@@ -493,6 +516,13 @@ function deriveWebUrl(
     // landet, ist schlechter als einer, der nichts verspricht. Sobald Berkat
     // eigene Zustellung hat, gehört hier die Berkat-Adresse hin.
     case 'auction_won':
+    // ⚠️ Nachgetragen 21.08.2026, dieselbe Begründung: Serlos Web hat weder
+    // Live-Raum noch Regal. Sobald Berkat eigene Web-Zustellung hat, gehören
+    // hier `/live/<id>` bzw. `/shop?q=<begriff>` hin. Als eigener Fall statt
+    // im Standardzweig, damit die Entscheidung im Code steht und nicht zufällig
+    // dabei herauskommt.
+    case 'auction_up':
+    case 'saved_search_hit':
       return '/';
     // Käufer-seitige Bestell-Pings → eigene Bestellungen
     case 'order_payment_requested':
@@ -538,6 +568,11 @@ function deriveWebTag(record: NotificationPayload['record']): string {
     // Wer drei Artikel in einer Show gewinnt, soll drei Meldungen sehen, nicht
     // eine, die die anderen zwei verdeckt.
     case 'auction_won':
+    // Ohne eigenen Fall wäre das Tag für alle Treffer konstant der Typname —
+    // dann ersetzte jeder neue Treffer den vorigen im Tray, und bei mehreren
+    // gespeicherten Suchen bliebe genau eine Meldung übrig.
+    case 'auction_up':
+    case 'saved_search_hit':
     case 'order_payment_requested':
     case 'order_paid':
     case 'order_shipped':

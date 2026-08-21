@@ -147,7 +147,12 @@ export function usePushRegistration(): void {
       // auf einen Push öffnete dann nur die App. Am Gerät gefunden, nicht im
       // Code — siehe den Kopf von `notificationTarget`.
       const data = response.notification.request.content.data as
-        | { type?: string; sessionId?: string | null; senderId?: string | null }
+        | {
+            type?: string;
+            sessionId?: string | null;
+            senderId?: string | null;
+            query?: string | null;
+          }
         | undefined;
       if (!data?.type) return;
       router.push(
@@ -156,6 +161,7 @@ export function usePushRegistration(): void {
             type: data.type,
             sessionId: data.sessionId,
             senderId: data.senderId,
+            query: data.query,
           },
           // Von außen, kalt: Käufer-Meldungen ohne Frist landen in der Liste,
           // nicht im Konto — sonst ist der Rest des Offenen aus dem Blick.

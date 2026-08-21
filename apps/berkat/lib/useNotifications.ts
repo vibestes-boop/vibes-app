@@ -31,7 +31,15 @@ export type BerkatNotificationType =
    * Auktion dauert zwanzig. Deshalb trägt sie `session_id`: Ein Tipp landet im
    * laufenden Raum, nicht auf einer Übersicht.
    */
-  | 'auction_up';
+  | 'auction_up'
+  /**
+   * Ein neues Angebot passt zu einer gespeicherten Suche (seit `20260821120000`).
+   *
+   * ⚠️ `product_name` trägt hier den SUCHBEGRIFF, nicht den Artikelnamen —
+   * daraus baut `notificationTarget` das Ziel `/shop?q=…`. Der Artikelname
+   * steht in `comment_text`.
+   */
+  | 'saved_search_hit';
 
 /**
  * Wohin ein Antippen führt — für die LISTE und für den PUSH.
@@ -83,6 +91,8 @@ export function notificationTarget(
     type: string | null | undefined;
     sessionId?: string | null;
     senderId?: string | null;
+    /** Nur bei `saved_search_hit`: das gesuchte Wort, aus `product_name`. */
+    query?: string | null;
   },
   from: 'push' | 'list',
 ): string {
@@ -102,6 +112,11 @@ export function notificationTarget(
     // sinnvolle Ort ist der Verkäufer, der ihn angekündigt hat.
     case 'scheduled_live_reminder':
       return n.senderId ? `/seller/${n.senderId}` : '/(tabs)/';
+    // Gespeicherte Suche: zurück ins Regal, MIT dem gesuchten Wort. Ohne den
+    // Parameter müsste der Empfänger erneut tippen, was genau den Umweg
+    // zurückbrächte, den die gespeicherte Suche abschafft.
+    case 'saved_search_hit':
+      return n.query ? `/shop?q=${encodeURIComponent(n.query)}` : '/shop';
     // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
     // Siehe die Regel im Kopf: von außen in die Liste, aus der Liste ins Konto.
     default:

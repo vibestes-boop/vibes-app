@@ -28,6 +28,7 @@ import {
   PackageCheck,
   PartyPopper,
   Radio,
+  Search,
   Truck,
 } from 'lucide-react-native';
 
@@ -69,6 +70,11 @@ function present(type: string): { Icon: typeof Bell; title: string; tint: string
       return { Icon: CalendarClock, title: 'Gleich live', tint: ui.gold };
     case 'live':
       return { Icon: Radio, title: 'Sendet jetzt', tint: ui.live };
+    // Marken-Grün, nicht gold und nicht rot: Gold ist der Kauf, Rot die
+    // laufende Uhr — ein Treffer auf eine gespeicherte Suche ist eine
+    // Einladung zum Hinsehen. Dieselbe Zuordnung wie beim Termin (Abschnitt 13).
+    case 'saved_search_hit':
+      return { Icon: Search, title: 'Das hast du gesucht', tint: ui.success };
     default:
       return { Icon: Bell, title: 'Neu bei Berkat', tint: ui.textMuted };
   }
@@ -98,6 +104,8 @@ function Row({ item }: { item: BerkatNotification }) {
               type: item.type,
               sessionId: item.session_id,
               senderId: item.sender_id,
+              // Bei `saved_search_hit` steht der Suchbegriff hier drin.
+              query: item.product_name,
             },
             // Wir stehen schon in der Liste — für Käufer-Meldungen ist das
             // Konto das Ziel, die Liste wäre hier ein Sprung auf der Stelle.

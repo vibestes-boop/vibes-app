@@ -1439,8 +1439,22 @@ CLAUDE.md nennt drei (In-App-Liste, Expo-Push, Web-Push). Beim Bauen kam heraus:
   Service-Role-Token gesetzt ist und `send-push-notification` mit 401 antwortete. Seither leben die
   Texte als `CASE` in `fn_send_push_on_notification`. Wer nur die Edge Function anfasst, bekommt den
   ELSE-Zweig: **„Neue Aktivität auf Serlo"**. Genau einmal so passiert, bevor es auffiel.
-- **Web-Push ist für alle Nicht-DM-Typen tot** — der Fan-out lebte in eben dieser Edge Function.
-  Betrifft Serlo genauso wie Berkat, eigener Schritt.
+- ~~**Web-Push ist für alle Nicht-DM-Typen tot**~~ — ⚠️ **RICHTIGSTELLUNG 21.08.2026: falsch.**
+  Der Satz stand hier seit dem 14.08. und in Abschnitt 51 noch einmal als Begründung dafür, dass
+  ein neuer Meldungstyp „nicht neun Oberflächen" braucht. Am frischen Schema-Abzug nachgelesen:
+  `fn_send_push_on_notification` ruft für jeden Nicht-DM-Typ **`net.http_post` auf
+  `/functions/v1/send-push-notification` mit `channels: ['web']`** — der Weg wurde am 14.08. mit
+  `20260814220000` wiederhergestellt und lebt seither. **Beide Wege feuern:** der SQL-`CASE` für
+  nativ, die Edge Function für den Browser.
+
+  Die Folge stand am 21.08. im Code: `auction_won` ist in der Function an vier Stellen verkabelt,
+  **`auction_up` an keiner** — ein Web-Abonnent hätte „Neue Aktivität auf Vibes" mit leerem Text
+  bekommen, auf die Serlo-Startseite geführt und in Serlos Einstellungen nicht abschaltbar. Heute
+  folgenlos, weil `web_push_subscriptions` leer ist; ab dem ersten Browser-Abonnenten nicht mehr.
+  Beim Bau der gespeicherten Suche mit repariert (Abschnitt 57).
+
+  **Ein neuer Meldungstyp braucht also doch die Edge Function**, und zwar vier Stellen darin:
+  `MESSAGES` (de **und** ru), `TYPE_TO_PREF`, `deriveWebUrl`, `deriveWebTag`.
 - Die Edge-Function-Texte sind trotzdem ergänzt: Sie sind korrekt und greifen, sobald der
   Token-Weg wieder aktiviert wird.
 
@@ -6567,3 +6581,119 @@ Aus dem Zwei-Konten-Durchlauf am 19.08. (Abschnitt 53), und sie gilt weiter:
 
 Und die Ergänzung vom 21.08.: **Gruppe A kostet eine halbe Stunde und braucht niemanden außer dir.**
 Sie liegt seit Tagen da, weil sie nirgends als Liste stand.
+
+---
+
+## 57. Gespeicherte Suche — und ein Audit, das fünf eigene Fehler fand (21.08.2026)
+
+Punkt A aus der neunten Analyse und der einzige Bau daraus, der weder Geldweg noch Rechtsfrage
+berührt. **Eine erfolglose Suche war bis hierher verloren:** Wer „Abaya 42" tippte und nichts fand,
+ging — und erfuhr nie, dass zwei Tage später genau das eingestellt wurde.
+
+Der Knopf sitzt deshalb im **Leerzustand** der Regal-Suche, nicht neben dem Suchfeld: Eine
+erfolgreiche Suche muss man nicht merken. Wer nichts findet, liest jetzt „Sag mir Bescheid, wenn so
+etwas kommt".
+
+⚠️ **Der Wert steigt, je LEERER das Regal ist.** Bei Whatnots vollem Bestand ist das Komfort; bei
+Berkats dünnem ist es der einzige Mechanismus, der einen erfolglosen Besuch in einen späteren
+verwandelt.
+
+### Wo es liegt
+
+| Wo | Was |
+|---|---|
+| `20260821120000_berkat_saved_searches.sql` | Tabelle, RLS, Meldungstyp, Push-Text, Push-Nutzlast, Trigger |
+| `lib/useSavedSearches.ts` | **neu** — anlegen, löschen, Fehlertexte |
+| `app/shop.tsx` | Knopf im Leerzustand, `?q=`-Parameter |
+| `useNotifications.ts`, `notifications.tsx`, `usePush.ts` | Ziel, Symbol, Text, Typ-Union |
+| `functions/send-push-notification/index.ts` | vier Stellen — **und `auction_up` gleich mit** |
+
+### Der Audit: 29 Funde, 24 geprüft, 12 bestätigt, 12 widerlegt
+
+Fünf Blickwinkel griffen die Migration unabhängig an, danach musste **jeder Fund einen Skeptiker
+überleben**. Die Quote von rund 50 % deckt sich mit dem Audit vom 17.08. (Abschnitt 22) — wer solche
+Listen ohne Gegenprobe abarbeitet, baut an Baustellen, die keine sind.
+
+Die zwölf verdichten sich auf **sechs Fehler, alle in meiner eigenen Arbeit derselben Stunde**:
+
+**1 · Die Frauen-Only-Schranke war halb.** Die echte Lesegrenze ist `is_women_only_verified()`, und
+die verlangt **`gender = 'female'` UND `women_only_verified = true`** — am Schema-Abzug zeichengenau
+nachgelesen. Mein Trigger prüfte nur die zweite Hälfte. Ein Konto, das freigegeben wurde und danach
+sein Geschlecht ändert (erlaubt — der Sperr-Trigger schützt nur `women_only_verified`), hätte
+Titel und Verkäuferinnen-Namen eines Frauen-Only-Angebots als Push bekommen, während das Regal ihm
+dasselbe Angebot verweigert. **Zwei Wahrheiten darüber, wer in der Frauen-Zone ist.**
+
+Dieselbe Fehlerklasse wie am 19.08. (`20260819130000`) — nur diesmal nicht „vergessen", sondern
+**unvollständig abgeschrieben**, was schwerer zu sehen ist. Die Lehre schärft die alte:
+
+> Wer eine Schranke von Hand mitschreibt, schreibt sie **ganz** mit. Eine halbe Schranke sieht im
+> Code aus wie eine ganze.
+
+**2 · Der Push trug den Suchbegriff nicht** — von **vier** der fünf Blickwinkel unabhängig gefunden.
+`v_data` in `fn_send_push_on_notification` kannte nur fünf Felder; `usePush.ts` liest aber `query`.
+Der Tipp auf den Push wäre im Regal **ohne** Suchbegriff gelandet — kaputt wäre also ausgerechnet
+der Weg, mit dem diese Meldung ihren Push überhaupt rechtfertigt. Es ist derselbe Fehler wie am
+19.08. bei `auction_up`, nur eine Ebene tiefer: zwei Wahrheiten über dasselbe Ziel, diesmal
+zwischen SQL-Nutzlast und Client-Erwartung.
+
+**3 · Server und Client stellten verschiedene Fragen.** Der Trigger suchte in
+`concat_ws(' ', title, size, city)`, der Client prüft jedes Feld **einzeln**
+(`inTitle || inSize || inCity`). „Abaya 42" traf damit serverseitig auf „abaya 42 berlin", im Regal
+aber nicht. **Die Meldung hätte einen Treffer versprochen, den die App nicht zeigen kann** — und
+dabei die 20-Stunden-Drossel verbraucht. Jetzt feldweise, identisch zum Client.
+
+**4 · `%` und `_` waren Platzhalter.** Wer „100% Baumwolle" speichert, bekommt ein Muster statt
+einer Suche; wer „%%" speichert, trifft auf **alles**. Jetzt maskiert samt `ESCAPE`.
+
+**5 · Die Drossel galt je Suche, nicht je Mensch.** Ein Prüfer hat es im lokalen Postgres
+nachgestellt: Fünf gespeicherte Suchen, ein einziges Angebot „Abaya schwarz, Gr. 42, Berlin" →
+**fünf Meldungen und fünf Pushes aus einem INSERT**, alle in derselben Sekunde. Jetzt
+`DISTINCT ON (user_id)` plus eine Personen-Drossel über `notifications` und ein Stempel auf **alle**
+Suchen des Nutzers.
+
+**6 · Der Web-Push-Weg lebt** — und Abschnitt 9 behauptete seit dem 14.08. das Gegenteil. Siehe die
+Richtigstellung dort. `auction_up` fehlte in allen vier Typ-Tabellen der Edge Function und ist
+dabei mitrepariert worden.
+
+### Was der Audit NICHT beanstandet hat
+
+Die zwölf widerlegten Funde betrafen unter anderem: die UNION-Konstruktion des Typ-CHECKs
+(hält auch bei leerer Tabelle), die Idempotenz der Migration, die Rechte auf der neuen Tabelle,
+und ob Serlo `live_auctions` benutzt (tut es nicht).
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Nur der Suchtext, keine Filter.** Kategorie, Größe, Zustand, Ort und Preis mitzuspeichern
+  vervielfachte das Treffer-Prädikat — und ein Treffer, den der Nutzer nicht nachvollziehen kann,
+  ist schlimmer als keiner.
+- **`product_name` trägt den SUCHBEGRIFF**, nicht den Artikelnamen. Nur so baut der Client daraus
+  `/shop?q=…`, ohne ihn aus einem Satz herauszuschneiden. Der Artikelname steht in `comment_text`.
+- **Ein neuer Meldungstyp — mit einer dritten Begründung.** Zweimal abgelehnt („nicht eilig",
+  Abschnitte 18 und 24), einmal angenommen („Halbwertszeit von Sekunden", Abschnitt 51). Hier gilt:
+  **Der Zweck ist, jemanden zurückzuholen, der die App verlassen hat.** Eine Zeile im
+  Aktivitäts-Reiter erreicht nur den, der ohnehin da ist — das wäre kein halber Nutzen, sondern
+  gar keiner.
+- **Kein UPDATE in der RLS.** Eine Suche ändert man nicht, man legt eine neue an. Damit kann auch
+  niemand `last_notified_at` vom Client aus zurücksetzen und die Drossel umgehen.
+- **Nur AFTER INSERT**, nicht AFTER UPDATE. Ein Angebot, dessen Titel später geändert wird, meldet
+  sich nicht nachträglich — sonst löste ein Verkäufer, der dreimal nachbessert, drei Meldungen aus.
+  Der verpasste Treffer bei einer Titeländerung ist der billigere Fehler.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Dollar-Quoting paarig, genau zwei
+`CREATE FUNCTION`.
+
+⚠️ **Die Migration ist NICHT eingespielt** und die Edge Function **nicht ausgerollt.** Beides
+gehört zusammen und in einem Schritt gemacht:
+
+```bash
+supabase db push
+supabase functions deploy send-push-notification
+```
+
+Die sechs Gegenproben stehen am Ende der Migration. Zwei davon brauchen mehr als einen Blick:
+
+- **Die Drossel** — zweimal passend einstellen, es darf **eine** Meldung geben.
+- **Frauen-Only** — braucht ein geprüftes Frauenkonto und ein WOZ-Regalangebot. Steht in der
+  Prüfliste (Abschnitt 56, Gruppe E), und es gibt bis heute **null** WOZ-Daten in der Datenbank.

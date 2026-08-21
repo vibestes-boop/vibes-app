@@ -42,7 +42,8 @@
 // im Kopf von `components/ListingCard.tsx`.
 
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect, router } from 'expo-router';
+import { useFocusEffect, router, useLocalSearchParams } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import {
   ActivityIndicator,
   FlatList,
@@ -56,13 +57,18 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { BellPlus, ChevronLeft, Search, SlidersHorizontal, X } from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { formatEuro, useProfiles } from '../lib/useAuction';
 import { useShopListings, type Listing } from '../lib/useListings';
 import { useSavedIds, useToggleSaved } from '../lib/useSaved';
+import {
+  normalizeQuery,
+  savedSearchError,
+  useSavedSearchActions,
+} from '../lib/useSavedSearches';
 import { useCategoryOptions } from '../lib/useCategories';
 import { conditionLabel } from '../lib/useBerkatSeller';
 import { ListingCard } from '../components/ListingCard';
@@ -143,7 +149,16 @@ export default function ShopScreen() {
   }, [categoryGroups]);
 
   const [pulling, setPulling] = useState(false);
-  const [query, setQuery] = useState('');
+  // Ein Suchwort darf von außen kommen: Der Tipp auf eine „Das hast du
+  // gesucht"-Meldung landet hier MIT dem Wort, statt den Empfänger erneut
+  // tippen zu lassen. Als `useState`-Anfangswert, nicht als Effekt — ein
+  // Effekt würde die Suche auch dann zurücksetzen, wenn der Besucher
+  // inzwischen selbst weitergetippt hat (dieselbe Lehre wie beim
+  // Profil-Reiter, Abschnitt 13).
+  const params = useLocalSearchParams<{ q?: string }>();
+  const [query, setQuery] = useState(typeof params.q === 'string' ? params.q : '');
+  const [searchNotice, setSearchNotice] = useState<string | null>(null);
+  const [savingSearch, setSavingSearch] = useState(false);
   const [sort, setSort] = useState<Sort>('neu');
   const [filterOpen, setFilterOpen] = useState(false);
   /** `null` = alle. Getrennte Zustände statt eines Objekts: Jeder wird einzeln gesetzt. */
@@ -161,6 +176,28 @@ export default function ShopScreen() {
     setCity(null);
     setMaxPrice(null);
   }, []);
+
+  // Gespeicherte Suche. Die Meldung erzeugt der Server (Trigger
+  // `notify_saved_searches`); hier wird nur angelegt.
+  const { save: saveSearchMutation } = useSavedSearchActions(myUserId);
+  const saveSearch = useCallback(() => {
+    const q = normalizeQuery(query);
+    if (q.length < 2 || savingSearch) return;
+    setSavingSearch(true);
+    setSearchNotice(null);
+    saveSearchMutation
+      .mutateAsync(q)
+      .then(() => {
+        // Erfolgs-Haptik: Das ist ein kleiner Peak — jemand hat gerade nichts
+        // gefunden und trotzdem etwas erreicht (Design-Gesetz 1 und 2 in einem).
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+          () => {},
+        );
+        setSearchNotice(`Gemerkt. Wir sagen dir Bescheid, sobald „${q}" auftaucht.`);
+      })
+      .catch((err) => setSearchNotice(savedSearchError(err)))
+      .finally(() => setSavingSearch(false));
+  }, [query, savingSearch, saveSearchMutation]);
 
   /**
    * Die Auswahl entsteht AUS DEN DATEN, nicht aus einer festen Liste.
@@ -428,6 +465,29 @@ export default function ShopScreen() {
                       : 'Filter zurücksetzen'}
                 </Text>
               </Pressable>
+
+              {/* Der eigentliche Fund der neunten Analyse sitzt genau HIER:
+                  an der Stelle, an der jemand sonst weggeht. Eine erfolglose
+                  Suche ist die einzige, die es zu merken lohnt — deshalb steht
+                  der Knopf im Leerzustand und nicht neben dem Suchfeld.
+                  ⚠️ Nur bei gesetzter Suche: Ein leerer Filterzustand hat
+                  keinen Text, den man speichern könnte. */}
+              {query.trim().length >= 2 ? (
+                <Pressable
+                  style={({ pressed }) => [styles.notifyCta, pressed && { opacity: 0.7 }]}
+                  onPress={saveSearch}
+                  disabled={savingSearch}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Bescheid geben, wenn „${query.trim()}" eingestellt wird`}
+                >
+                  <BellPlus size={16} color={ui.text} />
+                  <Text style={styles.notifyCtaText}>
+                    {savingSearch ? 'Einen Moment …' : 'Sag mir Bescheid, wenn so etwas kommt'}
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              {searchNotice ? <Text style={styles.notifyNotice}>{searchNotice}</Text> : null}
             </View>
           ) : (
             <View style={styles.empty}>
@@ -668,6 +728,29 @@ const styles = StyleSheet.create({
 
   empty: { alignItems: 'center', paddingTop: space.xl * 2, paddingHorizontal: space.lg },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: ui.text, marginTop: space.md },
+  // Kontur, nicht Gold: Gold ist in Berkat der Kaufweg. „Sag mir Bescheid" ist
+  // eine Bitte, kein Kauf — dieselbe Unterscheidung wie beim Regal-Knopf auf
+  // der Startseite (Abschnitt 21).
+  notifyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    marginTop: space.sm,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: ui.line,
+  },
+  notifyCtaText: { fontSize: 14, fontWeight: '600', color: ui.text },
+  notifyNotice: {
+    fontSize: 13,
+    color: ui.textMuted,
+    marginTop: space.sm,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+
   emptyBody: {
     fontSize: 13,
     color: ui.textMuted,
