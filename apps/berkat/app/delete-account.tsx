@@ -72,9 +72,13 @@ export default function DeleteAccountScreen() {
       <ScrollView
         contentContainerStyle={{ padding: space.lg, paddingBottom: insets.bottom + space.xl }}
       >
+        {/* ⚠️ Der Verweis zeigte zuerst auf „den letzten Teil" — und das war der
+            Abmelde-Hinweis ganz unten, nicht der Absatz, der gemeint war. Ein
+            Zeiger, der auf die falsche Stelle zeigt, ist schlimmer als keiner.
+            Am 21.08.2026 am Gerät gesehen, im ersten Durchlauf überhaupt. */}
         <Text style={s.lead}>
-          Das lässt sich nicht rückgängig machen. Lies kurz, was passiert — besonders den
-          letzten Teil, der beantwortet die Frage, die die meisten haben.
+          Das lässt sich nicht rückgängig machen. Lies kurz, was passiert — vor allem den
+          grünen Kasten: Er beantwortet die Frage, die die meisten haben.
         </Text>
 
         <View style={[s.card, s.cardGone]}>
