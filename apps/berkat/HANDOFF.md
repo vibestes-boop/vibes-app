@@ -17,9 +17,15 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Der Design-Durchgang vom 18./19.08.2026** hat den größten Teil der App angefasst. Wer neu
-> einsteigt, liest **0 → 46** und danach bei Bedarf rückwärts. Abschnitt 46 ist der
-> Anschlusspunkt; 38 und 26 sind darin aufgegangen.
+> **Wer neu einsteigt, liest 0 → 54 → 56.** Abschnitt 54 ist der Anschlusspunkt (er löste 46 ab,
+> das wiederum 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
+> nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
+>
+> ⚠️ **Dieser Kopf war am 21.08.2026 an acht Stellen veraltet** — die Marktplatz-Migration galt
+> als offen, obwohl sie seit dem 17.08. lief; Sentry als „noch nicht scharf", obwohl der Build
+> seit dem 21.08. in TestFlight liegt; und drei Punkte als „ungeprüft", die die Testware am
+> 18.08. belegt hatte. Der Rumpf war jedes Mal aktuell, nur der Kopf nicht. **Wer unten etwas
+> abhakt, hakt es oben mit ab** — sonst liest der nächste Chat den falschen Zustand zuerst.
 >
 > Neu in dieser Runde: Startseite zeigt das Regal (27), Hochformat für alle Karten (28),
 > Entdeckungs-Leiste (29), Suche und Sortierung im Regal (30), Testware per Skript (31),
@@ -48,7 +54,7 @@ was gilt.
 | Bürgen — Vertrauen mit Namen statt Sterne | ✅ (15) |
 | **Dauerangebote** — kaufbar ohne laufende Show | ✅ Kauf gelaufen (17) |
 | **Verkäufer-Suche** — findet auch, wer nicht sendet | ✅ (17, Nachtrag) |
-| Fehlerüberwachung (Sentry) | ✅ eingebaut, **scharf erst ab dem nächsten Build** (16) |
+| Fehlerüberwachung (Sentry) | ✅ **scharf seit dem TestFlight-Build vom 21.08.2026** (16). ⚠️ Ohne Quellkarten: `SENTRY_DISABLE_AUTO_UPLOAD=true`, solange es keinen Sentry-Zugang gibt (Abschnitt 3) |
 | Meldungen — Glocke, Ziel je Typ | ✅ (17, Nachtrag) |
 | **Fünf Reiter** — Kategorien und Aktivität dazu | ✅ am Gerät gesehen (18) |
 | **Kategorien** — 12 Ober-, 61 Unterkategorien, Aufklappen | ✅ am Gerät, Rollup belegt (18) |
@@ -56,7 +62,7 @@ was gilt.
 | **Profil** — Reiter, Bewertungstexte, Banner, Teilen, Sperren | ✅ am Gerät gesehen (18) |
 | **Verkäufer-Bereich** — Bestellungen und Regal als eigene Seiten | ✅ am Gerät gesehen (18) |
 | **Erstnutzung** — „Deine ersten Schritte" | ✅ am Gerät bestätigt (18) |
-| **Marktplatz** — Privat- und Gewerbeverkäufer, Shop-Seite, Orte | ⚠️ gebaut, **eine Migration steht noch offen** (20) |
+| **Marktplatz** — Privat- und Gewerbeverkäufer, Shop-Seite, Orte | ✅ am Gerät durchgespielt (20, 21). ⚠️ Hier stand bis zum 21.08.2026 „eine Migration steht noch offen" — `20260816220000` lief am **17.08.**, siehe Abschnitt 20 |
 | **Artikelseite** — jedes Angebot hat eine eigene Seite, eine Karte für alle Flächen | ✅ am Gerät durchgespielt, Beschreibung erstmals sichtbar (21) |
 
 ### Was ausdrücklich NICHT geprüft ist
@@ -80,14 +86,14 @@ was gilt.
 - ~~**Der Marktplatz-Weg von vorne**~~ — am 17.08.2026 durchgespielt, nachdem `20260816220000`
   eingespielt war: Angebot mit Zustand und Ort eingestellt, „Privatverkauf" stand an der Zeile,
   der Rechtsfolge-Kasten auf der Artikelseite (Abschnitt 21)
-- **„Nachricht" statt „Kaufen"** — sichtbar nur an einem FREMDEN Privatangebot; es gibt heute
-  keins, weil beide Dauerangebote dem Betreiber gehören
-- ~~**Der Anbieter-Block auf der Artikelseite**~~ — am 17.08.2026 gesehen, „Privatverkauf · kein
-  Widerrufsrecht" samt Erklärsatz. Die **gewerbliche** Fassung und der Impressumsblock sind
-  weiterhin ungeprüft: Es gibt kein Konto mit `kind = 'business'` (21)
-- **Der Kaufknopf auf der Artikelseite** — braucht ein fremdes Angebot, also das zweite Konto. Der
-  Weg daneben ist belegt: Zurückziehen lief, und die Leiste sprang danach live auf
-  „Zurückgezogen" (21)
+- ~~**„Nachricht" statt „Kaufen"**~~ — am 18.08.2026 belegt, nachdem die Testware fremde
+  Angebote erzeugt hat (Abschnitt 33)
+- ~~**Der Anbieter-Block auf der Artikelseite**~~ — beide Fassungen belegt: die private am
+  17.08.2026, die **gewerbliche** am 18.08. (Abschnitt 33) und der Impressumsblock mit Inhalt
+  am 19.08. (Abschnitt 35). Das Seed-Skript setzt `amir32` auf `kind = 'business'`
+- **Der Kaufknopf auf der Artikelseite** — fremde Angebote gibt es seit der Testware; was fehlt,
+  ist `berkat_sellers.checkout_enabled` bei einem Seed-Verkäufer. Das SQL liegt fertig in
+  `supabase/_ops/kassen-freigabe-testware.sql` (Abschnitt 54, Punkt 3)
 
 ### Drei Blocker — keiner davon ist Code
 
@@ -95,16 +101,16 @@ was gilt.
    stand „Berkat ist in keinem Store". Das war falsch. In App Store Connect liegt
    **„Berkat: Live-Auktionen", Status *iOS 1.0 In Vorbereitung zur Übermittlung*** — die App-ID
    `6802102343` in `eas.json` gehört ihr (Serlos ist `6760790424`, es ist also keine Kopie).
-   Was fehlt, ist ein **hochgeladener Build**, nicht der Eintrag.
+   ✅ **Stand 21.08.2026: Der Build liegt in TestFlight.** `1.0.0 (1)`, Upload abgeschlossen,
+   Status „Bereit zur Übermittlung". Der Lizenzvertrag ist akzeptiert, Zertifikat und Profil
+   stehen, Push ist auf der App-ID freigeschaltet (Abschnitt 54).
 
-   Verkäufer und Publikum können die App weiterhin nicht installieren; alles Gebaute ist für genau
-   eine Person erreichbar. Der Weg dahin ist kürzer als gedacht — aber er hat einen Riegel davor:
+   **Was jetzt noch fehlt, ist die Beta App Review** — die externe Gruppe „Verkäufer" ist
+   angelegt, eingereicht wird mit Testinformationen und Demo-Konto. Erst danach können die fünf
+   Verkäufer die App installieren. Bis dahin ist alles Gebaute für genau eine Person erreichbar.
 
-   ⚠️ **Der Apple-Developer-Lizenzvertrag ist aktualisiert und nicht akzeptiert.** App Store Connect
-   meldet es beim Öffnen: Ohne Zustimmung des **Accountinhabers** lassen sich weder bestehende Apps
-   aktualisieren noch neue einreichen. `eas submit` scheitert daran — und zwar erst **nach** einem
-   fertigen Build, also an der teuersten Stelle. Zuerst akzeptieren, dann bauen. Das kann nur Zaur
-   (Account-Login mit Zwei-Faktor), wie auch der Build selbst.
+   ⚠️ **Ein TestFlight-Build läuft nach 90 Tagen ab**, Phase 0 dauert 56 — ein Build deckt sie,
+   aber ohne viel Luft. Beim zweiten die `buildNumber` in der `app.json` von Hand hochzählen.
 2. **Stripe-Zugang.** Konto ist `acct_1Tk85WDimgI7k5Md` („brandwerkx"), die Wiederherstellung läuft
    per Ausweis. Alles ist **Testbetrieb** (`cs_test_`, nie echtes Geld).
    ✅ **Ratenzahlung ist seit dem 19.08.2026 abgeschaltet** — Klarna, Billie und Scalapay, in Test-
@@ -129,7 +135,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–18 |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–59; **56 ist die Prüfliste** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -175,7 +181,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | 30 Stück, 29 eingespielt — Abschnitt 5 |
+| Migrationen | **35 Berkat-eigene, alle eingespielt**; im Tracking 278 ohne Lücke (21.08.2026) — Abschnitt 5 |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -213,7 +219,7 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx expo export --platform ios --o
 ```
 
 Der Export ist der ehrlichere Test: Er baut das komplette Bundle und findet Auflösungsfehler, die
-`tsc` nicht sieht. Aktueller Stand: **3173 Module, fehlerfrei**.
+`tsc` nicht sieht. Aktueller Stand: **3702 Module, fehlerfrei** (21.08.2026).
 
 ### Neu laden — NICHT ⌘R
 
@@ -3209,10 +3215,11 @@ zwei alten mit NULL, die die Migration bewusst nicht angefasst hat.
 
 ### Was daran noch offen ist
 
-1. **Die gewerbliche Fassung** des Anbieter-Blocks und der Impressumsblock darunter sind
-   ungeprüft — es gibt kein Konto mit `kind = 'business'`. Der Weg dahin ist ein Tipp auf
-   „Gewerblich" im Composer, ändert aber die Anbieterlage aller offenen Angebote dieses Kontos.
-2. **Der Kaufknopf** braucht ein fremdes Angebot, also das zweite Konto.
+1. ~~**Die gewerbliche Fassung** des Anbieter-Blocks und der Impressumsblock~~ — **erledigt.**
+   Das Seed-Skript setzt `amir32` auf `kind = 'business'`; der Block war am 18.08.2026 zu sehen
+   (Abschnitt 33), der Impressumsblock mit Inhalt am 19.08. (Abschnitt 35).
+2. **Der Kaufknopf** — fremde Angebote gibt es seit der Testware; was noch fehlt, ist
+   `checkout_enabled` bei einem Seed-Verkäufer (Abschnitt 54, Punkt 3).
 3. **Die Suche** findet weiterhin nur Verkäufer, keine Artikel (Abschnitt 17). Mit einer
    Artikelseite je Angebot wäre eine Artikelsuche jetzt sinnvoll — sie hätte ein Ziel.
 4. ~~**`/shop` hängt an einer einzigen Zeile** im Kategorien-Reiter~~ — **behoben, siehe unten.**
