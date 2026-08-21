@@ -17,9 +17,9 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 54 → 56.** Abschnitt 54 ist der Anschlusspunkt (er löste 46 ab,
-> das wiederum 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
-> nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
+> **Wer neu einsteigt, liest 0 → 61 → 56.** Abschnitt 61 ist der Anschlusspunkt (er löste 54 ab,
+> davor 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle, nach
+> Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
 >
 > ⚠️ **Dieser Kopf war am 21.08.2026 an acht Stellen veraltet** — die Marktplatz-Migration galt
 > als offen, obwohl sie seit dem 17.08. lief; Sentry als „noch nicht scharf", obwohl der Build
@@ -7043,3 +7043,103 @@ auswählte.
 Es ist derselbe Satz wie am 19.08. (Abschnitt 54) — nur diesmal mit einem Zusatz: **Der teuerste
 Fehler war eine Zahl, die einmal stimmte.** Nicht falscher Code, sondern eine richtige Messung, die
 ihre Bedingungen überlebt hat.
+
+---
+
+## 61. Anschlusspunkt für den nächsten Chat (Stand 21.08.2026, Abend)
+
+**Hier anfangen.** Löst Abschnitt 54 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) —
+die Prüfliste ist ab jetzt der Motor, nicht die Feature-Liste.
+
+### Der Zustand
+
+| | |
+|---|---|
+| Migrationen | **42, alle eingespielt**, keine Lücke |
+| `tsc` / `expo export` | fehlerfrei |
+| Git | sauber, Branch `berkat` |
+| TestFlight | `1.0.0 (1)` · **„Warten auf Prüfung"** in der externen Gruppe „Verkäufer" |
+| OTA | drei seit dem Build — zuletzt „Profilbild, Kopfbild-Fix, kleinere Chat-Blasen" |
+| Regal | 38 Testartikel, sechs Verkäufer |
+| Offen bei `zaur` | zwei Sammelkörbe (5 € + 1 €), laufen am 22.08. gegen 18 Uhr ab |
+
+⚠️ **Ein nativer Eintrag steht in der Warteschlange** (Abschnitt 12): `expo-image-manipulator`.
+Bis zum nächsten Build greift beim Bild-Upload nur die gesenkte Qualität — ein 48-MP-Foto kann
+weiterhin über 8 MB liegen und wird abgewiesen. Kein Absturz, aber ein sichtbarer Mangel.
+
+### Was heute gebaut wurde
+
+Verkäufer-Umsatz im Live-Raum (55) · gespeicherte Suche (57) · Bürgen im Live-Kopf (58) ·
+Konto löschen (59) · vier Funde aus dem Prüflisten-Durchlauf (60) · achte und neunte
+Whatnot-Analyse.
+
+**Und vier Fehler behoben, von denen keiner im Code sichtbar war:**
+
+1. `delete_own_account()` vernichtete die Geschäftsbelege **Dritter** — seit Monaten live in
+   Serlos Web-App (59)
+2. Der Push trug den Suchbegriff nicht — von vier Prüfern unabhängig gefunden (57)
+3. Die 8-MB-Grenze: eine Messung, die ihre Bedingungen überlebt hatte (60)
+4. „Profil speichern" löschte das Kopfbild (60)
+
+### Das Erste, was zu tun ist
+
+1. **Die Beta App Review abwarten** — sie läuft. Danach ⚠️ **Tester eintragen**: Die Gruppe
+   „Verkäufer" hat **0 Tester**. Die Freigabe allein bringt die App zu niemandem. Für fünf Leute
+   ist der **öffentliche Link** praktischer als Einzeleinladungen.
+2. **Der zweite Lösch-Test** (22.08. ab ca. 18 Uhr, wenn die Körbe abgelaufen sind). Der erste ist
+   bestanden: Der Blocker griff. Ablauf und Abfragen in `supabase/_ops/loeschung-pruefen.sql`;
+   `zaur` ist `46c70dfb`, erwartet sind **9 verkaufte und 3 gewonnene** Auktionen, die **gleich
+   bleiben** müssen.
+3. **Gruppe A zu Ende prüfen** — A1 (Glocken-Hälfte), A5, A7, A8, A9, A10 stehen noch aus.
+   ⚠️ **A9 ist erst seit heute prüfbar**, vorher gab es keinen Avatar-Upload.
+
+### Was auf eine Entscheidung wartet, nicht auf Code
+
+⚠️ **Wie im Testlauf Geld fließt.** Das blockiert zwei Punkte gleichzeitig:
+
+- **Der Kaufknopf am Regal-Artikel** — `checkout_enabled` ist die ZAG-Schranke. Bei einem fremden
+  Verkäufer hieße „an" : sein Geld läuft über das Konto des Betreibers, und das ist
+  erlaubnispflichtig. Für die **Testware** ist es unproblematisch (`amir32` ist erfunden), das SQL
+  liegt in `supabase/_ops/kassen-freigabe-testware.sql`.
+- **Der Gewinnspiel-Versand** — `draw_live_giveaway` setzt nur `winner_id`, erzeugt keine
+  Bestellung. Der Fix legt den Gewinn als 0-€-Bestellung in den normalen Versandpfad — und dessen
+  rechtliche Form ist genau die offene Frage.
+
+Realistisch: **Kommission, Berkat ist Verkäufer.** Keine Zeile Code, aber die Voraussetzung für
+beides.
+
+### Danach, nach Nutzen sortiert
+
+1. **Käuferschutz-Zusage** — drei Fälle, eine Zusage, die man halten kann (Analyse 9)
+2. **Versand in Stufen** — Brief ab 1,19 €; `berkat_shipping_rates` hat `label` und `sort_index`
+   schon, es sind Zeilen, kein Umbau
+3. **Vorbereitetes einem Termin zuordnen** · **„Bezahlung abbrechen"** · **Live-Raum-Vergleich**
+4. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren
+
+### Nicht neu diskutieren
+
+Keine Varianten (41) · kein Account Health, kein „Watch to earn", keine abgekürzten Zahlen, kein
+Dunkelmodus (40) · keine Marken-Chips (41) · kein Push für Preisvorschläge (24) · **kein
+Kaufknopf im Raster** (27) · **Chat-Kasten bleibt**, nur schmaler (60).
+
+### Die Blocker
+
+1. **Kein Build bei Testern.** Der Build liegt in TestFlight und wartet auf die Review; die Gruppe
+   hat 0 Tester. ⚠️ Der Build **läuft am 19.11.2026 ab** — Phase 0 dauert 56 Tage, das passt, aber
+   ohne viel Luft.
+2. **Stripe:** Testbetrieb, Ratenzahlung aus. Vor dem Go-Live die Zahlungsmethoden durchsehen.
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass.**
+
+### Was dieser Tag gelehrt hat
+
+Zwölf Änderungen, zwei Analysen mit 38 Agenten, zwei adversarische Audits — und **die vier
+teuersten Funde kamen alle von einem Menschen, der die App benutzt hat.** Kein `tsc`, kein `grep`,
+kein Schema-Abzug hat einen davon gesehen.
+
+> Der teuerste Fehler des Tages war kein falscher Code, sondern **eine Zahl, die einmal
+> gestimmt hat**: 250–330 KB, gemessen am 16.08. an zugeschnittenen Bildern, zitiert am 18.08. als
+> Beruhigung für ungeschnittene. **Eine Messung gilt für den Zustand, in dem gemessen wurde.**
+
+Und der Satz, der über allem steht, ist unverändert: Keine der zwölf Änderungen hat einen
+Verkäufer gebracht. Das kommt über den TestFlight-Link — und danach über Telefonate, nicht über
+Code.
