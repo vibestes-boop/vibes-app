@@ -50,6 +50,30 @@ type SignResult = {
   uploadHeaders?: Record<string, string>;
 };
 
+/**
+ * Verkleinern vor dem Hochladen — bedingt geladen.
+ *
+ * ⚠️ NATIVES MODUL. Ein statischer Import würde auf jedem älteren Build schon
+ * beim Laden dieser Datei werfen und damit ALLE Bild-Wege mitreißen (dieselbe
+ * Vorsicht wie bei LiveKit und `expo-web-browser`, Abschnitt 11). Fehlt es,
+ * greift der Rückfall in `pickImage()`.
+ */
+let Manipulator: typeof import('expo-image-manipulator') | null = null;
+try {
+  Manipulator = require('expo-image-manipulator');
+} catch {
+  Manipulator = null;
+}
+
+/**
+ * Längste Kante nach dem Verkleinern.
+ *
+ * 2000 px, weil die größte Fläche, auf der ein Bild je gezeichnet wird, die
+ * Artikel-Galerie über die volle Breite ist — auf einem iPhone Pro sind das
+ * rund 1290 physische Punkte. Alles darüber ist Bytes ohne sichtbaren Gewinn.
+ */
+const MAX_EDGE = 2000;
+
 export type PickedImage = { uri: string; mimeType: string; extension: string };
 
 function extensionFor(mimeType: string, uri: string): string {
@@ -133,17 +157,62 @@ export async function pickImage(
     // Karte hätte davon nochmal seitlich genommen.
     allowsEditing: shape === 'square',
     aspect: [1, 1],
-    // Gilt auch ohne Zuschnitt-Rahmen: Das Bild wird neu kodiert. Ein
-    // ungeschnittenes Handyfoto liegt damit über den 250–330 KB, die am
-    // 16.08.2026 für zugeschnittene gemessen wurden, aber deutlich unter der
-    // 8-MB-Grenze weiter unten.
-    quality: 0.85,
+    // ⚠️ RICHTIGSTELLUNG 21.08.2026. Hier stand: „liegt damit … deutlich unter
+    // der 8-MB-Grenze weiter unten." Das war BEHAUPTET, nicht gemessen — und am
+    // Gerät kam ein Foto mit **11,6 MB** heraus, das die Grenze riss.
+    //
+    // Die Kette: Am 16.08. wurden 250–330 KB gemessen, aber an ZUGESCHNITTENEN
+    // Bildern. Am 18.08. fiel für `portrait` und `wide` der Zuschnitt weg
+    // (siehe oben), seither kommt das Foto in voller Auflösung — bei einem
+    // aktuellen iPhone 48 Megapixel. `quality` komprimiert, aber VERKLEINERT
+    // NICHT. Niemandem fiel es auf, weil seit dem 18.08. kein Bild mehr
+    // ausgewählt wurde; es war Punkt A4 der Prüfliste.
+    //
+    // Merksatz: **Eine Messung gilt für den Zustand, in dem gemessen wurde.**
+    // Wer die Bedingungen ändert, misst neu — oder schreibt keine Zahl hin.
+    //
+    // Ohne Zuschnitt-Rahmen wird zusätzlich stärker komprimiert. Das allein
+    // rettet 48 MP nicht, halbiert aber, solange der Manipulator fehlt.
+    quality: shape === 'square' ? 0.85 : 0.6,
   });
   if (result.canceled || !result.assets?.[0]) return null;
 
   const asset = result.assets[0];
-  const mimeType = asset.mimeType?.trim() || 'image/jpeg';
-  return { uri: asset.uri, mimeType, extension: extensionFor(mimeType, asset.uri) };
+  const shrunk = await shrink(asset.uri, asset.width, asset.height);
+  const mimeType = shrunk ? 'image/jpeg' : asset.mimeType?.trim() || 'image/jpeg';
+  const uri = shrunk ?? asset.uri;
+  return { uri, mimeType, extension: extensionFor(mimeType, uri) };
+}
+
+/**
+ * Verkleinert auf `MAX_EDGE`, wenn das Bild größer ist. Gibt `null` zurück,
+ * wenn nichts zu tun war oder das native Modul fehlt — dann bleibt das Original.
+ *
+ * ⚠️ Ohne dieses Modul greift NUR die gesenkte Qualität oben, und ein 48-MP-Foto
+ * kann weiterhin über 8 MB liegen. Der Nutzer sieht dann die Größen-Meldung
+ * statt eines stillen Fehlschlags — unschön, aber ehrlich. Vollständig gelöst
+ * ist es erst mit dem nächsten Build (`expo-image-manipulator` ist nativ).
+ */
+async function shrink(
+  uri: string,
+  width?: number,
+  height?: number,
+): Promise<string | null> {
+  if (!Manipulator) return null;
+  const longest = Math.max(width ?? 0, height ?? 0);
+  if (longest > 0 && longest <= MAX_EDGE) return null;
+  try {
+    const resize = (width ?? 0) >= (height ?? 0) ? { width: MAX_EDGE } : { height: MAX_EDGE };
+    const out = await Manipulator.manipulateAsync(uri, [{ resize }], {
+      compress: 0.85,
+      format: Manipulator.SaveFormat.JPEG,
+    });
+    return out.uri;
+  } catch {
+    // Ein misslungenes Verkleinern darf den Upload nicht verhindern — dann
+    // eben das Original und, falls es zu groß ist, die Größen-Meldung.
+    return null;
+  }
 }
 
 /** Lädt ein ausgewähltes Bild hoch und gibt die öffentliche URL zurück. */

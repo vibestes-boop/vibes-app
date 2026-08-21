@@ -1,4 +1,10 @@
-// Profil bearbeiten — Kopfbild, Anzeigename, Bio.
+// Profil bearbeiten — Profilbild, Kopfbild, Anzeigename, Bio.
+//
+// ⚠️ Das PROFILBILD kam erst am 21.08.2026 dazu. Bis dahin gab es in ganz
+// Berkat keinen einzigen Avatar-Upload: Das Bild wurde an einem Dutzend
+// Stellen angezeigt, aber nirgends gesetzt — wer keins aus Serlo mitbrachte,
+// hatte für immer den grauen Kreis. Gefunden im ersten Durchlauf der
+// Prüfliste am Gerät, nicht im Code.
 //
 // Der BENUTZERNAME fehlt bewusst. Er ist Serlo-weit eindeutig und steht schon
 // in Live-Chats, Bestellungen und Bürgschaften; ihn hier änderbar zu machen
@@ -32,16 +38,23 @@ type Props = {
   visible: boolean;
   initialBio: string | null;
   initialDisplayName: string | null;
-  initialBanner: string | null;
   busy: boolean;
   /** Läuft gerade ein Upload? Dann ist der Bild-Bereich blockiert. */
   uploading: boolean;
   onPickBanner: () => void;
-  onSave: (bio: string, displayName: string, bannerUrl: string | null) => void;
+  onPickAvatar: () => void;
+  onSave: (
+    bio: string,
+    displayName: string,
+    bannerUrl: string | null,
+    avatarUrl: string | null,
+  ) => void;
   onClose: () => void;
   /** Vom Bildschirm gehalten, damit ein Upload das Blatt überlebt. */
   bannerUrl: string | null;
   onClearBanner: () => void;
+  avatarUrl: string | null;
+  onClearAvatar: () => void;
 };
 
 export function ProfileEditSheet({
@@ -51,10 +64,13 @@ export function ProfileEditSheet({
   busy,
   uploading,
   onPickBanner,
+  onPickAvatar,
   onSave,
   onClose,
   bannerUrl,
   onClearBanner,
+  avatarUrl,
+  onClearAvatar,
 }: Props) {
   const [bio, setBio] = useState(initialBio ?? '');
   const [name, setName] = useState(initialDisplayName ?? '');
@@ -81,6 +97,54 @@ export function ProfileEditSheet({
           <View style={s.grabber} />
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={s.title}>Dein Profil</Text>
+
+            {/* ── Profilbild ────────────────────────────────────────────── */}
+            {/* Steht VOR dem Kopfbild, und das ist keine Reihenfolge nach
+                Größe: Das Gesicht ist in dieser Gemeinschaft das, was über
+                Vertrauen entscheidet (Ausgangsanalyse § B5). Das Kopfbild ist
+                Dekoration, der Avatar ist die Person.
+
+                Rund gezeichnet, also quadratisch zugeschnitten — hier ist
+                `allowsEditing` genau richtig, weil iOS' Rahmen quadratisch IST
+                (Abschnitt 3). Nebeneffekt: Der Zuschnitt verkleinert die Datei,
+                das Bild läuft also nicht in die 8-MB-Grenze. */}
+            <Text style={s.label}>Profilbild</Text>
+            <View style={s.avatarRow}>
+              <Pressable
+                style={s.avatar}
+                onPress={onPickAvatar}
+                disabled={uploading}
+                accessibilityRole="button"
+                accessibilityLabel="Profilbild wählen"
+              >
+                {avatarUrl ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                    transition={120}
+                  />
+                ) : (
+                  <ImagePlus size={20} color={ui.textMuted} />
+                )}
+              </Pressable>
+              <View style={s.avatarText}>
+                <Text style={s.sub}>
+                  Zeigt sich im Live-Raum, an deinen Angeboten und in jedem Chat. Ohne Bild
+                  steht dort ein grauer Kreis.
+                </Text>
+                {avatarUrl && !uploading ? (
+                  <Pressable
+                    style={s.remove}
+                    onPress={onClearAvatar}
+                    accessibilityRole="button"
+                  >
+                    <Trash2 size={14} color={ui.live} />
+                    <Text style={s.removeText}>Profilbild entfernen</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
 
             {/* ── Kopfbild ──────────────────────────────────────────────── */}
             <Text style={s.label}>Kopfbild</Text>
@@ -147,7 +211,7 @@ export function ProfileEditSheet({
             <Pressable
               style={[s.primary, (busy || uploading) && s.primaryBusy]}
               disabled={busy || uploading}
-              onPress={() => onSave(bio, name, bannerUrl)}
+              onPress={() => onSave(bio, name, bannerUrl, avatarUrl)}
               accessibilityRole="button"
             >
               {busy ? (
@@ -191,6 +255,17 @@ const s = StyleSheet.create({
   label: { fontSize: 11, color: ui.textMuted, marginTop: space.md, marginBottom: 6 },
   sub: { fontSize: 11, color: ui.textMuted, marginTop: 5, lineHeight: 16 },
 
+  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: ui.sunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarText: { flex: 1, minWidth: 0 },
   banner: {
     height: 108,
     borderRadius: radius.md,

@@ -34,6 +34,19 @@ export type ProfileEdit = {
   displayName: string;
   /** R2-Adresse des Kopfbilds, oder null zum Entfernen. */
   bannerUrl?: string | null;
+  /**
+   * R2-Adresse des Profilbilds, oder null zum Entfernen.
+   *
+   * ⚠️ Ergänzt am 21.08.2026. Bis dahin gab es in ganz Berkat **keinen einzigen
+   * Avatar-Upload** — das Bild wurde an einem Dutzend Stellen ANGEZEIGT (Live-
+   * Kopf, Verkäuferkarte, Zuschauerliste, Bewertungen, Konto-Reiter), aber
+   * nirgends gesetzt. Wer keins aus Serlo mitbrachte, hatte für immer den
+   * grauen Kreis. Am Gerät gefunden, im ersten Durchlauf der Prüfliste.
+   *
+   * Für einen Marktplatz, dessen Kernargument Vertrauen zwischen Menschen ist,
+   * ist das Gesicht des Verkäufers nicht optional.
+   */
+  avatarUrl?: string | null;
 };
 
 export function useUpdateProfile(userId: string | null) {
@@ -55,6 +68,7 @@ export function useUpdateProfile(userId: string | null) {
           // `undefined` lässt die Spalte unangetastet — wer nur die Bio ändert,
           // soll nicht sein Banner verlieren.
           ...(input.bannerUrl !== undefined ? { banner_url: input.bannerUrl } : {}),
+          ...(input.avatarUrl !== undefined ? { avatar_url: input.avatarUrl } : {}),
         })
         .eq('id', userId);
       if (error) throw error;

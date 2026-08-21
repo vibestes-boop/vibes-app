@@ -1821,7 +1821,14 @@ für die Plattform, um die es geht (`--platform ios`, nicht `all`).
 
 Nach jedem Build geleert.
 
-- _(leer — der Build vom 15.08.2026 hat `expo-web-browser` mitgenommen)_
+- **`expo-image-manipulator`** (21.08.2026) — verkleinert Bilder vor dem Hochladen.
+  ⚠️ **Das ist kein Komfort, sondern ein Fehler-Fix:** Seit dem Wegfall des Zuschnitt-Rahmens am
+  18.08. kommen Fotos in voller Auflösung, und ein 48-MP-Bild riss mit **11,6 MB** die 8-MB-Grenze
+  (Abschnitt 60). Bis zum nächsten Build greift nur die gesenkte Qualität — das halbiert, rettet
+  aber nicht jedes Foto. Der Rückfall ist bewusst ehrlich: Der Nutzer sieht die Größen-Meldung
+  statt eines stillen Fehlschlags. Geladen wird bedingt per `require` in `try/catch`, wie LiveKit
+  und `expo-web-browser` — ein statischer Import würde auf dem aktuellen Build **jeden** Bild-Weg
+  mitreißen.
 
 ---
 
@@ -6514,15 +6521,15 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 
 | | Was | Woher |
 |---|---|---|
-| A1 | **Push-Tap**: Ein Zuschlag muss aus dem **Push** die Liste öffnen, aus der **Glocke** das Konto. Landen beide gleich, ist der Fix vom 20.08. falsch | 53 + Nachtrag |
+| A1 | ~~**Push-Tap**~~ ✅ 21.08.: `auction_up` führte in den **Live-Raum**. Offen bleibt nur die Gegenprobe aus der **Glocke** (muss ins Konto führen). **Push-Tap**: Ein Zuschlag muss aus dem **Push** die Liste öffnen, aus der **Glocke** das Konto. Landen beide gleich, ist der Fix vom 20.08. falsch | 53 + Nachtrag |
 | A2 | ~~Korb-Anzeige „Zum Bezahlen vorgemerkt"~~ | ✅ 20.08. belegt |
 | A3 | ~~**`tidySize()` am Schreibweg**~~ | ✅ 21.08. belegt: `m` getippt → `M` gespeichert (47) |
-| A4 | **Der `'portrait'`-Zuschnitt**: ein Artikelfoto wählen — der Wähler muss **ohne** Zuschnitt-Rahmen kommen | 28 |
+| A4 | ~~**Der `'portrait'`-Zuschnitt**~~ ✅ 21.08. — und deckte dabei die 8-MB-Grenze auf (Abschnitt 60). **Der `'portrait'`-Zuschnitt**: ein Artikelfoto wählen — der Wähler muss **ohne** Zuschnitt-Rahmen kommen | 28 |
 | A5 | **Das Banner** (`'wide'`) — dito, und das Ergebnis auf dem Profil ansehen | 0 |
-| A6 | **Die Kamera**: Der Bild-Wähler fragt „aufnehmen oder auswählen". Im Simulator gibt es keine Kamera, am Gerät nie ausprobiert | 0, 20 |
+| A6 | ~~**Die Kamera**~~ ✅ 21.08.: fragt „aufnehmen oder auswählen". **Die Kamera**: Der Bild-Wähler fragt „aufnehmen oder auswählen". Im Simulator gibt es keine Kamera, am Gerät nie ausprobiert | 0, 20 |
 | A7 | **Drei nie geöffnete Bildschirme**: `/shelf` (eigenes Regal), `/rewards` (Einladungen) — und `/order/[id]`, sobald es eine Bestellung gibt | 18 |
 | A8 | **Impressum gewerblich speichern** bis zum Ende. Scheiterte im Simulator nur an der Tastatur, die kein `@` tippt | 36 |
-| A9 | **Avatar im Konto-Reiter** — braucht ein gesetztes Profilbild; der Rückfall aufs Symbol ist belegt | 40 |
+| A9 | ⚠️ **war nicht prüfbar** — es gab keinen Avatar-Upload. Seit 21.08. gibt es einen (Abschnitt 60), damit ist der Punkt neu offen. **Avatar im Konto-Reiter** — braucht ein gesetztes Profilbild; der Rückfall aufs Symbol ist belegt | 40 |
 | A10 | **Die Umsatz-Leiste im eigenen Raum**: Beschriftung „Umsatz", Blatt mit Leerzustand | 55 |
 
 ### B — zweites Konto, aber keine Sendung nötig
@@ -6931,3 +6938,108 @@ denselben Zeilen, ob ein Blocker greifen würde. Gehört in Gruppe B der Prüfli
 weiter, aber sein Text („Cascade via FKs purged alle User-Daten") beschreibt jetzt das Falsche und
 verspricht dem Nutzer mehr Löschung, als geschieht. **Das gehört korrigiert, bevor Serlo echte
 Nutzer bekommt** — sonst steht dort eine unzutreffende Datenschutz-Auskunft.
+
+---
+
+## 60. Der erste Durchlauf der Prüfliste — vier Funde in vierzig Minuten (21.08.2026)
+
+Gruppe A, am echten Gerät. **Zwei bestandene Punkte, zwei echte Fehler und eine Lücke** — und die
+zwei Fehler waren beide unsichtbar, solange niemand ein Bild auswählte.
+
+### Bestanden
+
+| | |
+|---|---|
+| **A3** `tidySize()` am Schreibweg | `m` getippt → **`M`** in der Datenbank |
+| **A6** Die Kamera | Der Wähler fragt „aufnehmen oder auswählen" |
+| **A1** Push-Tap (`auction_up`) | Der Push führte in den **Live-Raum**, nicht in die Liste |
+
+Bei A1 fiel nebenbei etwas ab, das seit dem 15.08. offen stand: Der **Bezahl-Knopf auf dem
+Show-Ende-Bildschirm** war zum ersten Mal zu sehen — „1 € bezahlen · zzgl. Versand ab 4,90 €", mit
+echtem Betrag und echtem Versandsatz (Abschnitt 11, Prüfliste D7).
+
+### ⚠️ Fund 1: Die 8-MB-Grenze — eine Messung, die ihre Bedingungen überlebt hat
+
+Ein Foto vom iPhone wurde mit **11,6 MB** abgewiesen. Im Kopf von `lib/uploadImage.ts` stand:
+
+> *„Ein ungeschnittenes Handyfoto liegt damit … deutlich unter der 8-MB-Grenze."*
+
+**Behauptet, nicht gemessen.** Die Kette ist genau nachvollziehbar:
+
+1. Am **16.08.** wurden Bilder gemessen: 250–330 KB. Das waren **zugeschnittene**.
+2. Am **18.08.** fiel für `portrait` und `wide` der Zuschnitt weg (`allowsEditing: false`), weil
+   iOS nur quadratisch zuschneiden kann. Seither kommt das Foto in **voller Auflösung** — bei
+   einem aktuellen iPhone 48 Megapixel.
+3. `quality: 0.85` komprimiert, **verkleinert aber nicht**.
+4. Und es fiel niemandem auf, **weil seit dem 18.08. kein Bild mehr ausgewählt wurde**. Genau das
+   war Punkt A4 der Prüfliste.
+
+> **Merksatz: Eine Messung gilt für den Zustand, in dem gemessen wurde.** Wer die Bedingungen
+> ändert, misst neu — oder schreibt keine Zahl hin. Der falsche Satz war nicht die Zahl, sondern
+> die Beruhigung daneben.
+
+Behoben in zwei Stufen, weil der saubere Weg nativ ist:
+
+- **Sofort, per OTA:** Qualität für die rahmenlosen Formen von 0.85 auf 0.6. Halbiert grob, rettet
+  ein 48-MP-Foto aber nicht sicher.
+- **Mit dem nächsten Build:** `expo-image-manipulator` verkleinert auf 2000 px längste Kante —
+  das ist die größte Fläche, auf der ein Bild je gezeichnet wird (Artikel-Galerie über die volle
+  Breite, rund 1290 physische Punkte auf einem iPhone Pro). Alles darüber sind Bytes ohne Gewinn.
+
+Geladen wird **bedingt per `require` in `try/catch`**, wie LiveKit und `expo-web-browser`: Ein
+statischer Import würde auf dem aktuellen Build schon beim Laden der Datei werfen und damit
+**jeden** Bild-Weg mitreißen (Abschnitt 11). Fehlt das Modul, greift nur die gesenkte Qualität, und
+der Nutzer sieht im Zweifel die Größen-Meldung — unschön, aber ehrlich.
+
+### ⚠️ Fund 2: Ein Speichern, das das Kopfbild löscht
+
+Beim Einbau des Profilbilds gestolpert, und es betraf das **vorhandene** Kopfbild:
+
+`bannerDraft` startet auf `null` und wurde **nie aus dem Profil vorbefüllt**. Der Prop
+`initialBanner` wurde übergeben, im Blatt aber **nicht einmal ausgepackt** — er sah aus, als täte
+er genau das.
+
+**Folge:** Wer „Profil bearbeiten" öffnet, ohne ein Bild zu wählen, sieht den leeren Platzhalter —
+und **„Speichern" schreibt `banner_url: null`.** Wer nur seine Bio ändert, verliert sein Kopfbild.
+
+Es fiel nie auf, weil man in derselben Sitzung meist gerade eins hochgeladen hatte; dann steht der
+Entwurf ja. Dieselbe Klasse wie „Vollersatz frisst, was das Formular nicht kennt" (Abschnitt 47):
+
+> **Ein Formular, das ALLE Felder schickt, muss ALLE Felder auch vorbefüllen.**
+
+Behoben: Beide Entwürfe werden beim Öffnen aus dem Profil gesetzt, und der tote Prop ist raus —
+ein Prop, der aussieht, als lade er etwas, ist schlimmer als keiner.
+
+### ⚠️ Fund 3: Es gab keinen Weg, ein Profilbild zu setzen
+
+In ganz Berkat existierte **kein einziger Avatar-Upload**. Das Bild wird an einem Dutzend Stellen
+angezeigt — Live-Kopf, Verkäuferkarte, Zuschauerliste, Bewertungen, Konto-Reiter — aber gesetzt
+werden konnte es nirgends. Wer keins aus Serlo mitbrachte, hatte für immer den grauen Kreis.
+
+Damit war **A9 gar nicht prüfbar**. Und für einen Marktplatz, dessen Kernargument Vertrauen
+zwischen Menschen ist, ist das Gesicht des Verkäufers nicht optional.
+
+Der Wähler steht jetzt **über** dem Kopfbild — keine Reihenfolge nach Größe: Das Kopfbild ist
+Dekoration, der Avatar ist die Person. Zuschnitt `square`, und das ist hier die **richtige** Form
+statt eines Kompromisses: Der Avatar wird rund gezeichnet, und iOS' Rahmen IST quadratisch.
+Nebeneffekt: Der Zuschnitt verkleinert die Datei, das Bild läuft also gar nicht erst in Fund 1.
+
+⚠️ Gespeichert wird unter `thumbnails/`, nicht unter `avatars/` — `r2-sign` lässt nur zwei Präfixe
+zu (Abschnitt 4), ein drittes würde die Edge Function ablehnen.
+
+### Kein Fehler, sondern Ortsfragen
+
+- **A7 „Einladen"** steht im Konto-Reiter zwischen „Gemerkt" und „Deine Pakete", ohne Bedingung.
+- **A8** Der „Gewerblich"-Schalter im Regal-Formular öffnet **kein** Impressums-Formular, und das
+  ist richtig — er setzt nur den Anbietertyp. Das Formular liegt unter **Konto → Anbieterangaben**,
+  und die Artikelseite sagt es selbst: „Trag sie im Konto nach."
+
+### Was diese vierzig Minuten gelehrt haben
+
+Alle vier Funde waren **im Code unsichtbar**. `tsc` grün, `expo export` grün, zwei Audits mit
+insgesamt 38 Agenten hatten diese Dateien gelesen. Gefunden hat sie ein Mensch, der ein Foto
+auswählte.
+
+Es ist derselbe Satz wie am 19.08. (Abschnitt 54) — nur diesmal mit einem Zusatz: **Der teuerste
+Fehler war eine Zahl, die einmal stimmte.** Nicht falscher Code, sondern eine richtige Messung, die
+ihre Bedingungen überlebt hat.

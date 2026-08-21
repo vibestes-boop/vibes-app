@@ -293,6 +293,9 @@ export default function SellerScreen() {
   // hier und nicht im Blatt — ein Blatt, das sich neu aufbaut, verlöre ihn.
   const [bannerDraft, setBannerDraft] = useState<string | null>(null);
   const [bannerUploading, setBannerUploading] = useState(false);
+  // Eigener Entwurfs-Zustand wie beim Kopfbild — damit ein Upload das
+  // Schließen und Wiederöffnen des Blattes überlebt.
+  const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
 
   const { data: reviews = [], refetch: refetchReviews } = useSellerReviews(id);
   const { past: pastShows, announced } = useSellerShows(id);
@@ -571,7 +574,27 @@ export default function SellerScreen() {
                 // Auf dem eigenen Profil ist „Folgen" sinnlos — hier steht der
                 // einzige Ort, an dem die Bio je gesetzt werden kann.
                 <Pressable
-                  onPress={() => setEditing(true)}
+                  onPress={() => {
+                    // ⚠️ BEIDE Entwürfe aus dem gespeicherten Stand befüllen.
+                    //
+                    // Ohne das startet `bannerDraft` auf `null`, das Blatt zeigt
+                    // den leeren Platzhalter — und „Speichern" schreibt
+                    // `banner_url: null`, LÖSCHT also das vorhandene Bild. Wer
+                    // nur seine Bio ändert, verliert sein Kopfbild.
+                    //
+                    // Der Fehler lag seit dem 16.08.2026 drin und fiel nie auf,
+                    // weil man in derselben Sitzung meist gerade ein Bild
+                    // hochgeladen hatte — dann steht der Entwurf ja. Gefunden am
+                    // 21.08. beim Einbau des Profilbilds, das denselben Fehler
+                    // geerbt hätte.
+                    //
+                    // Dieselbe Klasse wie „Vollersatz frisst, was das Formular
+                    // nicht kennt" (Abschnitt 47): Ein Formular, das ALLE Felder
+                    // schickt, muss ALLE Felder auch vorbefüllen.
+                    setBannerDraft(profile?.banner_url ?? null);
+                    setAvatarDraft(profile?.avatar_url ?? null);
+                    setEditing(true);
+                  }}
                   style={styles.editBtn}
                   accessibilityRole="button"
                   accessibilityLabel="Profil bearbeiten"
@@ -1031,8 +1054,8 @@ export default function SellerScreen() {
         visible={editing}
         initialBio={profile?.bio ?? null}
         initialDisplayName={profile?.display_name ?? null}
-        initialBanner={profile?.banner_url ?? null}
         bannerUrl={bannerDraft}
+        avatarUrl={avatarDraft}
         uploading={bannerUploading}
         busy={updateProfile.isPending}
         onPickBanner={() => {
@@ -1048,11 +1071,28 @@ export default function SellerScreen() {
             .catch(() => setVouchNotice('Das Bild ließ sich nicht hochladen.'))
             .finally(() => setBannerUploading(false));
         }}
+        onPickAvatar={() => {
+          setBannerUploading(true);
+          // `cover` = Speicherort (`thumbnails/`), weil `r2-sign` nur zwei
+          // Präfixe zulässt — `products/images` und `thumbnails` (Abschnitt 4).
+          // Ein eigenes `avatars/` würde die Edge Function ablehnen.
+          //
+          // `square` ist hier die RICHTIGE Form, nicht ein Kompromiss: Der
+          // Avatar wird rund gezeichnet, und iOS' Zuschnitt-Rahmen IST
+          // quadratisch. Genau der Fall, für den `allowsEditing` gedacht ist.
+          void pickAndUpload('cover', 'square')
+            .then((url) => {
+              if (url) setAvatarDraft(url);
+            })
+            .catch(() => setVouchNotice('Das Bild ließ sich nicht hochladen.'))
+            .finally(() => setBannerUploading(false));
+        }}
+        onClearAvatar={() => setAvatarDraft(null)}
         onClearBanner={() => setBannerDraft(null)}
         onClose={() => setEditing(false)}
-        onSave={(bio, displayName, bannerUrl) =>
+        onSave={(bio, displayName, bannerUrl, avatarUrl) =>
           void updateProfile
-            .mutateAsync({ bio, displayName, bannerUrl })
+            .mutateAsync({ bio, displayName, bannerUrl, avatarUrl })
             .then(() => {
               setEditing(false);
               setVouchNotice('Gespeichert. 🙂');
