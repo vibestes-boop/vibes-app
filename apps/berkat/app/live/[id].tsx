@@ -41,6 +41,7 @@ import {
   Package,
   Share2,
   ShoppingBag,
+  TrendingUp,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -88,6 +89,8 @@ import { MaxBidSheet } from '../../components/MaxBidSheet';
 import { ShowItemsSheet } from '../../components/ShowItemsSheet';
 import { ViewersSheet } from '../../components/ViewersSheet';
 import { useLiveViewers } from '../../lib/useLiveViewers';
+import { EarningsSheet } from '../../components/EarningsSheet';
+import { useShowEarnings } from '../../lib/useShowEarnings';
 
 const FILL: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 };
 
@@ -231,6 +234,7 @@ export default function LiveAuctionRoom() {
   const [maxOpen, setMaxOpen] = useState(false);
   const [sellerOpen, setSellerOpen] = useState(false);
   const [viewersOpen, setViewersOpen] = useState(false);
+  const [earningsOpen, setEarningsOpen] = useState(false);
 
   // Wer ist der Mensch da vorne? Die Zahlen holt das Sheet erst, wenn es
   // gebraucht wird — sonst zahlte jeder Zuschauer drei Abfragen für einen
@@ -244,6 +248,16 @@ export default function LiveAuctionRoom() {
     isLoading: viewersLoading,
     error: viewersError,
   } = useLiveViewers(id, viewersOpen && isHost);
+  // ⚠️ Anders als die Zuschauerliste läuft das hier, solange der Gastgeber im
+  // Raum ist — nicht nur bei offenem Blatt. Der Grund ist die Beschriftung in
+  // der Leiste: Sie IST die Zahl, und eine Zahl, die erst nach dem Öffnen
+  // stimmt, wäre keine. Kostenlos ist das trotzdem: Nachgeladen wird über das
+  // Realtime-Abo bei `sold`, nicht über einen Takt (siehe `useShowEarnings`).
+  const {
+    data: earnings,
+    isLoading: earningsLoading,
+    error: earningsError,
+  } = useShowEarnings(id, isHost, earningsOpen);
   const { data: blocked } = useMyBlocks(myUserId);
   const { block, unblock, report } = useSellerActions(myUserId);
   const chatInputRef = useRef<TextInput>(null);
@@ -898,6 +912,37 @@ export default function LiveAuctionRoom() {
               </View>
               <Text style={styles.railLabel}>Shop</Text>
             </Pressable>
+
+            {/* Nur der Gastgeber, und nur seine eigene Sendung.
+                ⚠️ Die BESCHRIFTUNG ist die Zahl — dasselbe Muster wie beim
+                Herz-Knopf darüber, der seine Anzahl trägt. Das ist der Punkt
+                dieser Zeile: Der Verkäufer sieht seinen Umsatz, OHNE etwas zu
+                öffnen. Whatnot verlangt dafür, das Blatt aufzuziehen.
+                Solange nichts verkauft ist, steht dort „Umsatz" statt „0 €" —
+                eine Null zu Beginn einer Sendung ist keine Auskunft, sondern
+                eine Entmutigung (dieselbe Regel wie bei den Kategorie-Zählern,
+                Abschnitt 29). */}
+            {isHost ? (
+              <Pressable
+                style={styles.railItem}
+                onPress={() => setEarningsOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  earnings && earnings.grossCents > 0
+                    ? `Dieser Abend: ${formatEuro(earnings.grossCents)} aus ${earnings.soldCount} Zuschlägen`
+                    : 'Dieser Abend — noch nichts verkauft'
+                }
+              >
+                <View style={styles.railButton}>
+                  <TrendingUp size={17} color={stage.lead} />
+                </View>
+                <Text style={[styles.railLabel, { color: stage.lead }]} numberOfLines={1}>
+                  {earnings && earnings.grossCents > 0
+                    ? formatEuro(earnings.grossCents)
+                    : 'Umsatz'}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
 
           {/* Nach der Leiste, damit die Herzen davor fliegen und nicht dahinter.
@@ -979,6 +1024,18 @@ export default function LiveAuctionRoom() {
         onMention={mentionUser}
         onOpenProfile={(userId) => {
           setViewersOpen(false);
+          router.push(`/seller/${userId}`);
+        }}
+      />
+
+      <EarningsSheet
+        visible={earningsOpen}
+        data={earnings}
+        loading={earningsLoading}
+        error={earningsError}
+        onClose={() => setEarningsOpen(false)}
+        onOpenProfile={(userId) => {
+          setEarningsOpen(false);
           router.push(`/seller/${userId}`);
         }}
       />

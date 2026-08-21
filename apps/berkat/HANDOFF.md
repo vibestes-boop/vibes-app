@@ -6283,22 +6283,9 @@ Rückweg steht als Abschnitt 3 in derselben Datei.
 
 ### Danach, nach Nutzen sortiert
 
-1. **Verkäufer-Kennzahlen während der Sendung** — neu aus der **achten Analyse** (21.08.2026, die
-   Store-Screenshots der Whatnot-App). Whatnot zeigt dem Verkäufer im laufenden Stream ein Blatt
-   mit **„Verkäufe 1310 € · Bestellungen 108"** und einem Ereignisstrom (Kauf, Trinkgeld, Gebot),
-   je Zeile mit Artikelbild. Berkat hat davon nichts: Wer zwei Stunden sendet, muss die Sendung
-   verlassen, um zu sehen, was sie einbrachte.
-
-   **Warum das vor dem Kaufknopf steht:** Es ist das Einzige aus dieser Runde, das direkt auf
-   **Phase 0** einzahlt. Die Frage dort ist nicht „funktioniert die Auktion", sondern „sendet
-   jemand acht Wochen freiwillig weiter" — und das entscheidet, ob er **während** des Sendens
-   sieht, dass es sich lohnt. Design-Gesetz 1 („Hochs lauter machen") gilt in Berkat bisher nur
-   für Käufer; der Mensch, der die Arbeit macht, bekommt keinen einzigen Peak.
-
-   Kein neues Schema: `auction_carts`, `live_auctions` (`status='sold'`, `current_bid_cents`) und
-   `berkat_tips` tragen alles. Es fehlt eine Abfrage und ein Blatt. Abgrenzung zu dem, was
-   Abschnitt 40 zu Recht abgelehnt hat: **Das ist keine Bilanz („Account Health", drei Zahlen über
-   null Vorgänge), sondern eine Rückmeldung im Moment des Tuns.**
+1. ~~**Verkäufer-Kennzahlen während der Sendung**~~ — **gebaut am 21.08.2026, Abschnitt 55.**
+   Offen bleibt daraus nur die Probe am Gerät, und die braucht eine echte Sendung mit einem
+   zweiten Konto.
 
 2. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg, und seit der
    Testware-Entscheidung vom 20.08. besonders sichtbar. Das SQL liegt fertig in
@@ -6349,3 +6336,85 @@ eine Meldung tippte und in sein Konto schaute.
 > Die Gesamtanalyse in Abschnitt 52 hat fünf tote Exporte gefunden und bestätigt, dass die Substanz
 > hält. Ein Durchlauf zu zweit hat in derselben Zeit drei Fehler gefunden, die Nutzer treffen.
 > **Wer wählen muss, prüft mit Menschen, nicht mit Skripten.**
+
+---
+
+## 55. Der Verkäufer sieht, was der Abend einbringt (21.08.2026)
+
+Punkt 1 aus der Liste in Abschnitt 54, und der einzige Bau dieser Runde, der direkt auf **Phase 0**
+einzahlt. Ausgelöst von der achten Whatnot-Analyse: Dort zeigt ein Blatt über dem laufenden Video
+„Verkäufe 1310 € · Bestellungen 108" plus einen Ereignisstrom.
+
+Bis hierher sah ein Berkat-Verkäufer während seiner eigenen Sendung **nichts** davon. Er hätte den
+Raum verlassen und unter „Bestellungen" nachsehen müssen — mitten in der Show also gar nicht.
+
+**Warum das mehr ist als eine Kennzahl:** Design-Gesetz 1 („Hochs lauter machen") galt in Berkat
+bisher ausschließlich für Käufer — Zuschlag, Sammelkorb, Gewinn. Der Mensch, der die Arbeit macht,
+bekam keinen einzigen Peak. Und Phase 0 fragt nicht „funktioniert die Auktion", sondern **„sendet
+jemand acht Wochen lang freiwillig weiter"**.
+
+### Wo es liegt
+
+| Wo | Was |
+|---|---|
+| `lib/useShowEarnings.ts` | **neu** — zwei Zahlen und ein Ereignisstrom, session-bezogen, nur für den Gastgeber |
+| `components/EarningsSheet.tsx` | **neu** — das Blatt |
+| `app/live/[id].tsx` | vierte Leisten-Zeile, nur für den Gastgeber; Blatt eingehängt |
+| `lib/useAuction.ts` | eine Zeile: Invalidierung im bestehenden `sold`-Zweig |
+
+Keine Migration, kein Build, keine neue Tabelle. Die Daten lagen alle schon da.
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **⚠️ Die Beschriftung IST die Zahl.** Die Leisten-Zeile trägt den Umsatz, nicht das Wort
+  „Umsatz" — dasselbe Muster wie der Herz-Knopf darüber, dessen Label die Anzahl ist. Damit sieht
+  der Verkäufer sein Ergebnis, **ohne etwas zu öffnen.** Whatnot verlangt dafür, das Blatt
+  aufzuziehen; das ist die eine Stelle, an der Berkat hier besser ist.
+- **Solange nichts verkauft ist, steht „Umsatz" statt „0 €".** Eine Null zu Beginn eines Abends
+  ist keine Auskunft, sondern eine Entmutigung — dieselbe Regel wie bei den Kategorie-Zählern
+  (Abschnitt 29) und der Erinnerungs-Zahl (Abschnitt 37).
+- **„Zuschläge", nicht „Bestellungen".** Whatnots zweite Zahl wäre in Berkat schlicht falsch: Ein
+  Sammelkorb bleibt 24 Stunden offen und wird erst danach zur Bestellung — während der Sendung
+  gibt es **keine einzige**. „Zuschläge" zählt, was gerade wirklich passiert ist.
+- **Hellgrün, nicht gold.** Gold ist auf der Bühne der Kauf (Gebot, Preis, Zuschlag). Was der
+  Verkäufer eingenommen hat, ist eine Bestätigung — dieselbe Unterscheidung wie bei der
+  Bürgen-Zeile (Abschnitt 15).
+- **Trinkgeld nur, wenn es welches gab.** Es steht nicht als dritte Kachel, sondern als Zeile
+  darunter und im Ereignisstrom. Eine dauerhafte „0 € Trinkgeld"-Kachel wäre wieder die
+  Enttäuschung in Zahlenform.
+- **Nur bezahltes Trinkgeld zählt.** Ein `pending` ist eine geöffnete Kasse, kein Geld. Es als
+  Einnahme zu zeigen wäre dieselbe Unwahrheit wie „5,0 ★" ohne eine einzige Bewertung
+  (Abschnitt 10).
+- **⚠️ Die Host-Grenze liegt im Client, nicht in der Datenbank.** `live_auctions` ist für jeden
+  lesbar, der die Session sehen darf — die Warteschlange **muss** öffentlich sein. Wer `isHost`
+  aus dem `enabled` löst, veröffentlicht damit die Kaufhistorie eines fremden Abends. Die Warnung
+  steht im Kopf des Hooks.
+
+### Zwei Fallen, in die ich beim Bauen selbst gelaufen bin
+
+**1. Ein zweites Realtime-Abo auf dieselbe Tabelle.** Der erste Entwurf hatte ein eigenes
+`supabase.channel('berkat-earnings-…')` mit demselben Filter, den `useLiveAuctions` schon hält —
+doppelte Last für ein Signal, das bereits jemand hört. Genau die Regel aus Abschnitt 4: **eine
+geteilte Subscription pro Signal, nicht pro Komponente.** Und `supabase.channel(name)` gibt bei
+gleichem Namen den bestehenden Kanal zurück, ein zweites `.on()` darauf wirft; dafür gibt es
+`lib/realtime.ts`. Hier brauchte es beides nicht — die Invalidierung steht jetzt in `useAuction.ts`
+direkt neben der des Sammelkorbs.
+
+**2. Drei Abfragen statt zwei Embeds — bewusst.** `live_auctions` hat **drei** Fremdschlüssel auf
+`profiles` (`seller_id`, `current_bidder_id`, `winner_id`). Ein `profiles!winner_id(…)`-Embed muss
+dort richtig auflösen, und wenn er es nicht tut, antwortet PostgREST mit einer **leeren Menge statt
+einem Fehler** — die Falle aus Abschnitt 3. Weil Zuschläge und Trinkgelder ohnehin
+zusammengeführt werden müssen, holt eine einzige `.in()`-Abfrage die Namen für beide.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build.
+
+⚠️ **Am Gerät ungeprüft, und zwar strukturell:** Das Blatt erscheint nur für den **Gastgeber** in
+einer **laufenden Sendung** mit **verkauften Artikeln**. Alle drei zusammen gibt es nur in einer
+echten Show. Der Leerzustand („Noch ist nichts weggegangen") und die Leisten-Zeile mit „Umsatz"
+sind dagegen sofort sichtbar, sobald der Gastgeber seinen Raum öffnet.
+
+Der Weg für den nächsten Durchlauf: Show starten, zwei Artikel auflegen, vom zweiten Konto kaufen —
+die Leisten-Beschriftung muss **ohne Neuladen** von „Umsatz" auf den Betrag springen. Das ist
+zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.

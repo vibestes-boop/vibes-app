@@ -183,6 +183,14 @@ export function useLiveAuctions(sessionId: string | undefined) {
           // Ohne Nutzer- und Verkäufer-ID als Präfix-Treffer: Der Korb hängt an
           // beiden, und hier ist nur die Session bekannt.
           void queryClient.invalidateQueries({ queryKey: ['berkat', 'cart'] });
+          // Und die Umsatzzahl des Gastgebers (`useShowEarnings`, 21.08.2026).
+          // Sie hängt bewusst HIER und nicht an einem eigenen Abo: Ein zweiter
+          // Kanal auf dieselbe Tabelle mit demselben Filter wäre doppelte
+          // Realtime-Last für dasselbe Signal — die Kostenhygiene-Regel aus
+          // Abschnitt 4, „eine geteilte Subscription pro Signal".
+          void queryClient.invalidateQueries({
+            queryKey: ['berkat', 'show-earnings', sessionId],
+          });
         }
       },
     );
