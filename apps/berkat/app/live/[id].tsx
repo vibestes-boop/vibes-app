@@ -1180,7 +1180,22 @@ const styles = StyleSheet.create({
   chatTapArea: { gap: 4 },
   chatLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, maxWidth: '94%' },
   chatBubble: {
-    flex: 1,
+    // ⚠️ `flexShrink: 1`, NICHT `flex: 1`.
+    //
+    // `flex: 1` streckte die Blase über die ganze Spalte, egal wie kurz der
+    // Kommentar war — fünf „Nnnn" untereinander ergaben eine Wand aus grauen
+    // Kästen über dem Video. Am 21.08.2026 am Gerät gesehen.
+    //
+    // `flexShrink: 1` bemisst sich am Inhalt und schrumpft erst, wenn der Text
+    // nicht mehr passt; dann bricht er um. Die Obergrenze liegt ohnehin bei
+    // `chatLine.maxWidth: '94%'`. Ohne JEDE Flex-Angabe würde die Blase
+    // stattdessen überlaufen statt umzubrechen.
+    //
+    // Damit kommt der Live-Raum dem Whatnot-Look nahe (Kommentare wirken auf
+    // dem Video statt in Kästen), OHNE die Kastenfläche aufzugeben — die
+    // garantiert den Kontrast über beliebigem Bildinhalt (Abschnitt 8:
+    // „lesbar auf dem einen Bild, unsichtbar auf dem nächsten").
+    flexShrink: 1,
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: radius.sm,
     paddingHorizontal: 8,
