@@ -6697,3 +6697,78 @@ Die sechs Gegenproben stehen am Ende der Migration. Zwei davon brauchen mehr als
 - **Die Drossel** — zweimal passend einstellen, es darf **eine** Meldung geben.
 - **Frauen-Only** — braucht ein geprüftes Frauenkonto und ein WOZ-Regalangebot. Steht in der
   Prüfliste (Abschnitt 56, Gruppe E), und es gibt bis heute **null** WOZ-Daten in der Datenbank.
+
+---
+
+## 58. Wer bürgt, steht jetzt im Live-Kopf (21.08.2026)
+
+Die einzige Design-Änderung aus der achten und neunten Analyse, die etwas an der **Positionierung**
+ändert statt an der Optik — und sie war reine Platzierung, kein Neubau.
+
+### Was falsch stand
+
+Unter dem Verkäufernamen im Live-Raum stand ausschließlich:
+
+```
+  berkattest
+  📦 5 Zuschläge
+```
+
+Eine Transaktionszahl. **Die hat Whatnot auch.** Whatnot setzt an genau diese Stelle dauerhaft
+„★ 5.0" — in jedem der neun geprüften Länder, ohne Antippen.
+
+Berkats Antwort darauf lag derweil **einen Tipp tief**: `vouchSummary(vouches)` wurde in Zeile 1051
+berechnet und nur ans `SellerSheet` gereicht. Wer den Kopf nie antippt — also fast jeder — sah nie,
+dass jemand für diesen Verkäufer bürgt.
+
+Das ist genau verkehrt herum. Die Ausgangsanalyse, § B5:
+
+> „Vertrauen ist personal, nicht institutionell. Ein 5-Sterne-Durchschnitt bedeutet weniger als
+> ‚mein Cousin kennt ihn' … etwas, das Whatnot strukturell nicht bauen kann."
+
+Ein Fremder, der in einen Stream stolpert, entscheidet in drei Sekunden. In diesen drei Sekunden
+stand der Teil, den jede Plattform hat — und nicht der, den keine andere hat.
+
+### Was jetzt dasteht
+
+```
+  berkattest
+  🛡 amir32 bürgt · +1        ← hellgrün
+```
+
+Ohne Bürgen fällt es auf die Zuschläge zurück: Wer noch keine hat, zeigt, was er sonst vorzuweisen
+hat. **Beides zugleich wäre eine Zeile zu viel** für diesen Kopf.
+
+### Zwei Entscheidungen
+
+- **⚠️ Eine eigene Kurzfassung, nicht `vouchSummary()`.** Die lange wird bis zu „amir32 und zaur
+  bürgen — beiden folgst du · +3" (rund 45 Zeichen) und stünde im Kopf als „amir32 und zaur bürg…"
+  da. Dieselbe Falle wie bei der Live-Vorschau auf der Startseite (Abschnitt 8): „Warten auf
+  nächsten Artikel" wurde dort zu „Warten auf nächst…". `vouchSummaryShort()` bleibt zwischen 12
+  und 17 Zeichen — an fünf Fällen durchgerechnet, inklusive „kein Benutzername".
+- **Wer folgt, gewinnt** — wie in der langen Fassung. Der Sinn ist nicht „drei Leute bürgen",
+  sondern **„jemand, den DU kennst, bürgt"**. Bei vier Bürgen steht der vorne, dem der Betrachter
+  folgt.
+- **Hellgrün, nicht gold** (Abschnitt 15): Gold ist auf der Bühne der Kauf, eine Bürgschaft ist kein
+  Kaufknopf.
+
+### Was NICHT übernommen wurde — und warum
+
+Aus derselben Analyse standen zwei weitere UI-Funde zur Wahl:
+
+- **Chat ohne Kasten.** Whatnots Kommentare liegen nackt auf dem Video, Berkats in einer Box
+  (`rgba(0,0,0,0.3)`). Whatnots wirkt luftiger — **und würde Berkats eigene Regel brechen**
+  (Abschnitt 8: „lesbar auf dem einen Bild, unsichtbar auf dem nächsten"). Ein Verkäufer, der eine
+  weiße Abaya vor eine weiße Wand hält, macht den Chat unlesbar, und das Video kontrolliert
+  niemand. Der Mittelweg wäre ein Textschatten statt einer Box — nicht gebaut, aber notiert.
+- **„Verkauft" in Rot**, wie bei Whatnot. Würde Berkats Farbgesetz verwässern: Rot ist die laufende
+  Uhr. Bewusst nicht übernommen.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build, keine neue
+Abfrage — `useVouches` lief in diesem Bildschirm ohnehin schon.
+
+⚠️ **Am Gerät ungeprüft.** Die Zeile erscheint nur, wenn jemand für den Gastgeber gebürgt hat. Im
+Datenstand gibt es genau eine Bürgschaft (`amir32` für `berkattest`, 15.08.) — die Probe ist also
+möglich, aber sie braucht den Live-Raum dieses Verkäufers. Gehört in Gruppe C der Prüfliste.

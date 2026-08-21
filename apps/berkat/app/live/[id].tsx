@@ -40,6 +40,7 @@ import {
   MessageSquare,
   Package,
   Share2,
+  ShieldCheck,
   ShoppingBag,
   TrendingUp,
 } from 'lucide-react-native';
@@ -65,7 +66,7 @@ import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib
 import { stage, radius, space } from '../../theme/tokens';
 import { useCheckoutCart } from '../../lib/useCheckout';
 import { shippingHint, useShippingFrom } from '../../lib/useShipping';
-import { useVouches, vouchSummary } from '../../lib/useVouch';
+import { useVouches, vouchSummary, vouchSummaryShort } from '../../lib/useVouch';
 import {
   bidErrorText,
   formatCartWindow,
@@ -181,6 +182,8 @@ export default function LiveAuctionRoom() {
   const { data: cart } = useCart(myUserId, session?.host_id);
   const { data: shippingFrom } = useShippingFrom(session?.host_id);
   const { data: vouches = [] } = useVouches(session?.host_id, myUserId);
+  // Kurzfassung für den Kopf; die lange bleibt dem Sheet vorbehalten.
+  const vouchShort = vouchSummaryShort(vouches);
   const comments = useLiveChat(id);
   const placeBid = usePlaceBid();
   const follow = useFollow(session?.host_id, myUserId);
@@ -714,11 +717,42 @@ export default function LiveAuctionRoom() {
               <Text numberOfLines={1} style={styles.hostName}>
                 {host?.username ?? '…'}
               </Text>
+              {/* ⚠️ WER FÜR IHN BÜRGT SCHLÄGT WIE VIEL ER VERKAUFT HAT.
+                  Bis zum 21.08.2026 stand hier ausschließlich die Zahl der
+                  Zuschläge — eine Kennzahl, die Whatnot genauso hat. Die
+                  Bürgen lagen derweil einen Tipp tief im Verkäufer-Sheet, und
+                  wer den Kopf nie antippt (also fast jeder), sah sie nie.
+
+                  Das ist genau verkehrt herum: Whatnot setzt an diese Stelle
+                  dauerhaft „★ 5.0" — eine Institution. Berkats Antwort darauf
+                  ist eine PERSON, und die Ausgangsanalyse nennt sie den einen
+                  Vorteil, den Whatnot strukturell nicht bauen kann (§ B5:
+                  „Ein 5-Sterne-Durchschnitt bedeutet weniger als ‚mein Cousin
+                  kennt ihn'"). Ein Fremder, der in einen Stream stolpert,
+                  entscheidet in drei Sekunden — und in diesen drei Sekunden
+                  soll der Name stehen, nicht die Zahl.
+
+                  Die Zuschläge bleiben als Rückfall: Wer noch keine Bürgen
+                  hat, zeigt, was er sonst vorzuweisen hat. Beides zugleich
+                  wäre eine Zeile zu viel für diesen Kopf. */}
               <View style={styles.trustRow}>
-                <Package size={10} color={stage.textMuted} />
-                <Text style={styles.trustText}>
-                  {soldCount != null ? `${soldCount} Zuschläge` : 'Neu hier'}
-                </Text>
+                {vouchShort ? (
+                  <>
+                    {/* Hellgrün wie im Sheet (Abschnitt 15): Gold ist auf der
+                        Bühne der Kauf, eine Bürgschaft ist kein Kaufknopf. */}
+                    <ShieldCheck size={10} color={stage.lead} />
+                    <Text numberOfLines={1} style={[styles.trustText, { color: stage.lead }]}>
+                      {vouchShort}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Package size={10} color={stage.textMuted} />
+                    <Text numberOfLines={1} style={styles.trustText}>
+                      {soldCount != null ? `${soldCount} Zuschläge` : 'Neu hier'}
+                    </Text>
+                  </>
+                )}
               </View>
             </View>
           </Pressable>

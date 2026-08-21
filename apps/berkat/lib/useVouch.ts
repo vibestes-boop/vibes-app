@@ -130,6 +130,27 @@ export function vouchSummary(vouches: Vouch[]): string | null {
   return `${lead}${known.length > 1 ? ' — beiden folgst du' : ' — du folgst ihm'}${tail}`;
 }
 
+/**
+ * Die kurze Fassung für den Live-Kopf — dort ist eine Zeile, keine zwei.
+ *
+ * ⚠️ NICHT `vouchSummary()` dort verwenden. Die lange Fassung wird bis zu
+ * „amir32 und zaur bürgen — beiden folgst du · +3" (rund 45 Zeichen) und stünde
+ * im Kopf neben Name und Zuschauer-Pille als „amir32 und zaur bürg…" da. Genau
+ * dieselbe Falle wie bei der Live-Vorschau auf der Startseite (Abschnitt 8):
+ * „Warten auf nächsten Artikel" wurde dort zu „Warten auf nächst…".
+ *
+ * Wer folgt, gewinnt — wie bei der langen Fassung. Der Sinn der Zeile ist
+ * nicht „drei Leute bürgen", sondern „jemand, den DU kennst, bürgt".
+ */
+export function vouchSummaryShort(vouches: Vouch[]): string | null {
+  if (vouches.length === 0) return null;
+  const known = vouches.filter((v) => v.youFollow);
+  const first = (known.length > 0 ? known : vouches)[0];
+  const name = first.username ?? 'jemand';
+  const rest = vouches.length - 1;
+  return rest > 0 ? `${name} bürgt · +${rest}` : `${name} bürgt`;
+}
+
 export function vouchErrorText(message: string): string {
   if (message.includes('berkat_vouches_once')) return 'Du bürgst schon für ihn.';
   if (message.includes('berkat_vouches_not_self'))
