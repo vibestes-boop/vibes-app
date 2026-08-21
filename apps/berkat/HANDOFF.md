@@ -5488,12 +5488,17 @@ liegt schon da — Kategorie **und** Größe zusammen filtern („Schuhe" + „4
 wäre erst dann sinnvoll, wenn jemand tatsächlich darüber stolpert; sie kostet ein zweites Feld an
 jedem Angebot.
 
-### Was weiterhin ungeprüft ist
+### ~~Was weiterhin ungeprüft ist~~ — am 21.08.2026 belegt
 
-`tidySize()` **am Schreibweg**: dass aus einem getippten „m" in der Datenbank „M" wird. Die Anzeige
-ist geprüft (aus „One Size" wird nichts mehr geschrien), der gespeicherte Wert nicht — dafür müsste
-ein Angebot angelegt oder bearbeitet werden. Reines Client-Rechnen ohne Serverbeteiligung, also das
-kleinste verbliebene Risiko dieser Runde.
+`tidySize()` **am Schreibweg** war der letzte offene Punkt dieser Runde. Am Gerät durchgespielt:
+Größe `m` getippt, Artikel gespeichert — in der Datenbank steht **`M`**.
+
+```
+Fffgggccgggg    M    2026-08-21 17:18:43
+```
+
+Der Nutzen ist nicht kosmetisch: Ohne die Umrechnung wären `m` und `M` **zwei verschiedene Größen**
+in der Filtergruppe, und das Regal zeigte dieselbe Größe zweimal.
 
 ### Was als Nächstes fehlt
 
@@ -6511,7 +6516,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 |---|---|---|
 | A1 | **Push-Tap**: Ein Zuschlag muss aus dem **Push** die Liste öffnen, aus der **Glocke** das Konto. Landen beide gleich, ist der Fix vom 20.08. falsch | 53 + Nachtrag |
 | A2 | ~~Korb-Anzeige „Zum Bezahlen vorgemerkt"~~ | ✅ 20.08. belegt |
-| A3 | **`tidySize()` am Schreibweg**: „m" tippen, speichern — in der Datenbank muss „M" stehen | 47 |
+| A3 | ~~**`tidySize()` am Schreibweg**~~ | ✅ 21.08. belegt: `m` getippt → `M` gespeichert (47) |
 | A4 | **Der `'portrait'`-Zuschnitt**: ein Artikelfoto wählen — der Wähler muss **ohne** Zuschnitt-Rahmen kommen | 28 |
 | A5 | **Das Banner** (`'wide'`) — dito, und das Ergebnis auf dem Profil ansehen | 0 |
 | A6 | **Die Kamera**: Der Bild-Wähler fragt „aufnehmen oder auswählen". Im Simulator gibt es keine Kamera, am Gerät nie ausprobiert | 0, 20 |
