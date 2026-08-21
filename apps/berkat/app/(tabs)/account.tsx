@@ -603,6 +603,24 @@ export default function AccountScreen() {
         <Text style={styles.signOutText}>Abmelden</Text>
       </Pressable>
 
+      {/* ⚠️ Apple 5.1.1(v): Wer in der App ein Konto anlegen kann, muss es dort
+          auch löschen können — und DSGVO Art. 17 verlangt die Löschung an sich.
+          Berkat hatte bis zum 21.08.2026 nur „Abmelden"; beim Store-Release
+          wäre das ein sicherer Ablehnungsgrund gewesen.
+
+          Bewusst als schlichte Textzeile und nicht als Knopf: Der Weg muss
+          ERREICHBAR sein, nicht einladend. Was dahinter passiert, erklärt der
+          eigene Bildschirm — in einem Dialog ließe sich die Frage „ist mein Kauf
+          dann weg?" nicht beantworten. */}
+      <Pressable
+        style={styles.deleteRow}
+        onPress={() => router.push('/delete-account')}
+        accessibilityRole="button"
+        accessibilityLabel="Konto löschen"
+      >
+        <Text style={styles.deleteText}>Konto löschen</Text>
+      </Pressable>
+
     </ScrollView>
   );
 }
@@ -756,6 +774,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButtonText: { fontSize: 16, fontWeight: '700', color: ui.goldInk },
+  // Textzeile, kein Knopf, und gedämpft statt rot: Rot wäre in Berkat die
+  // laufende Uhr, und ein Dauer-Alarmzeichen im Konto-Reiter wäre eine Drohung.
+  // Der Ernst gehört auf den Bildschirm dahinter, nicht auf den Weg dorthin.
+  deleteRow: { marginTop: space.md, alignItems: 'center', paddingVertical: space.sm },
+  deleteText: { fontSize: 13, color: ui.textMuted, textDecorationLine: 'underline' },
   signOut: {
     marginTop: space.lg,
     height: 46,

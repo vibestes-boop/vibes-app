@@ -6772,3 +6772,123 @@ Abfrage — `useVouches` lief in diesem Bildschirm ohnehin schon.
 ⚠️ **Am Gerät ungeprüft.** Die Zeile erscheint nur, wenn jemand für den Gastgeber gebürgt hat. Im
 Datenstand gibt es genau eine Bürgschaft (`amir32` für `berkattest`, 15.08.) — die Probe ist also
 möglich, aber sie braucht den Live-Raum dieses Verkäufers. Gehört in Gruppe C der Prüfliste.
+
+---
+
+## 59. Konto löschen — und ein Fehler, der schon draußen war (21.08.2026)
+
+Punkt 2 der Liste: Apple 5.1.1(v) verlangt, dass ein Konto, das in der App entstehen kann, dort
+auch löschbar ist. Berkat hatte im Konto-Reiter nur „Abmelden".
+
+**Beim Nachsehen kam etwas anderes heraus, das schwerer wiegt.**
+
+### ⚠️ Der Fund: `delete_own_account()` vernichtet fremde Belege
+
+Es gab die Funktion längst — sie war genau eine Zeile:
+
+```sql
+DELETE FROM auth.users WHERE id = auth.uid();
+```
+
+Aufgerufen wird sie von `apps/web/app/actions/gdpr.ts:221`, also aus **Serlos ausgelieferter
+Web-App**. Der Kommentar dort beschreibt das Verhalten als Feature: *„Cascade via FKs purged alle
+User-Daten."*
+
+Die Kette purged aber mehr. Am Schema-Abzug nachgeschlagen: `profiles.id` hängt mit
+**ON DELETE CASCADE** an `auth.users`, und an `profiles` hängen mit demselben Verhalten:
+
+```
+product_orders.buyer_id · product_orders.seller_id · berkat_tips.sender_id
+berkat_tips.recipient_id · coin_purchases.user_id · live_auctions.seller_id
+live_bids.bidder_id · auction_carts.buyer_id / seller_id
+```
+
+Daraus folgen zwei Dinge, und beide sind schwerwiegend:
+
+**1. Es trifft Dritte.** Löscht ein **Käufer** sein Konto, verschwindet seine
+`product_orders`-Zeile — und damit der **Verkaufsbeleg des Verkäufers**. Der hat die Ware
+verschickt und findet den Vorgang nicht mehr. Umgekehrt genauso: Löscht ein Verkäufer, verschwinden
+die Auktionen, an denen andere geboten und gewonnen haben.
+
+**2. Es ist aufbewahrungspflichtig.** § 147 AO und § 257 HGB verlangen für Rechnungen und
+Handelsbriefe sechs bis zehn Jahre. Eine über Stripe abgewickelte Zahlung zu löschen, weil der
+Zahlende sein Konto schließt, ist kein Datenschutz, sondern ein Verstoß dagegen.
+
+**Und das Entscheidende: Die DSGVO verlangt das gar nicht.** Art. 17 Abs. 3 lit. b nimmt die
+Löschpflicht ausdrücklich zurück, soweit die Verarbeitung zur Erfüllung einer rechtlichen
+Verpflichtung erforderlich ist.
+
+⚠️ **Heute folgenlos, aber live.** Serlo hat keine echten Nutzer (Abschnitt 45), Berkat einen. Der
+Weg ist trotzdem deployt und für `anon`, `authenticated` und `service_role` freigegeben.
+
+### Was jetzt passiert: anonymisieren statt vernichten
+
+`20260821140000_account_deletion_anonymises.sql` ersetzt die Funktion — **gleicher Name, gleiche
+Signatur**, damit `gdpr.ts` unverändert weiterläuft. Ein Rename bräche die ausgelieferte Web-App,
+ein defaultierter Parameter erzeugte eine Überladung und damit HTTP 300 (Abschnitt 13).
+
+| | |
+|---|---|
+| **Gelöscht** | gespeicherte Suchen, Merkliste, Vormerkungen, ausgesprochene Bürgschaften, Follows in beide Richtungen, Push-Tokens, eigene Meldungen, offene Max-Gebote |
+| **Anonymisiert** | `username` → `geloescht-<8 hex>`, Anzeigename, Bio, Avatar, Kopfbild, Ort, Sprachprobe → NULL; Impressumsangaben eines gewerblichen Verkäufers → NULL |
+| **Bleibt** | Bestellungen, Zahlungen, Zuschläge, Gebote, Trinkgeld — jetzt an einem namenlosen Profil |
+| **Zurückgezogen** | laufende Regal-Angebote (ein Regal ohne Verkäufer ist eine Falle für Käufer) |
+| **Halb** | `order_reviews`: der **Text** geht, die **Sternzahl** bleibt — sie ist eine Aussage über den Verkäufer und fließt in seinen Schnitt |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **⚠️ Der Login wird gesperrt, nicht die Zeile gelöscht.** `banned_until = 'infinity'`,
+  `encrypted_password = NULL`, E-Mail auf eine Adresse in `.invalid` (RFC 2606), dazu
+  `auth.sessions` und `auth.refresh_tokens` geleert. Ohne das Leeren bliebe das Gerät bis zum
+  Ablauf des Tokens angemeldet.
+- **Zwei Blocker, beide vorübergehend.** Ein offener Sammelkorb (`open`/`checkout_pending`) und
+  bezahlte, aber unversendete Bestellungen als Verkäufer. Beide lösen sich von selbst — der Korb
+  läuft in 24 Stunden ab, die Bestellung ist nach dem Versand erledigt. **Apple 5.1.1(v) erlaubt
+  das:** Unzulässig wäre eine Löschung, die gar nicht geht oder nur per E-Mail an den Support.
+- **`profiles.deleted_at` mit eigenem `GRANT SELECT`.** `profiles` trägt seit `20260814240000` die
+  eingefrorene Spaltenliste — ohne das Grant wäre die Spalte für alle Clients unsichtbar und ein
+  Filter darauf ein `42501`. Regel 11, am 16.08. schon einmal bei `banner_url` zugeschlagen.
+- **Der Aufruf ist idempotent.** Ein zweiter Ruf auf ein bereits gelöschtes Konto tut nichts,
+  statt zu werfen — Doppeltipp und Netz-Wiederholung sind der Normalfall, nicht die Ausnahme.
+- **`anon` verliert das Ausführungsrecht.** Die alte Fassung war an `anon` freigegeben; der Aufruf
+  lief zwar in `not_authenticated`, aber das Recht gehört trotzdem weg (die `credit_coins`-Falle,
+  Abschnitt 7).
+
+### Der Bildschirm
+
+`app/delete-account.tsx`, erreichbar über eine schlichte Textzeile unter „Abmelden".
+
+**Ein eigener Bildschirm statt eines Dialogs**, weil hier etwas zu erklären ist, das in zwei Zeilen
+nicht hineinpasst: was weggeht, was bleibt — und **warum** das Bleibende bleiben muss. Ein „Wirklich
+löschen?" ließe genau die Frage offen, die jeder hat: *„Ist mein Kauf dann weg?"*
+
+Der Satz, der den Bildschirm trägt, steht als Zusage in `lib/useDeleteAccount.ts` und nicht im JSX:
+
+> „Ein Kauf ist ein Beleg für zwei Menschen. Würden wir ihn löschen, verlöre auch dein Gegenüber
+> seinen Nachweis — und das Gesetz verlangt, dass Rechnungen aufbewahrt werden."
+
+Bestätigungswort tippen, dann der Knopf. Nicht als Hürde — **Apple verlangt, dass der Weg
+erreichbar ist, nicht dass er leicht ist.** Am Ende steht der Hinweis, dass Abmelden auch reicht.
+
+⚠️ **Der Knopf ist die einzige rote FLÄCHE in Berkat.** Sonst gilt „Rot ist die laufende Uhr, nie
+Fläche" (`theme/tokens.ts`). Hier ist es die Ausnahme, weil er genau einmal gedrückt wird. Die
+Textzeile im Konto-Reiter bleibt dagegen gedämpft: Ein Dauer-Alarmzeichen dort wäre eine Drohung.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Dollar-Quoting paarig, kein
+`DELETE FROM auth.users` mehr im Code (nur noch im erklärenden Kommentar).
+
+⚠️ **NICHT eingespielt.** Die Migration ersetzt eine Funktion, die **Serlos ausgelieferte Web-App
+aufruft** — das ist eine Freigabe-Entscheidung, keine Nebensache. Sechs Gegenproben stehen am Ende
+der Datei.
+
+⚠️ **Nicht durchgespielt, und das ist heikler als sonst.** Die Probe verlangt ein Konto, das man
+danach nicht mehr hat. Der richtige Weg: **ein eigens angelegtes Wegwerf-Konto**, dazu vorher ein
+Zuschlag und eine Bestellung, damit die Gegenproben 4 und 5 überhaupt etwas messen können — sonst
+prüft man, ob null Zeilen null Zeilen bleiben. Gehört in Gruppe B der Prüfliste (Abschnitt 56).
+
+⚠️ **Serlos Web-Oberfläche ist nicht angefasst.** `gdpr.ts` ruft dieselbe RPC und funktioniert
+weiter, aber sein Text („Cascade via FKs purged alle User-Daten") beschreibt jetzt das Falsche und
+verspricht dem Nutzer mehr Löschung, als geschieht. **Das gehört korrigiert, bevor Serlo echte
+Nutzer bekommt** — sonst steht dort eine unzutreffende Datenschutz-Auskunft.
