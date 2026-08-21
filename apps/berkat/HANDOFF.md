@@ -6418,3 +6418,104 @@ sind dagegen sofort sichtbar, sobald der Gastgeber seinen Raum öffnet.
 Der Weg für den nächsten Durchlauf: Show starten, zwei Artikel auflegen, vom zweiten Konto kaufen —
 die Leisten-Beschriftung muss **ohne Neuladen** von „Umsatz" auf den Betrag springen. Das ist
 zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.
+
+---
+
+## 56. Die Prüfliste — alles Ungeprüfte an einer Stelle (21.08.2026)
+
+Im Dokument stehen **vierzig** Stellen mit „ungeprüft" oder „nicht geprüft", verteilt über
+fünfzig Abschnitte und zwei Wochen. Jede einzelne ist an ihrem Ort richtig aufgehoben — zusammen
+sind sie unbrauchbar, weil niemand sie durchsucht, bevor er ein Gerät in die Hand nimmt.
+
+Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
+die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
+
+⚠️ **Ab sofort auf dem TestFlight-Build prüfen, nicht auf dem Entwickler-Build.** Seit dem
+21.08.2026 liegt `1.0.0 (1)` in TestFlight (Abschnitt 54). Dort ist `__DEV__` aus, Sentry scharf
+und OTA aktiv — das ist die Fassung, die Verkäufer bekommen, und einige Fehlerklassen zeigen sich
+nur dort.
+
+### A — nur dein iPhone. Kein zweites Konto, keine Sendung.
+
+Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
+
+| | Was | Woher |
+|---|---|---|
+| A1 | **Push-Tap**: Ein Zuschlag muss aus dem **Push** die Liste öffnen, aus der **Glocke** das Konto. Landen beide gleich, ist der Fix vom 20.08. falsch | 53 + Nachtrag |
+| A2 | ~~Korb-Anzeige „Zum Bezahlen vorgemerkt"~~ | ✅ 20.08. belegt |
+| A3 | **`tidySize()` am Schreibweg**: „m" tippen, speichern — in der Datenbank muss „M" stehen | 47 |
+| A4 | **Der `'portrait'`-Zuschnitt**: ein Artikelfoto wählen — der Wähler muss **ohne** Zuschnitt-Rahmen kommen | 28 |
+| A5 | **Das Banner** (`'wide'`) — dito, und das Ergebnis auf dem Profil ansehen | 0 |
+| A6 | **Die Kamera**: Der Bild-Wähler fragt „aufnehmen oder auswählen". Im Simulator gibt es keine Kamera, am Gerät nie ausprobiert | 0, 20 |
+| A7 | **Drei nie geöffnete Bildschirme**: `/shelf` (eigenes Regal), `/rewards` (Einladungen) — und `/order/[id]`, sobald es eine Bestellung gibt | 18 |
+| A8 | **Impressum gewerblich speichern** bis zum Ende. Scheiterte im Simulator nur an der Tastatur, die kein `@` tippt | 36 |
+| A9 | **Avatar im Konto-Reiter** — braucht ein gesetztes Profilbild; der Rückfall aufs Symbol ist belegt | 40 |
+| A10 | **Die Umsatz-Leiste im eigenen Raum**: Beschriftung „Umsatz", Blatt mit Leerzustand | 55 |
+
+### B — zweites Konto, aber keine Sendung nötig
+
+| | Was | Woher |
+|---|---|---|
+| B1 | **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg. Braucht `checkout_enabled`; das SQL liegt in `supabase/_ops/kassen-freigabe-testware.sql` | 33, 54 |
+| B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
+| B3 | **Bewertungen befüllen**: kaufen → versenden → „Ist angekommen" → Sterne → **Text**. Der Bewertungen-Reiter war noch nie mit Inhalt zu sehen | 18 |
+| B4 | ~~Merken-Herz und „Nachricht statt Kaufen" an fremden Angeboten~~ | ✅ 18.08. über die Testware |
+
+### C — laufende Sendung, allein. Kein zweites Konto.
+
+| | Was | Woher |
+|---|---|---|
+| C1 | **Übernahme vorbereiteter Artikel** beim Live-Gehen (`claim_prepared_auctions`) — der Kern von Abschnitt 48. Termin auf „in 30 Min", zwei Artikel vorbereiten, Show starten: die Warteschlange muss sie ohne Zutun enthalten, und die Terminzeile darf danach **nicht** mehr „N bereit" sagen | 48 |
+| C2 | **Anbieterkennzeichnung im Live-Raum** — der Satz über dem Gebots-Knopf | 22 |
+| C3 | **Live-Raum gegen Whatnots App halten** — was von Punkt 6 der Liste übrig ist | 54, Analyse 8 |
+| C4 | **Bitrate 540p** im echten Stream messen — das Bild kam am 16.08. an, gemessen wurde nie | 0 |
+
+### D — Sendung **und** zweites Konto. Der große Durchlauf.
+
+**Ein einziger Durchlauf räumt hier sieben Punkte ab.** Das ist die wirtschaftlichste Stunde, die
+in diesem Projekt zu haben ist — und der Grund, warum sich das Ansammeln gelohnt hat.
+
+| | Was | Woher |
+|---|---|---|
+| D1 | **Die Umsatz-Leiste springt ohne Neuladen** von „Umsatz" auf den Betrag. Zugleich Gegenprobe für die Invalidierung in `useAuction.ts` | 55 |
+| D2 | **Vorabgebot**, fünf Proben: annehmen · `auction_not_running` in der Warteschlange · beim Start führt der Vorabbieter zum Startpreis · Zurückziehen geht vorher, danach `prebid_locked` · „N Vorabgebote" beim Verkäufer | 50 |
+| D3 | **Vormerkung/Glocke**, vier Proben: vormerken am fremden Artikel · „N warten" beim Verkäufer · Fan-out beim Start (Meldung entsteht, Vormerkung verschwindet) · **der Push selbst** | 51 |
+| D4 | **Bezahl-Rückfrage** „Der Verkäufer sendet noch …" — feuert nur bei offenem Korb *und* sendendem Verkäufer | 53 |
+| D5 | **Max-Gebot unter echtem Gegendruck** — Anti-Snipe ist seit 16.08. belegt, das Stellvertreterbieten nicht | 8 |
+| D6 | **„Du führst / Überboten"** gegen echte Gebote statt Beispieldaten | 39 |
+| D7 | **Bezahl-Knopf auf dem Show-Ende-Bildschirm** — braucht einen offenen Korb aus einem echten Zuschlag | 11 |
+
+⚠️ **Rollenverteilung ist nicht beliebig:** Push gibt es nur auf einem echten Gerät. Fast alles
+Offene endet in einer Meldung an den **Käufer** — also gehört das iPhone dem Käufer und der
+Simulator dem Verkäufer (Abschnitt 9, am 19.08. so gelaufen).
+
+### E — besondere Voraussetzungen, die man nicht nebenbei herstellt
+
+| | Was | Was fehlt dafür |
+|---|---|---|
+| E1 | **Push auf Android** | ein echtes Android-Telefon; Emulatoren überspringt `Device.isDevice` |
+| E2 | **Web-Push** | jemand muss im Browser zustimmen — `web_push_subscriptions` ist leer |
+| E3 | **Die Frauen-Only-Schranken** — Bild-Rückfall (`20260816190000`), Bewertungen (`20260816160000`), die vier Kind-Tabellen (`20260819140000`) | ein geprüftes Frauenkonto **und** eine WOZ-Show. In der Datenbank liegt bis heute **null** WOZ-Datum (Abschnitt 44) |
+| E4 | **Unterdeckungs-Hinweis Versand** | jemand muss die DE-Pauschale zahlen und in die Schweiz liefern lassen |
+| E5 | **Käufer-Bonus** | steht ab Werk auf `false` und wurde nie scharf geschaltet |
+| E6 | **Client-Filterung ab >60 Artikeln** · **Fuß-Knopf ab >8 in einer Kategorie** | mehr Bestand, als die Testware erzeugt |
+| E7 | **Herz aus der Serlo-App kommt in Berkat an** | beide Apps gleichzeitig, zwei Menschen |
+| E8 | **Der `app`-Filter im Push** gegen den bewussten Rückfall | beide Apps auf **demselben** Gerät (Abschnitt 13) |
+
+### F — nicht durch Testen zu klären
+
+| | Was |
+|---|---|
+| F1 | **AGB und Widerrufsbelehrung anwaltlich prüfen.** Beides sind Entwürfe. Eine fehlerhafte Belehrung verlängert die Frist auf zwölf Monate und vierzehn Tage (Abschnitt 25) |
+| F2 | **Käuferschutz-Zusage formulieren** — Entscheidung, kein Code (Abschnitt 54, Punkt 3) |
+
+### Die Regel, die diese Liste erzeugt hat
+
+Aus dem Zwei-Konten-Durchlauf am 19.08. (Abschnitt 53), und sie gilt weiter:
+
+> Drei Fehler in einer Stunde, und **keinen davon** hätte ein Werkzeug gefunden. Kein `tsc`, kein
+> `grep`, kein Schema-Abzug, keine Analyse über 28.000 Zeilen. Gefunden hat sie ein Mensch, der auf
+> eine Meldung tippte und in sein Konto schaute.
+
+Und die Ergänzung vom 21.08.: **Gruppe A kostet eine halbe Stunde und braucht niemanden außer dir.**
+Sie liegt seit Tagen da, weil sie nirgends als Liste stand.
