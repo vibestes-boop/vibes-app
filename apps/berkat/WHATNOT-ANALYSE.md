@@ -1298,3 +1298,147 @@ ein Konto und zahlt dann nicht? Das ist eine Abfrage auf `auction_carts`, keine 
 
 - `blog.teamwhatnot.com/unitedstates/new-tools-from-discovery-to-delivery` (Pre-Bid, Shop-Liste,
   Aktivitäts-Reiter), `…/taking-on-shill-bidding` (Zahlen und Maßnahmen), 19.08.2026
+
+---
+
+## Achte Analyse: die App selbst, aus dem Store (21.08.2026)
+
+### 0. Der Befund in einem Satz
+
+**Berkat ist an sechs von sieben verglichenen Flächen deckungsgleich oder reicher — und hat genau
+eine Lücke, die auf Phase 0 einzahlt: Der Verkäufer sieht während seiner Sendung nicht, was sie
+einbringt.**
+
+### 1. Die Quelle — und warum nicht Google Bilder
+
+Zaur bat um eine Bildersuche. Der Abschnitt „Nachtrag zur vierten Analyse" hat für genau diese
+Frage schon eine bessere Quelle gefunden, und die gilt weiter:
+
+> **Bei einer App ist die Web-Fassung nicht die Quelle.** Die offiziellen Store-Screenshots sind
+> kostenlos, offiziell, aktuell und in der Landessprache.
+
+Eine Bildersuche mischt Marketingmaterial, Blog-Aufnahmen und alte Fassungen — man weiß bei keinem
+Treffer, von wann er ist. Der Store weiß es:
+
+```bash
+curl -s "https://itunes.apple.com/search?term=whatnot&entity=software&country=de&limit=1"
+```
+
+**Version 26.34.5, veröffentlicht am 20.08.2026** — also am Tag vor dieser Analyse. Fünf
+iPhone-Screenshots, deutsche Fassung. Die Miniaturen kommen als `320x480bb.jpg`; ersetzt man das
+im Pfad durch `1000x0w.png`, liefert derselbe Server 1000 × 2173 — groß genug, um Beschriftungen
+zu lesen. **Das ist der ganze Trick, und er kostet zwei Befehle.**
+
+### 2. Was deckungsgleich ist — der entlastende Teil
+
+Am Berkat-Quelltext gegengeprüft, nicht geschätzt:
+
+| | Whatnot | Berkat |
+|---|---|---|
+| Reiter unten | Startseite · Kategorien · Verkaufen · Aktivität · Benutzerkonto | **identisch** |
+| Kategorie-Kachel | Name oben, Bild mittig, Zahl unten | identisch |
+| Zahl auf der Kachel | „98 Zuschauer" + roter Live-Punkt | identisch |
+| Gebots-Knopf | „Biete 40 € »", gelb, volle Breite, Ziehbahn | **„Gebot: 40 €"** — und bei Überbieten **„Kontern: 40 €"**, was Whatnot nicht unterscheidet |
+| Icon-Spalte rechts | beschriftet (Ton, Teilen, Zahlung und Versand, Shop) | ebenfalls beschriftet (`railLabel`) |
+| Verkauft | Preis + „Verkauft" in Rot | identisch |
+| Meta-Zeile am Artikel | „1 Verfügbar · Größe 7 Neu mit Box" | „Gr. 42 · Sehr gut · 28209 Bremen" — zusätzlich **der Ort** |
+
+⚠️ **Zwei vermutete Lücken waren keine.** Ich hatte „Gebots-Knopf nennt den Betrag nicht" und
+„Icon-Spalte ohne Beschriftung" auf der Liste; beides steht seit Langem im Code. **Ein Vergleich
+gegen die eigene App ist wertlos, wenn man sie aus dem Gedächtnis vergleicht.**
+
+**Und eine offene Frage ist beantwortet:** Whatnots Kategorie-Kacheln tragen **freigestellte
+Produktfotos auf hellem Grund** — Jacke, Vase, Sneaker, Spielkonsole. Keine 3D-Renderings. Das
+bestätigt die Korrektur aus der Fünften Analyse und ist die billigere Herstellung.
+
+### 3. Der Fund: Der Verkäufer sieht seinen Umsatz während der Sendung
+
+Screenshot 5 zeigt ein Blatt über dem laufenden Video — die Sicht des **Verkäufers**:
+
+```
+  € Verkäufe            Bestellungen
+    1310 €                 108              ← die Summe in Grün
+
+  Beobachtung | Aktivität
+  [Alle] [Auktion] [Geschenk] [Angebote] [Label]
+
+  gardenkid29   5 € Trinkgeld gegeben!          1m
+  mistique einen kauf getätigt                  1m   [Bild]
+    22 € · Hoya Compacta Rope
+  malik93 einen kauf getätigt                   2m   [Bild]
+    12 € · Donkey Tail Succulent
+```
+
+**Berkat hat davon nichts.** Wer zwei Stunden sendet, weiß am Ende nicht, wie es lief — er müsste
+die Sendung verlassen und in „Bestellungen" nachsehen.
+
+**Warum das mehr ist als eine Kennzahl:** Die Sechste Analyse hat „Account Health" abgelehnt, und
+das war richtig — drei Kennzahlen über null Vorgänge sind nichts. Das hier ist keine Bilanz,
+sondern eine **Rückmeldung im Moment des Tuns**. Design-Gesetz Nr. 1 verlangt, Hochs lauter zu
+machen; in Berkat gilt das bisher **nur für Käufer**. Der Mensch, der die Arbeit macht, bekommt
+keinen einzigen Peak.
+
+Und genau daran hängt Phase 0. Die Frage dort lautet nicht „funktioniert die Auktion", sondern
+**„sendet jemand acht Wochen lang freiwillig weiter"**. Was das entscheidet, ist zu sehen, dass es
+sich lohnt — während es sich lohnt, nicht am nächsten Tag in einer Liste.
+
+**Die Daten liegen alle schon da:** `auction_carts` (bezahlt/offen), `live_auctions` mit
+`status='sold'` und `current_bid_cents`, `berkat_tips`. Es fehlt eine Abfrage und ein Blatt.
+
+### 4. Käuferschutz — als einer von fünf Store-Screenshots
+
+Ein eigener Bildschirm im Onboarding: gelbes Schild, Überschrift **„Whatnot Käuferschutz"**, dann
+*„Wir unterstützen dich, wenn dein Artikel beschädigt ankommt, fehlt, oder nicht der Beschreibung
+entspricht."*
+
+Die Dritte Analyse hat die Durchsetzungsmaschine schon beschrieben, und Abschnitt 25 der Übergabe
+führt „Durchsetzungsseite" als offen. Neu ist die **Gewichtung**: Whatnot verbrennt einen von fünf
+Store-Screenshots darauf — also eines der fünf Dinge, mit denen sie überhaupt werben.
+
+Für Berkat ist das kein Kopiervorschlag, sondern eine Frage: **Vertrauen ist das Kernargument, und
+die Antwort auf „was, wenn es schiefgeht" fehlt.** Die Bürgen (Abschnitt 15) beantworten „wem kann
+ich glauben", nicht „wer zahlt, wenn nichts ankommt". Solange Zaur selbst der einzige Verkäufer
+ist, ist das folgenlos. Ab dem ersten Drittverkäufer ist es die erste Frage, die jemand stellt.
+
+### 5. Drei Kleinigkeiten, die auffielen
+
+- **Drei Knopf-Zustände in der Show**, nicht zwei: „Biete 40 €" (läuft) · **„Warten Auf Den
+  Nächsten Artikel"** (grau, zwischen Artikeln) · **„Auktion is beendet"** (grau, danach). Der
+  mittlere ist der interessante — er sagt dem Zuschauer, dass Dableiben sich lohnt.
+- **Versand als Betrag an der Artikelkarte**: „4.13 € Versand & Steuern". Berkat schreibt „zzgl.
+  Versand ab 4,90 €" — vager, aber ehrlicher, solange die Zone erst an der Kasse feststeht
+  (Abschnitt 14).
+- **Shop-Symbol mit Anzahl** (`56`) — wie viele Artikel im Regal dieser Sendung liegen.
+
+### 6. Was ausdrücklich NICHT zu übernehmen ist
+
+**„1 Verfügbar".** Whatnot braucht die Angabe, weil sie Bestände führen. Bei Berkat ist jedes
+Angebot genau ein Stück; die Zeile stünde konstant auf „1" und wäre Lärm. Die Entscheidung gegen
+Varianten (Übergabe, Abschnitt 41) wird durch diesen Screenshot **bestätigt**, nicht erschüttert.
+
+### 7. Ein Fund fürs Selbstvertrauen
+
+Whatnots deutsche Lokalisierung ist an zwei Stellen kaputt, beide in den Store-Screenshots von
+gestern:
+
+> „tiffanytang **is hat** den Zuschlag!" · „Auktion **is** beendet"
+
+Beim Übersetzen ist das englische „is" stehen geblieben. **Eine Firma mit 8 Mrd. $ Umsatz liefert
+gebrochenes Deutsch in ihrem eigenen Schaufenster aus.** Das ist kein Grund zur Häme, sondern eine
+Größenordnung: Der Abstand zu Berkat ist an vielen Stellen kleiner als die Zahlen vermuten lassen —
+und an der Sprache ist er umgekehrt.
+
+### Was daraus folgt
+
+1. **Verkäufer-Kennzahlen während der Sendung** — die einzige Lücke dieser Runde, die auf den
+   Engpass einzahlt. Zwei Zahlen und eine Ereignisliste aus vorhandenen Daten.
+2. **Käuferschutz-Zusage formulieren** — kein Code, eine Entscheidung. Fällig vor dem ersten
+   Drittverkäufer.
+3. **Knopf-Zustand „Warten auf den nächsten Artikel"** prüfen, falls Berkat dort heute nichts sagt.
+
+### Quellen
+
+- Apple App Store, `Whatnot: Shop, Sell, Connect` von Whatnot Inc., **Version 26.34.5**
+  (20.08.2026), deutsche Store-Screenshots, abgerufen am 21.08.2026 über
+  `itunes.apple.com/search?term=whatnot&entity=software&country=de`
+- Bewertung zum Zeitpunkt des Abrufs: 4,59 bei 7.187 Bewertungen (deutscher Store)

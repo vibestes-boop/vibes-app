@@ -6283,17 +6283,46 @@ Rückweg steht als Abschnitt 3 in derselben Datei.
 
 ### Danach, nach Nutzen sortiert
 
-1. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg, und seit der
-   Testware-Entscheidung vom 20.08. der dringlichste Punkt der Liste. Das SQL liegt fertig in
+1. **Verkäufer-Kennzahlen während der Sendung** — neu aus der **achten Analyse** (21.08.2026, die
+   Store-Screenshots der Whatnot-App). Whatnot zeigt dem Verkäufer im laufenden Stream ein Blatt
+   mit **„Verkäufe 1310 € · Bestellungen 108"** und einem Ereignisstrom (Kauf, Trinkgeld, Gebot),
+   je Zeile mit Artikelbild. Berkat hat davon nichts: Wer zwei Stunden sendet, muss die Sendung
+   verlassen, um zu sehen, was sie einbrachte.
+
+   **Warum das vor dem Kaufknopf steht:** Es ist das Einzige aus dieser Runde, das direkt auf
+   **Phase 0** einzahlt. Die Frage dort ist nicht „funktioniert die Auktion", sondern „sendet
+   jemand acht Wochen freiwillig weiter" — und das entscheidet, ob er **während** des Sendens
+   sieht, dass es sich lohnt. Design-Gesetz 1 („Hochs lauter machen") gilt in Berkat bisher nur
+   für Käufer; der Mensch, der die Arbeit macht, bekommt keinen einzigen Peak.
+
+   Kein neues Schema: `auction_carts`, `live_auctions` (`status='sold'`, `current_bid_cents`) und
+   `berkat_tips` tragen alles. Es fehlt eine Abfrage und ein Blatt. Abgrenzung zu dem, was
+   Abschnitt 40 zu Recht abgelehnt hat: **Das ist keine Bilanz („Account Health", drei Zahlen über
+   null Vorgänge), sondern eine Rückmeldung im Moment des Tuns.**
+
+2. **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg, und seit der
+   Testware-Entscheidung vom 20.08. besonders sichtbar. Das SQL liegt fertig in
    `supabase/_ops/kassen-freigabe-testware.sql`; es fehlt nur die Freigabe. Danach ist der Kauf
    endlich am fremden Artikel durchspielbar — der Punkt, der seit Abschnitt 26 offen ist.
-2. **Vorbereitetes einem neuen Termin zuordnen** — die Karte „Vorbereitet, ohne Termin" zeigt und
+
+3. **Käuferschutz-Zusage formulieren** — ebenfalls aus der achten Analyse, und **kein Code,
+   sondern eine Entscheidung.** Whatnot verbrennt einen von fünf Store-Screenshots auf
+   „Wir unterstützen dich, wenn dein Artikel beschädigt ankommt, fehlt, oder nicht der
+   Beschreibung entspricht." Berkats Kernargument ist Vertrauen — die Bürgen (Abschnitt 15)
+   beantworten „wem kann ich glauben", aber niemand beantwortet **„wer zahlt, wenn nichts
+   ankommt"**. Solange Zaur der einzige Verkäufer ist, folgenlos; ab dem ersten Drittverkäufer die
+   erste Frage, die jemand stellt. Gehört zu Abschnitt 25 („Durchsetzungsseite").
+4. **Vorbereitetes einem neuen Termin zuordnen** — die Karte „Vorbereitet, ohne Termin" zeigt und
    verwirft, aber ordnet nicht zu. Braucht eine RPC (`UPDATE live_auctions.planned_for`), weil
    Schreibwege auf `live_auctions` alle über den Server laufen.
-3. **„Bezahlung abbrechen"** am eingefrorenen Korb — die vollständige Antwort auf Fund 3. Braucht
+5. **„Bezahlung abbrechen"** am eingefrorenen Korb — die vollständige Antwort auf Fund 3. Braucht
    RPC **+** `sessions.expire` in `create-checkout-session` **+** Webhook-Härtung. Nicht weniger.
-4. **Live-Raum gegen Whatnots App halten** (Vollbild, Chat ohne Kasten) — braucht ohnehin eine Show.
-5. **Kleinkram:** „Entwurf speichern" beim Einstellen · Anti-Snipe-Zeit wählbar · Bilder umsortieren
+6. **Live-Raum gegen Whatnots App halten** — die achte Analyse hat das für **sechs von sieben**
+   Flächen schon erledigt (Reiter, Kachel, Gebots-Knopf, Icon-Spalte, Verkauft-Zustand,
+   Meta-Zeile: alle deckungsgleich oder reicher). Offen bleibt nur, was eine laufende Sendung
+   braucht — plus der dritte Knopf-Zustand **„Warten auf den nächsten Artikel"** zwischen zwei
+   Artikeln, falls Berkat dort heute nichts sagt.
+7. **Kleinkram:** „Entwurf speichern" beim Einstellen · Anti-Snipe-Zeit wählbar · Bilder umsortieren
    (bräuchte `react-native-gesture-handler` → Build) · zwölf freigestellte Kategorie-Fotos.
 
 ### Nicht neu diskutieren
