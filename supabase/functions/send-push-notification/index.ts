@@ -47,7 +47,55 @@ interface DirectPushPayload {
   app?: string;
 }
 
+/**
+ * ⚠️ NUR DER SERVER DARF HIER HEREIN — seit dem 22.08.2026.
+ *
+ * Vorher gab es KEINE eigene Prüfung. Die Function stand auf
+ * `verify_jwt = true` (Voreinstellung, sie steht nicht in `config.toml`), und
+ * das reicht nicht: **Der öffentliche anon-Schlüssel IST ein gültiges JWT.**
+ * Er steckt in jedem ausgelieferten App-Bündel. Gemessen wurde es so —
+ *
+ *     curl -X POST …/functions/v1/send-push-notification \
+ *          -H "Authorization: Bearer <anon-key>" -d '{}'
+ *     → HTTP 400 {"error":"missing_payload"}
+ *
+ * — also eine Antwort aus dem RUMPF, nicht ein 401 vom Gateway. Wer drin ist,
+ * braucht nur noch die richtige Nutzlast und kann dann jedem Nutzer eine echte
+ * Push-Meldung mit frei gewähltem Titel und Text im Namen der App schicken.
+ * Innen arbeitet die Function mit `SERVICE_ROLE` und fragte nie, wer ruft.
+ *
+ * Das untergräbt dieselbe Zusage wie die offene `notifications`-INSERT-Policy
+ * (Übergabe, Abschnitt 73): „Berkat schreibt dir nie hier."
+ *
+ * ⚠️ Der Riegel ist FAIL-CLOSED: Fehlt das Geheimnis in der Umgebung, wird
+ * abgewiesen — nicht durchgelassen. Ein fehlendes Secret als „dann eben offen"
+ * zu behandeln ist die Fehlerklasse, wegen der es diesen Riegel gibt.
+ *
+ * ⚠️ ALLE berechtigten Aufrufer schicken den service_role-Schlüssel — vor dem
+ * Bau einzeln nachgesehen, nicht angenommen:
+ *   • `fn_send_push_on_notification` (SQL, `20260814220000`): `net.http_post`
+ *     mit `'Bearer ' || v_service_role_key` bzw. aus dem Vault
+ *   • `publish-scheduled-posts`: `createClient(…, SERVICE_ROLE_KEY)` und dann
+ *     `supabase.functions.invoke('send-push-notification', …)`
+ *   • Kein Client in beiden Apps ruft sie — `grep` über `apps/`, `lib/`, `app/`
+ *     findet nur Kommentare.
+ */
+function serverOnly(req: Request): Response | null {
+  const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  if (!secret || token !== secret) {
+    return new Response(JSON.stringify({ error: 'forbidden' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
+  const denied = serverOnly(req);
+  if (denied) return denied;
+
   try {
     const payload = (await req.json()) as Partial<NotificationPayload> & DirectPushPayload;
 

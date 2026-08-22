@@ -61,10 +61,44 @@ interface SubRow {
   auth: string;
 }
 
+/**
+ * ⚠️ NUR DER SERVER DARF HIER HEREIN — seit dem 22.08.2026.
+ *
+ * Dieselbe Lücke wie in `send-push-notification`, und aus demselben Grund:
+ * `verify_jwt = true` allein reicht nicht, weil **der öffentliche
+ * anon-Schlüssel ein gültiges JWT ist**. Gemessen antwortete die Function auf
+ * einen Aufruf mit dem anon-Schlüssel mit `400 missing_required_fields` — also
+ * aus dem Rumpf, nicht mit 401 vom Gateway.
+ *
+ * Fail-closed: Fehlt das Geheimnis, wird abgewiesen.
+ *
+ * ⚠️ Der einzige berechtigte Aufrufer ist `fn_send_push_on_notification`
+ * (`20260814220000`, Z. 80–83): `net.http_post` mit
+ * `'Authorization', 'Bearer ' || v_service_role_key`. Kein Client ruft sie.
+ *
+ * Die OPTIONS-Vorabfrage bleibt bewusst VOR dem Riegel: Ein Browser schickt
+ * dabei keine Kopfzeilen mit, und eine abgewiesene Vorabfrage macht aus einem
+ * klaren 403 einen unverständlichen CORS-Fehler.
+ */
+function serverOnly(req: Request): Response | null {
+  const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  if (!secret || token !== secret) {
+    return new Response(JSON.stringify({ error: 'forbidden' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const denied = serverOnly(req);
+  if (denied) return denied;
 
   const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY');
   const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY');

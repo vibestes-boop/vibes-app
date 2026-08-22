@@ -8939,3 +8939,78 @@ Gemessen danach: **401 / 42501.**
 **Und die fünf Fixes von vorhin stehen nach dem zweiten Abzug unverändert:** Wächter-Trigger da,
 `posts` mit genau zwei SELECT-Policies, alle fünf Creator-Funktionen mit `REVOKE … FROM PUBLIC`
 **und** `GRANT … TO authenticated` — Serlos Studio behält seinen Zugang.
+
+### Nachtrag: die 46 ungeprüften Funde — durchgearbeitet (22.08.2026, spät)
+
+Zaur: *„mach die 46 ungeprüfte funde."* Gegen einen frischen Abzug geprüft und, wo möglich, **von
+aussen gemessen**. Ergebnis: **rund 15 bestätigt, 10 widerlegt**, der Rest steht unten als offen.
+
+**⚠️ Bestätigt und gemessen — ohne Anmeldung:**
+
+| Fund | Messung vorher | jetzt |
+|---|---|---|
+| `send-push-notification` + `send-web-push` ohne eigene Prüfung | **400 aus dem Rumpf** | **403 forbidden** |
+| `product_/cost_/moderation_/push_feed_health_snapshot` | **200 mit echten Zahlen** (`mau`, Kosten, Rückstau) | **401 / 42501** |
+| `message_reactions`, `story_views` | **je 2 Zeilen** | **0** |
+| `stories` (permissive-ODER, drittes Mal) | 2 Zeilen inkl. archivierter | **0** |
+
+> ⚠️ **Der Kern von Fund 1: `verify_jwt = true` ist kein Schutz.** Der öffentliche anon-Schlüssel
+> IST ein gültiges JWT und steckt in jedem ausgelieferten Bündel. Beide Functions liessen ihn
+> durch und arbeiteten innen mit `SERVICE_ROLE`, ohne je zu fragen, wer ruft. Damit konnte **jeder**
+> jedem eine echte Push-Meldung mit frei gewähltem Text im Namen der App schicken — dieselbe
+> Zusage, die die Warnzeile aus Abschnitt 64 gibt.
+
+**⚠️ Bestätigt — als angemeldeter Nutzer:**
+
+- **`delete-account` löschte weiter hart** (`index.ts:47`, `DELETE /auth/v1/admin/users/…`) und
+  umging damit den anonymisierenden Fix vom 21.08. **vollständig**, samt beider Sperren. Sie ist
+  der Weg, den Serlos ausgelieferte App benutzt (`app/settings.tsx:308`). Jetzt ruft sie
+  `delete_own_account()` mit dem Token des Nutzers; Endpunkt und Erfolgsantwort bleiben gleich,
+  neu ist ein **409** samt Grund, wenn eine Sperre greift.
+- **`orders_update_seller` hatte kein `WITH CHECK`** — ein Verkäufer konnte seine Bestellung einem
+  fremden `seller_id` zuschieben. Ergänzt, dazu `guard_order_money` gegen Betrag, Käufer, Produkt
+  und Verkäufer. ⚠️ Das Recht liess sich NICHT entziehen: `apps/web/.../shop.ts:550` und
+  `lib/useAdmin.ts:236` schreiben mit der Nutzer-Rolle direkt auf die Tabelle.
+- **Ein Preisvorschlag unterbietet die laufende Auktion** — `buy_now_live_auction` erlaubt
+  `status = 'running'`. **Nicht behoben: das ist eine Produktentscheidung.**
+- **`ensure_auction_cart` sperrt nicht** (`SELECT … WHERE status='open'` ohne `FOR UPDATE`).
+- **Die ZAG-Schranke steht an einem von vier Geldwegen** — `checkout_enabled` wird genau einmal
+  gelesen, im Sofortkauf.
+
+**⚠️ Bestätigt — die App-Trennung, in beide Richtungen:**
+
+Vier Meldungswege stempeln `app` nicht und sind von Berkat aus erreichbar: `notify_on_dm` (Trigger
+auf **jedem** `messages`-INSERT), `notify_followers_on_live` **und**
+`notify_followers_on_go_live` (beide feuern beim Sendungsstart, also doppelt),
+`resolve_order_dispute`, `submit_order_review`. Sechs weitere sind reine Serlo-Pfade — dort ist
+`'serlo'` richtig.
+
+Und die Gegenrichtung: **`lib/useNotifications.ts` — Serlos Glocke — filtert nicht auf `app`.**
+Jede korrekt als `'berkat'` gestempelte Meldung erscheint in Serlos ausgelieferter App. Dazu
+`lib/authStore.ts:111`: Serlos Abmelden löscht `push_tokens` **ohne `app`-Filter** und nimmt dem
+Nutzer still Berkats Zuschlag- und Zahlungserinnerungen.
+
+**✅ Widerlegt:** `berkat_tips_select`, `notif_select`, `clip_markers_select` (nur eigene Zeilen —
+Fehlalarme **meines** Filters, nicht des Audits) · sechs Meldungswege, die Berkat nicht erreicht ·
+`get_admin_stats` (`{"error":"not_authorized"}`, gemessen) · `send_gift` (`no_wallet`) ·
+`get_profile_posts_web`, `get_public_post_web`, `get_public_discover_people_web` (alle mit
+`privacy` **und** `women_only` im Rumpf).
+
+**Noch offen, ehrlich:** die vier Bestell-Lesepfade auf `product_orders`, die URL-Prüfung am
+Streit-Belegfoto, `r2-sign` (Content-Type, JWT), das verschwundene spaltenweise REVOKE auf
+`user_whip_ingresses`, `link_live_session_to_scheduled`, `expire_duet_invites`, der Deckel der
+Verkäufer-Prämie, Belegfotos im öffentlichen R2-Eimer — und die vier `app`-Stempel plus Serlos
+Glocken-Filter aus dem Absatz darüber.
+
+### ⚠️ Eine Falle beim Prüfen, in die ich fast gelaufen wäre
+
+Nach dem `DROP POLICY "stories_select"` lieferte `stories?archived=eq.false` **0 Zeilen** — was wie
+eine Regression aussah: Hätte `archived` NULL sein können, wäre `archived = false` weder wahr noch
+falsch, und ich hätte alle öffentlichen Stories versteckt.
+
+Nachgesehen statt beruhigt: `"archived" boolean DEFAULT false NOT NULL`. Die Null ist also echt —
+es gibt gerade keine unarchivierten Stories, und die beiden vorhandenen sind korrekt verborgen.
+
+> **Eine Null im Ergebnis beweist nichts, solange man nicht weiss, ob sie „nichts da" oder
+> „nichts mehr sichtbar" heisst.** Der Unterschied steht in der Spaltendefinition, nicht in der
+> Messung.
