@@ -1,6 +1,6 @@
 # Berkat — Übergabe
 
-**Stand: 18.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 22.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
@@ -12,14 +12,19 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 
 ---
 
-## 0. Wo du gerade stehst — 19.08.2026
+## 0. Wo du gerade stehst — 22.08.2026
 
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 69 → 56.** Abschnitt 69 ist der Anschlusspunkt (er löste 61 ab,
-> davor 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle, nach
-> Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
+> **Wer neu einsteigt, liest 0 → 74 → 56.** Abschnitt 74 ist der Anschlusspunkt (er löste 69 ab,
+> davor 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
+> nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
+>
+> ⚠️ **Wer nur EINEN Abschnitt liest, liest 73.** Der Sicherheits-Audit vom 22.08.2026 hat vier
+> Löcher geschlossen, die seit Monaten offen standen — darunter eines, mit dem sich jeder
+> angemeldete Nutzer selbst zum Admin machen konnte. Die Lehren daraus gelten für jede weitere
+> Änderung an Rechten und Policies.
 >
 > ⚠️ **Dieser Kopf war am 21.08.2026 an acht Stellen veraltet** — die Marktplatz-Migration galt
 > als offen, obwohl sie seit dem 17.08. lief; Sentry als „noch nicht scharf", obwohl der Build
@@ -27,15 +32,20 @@ was gilt.
 > 18.08. belegt hatte. Der Rumpf war jedes Mal aktuell, nur der Kopf nicht. **Wer unten etwas
 > abhakt, hakt es oben mit ab** — sonst liest der nächste Chat den falschen Zustand zuerst.
 >
-> Neu in dieser Runde: Startseite zeigt das Regal (27), Hochformat für alle Karten (28),
-> Entdeckungs-Leiste (29), Suche und Sortierung im Regal (30), Testware per Skript (31),
-> Filter mit Ort und Preis (32), Artikelseite geprüft (33) und entrümpelt (34), Impressum am
-> richtigen Ort (35, 36), Verkaufen-Reiter als Übersicht (37).
+> **Neu am 22.08.2026** — der Tag hat zweimal gedreht:
 >
-> Grundlage sind drei neue Whatnot-Analysen (vierte bis sechste, alle in `WHATNOT-ANALYSE.md`).
-> **Ihr wichtigstes Ergebnis ist entlastend:** Bei Feed-Karte, Profil und Artikelseite ist Berkat
-> gleichauf oder reicher. Der Abstand lag an fehlendem Inhalt, nicht an Gestaltung — mit 38
-> Testartikeln sieht dieselbe App aus wie ein anderes Produkt.
+> *Vormittags Gestaltung.* Die **vierzehnte Whatnot-Analyse** ist die erste, die Whatnots Bilder
+> nicht gegen Berkats Quelltext hält, sondern gegen **Berkats Bildschirm** (die App lief dabei im
+> Simulator). Befund: Der Abstand lag nicht an der Gestaltung der einzelnen Fläche, sondern daran,
+> dass **nichts miteinander fluchtete** — feste Kartenhöhe (71), eine Quelle fürs Kategoriebild
+> (71), Merken auf der Startseite, gefüllter Knopf, „Berkat durchsuchen" (71), Artikel-Bezug an
+> einer Nachricht (72). Davor: Stand-Anzeige im Konto (70).
+>
+> *Abends ein **Sicherheits-Audit** (73), und der war der eigentliche Tag.* Elf Migrationen, vier
+> Löcher zu, die seit Monaten offen standen. **Berkats eigene Migrationen waren sauber — alles
+> Schwere lag in der geerbten Serlo-Schicht, und Serlo ist im App Store.**
+>
+> Danach die App-Trennung in beide Richtungen und die Preisvorschlag-Entscheidung (beide 73).
 >
 > ⚠️ **Was in der Datenbank liegt, sind Testdaten.** Es wird nichts verkauft. 36 davon stammen
 > aus `scripts/seed-berkat-shop.mjs` und tragen `[testware]` in der Beschreibung; sie gehören
@@ -64,6 +74,9 @@ was gilt.
 | **Erstnutzung** — „Deine ersten Schritte" | ✅ am Gerät bestätigt (18) |
 | **Marktplatz** — Privat- und Gewerbeverkäufer, Shop-Seite, Orte | ✅ am Gerät durchgespielt (20, 21). ⚠️ Hier stand bis zum 21.08.2026 „eine Migration steht noch offen" — `20260816220000` lief am **17.08.**, siehe Abschnitt 20 |
 | **Artikelseite** — jedes Angebot hat eine eigene Seite, eine Karte für alle Flächen | ✅ am Gerät durchgespielt, Beschreibung erstmals sichtbar (21) |
+| **Streitfall** — melden, Belegfoto, Fall-Karte im Verlauf, Abschnitt beim Verkäufer | ✅ gebaut (67, 68); am Gerät offen (Prüfliste D8/D9) |
+| **Nachrichten** — Vorschau, Ungelesen, Fotos, Tagestrenner, Artikel-Bezug | ✅ gebaut (64–66, 72); am Gerät offen (A11/A12, B7) |
+| **Sicherheit** — Audit gegen die Produktions-Rechte, elf Migrationen | ✅ vier Löcher zu, alles von aussen gemessen (73). ⚠️ EINE Probe fehlt: `bash supabase/_ops/waechter-pruefen.sh` |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -135,7 +148,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–73; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–74; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **74 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -181,7 +194,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | **60 Berkat-eigene, alle eingespielt**; im Tracking 283 ohne Lücke (22.08.2026) — Abschnitt 5 |
+| Migrationen | **70 Berkat-eigene, alle eingespielt**; im Tracking 292 ohne Lücke (22.08.2026, nachts) — Abschnitt 5 |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -9134,3 +9147,120 @@ das ist der eine Fall, in dem der Wurzelordner richtig ist), seit dem letzten Se
 in Serlos Bündel **genau zwei Dateien** geändert (`lib/authStore.ts`, `lib/useNotifications.ts`),
 und `package.json` ist unberührt — der Sprung auf die ältere Runtime 1.30.0 ist damit sicher.
 `app.json` steht danach wieder auf 1.31.0.
+
+---
+
+## 74. Anschlusspunkt für den nächsten Chat (Stand 22.08.2026, Nacht)
+
+**Hier anfangen.** Löst Abschnitt 69 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste ist weiterhin der Motor.
+
+### Der Zustand
+
+| | |
+|---|---|
+| Migrationen | **70 Berkat-eigene, alle eingespielt** · im Tracking **292**, keine Lücke |
+| `tsc` / `expo export` | fehlerfrei, 3724 Module |
+| Git | sauber, alles gepusht — zuletzt `4d5f8d8` |
+| Berkat-OTA | zuletzt `3791c6a7…` („Preis-Zusage gilt nicht mehr während der laufenden Auktion") |
+| Serlo-OTA | `d7f1814e…` (Runtime 1.31.0) und `ba0380b5…` (1.30.0) — App-Trennung im Client |
+| TestFlight | `1.0.0 (1)` · Beta App Review, Gruppe „Verkäufer" hat weiterhin **0 Tester** |
+| Käuferschutz | Fassung A · **Preisvorschlag: nur vor dem Start** (73) |
+
+⚠️ **Ein nativer Eintrag steht weiter in der Warteschlange** (Abschnitt 12): `expo-image-manipulator`.
+Bis zum nächsten Build kann ein 48-MP-Foto die 8-MB-Grenze reissen.
+
+### Was heute passiert ist
+
+Vormittags Gestaltung (70–72), abends ein **Sicherheits-Audit** (73), der den Tag gedreht hat.
+
+**Gebaut:** Stand-Anzeige im Konto (70) · gleiche Kartenhöhe und eine Quelle fürs Kategoriebild
+(71) · Merken auf der Startseite, gefüllter Knopf, „Berkat durchsuchen" (71) · Artikel-Bezug an
+einer Nachricht (72) · **elf Sicherheits-Migrationen** (73).
+
+**Geschlossen, alles gemessen statt abgelesen:**
+
+1. **Jeder Angemeldete konnte sich zum Admin machen** — `UPDATE` auf `profiles` stand auf
+   Tabellen-Ebene, der einzige Schutz-Trigger deckte eine Spalte.
+2. **Drei Frauen-Only-Lecks:** eine Alt-Policy auf `posts` (permissive-ODER, **dritte** Instanz),
+   `scheduled_lives`, `live_recordings`.
+3. **Privater Beitragsinhalt ohne Anmeldung** über `get_creator_top_posts` und vier Geschwister.
+4. **`send_expo_push`, `send-push-notification`, `send-web-push`** — jeder konnte jedem eine echte
+   Push-Meldung mit freiem Text schicken.
+5. **`delete-account` löschte weiter hart** und umging den Fix vom 21.08. vollständig.
+6. **Betriebszahlen, `message_reactions`, `story_views`, `stories`** öffentlich.
+7. **`orders`** ohne `WITH CHECK` · **App-Trennung** in beide Richtungen · **Preisvorschlag**
+   während der laufenden Auktion.
+
+### Das Erste, was zu tun ist
+
+1. ⚠️ **Der eine Handgriff, den nur du führen kannst:**
+   ```bash
+   bash supabase/_ops/waechter-pruefen.sh
+   ```
+   Belegt, dass der `profiles`-Wächter einen echten Angriff abweist. Er ist strukturell da und
+   bricht den Normalfall nicht (am Gerät gemessen) — aber ein abgewiesener Angriff wurde nie
+   gesehen. Das Skript sagt selbst, wie das Ergebnis aussehen muss.
+2. **Beta App Review abwarten — und danach Tester eintragen.** Unverändert seit drei Tagen: Die
+   Gruppe hat 0 Tester.
+3. **Gruppe A der Prüfliste** — A5, A7, A8, A9, A10, A11, A12, A15 stehen aus.
+   ⚠️ Vorher zweimal schliessen und öffnen, sonst prüft der Durchlauf den Stand von gestern
+   (Abschnitt 3, „Ein OTA wirkt erst beim ÜBERNÄCHSTEN Start").
+
+### Was auf eine Entscheidung wartet, nicht auf Code
+
+⚠️ **`notify_on_dm`.** Der Trigger feuert bei jedem `messages`-INSERT, und eine Direktnachricht
+gehört keiner App — dieselbe Unterhaltung führen beide. Seit Serlos Glocke filtert, ist der Schaden
+begrenzt („eine DM-Meldung fehlt in Berkats Glocke"; Berkats Posteingang zählt ungelesene selbst).
+**Das gehört entschieden, nicht geraten.**
+
+⚠️ **Der Kaufknopf am Regal-Artikel** und **der Gewinnspiel-Versand** — beide unverändert an
+derselben Frage: wie im Testlauf Geld fliesst.
+
+### Danach, nach Nutzen sortiert
+
+1. **Die zwölf freigestellten Kategorie-Fotos** — kein Code, Zaurs Handgriff, und der grösste
+   verbleibende sichtbare Abstand (71). ⚠️ „Schuhe" trägt bis dahin ein Paket-Symbol.
+2. **Die verbleibenden Audit-Funde** (73, Ende): die vier Bestell-Lesepfade auf `product_orders`,
+   die URL-Prüfung am Streit-Belegfoto, `r2-sign` (Content-Type, JWT), das verschwundene
+   spaltenweise REVOKE auf `user_whip_ingresses`, Belegfotos im öffentlichen R2-Eimer.
+3. ⚠️ **Die `notifications`-INSERT-Policy** — jeder kann jedem eine Meldung schreiben. Braucht erst
+   RPCs für die fünf Serlo-Schreibstellen, dann die Policy. Eigene Runde.
+4. **`ensure_auction_cart` sperren** (`FOR UPDATE`) · **ZAG-Schranke auf alle vier Geldwege**
+5. **Versand in Stufen** · **Bildschirm für die eigenen Versandsätze** · **Vacation Mode**
+6. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren, der leere Fuss
+   der Startseite, Markenname im Such-Platzhalter ✅ (erledigt)
+
+### Nicht neu diskutieren
+
+Keine Varianten (41) · kein Account Health (40) · keine abgekürzten Zahlen, kein Dunkelmodus (40) ·
+keine Marken-Chips (41) · kein Kaufknopf im Raster (27) · Chat-Kasten bleibt (60) · fester Preis
+bleibt unter dem Bild (68) · Käuferschutz Fassung A (68) · **Preisvorschlag nur vor dem Start** (73).
+
+### Die Blocker
+
+1. **Kein Build bei Testern.** Läuft am 19.11.2026 ab.
+2. **Stripe:** Testbetrieb, Ratenzahlung aus.
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass.**
+
+### Was dieser Tag gelehrt hat
+
+Vier Lehren, und drei davon sind Fehler von mir:
+
+> **1. Ein Audit, der Migrationen liest, liest Absichten.** Erst der Abzug sagt, was gilt — und erst
+> ein Aufruf von aussen sagt, ob der Fix wirkt. Drei der vier schwersten Löcher standen seit
+> Monaten offen und waren sechs früheren Audits entgangen.
+>
+> **2. Ein Recht ist erst weg, wenn PUBLIC *und* anon es verloren haben.** Ich habe diese Falle in
+> `20260822170000` selbst beschrieben und bin eine Stunde später in ihre andere Hälfte gelaufen.
+> Aufgefallen nur, weil die Gegenprobe nicht „steht es in der Datei" fragte, sondern „antwortet der
+> Server mit 401".
+>
+> **3. Zwei Trigger auf demselben Ereignis sind kein doppelter Boden, sondern ein Wettlauf.** Die
+> Go-Live-Meldung mit Stummschalt-Respekt war seit Mai eingebaut, deployt, dokumentiert — und lief
+> nie, weil der ältere Trigger zuerst schrieb und ihre eigene Anti-Spam-Sperre auslöste.
+>
+> **4. Eine Null im Ergebnis beweist nichts**, solange man nicht weiss, ob sie „nichts da" oder
+> „nichts mehr sichtbar" heisst. Der Unterschied steht in der Spaltendefinition.
+
+Und der Satz, der über allem steht, ist unverändert: Keine dieser Änderungen hat einen Verkäufer
+gebracht. Das kommt über den TestFlight-Link — und danach über Telefonate, nicht über Code.
