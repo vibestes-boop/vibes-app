@@ -76,7 +76,7 @@ was gilt.
 | **Artikelseite** — jedes Angebot hat eine eigene Seite, eine Karte für alle Flächen | ✅ am Gerät durchgespielt, Beschreibung erstmals sichtbar (21) |
 | **Streitfall** — melden, Belegfoto, Fall-Karte im Verlauf, Abschnitt beim Verkäufer | ✅ gebaut (67, 68); am Gerät offen (Prüfliste D8/D9) |
 | **Nachrichten** — Vorschau, Ungelesen, Fotos, Tagestrenner, Artikel-Bezug | ✅ gebaut (64–66, 72); am Gerät offen (A11/A12, B7) |
-| **Sicherheit** — Audit gegen die Produktions-Rechte, elf Migrationen | ✅ vier Löcher zu, alles von aussen gemessen (73). ⚠️ EINE Probe fehlt: `bash supabase/_ops/waechter-pruefen.sh` |
+| **Sicherheit** — Audit gegen die Produktions-Rechte, elf Migrationen | ✅ vier Löcher zu, alles von aussen gemessen (73) — **einschliesslich des Wächters gegen die Selbst-Beförderung zum Admin**, aus einer angemeldeten Sitzung belegt (403 / 42501) |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -8846,10 +8846,28 @@ Nichts Legitimes ist gebrochen. Der Wächter-Trigger steht im Live-Schema
 (`trg_guard_profile_privileges`, BEFORE INSERT OR UPDATE), `posts` hat nur noch zwei
 SELECT-Policies, und beide neuen WOZ-Policies tragen `is_women_only_verified()`.
 
-⚠️ **Was NICHT gemessen ist:** dass der Wächter einen echten Angriff abweist. Dafür braucht es eine
-**angemeldete** Sitzung, und sich für einen Menschen anzumelden ist nichts, was ein Assistent tut.
-Die Probe steht als Gegenprobe 1 in `20260822150000` und ist ein Handgriff: aus der App heraus ein
-`PATCH … {"is_admin": true}` — erwartet wird `insufficient_privilege`.
+✅ **Der Wächter weist einen echten Angriff ab — von Zaur gemessen, 22.08.2026 nachts.**
+`bash supabase/_ops/waechter-pruefen.sh` aus einer **angemeldeten** Sitzung:
+
+```
+VORHER   [{"username":"zaur","is_admin":true,"is_moderator":false}]
+ANGRIFF  HTTP 403
+         {"code":"42501","message":"is_moderator darf nicht vom Client geaendert werden"}
+NACHHER  [{"username":"zaur","is_admin":true,"is_moderator":false}]
+```
+
+Damit ist der schwerste Fund des Audits nicht mehr nur strukturell, sondern **belegt**. Und die
+Rollenprüfung greift wie entworfen: Zaur war als `authenticated` unterwegs und wurde geblockt,
+obwohl er der Betreiber ist — mit dem service_role-Schlüssel käme derselbe Aufruf durch, und genau
+das ist Absicht.
+
+⚠️ **Geprüft wurde der UPDATE-Zweig.** Der INSERT-Zweig (der Upsert-Weg von PostgREST) hängt am
+selben Trigger und derselben Rollenprüfung, ist aber nicht eigens durchgespielt.
+
+⚠️ **Warum die Probe `is_moderator` nimmt und nicht `is_admin`:** Zaurs Konto trägt `is_admin`
+bereits. `is_admin: true` zu setzen wäre keine Änderung — `IS DISTINCT FROM` liefert `false`, der
+Wächter liesse es durch, und die Probe meldete „offen", obwohl sie hält. **Eine Probe, die den
+Zustand nicht ändert, prüft nichts.**
 
 ⚠️ **Und die Frage, die keine Migration beantwortet:** Der Weg war offen, solange die Datenbank
 steht. Gemessen habe ich nur, dass heute **genau ein** Konto `is_admin` trägt — es gibt keinen
@@ -9193,13 +9211,9 @@ einer Nachricht (72) · **elf Sicherheits-Migrationen** (73).
 
 ### Das Erste, was zu tun ist
 
-1. ⚠️ **Der eine Handgriff, den nur du führen kannst:**
-   ```bash
-   bash supabase/_ops/waechter-pruefen.sh
-   ```
-   Belegt, dass der `profiles`-Wächter einen echten Angriff abweist. Er ist strukturell da und
-   bricht den Normalfall nicht (am Gerät gemessen) — aber ein abgewiesener Angriff wurde nie
-   gesehen. Das Skript sagt selbst, wie das Ergebnis aussehen muss.
+1. ~~**Der eine Handgriff, den nur du führen kannst**~~ ✅ **erledigt am 22.08.2026 nachts.**
+   `waechter-pruefen.sh` gelaufen: **HTTP 403 / 42501**, `is_moderator` vorher und nachher `false`.
+   Der schwerste Fund des Audits ist damit belegt, nicht nur strukturell geschlossen (73).
 2. **Beta App Review abwarten — und danach Tester eintragen.** Unverändert seit drei Tagen: Die
    Gruppe hat 0 Tester.
 3. **Gruppe A der Prüfliste** — A5, A7, A8, A9, A10, A11, A12, A15 stehen aus.
