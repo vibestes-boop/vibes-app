@@ -28,6 +28,7 @@ import { orderErrorText, useMarkShipped, useSellerOrders } from '../lib/useSelle
 import { useReceivedTips } from '../lib/useTip';
 import { goBack } from '../lib/nav';
 import { SellerOrders } from '../components/SellerOrders';
+import { useIncomingDisputes } from '../lib/useDispute';
 import { BerkatMark } from '../components/BerkatMark';
 import { radius, space, ui } from '../theme/tokens';
 
@@ -36,6 +37,11 @@ export default function OrdersScreen() {
   const myUserId = useSession((s) => s.userId);
 
   const { data: orders = [], refetch } = useSellerOrders(myUserId);
+  // Eine Abfrage für alle Bestellungen — siehe die Begründung im Hook.
+  const { data: disputes } = useIncomingDisputes(
+    orders.map((o) => o.id),
+    myUserId,
+  );
   const { data: tips = [], refetch: refetchTips } = useReceivedTips(myUserId);
   const tipperNames = useUsernames(tips.map((tip) => tip.sender_id));
 
@@ -122,7 +128,13 @@ export default function OrdersScreen() {
             </Text>
           </View>
         ) : (
-          <SellerOrders orders={orders} busyId={shippingId} onShip={shipOrder} />
+          <SellerOrders
+            orders={orders}
+            busyId={shippingId}
+            onShip={shipOrder}
+            disputes={disputes}
+            onNotice={setNotice}
+          />
         )}
 
         {/* Trinkgeld kommt ohne Bestellung an. Ohne diese Liste wüsste ein

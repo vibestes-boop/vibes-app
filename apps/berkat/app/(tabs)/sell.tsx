@@ -117,6 +117,20 @@ export default function SellScreen() {
   /** Die zwei Blätter hinter den Einstiegs-Kacheln. */
   const [showSheet, setShowSheet] = useState(false);
   const [planSheet, setPlanSheet] = useState(false);
+  /**
+   * ⚠️ Zwei `pageSheet`-Blätter im selben Takt zu wechseln geht auf iOS schief.
+   *
+   * Ein `pageSheet` ist ein echter UIViewController. Wer eines schließt und im
+   * selben Render das nächste öffnet, präsentiert auf einen Controller, der
+   * noch in seiner Schließ-Animation steckt — UIKit verwirft die zweite
+   * Präsentation dann still. Das Ergebnis wäre genau der Fehler, den wir
+   * gerade beheben: Man tippt die Terminzeile an, und es passiert nichts.
+   *
+   * Deshalb gemerkt statt sofort gesetzt: `onDismiss` feuert, wenn das erste
+   * Blatt wirklich weg ist. Android kennt das Problem nicht (dort ist ein Modal
+   * kein Controller) und auch kein `onDismiss` — da wird direkt gesetzt.
+   */
+  const [pendingPrepare, setPendingPrepare] = useState<string | null>(null);
   const [showCategory, setShowCategory] = useState<string | null>(null);
   const [showCategoryParent, setShowCategoryParent] = useState<string | null>(null);
   const [duration, setDuration] = useState(30);
@@ -671,6 +685,13 @@ export default function SellScreen() {
             animationType="slide"
             presentationStyle="pageSheet"
             onRequestClose={() => setPlanSheet(false)}
+            // Erst wenn dieses Blatt wirklich weg ist, darf das nächste kommen
+            // — siehe `pendingPrepare` oben. Nur iOS, dort feuert es.
+            onDismiss={() => {
+              if (!pendingPrepare) return;
+              setPrepareFor(pendingPrepare);
+              setPendingPrepare(null);
+            }}
           >
             <View style={styles.sheet}>
               <View style={styles.sheetHead}>
@@ -695,8 +716,8 @@ export default function SellScreen() {
             onPlan={(input) =>
               void planShow
                 .mutateAsync(input)
-                .then(({ created, total }) =>
-                  setNotice(
+                .then(({ created, total, firstId }) => {
+                  const done =
                     created === total
                       ? created === 1
                         ? 'Eingetragen — deine Follower bekommen eine Erinnerung. 🎉'
@@ -704,9 +725,24 @@ export default function SellScreen() {
                       : // Ehrlich statt hübsch: Wenn nur ein Teil durchkam, muss
                         // der Verkäufer das wissen, sonst verlässt er sich auf
                         // Termine, die es nicht gibt.
-                        `${created} von ${total} Terminen eingetragen — der Rest hat nicht geklappt.`,
-                  ),
-                )
+                        `${created} von ${total} Terminen eingetragen — der Rest hat nicht geklappt.`;
+
+                  // ⚠️ WEITER STATT ZURÜCK. Bis zum 21.08.2026 landete man nach
+                  // dem Ankündigen wieder auf der Übersicht und musste den
+                  // frischen Termin dort SUCHEN und ANTIPPEN, um Artikel
+                  // hineinzulegen. Am Gerät gemeldet, und es ist der teuerste
+                  // Klick im ganzen Verkäufer-Weg: Wer gerade entschieden hat,
+                  // Samstag zu senden, denkt als Nächstes „was verkaufe ich da"
+                  // — nicht „wo ist die Liste".
+                  //
+                  // Der Hinweis wandert MIT ins Blatt. Auf dem Reiter darunter
+                  // stünde er hinter einem `pageSheet` und wäre unsichtbar
+                  // (dieselbe Begründung wie bei `prepareNotice`).
+                  setPrepareNotice(done);
+                  setPlanSheet(false);
+                  if (Platform.OS === 'ios') setPendingPrepare(firstId);
+                  else setPrepareFor(firstId);
+                })
                 .catch((error: unknown) =>
                   setNotice(
                     scheduleErrorText(error instanceof Error ? error.message : String(error)),
@@ -719,6 +755,15 @@ export default function SellScreen() {
                 .then(() => setNotice('Termin abgesagt.'))
                 .catch(() => setNotice('Der Termin ließ sich nicht absagen.'))
             }
+            // Dieselbe Liste steht auf der Übersicht und hier. Dort öffnet ein
+            // Tipp das Vorbereiten-Blatt — hier tat er bis zum 21.08.2026
+            // nichts, und genau daran ist der Weg ins Regal für unauffindbar
+            // gehalten worden. Ein Blatt schließt, das andere geht auf.
+            onOpen={(planId) => {
+              setPlanSheet(false);
+              if (Platform.OS === 'ios') setPendingPrepare(planId);
+              else setPrepareFor(planId);
+            }}
           />
               </ScrollView>
             </View>
@@ -763,6 +808,19 @@ export default function SellScreen() {
                   ),
                 )
             }
+            // Das Blatt SCHLIESST sich beim Absagen — den Termin gibt es danach
+            // nicht mehr, und ein offenes Vorbereiten-Blatt für einen abgesagten
+            // Abend wäre eine Arbeitsfläche ohne Werkstück. Der Hinweis landet
+            // deshalb auf dem Reiter darunter, wo er nach dem Schließen sichtbar
+            // ist (die Begründung für `notice` im Blatt gilt hier umgekehrt).
+            onCancelPlan={(plan) => {
+              setPrepareFor(null);
+              setPrepareNotice(null);
+              void cancelPlan
+                .mutateAsync(plan.id)
+                .then(() => setNotice('Termin abgesagt.'))
+                .catch(() => setNotice('Der Termin ließ sich nicht absagen.'));
+            }}
           />
           </>
         ) : (

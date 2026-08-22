@@ -19,16 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Lock, MessageSquare, Search, ShoppingBag } from 'lucide-react-native';
@@ -36,7 +27,7 @@ import { supabase } from '../../lib/supabase';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
 import { Avatar } from '../../components/Avatar';
-import { CategoryRail, type RailItem } from '../../components/CategoryRail';
+import { CategoryRail, RAIL_SHORT, RAIL_TALL, type RailItem } from '../../components/CategoryRail';
 import { LivePreview } from '../../components/LivePreview';
 import { UpcomingStrip } from '../../components/UpcomingStrip';
 import { SellerResults } from '../../components/SellerResults';
@@ -209,19 +200,17 @@ export default function HomeScreen() {
   const searchingSellers = search.trim().length >= SEARCH_MIN;
   const [filter, setFilter] = useState(ALL);
 
-  const [railCollapsed, setRailCollapsed] = useState(false);
-  // Schwelle mit Abstand nach oben und unten, damit die Leiste nicht bei jedem
-  // Wackeln des Daumens hin- und herspringt.
-  const collapsedRef = useRef(false);
-  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = event.nativeEvent.contentOffset.y;
-    const next = collapsedRef.current ? y > 8 : y > 48;
-    if (next !== collapsedRef.current) {
-      collapsedRef.current = next;
-      setRailCollapsed(next);
-    }
-  }, []);
-
+  /**
+   * ⚠️ EIN Wert treibt beide Bewegungen — Verschiebung der Leiste UND das
+   * Überblenden darin. Zwei getrennte Animationen für eine Geste laufen
+   * unweigerlich auseinander; das sieht man als Zucken.
+   *
+   * `useNativeDriver: true` ist hier keine Optimierung, sondern der Punkt:
+   * Die Bewegung läuft dann auf dem UI-Thread und bleibt flüssig, während
+   * JavaScript Bilder nachlädt oder eine Abfrage auswertet. Möglich ist das
+   * nur, weil ausschließlich `transform` und `opacity` bewegt werden — eine
+   * Höhe ginge nicht (genau daran ist die erste Fassung gescheitert).
+   */
   // `live_sessions.category` trägt seit dem 16.08.2026 einen SLUG, keinen
   // Anzeigenamen. Ohne diese Übersetzung stünde in der Leiste „beauty" und
   // „buecher" statt „Beauty & Duft" und „Bücher & Medien" — vorher fiel das
@@ -279,6 +268,23 @@ export default function HomeScreen() {
 
     return [{ slug: ALL, name: 'Für dich', liveCount: shows.length, art: false }, ...tiles];
   }, [shows.length, counted]);
+
+  // Erst ab zwei Kategorien lohnt eine Leiste — vorher gäbe es nichts zu
+  // wählen, und das Polster oben wäre nur Leere.
+  const railOn = categories.length > 1;
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const RAIL_TRAVEL = RAIL_TALL - RAIL_SHORT;
+  const railShift = scrollY.interpolate({
+    inputRange: [0, RAIL_TRAVEL],
+    outputRange: [0, -RAIL_TRAVEL],
+    extrapolate: 'clamp',
+  });
+  const railProgress = scrollY.interpolate({
+    inputRange: [0, RAIL_TRAVEL],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -339,9 +345,35 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {/* ⚠️ EINE Zeile für Marke, Suche und die zwei Knöpfe.
+          Vorher waren es zwei — Kopfzeile, darunter das Suchfeld — und das
+          kostete rund 46 Punkte Höhe, bevor der erste Inhalt kam. Auf einer
+          Startseite, die stöbern soll, ist das die teuerste Fläche überhaupt.
+
+          ⚠️ DER PREIS: Das Wortzeichen „berkat" ist weg, das Ährenzeichen
+          bleibt. Beides plus Suchfeld plus zwei Knöpfe geht auf 393 Punkten
+          nicht auf — dem Suchfeld blieben unter 180 Punkte, und ein Suchfeld,
+          in das kein Suchbegriff sichtbar hineinpasst, ist keins.
+          Wer das Wortzeichen zurückwill, bekommt das Suchfeld schmal; die
+          Entscheidung gehört Zaur, nicht dem Layout. */}
       <View style={styles.header}>
-        <BerkatMark size={24} color={ui.brand} />
-        <Text style={styles.wordmark}>berkat</Text>
+        <BerkatMark size={26} color={ui.brand} />
+
+        {/* ⚠️ Der Platzhalter ist kürzer als vorher („Show oder Verkäufer
+            suchen"). Das Lupensymbol daneben sagt „suchen" bereits, und in der
+            schmalen Zeile wäre der lange Satz abgeschnitten — ein
+            abgeschnittener Hinweis erklärt nichts. */}
+        <View style={styles.searchWrap}>
+          <Search size={17} color={ui.textMuted} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Show oder Verkäufer"
+            placeholderTextColor={ui.textMuted}
+            style={styles.searchInput}
+            returnKeyType="search"
+          />
+        </View>
 
         {/* Rechts außen zwei Knöpfe, wie bei Whatnot: Posteingang und Glocke.
             Sie sehen gleich aus, sind aber nicht dasselbe — links steht, was
@@ -385,48 +417,43 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.searchWrap}>
-        <Search size={17} color={ui.textMuted} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Show oder Verkäufer suchen"
-          placeholderTextColor={ui.textMuted}
-          style={styles.searchInput}
-          returnKeyType="search"
-        />
-      </View>
-
       {/* Die Leiste trägt jetzt alle Kategorien und ist damit auch dann voll,
           wenn niemand sendet — die Bedingung von heute Mittag („erst ab zwei
           Einträgen") greift nur noch, solange die Kategorien nicht geladen
           sind. Sie bleibt trotzdem stehen: Ein Wackeln beim Nachladen wäre
           schlimmer als eine Zehntelsekunde ohne Leiste. */}
-      {categories.length > 1 ? (
-        <View style={styles.railWrap}>
-          <CategoryRail
-            items={categories}
-            active={filter}
-            collapsed={railCollapsed}
-            onSelect={setFilter}
-          />
-        </View>
-      ) : null}
-
-      <FlatList
+      {/* ⚠️ Die Leiste LIEGT ÜBER der Liste, sie steht nicht davor.
+          Im Fluss würde jede Bewegung den Listeninhalt mitverschieben — das war
+          der eigentliche Grund für das Ruckeln. Die Liste trägt stattdessen ein
+          Polster von `RAIL_TALL` und behält ihr Layout unverändert.
+          Nach der Liste gerendert, damit sie ohne `zIndex` obenauf liegt. */}
+      <View style={styles.listWrap}>
+      <Animated.FlatList
         data={gridData}
         // Regal-Artikel und Shows können dieselbe Position, aber nie dieselbe
         // Liste belegen; das Präfix hält die Schlüssel trotzdem auseinander,
         // falls beide Sorten je nebeneinander stehen sollten.
-        keyExtractor={(item) => ('shelf' in item ? `shelf:${item.shelf.id}` : item.id)}
+        /**
+         * ⚠️ Beide Rückrufe sind AUSDRÜCKLICH getypt.
+         * `Animated.FlatList` ist in den React-Native-Typen nur lose beschrieben
+         * (`FlatListProps<any>`) — ohne diese Annotationen wäre `item` still zu
+         * `any` geworden, und `'shelf' in item` prüfte nichts mehr. Ein
+         * Typverlust, den kein Fehler meldet, ist der teuerste.
+         */
+        keyExtractor={(item: GridItem) => ('shelf' in item ? `shelf:${item.shelf.id}` : item.id)}
         refreshing={pulling}
         onRefresh={pullToRefresh}
-        onScroll={onScroll}
-        scrollEventThrottle={32}
+        // ⚠️ Ohne den Versatz erschiene der Ladekreisel HINTER der Leiste.
+        progressViewOffset={railOn ? RAIL_TALL : 0}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+        scrollEventThrottle={16}
         numColumns={2}
         columnWrapperStyle={{ gap: space.md }}
         contentContainerStyle={{
           paddingHorizontal: space.md,
+          paddingTop: railOn ? RAIL_TALL : 0,
           paddingBottom: insets.bottom + space.xl,
         }}
         // Der Sendeplan steht ÜBER dem Raster, nicht darin: Er beantwortet eine
@@ -592,7 +619,7 @@ export default function HomeScreen() {
             </Pressable>
           ) : null
         }
-        renderItem={({ item }) => {
+        renderItem={({ item }: { item: GridItem }) => {
           // Der Platzhalter hält nur die Spalte offen: keine Karte, kein Bild,
           // nichts zum Drücken.
           if ('spacer' in item) return <View style={styles.spacer} />;
@@ -620,8 +647,8 @@ export default function HomeScreen() {
               ? Math.max(0, (new Date(preview.endsAt).getTime() - serverNow()) / 1000)
               : null;
           return (
+            <View style={styles.card}>
             <Pressable
-              style={styles.card}
               onPress={() => router.push(`/live/${item.id}`)}
               accessibilityRole="button"
               accessibilityLabel={item.title ?? 'Live-Show'}
@@ -664,15 +691,53 @@ export default function HomeScreen() {
               <Text numberOfLines={2} style={styles.cardTitle}>
                 {item.title ?? 'Ohne Titel'}
               </Text>
-              {item.category ? (
+            </Pressable>
+
+            {/* ⚠️ AUSSERHALB des Karten-Knopfes, nicht darin.
+                Whatnot macht die Kategorie zu einem Link (blau, anklickbar) —
+                bei uns stand dort grauer Text, also eine Tür, die nirgends
+                hinführt (zwölfte Analyse).
+
+                Ein zweiter Knopf IM ersten wäre der bequeme Weg und derselbe
+                Fehler wie in der Verkäufer-Karte des Shops (Abschnitt 25,
+                „button-in-button"): Wer die Kategorie trifft, meint sie — wer
+                daneben trifft, meint die Show. Zwei getrennte Flächen sagen das
+                eindeutig, ein verschachtelter Knopf überlässt es dem Zufall.
+
+                Ein Tipp FILTERT hier, statt woanders hinzuspringen: Der Rest
+                der Startseite ist schon die passende Liste, sie muss nur
+                enger werden. */}
+            {item.category ? (
+              <Pressable
+                onPress={() => setFilter(item.category!)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`Nur ${categoryNames.get(item.category) ?? item.category} zeigen`}
+              >
                 <Text style={styles.cardCategory}>
                   {categoryNames.get(item.category) ?? item.category}
                 </Text>
-              ) : null}
-            </Pressable>
+              </Pressable>
+            ) : null}
+            </View>
           );
         }}
       />
+
+      {railOn ? (
+        <Animated.View
+          style={[styles.railWrap, { transform: [{ translateY: railShift }] }]}
+          pointerEvents="box-none"
+        >
+          <CategoryRail
+            items={categories}
+            active={filter}
+            onSelect={setFilter}
+            progress={railProgress}
+          />
+        </Animated.View>
+      ) : null}
+      </View>
     </View>
   );
 }
@@ -682,11 +747,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: space.sm,
     paddingHorizontal: space.md,
     paddingTop: space.sm,
+    paddingBottom: space.xs,
   },
-  wordmark: { fontSize: 21, fontWeight: '700', color: ui.text, letterSpacing: -0.4 },
   headerActions: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   badge: {
@@ -703,20 +768,36 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10, fontWeight: '800', color: ui.goldInk },
 
+  // Nimmt, was zwischen Zeichen und Knöpfen übrig bleibt. 38 statt 42 Punkte
+  // hoch: Es steht jetzt neben zwei 34er-Knöpfen und soll die Zeile nicht
+  // aufblähen.
   searchWrap: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    marginHorizontal: space.md,
-    marginTop: space.md,
     paddingHorizontal: space.md,
-    height: 42,
+    height: 38,
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
   },
   searchInput: { flex: 1, fontSize: 15, color: ui.text, padding: 0 },
 
-  railWrap: { paddingVertical: space.md },
+  /**
+   * ⚠️ `overflow: 'hidden'` ist hier PFLICHT, nicht Kosmetik.
+   *
+   * Die Leiste liegt absolut auf `top: 0` und schiebt sich beim Scrollen um 68
+   * Punkte nach oben. Ohne Beschnitt malt sie ihre eigene Fläche genau dorthin,
+   * wo Suchfeld und Knöpfe stehen — und die verschwinden dahinter. Genau so am
+   * Gerät gesehen (22.08.2026): Die Kopfzeile war weg, obwohl sie noch da war.
+   *
+   * Die Regel: Wer etwas absolut positioniert und dann VERSCHIEBT, muss sagen,
+   * wo es aufhören soll. Sonst hört es nirgends auf.
+   */
+  listWrap: { flex: 1, overflow: 'hidden' },
+  // Über der Liste, nicht darin — siehe die Begründung am Aufrufort.
+  railWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
 
   card: { flex: 1, marginBottom: space.lg },
   spacer: { flex: 1 },
@@ -760,7 +841,11 @@ const styles = StyleSheet.create({
   },
   wozText: { fontSize: 11, fontWeight: '700', color: ui.successInk },
   cardTitle: { marginTop: space.sm, fontSize: 14, fontWeight: '700', color: ui.text },
-  cardCategory: { marginTop: 1, fontSize: 12, color: ui.textMuted },
+  // ⚠️ Markengrün statt Grau, seit sie anklickbar ist. Grauer Text heißt in
+  // Berkat „Auskunft", und eine Auskunft tippt niemand an. Nicht Blau wie bei
+  // Whatnot: Berkat hat keine blaue Verweis-Farbe, und eine neue einzuführen
+  // hieße, sie überall einzuführen (zwölfte Analyse, offener Punkt).
+  cardCategory: { marginTop: 2, fontSize: 12, fontWeight: '600', color: ui.brand },
 
   empty: { alignItems: 'center', paddingTop: 88, gap: space.sm },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text },

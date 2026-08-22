@@ -31,6 +31,13 @@ import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { RatingStars } from '../../components/RatingStars';
 import { ReviewSheet } from '../../components/ReviewSheet';
+import { DisputeSheet } from '../../components/DisputeSheet';
+import {
+  disputeErrorText,
+  useMyDispute,
+  useReportDispute,
+  type DisputeReason,
+} from '../../lib/useDispute';
 import { radius, space, ui } from '../../theme/tokens';
 
 function euro(value: string | number): string {
@@ -50,6 +57,9 @@ export default function OrderScreen() {
 
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const { data: dispute } = useMyDispute(id, myUserId);
+  const report = useReportDispute(id, myUserId);
   const [reviewing, setReviewing] = useState<number | null>(null);
 
   useFocusEffect(
@@ -267,6 +277,46 @@ export default function OrderScreen() {
           </>
         ) : null}
 
+        {/* ── Problem melden ─────────────────────────────────────────────
+            ⚠️ Die Bedingung ist aus der RPC ABGESCHRIEBEN, nicht erfunden:
+            `report_order_dispute` lässt nur `paid`, `shipped` und `delivered`
+            zu. Vorher gibt es nichts zu beanstanden, danach ist es kein offener
+            Vorgang. Einen Knopf zu zeigen, den der Server ablehnt, ist eine
+            Einladung ins Leere (Übergabe 22).
+
+            Als Textzeile, nicht als Knopf: Wer ein Problem hat, sucht sie —
+            und wer keines hat, soll nicht bei jeder Bestellung an eines
+            erinnert werden. Rot ist sie deshalb auch nicht. */}
+        {['paid', 'shipped', 'delivered'].includes(order.status) ? (
+          dispute && dispute.status === 'open' ? (
+            <View style={styles.disputeOpen}>
+              <Text style={styles.disputeOpenTitle}>Problem gemeldet</Text>
+              <Text style={styles.disputeOpenBody}>
+                {sellerName} ist benachrichtigt und meldet sich bei dir. Schreib ihm gern direkt —
+                ein Foto hilft am meisten.
+              </Text>
+              <Pressable onPress={() => setDisputeOpen(true)} accessibilityRole="button">
+                <Text style={styles.disputeLink}>Meldung ändern</Text>
+              </Pressable>
+            </View>
+          ) : dispute && dispute.status !== 'open' ? (
+            <View style={styles.disputeOpen}>
+              <Text style={styles.disputeOpenTitle}>Problem geklärt</Text>
+              {dispute.resolution ? (
+                <Text style={styles.disputeOpenBody}>{dispute.resolution}</Text>
+              ) : null}
+            </View>
+          ) : (
+            <Pressable
+              style={styles.disputeRow}
+              onPress={() => setDisputeOpen(true)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.disputeLink}>Problem mit dieser Bestellung melden</Text>
+            </Pressable>
+          )
+        ) : null}
+
         {/* Die Bestellnummer. Whatnot zeigt eine 9-stellige Order-ID für den
             Support; unsere ist eine UUID, deshalb nur der Anfang — er reicht,
             um eine Bestellung eindeutig zu benennen, und passt in eine Zeile. */}
@@ -286,6 +336,31 @@ export default function OrderScreen() {
         busy={busy}
         onClose={() => setReviewing(null)}
         onSubmit={(rating, comment) => void rate(rating, comment)}
+      />
+
+      <DisputeSheet
+        visible={disputeOpen}
+        busy={report.isPending}
+        existingReason={(dispute?.reason as DisputeReason | undefined) ?? null}
+        existingDetail={dispute?.detail ?? null}
+        existingImage={dispute?.image_url ?? null}
+        orderTitle={order.title ?? 'Bestellung'}
+        orderAmount={Number(order.amount_eur).toLocaleString('de-DE', {
+          style: 'currency',
+          currency: 'EUR',
+        })}
+        onClose={() => setDisputeOpen(false)}
+        onSubmit={(reason, detail, imageUrl) => {
+          void report
+            .mutateAsync({ reason, detail, imageUrl })
+            .then(() => {
+              setDisputeOpen(false);
+              setNotice('Gemeldet — der Verkäufer ist benachrichtigt.');
+            })
+            .catch((e: unknown) =>
+              setNotice(disputeErrorText(e instanceof Error ? e.message : String(e))),
+            );
+        }}
       />
     </View>
   );
@@ -381,6 +456,20 @@ const styles = StyleSheet.create({
 
   reviewPrompt: { fontSize: 14, fontWeight: '600', color: ui.text },
   reviewDone: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+
+  disputeRow: { paddingVertical: space.md, alignItems: 'center' },
+  disputeLink: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
+  disputeOpen: {
+    backgroundColor: ui.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: ui.line,
+    padding: space.lg,
+    marginTop: space.lg,
+    gap: 4,
+  },
+  disputeOpenTitle: { fontSize: 15, fontWeight: '700', color: ui.text },
+  disputeOpenBody: { fontSize: 13, color: ui.textMuted, lineHeight: 18 },
 
   orderId: {
     fontSize: 11,

@@ -30,8 +30,10 @@ import {
 import { Image } from 'expo-image';
 import { ImagePlus, Package, Plus, X } from 'lucide-react-native';
 
+import { useSession } from '../lib/session';
 import { formatEuro } from '../lib/useAuction';
 import { tidySize } from '../lib/useListings';
+import { ShelfPickSheet } from './ShelfPickSheet';
 import { usePrebidCounts } from '../lib/usePrebid';
 import { useReminderCounts } from '../lib/useReminders';
 import { euroToCents } from '../lib/useStudio';
@@ -84,6 +86,17 @@ type Props = {
   onClose: () => void;
   onPrepare: (input: PrepareInput) => void;
   onDiscard: (item: PreparedAuction) => void;
+  /**
+   * ⚠️ Absagen stand bis zum 21.08.2026 NUR im Ankündigen-Blatt, als kleines
+   * ✕ unter dem Formular — also hinter einem Knopf, der „neuen Termin anlegen"
+   * verspricht. Am Gerät gemeldet: „nächste Termine kann man nicht löschen,
+   * nachdem sie angelegt wurden."
+   *
+   * Es gehört hierher, weil DIES der Bildschirm eines Termins ist: Wer ihn
+   * antippt, sieht seinen Abend — und was man ansehen kann, muss man auch
+   * absagen können.
+   */
+  onCancelPlan: (plan: PlannedShow) => void;
 };
 
 export function PrepareSheet({
@@ -95,6 +108,7 @@ export function PrepareSheet({
   onClose,
   onPrepare,
   onDiscard,
+  onCancelPlan,
 }: Props) {
   const [title, setTitle] = useState('');
   const [startPrice, setStartPrice] = useState('');
@@ -103,6 +117,10 @@ export function PrepareSheet({
   const [size, setSize] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  // Der zweite Weg, einen Artikel an diesen Abend zu hängen: nicht neu tippen,
+  // sondern aus dem eigenen Regal holen (`20260821160000`).
+  const [shelfOpen, setShelfOpen] = useState(false);
+  const myUserId = useSession((st) => st.userId);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Das Nachfrage-Signal, zweistufig: Wer geboten hat, und wer nur wartet.
@@ -197,8 +215,16 @@ export function PrepareSheet({
               </Text>
             ) : null}
           </View>
-          <Pressable hitSlop={10} onPress={onClose} accessibilityRole="button" accessibilityLabel="Schließen">
-            <X size={22} color={ui.text} />
+          {/* ⚠️ „Fertig", NICHT ✕.
+              Ein ✕ heißt auf jeder Plattform „verwerfen, nichts behalten" — und
+              genau so fühlte es sich an: Man legt einen Artikel an, er ist
+              gespeichert, und der einzige Ausgang sieht aus wie ein Abbruch.
+              Hier wird nichts gesammelt und am Ende abgeschickt; jeder Artikel
+              ist in dem Moment in der Datenbank, in dem er in der Liste
+              erscheint. Der ehrliche Ausgang heißt deshalb „Fertig".
+              Am Gerät gemeldet, 21.08.2026. */}
+          <Pressable hitSlop={10} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fertig">
+            <Text style={s.done}>Fertig</Text>
           </Pressable>
         </View>
 
@@ -285,6 +311,25 @@ export function PrepareSheet({
               </Text>
             </View>
           )}
+
+          {/* ── Aus dem Regal holen. Steht ÜBER dem Formular, weil es der
+              billigere Weg ist: Wer den Artikel schon einmal eingestellt hat,
+              soll ihn nicht ein zweites Mal tippen. Erst wenn es ihn dort nicht
+              gibt, ist das Formular darunter dran. ────────────────────────── */}
+          <Pressable
+            style={s.shelfButton}
+            onPress={() => setShelfOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Artikel aus dem Regal holen"
+          >
+            <Package size={17} color={ui.text} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.shelfButtonText}>Aus dem Regal holen</Text>
+              <Text style={s.shelfButtonHint}>
+                Was du schon anbietest — startet in der Show bei 1 €
+              </Text>
+            </View>
+          </Pressable>
 
           {/* ── Das Formular. Gleiche Anordnung wie „Artikel auflegen" im
               Studio: Bild links, Titel rechts, darunter die Preise in einer
@@ -405,8 +450,56 @@ export function PrepareSheet({
               <Text style={s.primaryText}>Vorbereiten</Text>
             </Pressable>
           </View>
+
+          {/* ── Den Abend absagen. Ganz unten und als Textzeile, nicht als rote
+              Fläche: Rot ist in Berkat die laufende Uhr, und die einzige rote
+              FLÄCHE ist das Löschen des Kontos (Abschnitt 59). Ein Termin ist
+              zurücknehmbar, das darf nicht aussehen wie ein Notausgang. ───── */}
+          {plan ? (
+            <Pressable
+              style={s.cancelPlan}
+              onPress={() => {
+                // ⚠️ `Alert.alert`, NICHT `Alert.prompt` — das gibt es nur auf
+                // iOS (CLAUDE.md, Regel 5).
+                Alert.alert(
+                  'Termin absagen?',
+                  items.length > 0
+                    ? `„${plan.title}" wird abgesagt. Deine ${
+                        items.length === 1 ? 'vorbereiteter Artikel bleibt' : `${items.length} vorbereiteten Artikel bleiben`
+                      } erhalten — sie rutschen zu „ohne Termin" und lassen sich dem nächsten Abend zuordnen.`
+                    : `„${plan.title}" wird abgesagt. Wer dir folgt, bekommt dann keine Erinnerung mehr.`,
+                  [
+                    { text: 'Behalten', style: 'cancel' },
+                    {
+                      text: 'Absagen',
+                      style: 'destructive',
+                      onPress: () => onCancelPlan(plan),
+                    },
+                  ],
+                );
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`${plan.title} absagen`}
+            >
+              <Text style={s.cancelPlanText}>Diesen Termin absagen</Text>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </View>
+
+      {/* Ein durchsichtiges Modal über einem `pageSheet` — dieselbe
+          Verschachtelung wie bei den Blättern im Live-Raum. Es liegt HIER
+          drin und nicht im Verkaufen-Reiter, weil es den Termin braucht, der
+          nur an dieser Stelle bekannt ist. */}
+      {plan ? (
+        <ShelfPickSheet
+          visible={shelfOpen}
+          onClose={() => setShelfOpen(false)}
+          sellerId={myUserId}
+          target={{ planId: plan.id }}
+          targetLabel={`für ${formatSlot(plan.scheduled_at)}`}
+        />
+      ) : null}
     </Modal>
   );
 }
@@ -442,6 +535,27 @@ const s = StyleSheet.create({
     marginBottom: space.md,
   },
   cardTitle: { fontSize: 15, fontWeight: '700', color: ui.text },
+
+  // Bewusst kein goldener Knopf: Gold trägt in Berkat den Kauf und das
+  // Abschicken. Der Weg ins Regal ist eine Abkürzung, keine Handlung mit Folgen.
+  shelfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: ui.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: ui.line,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    marginBottom: space.md,
+  },
+  shelfButtonText: { fontSize: 15, fontWeight: '600', color: ui.text },
+  shelfButtonHint: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
+
+  done: { fontSize: 16, fontWeight: '600', color: ui.brand },
+  cancelPlan: { alignItems: 'center', paddingVertical: space.lg },
+  cancelPlanText: { fontSize: 13, fontWeight: '600', color: ui.live },
 
   itemRow: {
     flexDirection: 'row',

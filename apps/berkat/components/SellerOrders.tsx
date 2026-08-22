@@ -12,19 +12,32 @@
 // darunter als eine Zeile.
 
 import { useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
-import { MapPin, Package, Truck } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { AlertTriangle, MapPin, MessageCircle, Package, Truck } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { trackingUrl, type SellerOrder } from '../lib/useSellerOrders';
 import { formatCents, useShippingCheck } from '../lib/useShipping';
 import { useUsernames } from '../lib/useAuction';
 import { useSession } from '../lib/session';
+import {
+  disputeReasonLabel,
+  disputeWhen,
+  orderRef,
+  useBuyerRelation,
+  useIsAdmin,
+  useResolveDispute,
+  type IncomingDispute,
+} from '../lib/useDispute';
 
 type Props = {
   orders: SellerOrder[];
   busyId: string | null;
   onShip: (orderId: string, carrier: string, tracking: string) => void;
+  /** Offene Beanstandungen je Bestellung — leer, solange es keine gibt. */
+  disputes?: Map<string, IncomingDispute>;
+  onNotice?: (text: string) => void;
 };
 
 /**
@@ -64,6 +77,185 @@ function since(iso: string | null): string {
   if (std < 24) return `vor ${std} Std`;
   const tage = Math.floor(std / 24);
   return tage === 1 ? 'gestern' : `vor ${tage} Tagen`;
+}
+
+
+/**
+ * Eine offene Beanstandung — Whatnots „Support Request", auf Berkats Maß.
+ *
+ * ⚠️ EIGENER ABSCHNITT GANZ OBEN, nicht als Zeile in „Zu packen".
+ * Ein Streitfall ist keine Versandaufgabe, sondern eine andere Arbeit: Er hat
+ * keinen Knopf, der ihn erledigt, und er wartet auf einen Menschen. Whatnot
+ * gibt ihm dafür einen eigenen Reiter; bei Berkats Menge reicht ein Abschnitt,
+ * aber er gehört VOR das Packen — das ist die Reihenfolge, in der man es tun
+ * sollte.
+ *
+ * ⚠️ WAS HIER NICHT STEHT: „Erstatten" und „Ersatz senden". Beides verspricht
+ * Geld, und Berkat hat weder einen Erstattungsweg noch eine
+ * Käuferschutz-Zusage über die gesetzliche Pflicht hinaus (Fassung A,
+ * `STRATEGIE-VERKAEUFER-UND-GELD.md` Abschnitt 8). Ein Knopf, der nichts
+ * auslösen kann, wäre schlimmer als keiner.
+ */
+function DisputeCard({
+  dispute,
+  order,
+  buyerName,
+  onNotice,
+}: {
+  dispute: IncomingDispute;
+  order: SellerOrder;
+  buyerName: string;
+  onNotice?: (text: string) => void;
+}) {
+  const myUserId = useSession((st) => st.userId);
+  const { data: relation } = useBuyerRelation(dispute.reporter_id, myUserId);
+  const { data: isAdmin } = useIsAdmin(myUserId);
+  const resolve = useResolveDispute();
+  const [note, setNote] = useState('');
+  const [zoom, setZoom] = useState<string | null>(null);
+  const [help, setHelp] = useState(false);
+
+  return (
+    <View style={styles.disputeCard}>
+      <View style={styles.disputeHead}>
+        <AlertTriangle size={16} color={ui.live} />
+        <Text style={styles.disputeReason}>{disputeReasonLabel(dispute.reason)}</Text>
+        <Text style={styles.disputeWhen}>{disputeWhen(dispute.created_at)}</Text>
+      </View>
+
+      {/* ⚠️ Bild UND Nummer. Whatnot zeigt beides („Items in Request"), und bei
+          zwei gleichartigen Bestellungen ist die Nummer der einzige eindeutige
+          Bezug — sie steht identisch auf der Bestellseite des Käufers, also
+          kann man sich im Chat darauf berufen. Das Bild beantwortet die andere
+          Frage: „welches Stück war das?" */}
+      <View style={styles.disputeItem}>
+        <View style={styles.disputeItemThumb}>
+          {order.items[0]?.image_url ? (
+            <Image
+              source={{ uri: order.items[0].image_url }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+          ) : (
+            <Package size={16} color={ui.lineStrong} />
+          )}
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={styles.disputeItemTitle}>
+            {order.items[0]?.title ?? order.title ?? 'Bestellung'}
+          </Text>
+          <Text style={styles.disputeOrder}>
+            {buyerName} ·{' '}
+            {Number(order.amount_eur).toLocaleString('de-DE', {
+              style: 'currency',
+              currency: 'EUR',
+            })}{' '}
+            · {orderRef(order.id)}
+          </Text>
+        </View>
+      </View>
+
+      {dispute.detail ? <Text style={styles.disputeDetail}>„{dispute.detail}"</Text> : null}
+
+      {/* Der Beleg, den der Käufer beim Melden angehängt hat. Antippen zeigt
+          ihn groß — bei „so kam es an" ist das Ansehen der Zweck. */}
+      {dispute.image_url ? (
+        <Pressable onPress={() => setZoom(dispute.image_url)} accessibilityRole="imagebutton">
+          <Image
+            source={{ uri: dispute.image_url }}
+            style={styles.disputePhoto}
+            contentFit="cover"
+            transition={140}
+          />
+        </Pressable>
+      ) : null}
+
+      {/* ⚠️ NUR die Beziehung zu MIR, nicht das Verhalten auf der Plattform.
+          Die Begründung steht ausführlich in `useBuyerRelation`: In einer engen
+          Gemeinschaft ist „hat dreimal reklamiert" kein Datenpunkt, sondern
+          Gerede. */}
+      {relation && relation.orders > 0 ? (
+        <Text style={styles.disputeRelation}>
+          Bei dir {relation.orders === 1 ? '1× gekauft' : `${relation.orders}× gekauft`} ·{' '}
+          {formatCents(relation.cents)}
+          {relation.disputes > 1 ? ` · ${relation.disputes} Meldungen` : ''}
+        </Text>
+      ) : null}
+
+      {/* ⚠️ Hilfe an der Stelle der Entscheidung, wie Whatnots „How to Respond".
+          Aufklappbar, nicht dauerhaft: Wer schon weiß, was er tut, soll nicht
+          jedes Mal daran vorbeilesen.
+
+          Kein Satz darin nennt einen Betrag. Unter Fassung A gibt es keine
+          Zusage über die gesetzliche Pflicht hinaus — der Hinweis darf also
+          zum Verhalten raten, nicht zum Ergebnis. */}
+      <Pressable
+        onPress={() => setHelp((v) => !v)}
+        style={styles.disputeHelpToggle}
+        accessibilityRole="button"
+      >
+        <Text style={styles.disputeHelpToggleText}>
+          {help ? 'Hinweis ausblenden' : 'Wie antworte ich darauf?'}
+        </Text>
+      </Pressable>
+      {help ? (
+        <View style={styles.disputeHelp}>
+          <Text style={styles.disputeHelpText}>
+            • Antworte am selben Tag — auch wenn du noch keine Lösung hast. Schweigen ist das
+            Einzige, was den Streit sicher größer macht.{'\n'}• Fehlt ein Foto, frag zuerst danach.
+            Es klärt die meisten Fälle in einer Nachricht.{'\n'}• Was ihr vereinbart, haltet ihr
+            hier im Chat fest — dann steht es später für euch beide da.{'\n'}• Deine gesetzlichen
+            Pflichten gelten unabhängig davon, was ihr vereinbart.
+          </Text>
+        </View>
+      ) : null}
+
+      <Pressable
+        style={styles.disputeReply}
+        onPress={() => router.push(`/messages/${dispute.reporter_id}`)}
+        accessibilityRole="button"
+      >
+        <MessageCircle size={15} color={ui.text} />
+        <Text style={styles.disputeReplyText}>Antworten</Text>
+      </Pressable>
+
+      {/* Nur der Betreiber schließt einen Fall. Ein Verkäufer, der die
+          Beanstandung gegen sich selbst wegwischen kann, ist keine
+          Schlichtung — der Server lehnt es ohnehin ab (`not_authorized`). */}
+      {isAdmin ? (
+        <View style={styles.disputeResolve}>
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            placeholder="Wie wurde es geklärt?"
+            placeholderTextColor={ui.textMuted}
+            style={styles.disputeInput}
+          />
+          <Pressable
+            style={styles.disputeDone}
+            disabled={resolve.isPending}
+            onPress={() =>
+              void resolve
+                .mutateAsync({ id: dispute.id, resolution: note.trim() || null })
+                .then(() => onNotice?.('Fall geschlossen.'))
+                .catch(() => onNotice?.('Das ließ sich gerade nicht schließen.'))
+            }
+            accessibilityRole="button"
+          >
+            <Text style={styles.disputeDoneText}>Geklärt</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Schwarz und randlos — dieselbe Begründung wie im Chat (Übergabe 66):
+          Ein Beleg wird auf neutralem Grund beurteilt. */}
+      <Modal visible={zoom !== null} transparent animationType="fade" onRequestClose={() => setZoom(null)}>
+        <Pressable style={styles.zoomWrap} onPress={() => setZoom(null)}>
+          {zoom ? <Image source={{ uri: zoom }} style={styles.zoomImage} contentFit="contain" /> : null}
+        </Pressable>
+      </Modal>
+    </View>
+  );
 }
 
 /** Die offene Bestellung: alles, was zum Packen nötig ist. */
@@ -264,7 +456,7 @@ function DoneOrder({ order, buyerName }: { order: SellerOrder; buyerName: string
   );
 }
 
-export function SellerOrders({ orders, busyId, onShip }: Props) {
+export function SellerOrders({ orders, busyId, onShip, disputes, onNotice }: Props) {
   // Der Verkäufer ist hier immer der angemeldete Nutzer — seine eigenen Sätze
   // schlagen also die Plattform-Vorgabe, falls er welche hinterlegt hat.
   // Hook VOR dem frühen Return: Die Zahl der Hooks muss über alle Renderläufe
@@ -299,8 +491,27 @@ export function SellerOrders({ orders, busyId, onShip }: Props) {
 
   if (orders.length === 0) return null;
 
+  const flagged = disputes && disputes.size > 0 ? orders.filter((o) => disputes.has(o.id)) : [];
+
   return (
     <>
+      {flagged.length > 0 ? (
+        <>
+          <Text style={[styles.sectionLabel, styles.sectionLabelAlarm]}>
+            Beanstandet ({flagged.length})
+          </Text>
+          {flagged.map((order) => (
+            <DisputeCard
+              key={`d-${order.id}`}
+              dispute={disputes!.get(order.id)!}
+              order={order}
+              buyerName={buyerNames[order.buyer_id] ?? '…'}
+              onNotice={onNotice}
+            />
+          ))}
+        </>
+      ) : null}
+
       {open.length > 0 ? (
         <>
           <Text style={styles.sectionLabel}>Zu packen ({open.length})</Text>
@@ -343,6 +554,86 @@ const styles = StyleSheet.create({
     color: ui.textMuted,
     marginBottom: space.sm,
   },
+  // Rot, weil es eine Frist ist — jemand wartet auf Antwort. Dieselbe
+  // Begründung wie beim Symbol in der Meldungsliste.
+  sectionLabelAlarm: { color: ui.live },
+
+  disputeCard: {
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: ui.live,
+    padding: space.lg,
+    marginBottom: space.md,
+    gap: 6,
+  },
+  disputeHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  disputeReason: { flex: 1, fontSize: 15, fontWeight: '700', color: ui.text },
+  disputeWhen: { fontSize: 11, color: ui.textMuted },
+  disputeOrder: { fontSize: 12, color: ui.textMuted },
+  disputeDetail: { fontSize: 14, color: ui.text, lineHeight: 20, marginTop: 2 },
+  disputeRelation: { fontSize: 11, color: ui.textMuted },
+  disputeItem: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: 2 },
+  disputeItemThumb: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disputeItemTitle: { fontSize: 13, fontWeight: '600', color: ui.text },
+  disputeHelpToggle: { paddingVertical: 4 },
+  disputeHelpToggleText: { fontSize: 12, fontWeight: '600', color: ui.brand },
+  disputeHelp: {
+    backgroundColor: ui.sunken,
+    borderRadius: radius.sm,
+    padding: space.md,
+  },
+  disputeHelpText: { fontSize: 12, color: ui.text, lineHeight: 19 },
+  disputePhoto: {
+    width: 96,
+    aspectRatio: 4 / 5,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    marginTop: 2,
+  },
+  zoomWrap: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
+  zoomImage: { width: '100%', height: '100%' },
+  disputeReply: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    marginTop: space.sm,
+    paddingVertical: space.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: ui.lineStrong,
+  },
+  disputeReplyText: { fontSize: 14, fontWeight: '600', color: ui.text },
+  disputeResolve: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm },
+  disputeInput: {
+    flex: 1,
+    height: 38,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: ui.line,
+    backgroundColor: ui.bg,
+    paddingHorizontal: space.md,
+    fontSize: 13,
+    color: ui.text,
+  },
+  disputeDone: {
+    height: 38,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    backgroundColor: ui.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disputeDoneText: { fontSize: 13, fontWeight: '700', color: ui.successInk },
 
   card: {
     backgroundColor: ui.card,

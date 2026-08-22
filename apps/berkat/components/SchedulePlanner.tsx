@@ -72,9 +72,22 @@ type Props = {
     coverUrl: string | null;
   }) => void;
   onCancel: (id: string) => void;
+  /**
+   * ⚠️ Ohne das ist die Zeile hier TOT.
+   *
+   * Am 21.08.2026 am Gerät gemeldet: „unter Termin ankündigen gibt es kein Aus
+   * dem Regal holen, wenn ich die Terminzeile antippe." Der Grund war nicht das
+   * fehlende Blatt, sondern dass dieselbe Liste an zwei Orten steht und nur
+   * EINER von beiden auf einen Tipp reagierte — auf der Übersicht öffnet die
+   * Zeile das Vorbereiten-Blatt, hier passierte nichts.
+   *
+   * Zwei Listen derselben Sache mit verschiedenen Fähigkeiten sind eine Falle:
+   * Wer in der falschen steht, hält das Fehlende für nicht gebaut.
+   */
+  onOpen?: (id: string) => void;
 };
 
-export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel }: Props) {
+export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, onOpen }: Props) {
   const [title, setTitle] = useState('');
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -276,7 +289,14 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel }:
       {plans.length > 0 ? (
         <View style={s.list}>
           {plans.map((plan) => (
-            <View key={plan.id} style={s.planRow}>
+            <Pressable
+              key={plan.id}
+              style={({ pressed }) => [s.planRow, pressed && onOpen ? { opacity: 0.7 } : null]}
+              onPress={onOpen ? () => onOpen(plan.id) : undefined}
+              disabled={!onOpen}
+              accessibilityRole={onOpen ? 'button' : undefined}
+              accessibilityLabel={onOpen ? `${plan.title} — Artikel vorbereiten` : undefined}
+            >
               {/* Klein mit Absicht: Die eigene Terminliste ist eine
                   Arbeitsfläche — das Bild beantwortet hier „welchen meine ich",
                   nicht „was schaue ich mir an". Groß ist es auf der Startseite,
@@ -306,7 +326,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel }:
               >
                 <X size={16} color={ui.textMuted} />
               </Pressable>
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : null}

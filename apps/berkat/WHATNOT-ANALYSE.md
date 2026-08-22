@@ -2091,3 +2091,550 @@ Wirkungszahlen dieser Analyse, die aus dieser Quelle stammen, sind im Text als s
 (Gewinnspiele), `20260815180000`/`20260815190000` (Versand), `20260816160000` (Bewertungen),
 `20260817120000` (Kassen-Schranke), `20260819150000` (Vorabgebote); `HANDOFF.md` Abschnitt
 „Was bewusst NICHT gebaut wurde"
+---
+
+## Zehnte Analyse: wie ein Verkäufer bei Whatnot Artikel anlegt (21.08.2026)
+
+Quelle: fünf Bildschirmfotos aus der laufenden App (Verkäufer-Sicht im Live-Raum), von Zaur
+bereitgestellt. Es ist die erste Analyse, die den **Anlege-Weg** zeigt — bisher war nur der
+Verkäufer-Bereich als Übersicht bekannt (sechste Analyse).
+
+### Was auf den Bildern steht
+
+**1 · „Live Listings" — die Warteschlange im Raum**
+
+```
+        Live Listings                      ✕
+ ┌──────────────────────────────────────────┐
+ │ 🔍 Search…                               │
+ └──────────────────────────────────────────┘
+  Auction   Buy Now   Giveaway   Sold   Offers
+  ────────
+  1 Item
+ ┌────────┐  LEGO city space
+ │        │  US$10
+ │  Bild  │  0 bids
+ │        │
+ └────────┘        [ Start Auction ]  (…)  (📌)
+ ──────────────────────────────────────────────
+ ┌────────┐  LEGO gardening …                 (+)  ← gelb, schwebend
+```
+
+Fünf Reiter nach **Zustand**, eine Suche, große quadratische Bilder, und die drei Handlungen je
+Artikel stehen auf einer **eigenen Zeile** unter dem Text: Starten, Mehr, Anheften.
+
+⚠️ „1 Item" steht über einer Liste mit sichtbar drei Artikeln. Was die Zahl zählt, ist aus dem Bild
+**nicht erkennbar** — ich nenne sie hier, ohne sie zu deuten.
+
+**2 · Das „+" öffnet drei benannte Wege**
+
+```
+                Create
+  ⚡  Create Temporary Listing
+      Quickly add a listing that will expire when your show ends.
+  🏷  Create Quality Listing
+      Create a listing with photos and details.
+  ⤵  Import from Inventory
+```
+
+**3–5 · „Create Quality Listing"** — ein langes Formular mit klebender Fußzeile:
+
+| Abschnitt | Felder |
+|---|---|
+| Media | Ablagefläche „Photos / Scan", **„1 photo required"**, Zähler „Photos: 0/8", darunter Chips **„Recent Categories"** |
+| Product Details | Category\* (Auswahl), Title\*, Description\*, Quantity Available (−/+) |
+| Pricing | Segment **Buy It Now / Auction / Giveaway**, Starting Bid\*, Schalter **Sudden Death**, Schalter **Reserve for Live** + **Select Show\*** |
+| Shipping | Versandprofil |
+| Fußzeile | `Cancel` · `Publish` (blass, bis die Pflichtfelder stehen) + „Complete key information fields … counts towards your Premier Shop status." |
+
+Das Blatt „Add Media" bietet: Upload Media · Take Photos · **Scan a Barcode or Slab** („New") mit
+dem Zusatz „To import photos and details".
+
+### ⚠️ Der wichtigste Fund: „Reserve for Live" ist ein SCHALTER, kein Umzug
+
+Das ist der Befund, der Berkat unmittelbar betrifft — und er kam am selben Tag, an dem wir die
+Regal-↔-Show-Brücke gebaut haben (Übergabe 62).
+
+Bei Whatnot existiert ein Artikel **einmal**. Ein Schalter am Artikel entscheidet, ob er nur
+innerhalb einer Sendung kaufbar ist, und ein Auswahlfeld daneben sagt, **in welcher**. Beides
+**beim Anlegen**, in derselben Maske wie Preis und Bild.
+
+Berkat modelliert dieselbe Sache als **Zustandswechsel**: `listed` ↔ `scheduled`, verschoben durch
+zwei RPCs, ausgelöst an vier Oberflächen. Fachlich ist das Ergebnis dasselbe, und unser Weg hat
+einen echten Vorteil — der Doppelverkauf ist über `live_auctions_shelf_check` **strukturell**
+ausgeschlossen, weil eine Zeile nicht beides sein kann.
+
+**Aber eine Lücke bleibt, und die Bilder zeigen sie:** Bei Berkat kann man einen Artikel **nur
+nachträglich** einer Show zuordnen. Wer im Regal-Formular etwas einstellt, hat dort keine
+Möglichkeit zu sagen „das ist für Samstag". Er muss speichern, den Verkaufen-Reiter öffnen, den
+Termin antippen, „Aus dem Regal holen" — für etwas, das er in dem Moment schon wusste, als er es
+eintippte.
+
+> **Die Lehre: Eine Zuordnung, die der Mensch beim Anlegen bereits im Kopf hat, gehört ins
+> Anlege-Formular.** Ein nachträglicher Weg ist die Reparatur, kein Ersatz.
+
+Der Bau dafür ist klein, weil die Serverseite steht: ein Auswahlfeld „Für welchen Abend?" im
+`StandingComposer`, und nach `create_standing_listing` ein `move_listing_to_show` mit der Termin-ID.
+Zwei Rufe statt einem — akzeptabel, weil der zweite fehlschlagen darf, ohne den ersten zu verlieren.
+
+### Drei Wege, ein Knopf — und Berkat hat alle drei, aber an drei Orten
+
+Whatnots „+" benennt die Wahl, die ein Verkäufer ohnehin trifft:
+
+| Whatnot | Berkats Entsprechung | Wo sie liegt |
+|---|---|---|
+| Create **Temporary** Listing | „Artikel auflegen" im Studio (`create_live_auction`) | Verkaufen-Reiter, nur bei laufender Show |
+| Create **Quality** Listing | `StandingComposer` — Bilder, Zustand, Ort, Beschreibung | eigener Bildschirm `/shelf` |
+| **Import from Inventory** | „Aus dem Regal holen" (seit heute, Übergabe 62) | Vorbereiten-Blatt und Artikel-Zettel |
+
+Alle drei existieren. Keiner von ihnen weiß vom anderen. Ein Verkäufer, der zum ersten Mal etwas
+anlegen will, muss **wissen**, welcher der drei Orte zu seinem Vorhaben passt — Whatnot fragt ihn
+stattdessen in drei Zeilen mit je einem erklärenden Satz.
+
+⚠️ **Das ist dieselbe Fehlerklasse wie Fund 1 des Geräte-Durchlaufs** (Übergabe 62): zwei
+Terminlisten mit verschiedenen Fähigkeiten. Auffindbarkeit hängt daran, durch welche Tür man kam.
+
+### Was Berkat REICHER hat — und warum das kein Zufall ist
+
+Ein direkter Feldvergleich `Create Quality Listing` gegen `StandingComposer`:
+
+| Feld | Whatnot | Berkat |
+|---|---|---|
+| Bilder | bis 8, **eines Pflicht** | bis 8, **keines Pflicht** |
+| Kategorie | Pflicht | freiwillig |
+| Beschreibung | Pflicht | freiwillig |
+| Menge | ja | nein (jedes Stück eine Zeile) |
+| **Zustand** | nein | **ja** |
+| **PLZ / Ort** | nein | **ja** |
+| **Anbietertyp (privat/gewerblich)** | nein | **ja** |
+| Versandprofil | ja | Zonen-Pauschale, nicht je Artikel |
+
+Die drei Felder, die nur Berkat hat, sind **kein Mehrwert aus Fleiß, sondern deutsches Recht**:
+Zustand und Anbieterkennzeichnung folgen aus Art. 246d § 1 EGBGB und dem Widerrufsrecht, der Ort
+aus der Anbieterkennzeichnung. Whatnot braucht sie in den USA nicht. **Wer Berkats Formular als
+„zu lang" kürzen will, muss wissen, welche Zeile er streicht.**
+
+Umgekehrt sind zwei von Whatnots Pflichtfeldern ein billiger Gewinn: **ein Bild** und **eine
+Kategorie**. Ohne Bild ist ein Regal-Artikel im Raster eine leere Kachel; ohne Kategorie ist er
+über die Kategorie-Leiste unauffindbar. Beides steht heute frei — und die Testware zeigt genau
+diese Löcher.
+
+### Was NICHT für Berkat ist
+
+- **Scan a Barcode or Slab.** Es importiert Fotos und Daten zu einem Produkt mit Strichcode oder
+  einer gerateten Sammelkarte. Berkats Ware ist gebrauchte Kleidung, Parfüm, Deko — Einzelstücke
+  ohne Katalog-Eintrag. Der Weg hätte hier nichts zu importieren.
+- **„Premier Shop status".** Dieselbe Familie wie „Account Health" aus der sechsten Analyse, und
+  dieselbe Antwort: sinnvoll ab echten Verkäufern mit echten Sendungen, nicht in Phase 0. Zusätzlich
+  ist die Formulierung eine Statuswährung — Design-Gesetz 4 verlangt hier Vorsicht.
+- **Sudden Death.** Es ist das **Gegenteil** von Anti-Snipe: Wer zuletzt bietet, gewinnt sofort.
+  Berkat verlängert bewusst um 10 Sekunden, damit niemand durch Timing statt durch Zahlungsbereitschaft
+  gewinnt. Whatnot macht es zur Wahl des Verkäufers; Berkat sollte es nicht übernehmen. Die schon
+  notierte Kleinigkeit „Anti-Snipe-Zeit wählbar" bleibt davon unberührt — das ist eine Länge, keine
+  Umkehr.
+- **Menge je Artikel.** Passt zu Neuware aus einem Karton, nicht zu Einzelstücken. Würde bei einer
+  Auktion sofort die Frage „wer gewinnt welches Stück" aufwerfen.
+
+### Was der Artikel-Zettel im Raum von Whatnot lernen sollte — später
+
+Heute nicht dringend, weil eine Berkat-Show drei Artikel hat und keine dreißig. Ab dann aber
+zwingend, und dann in dieser Reihenfolge:
+
+1. **Reiter nach Zustand** (kommt noch / verkauft). Eine flache Liste mit dreißig Zeilen und einem
+   Statuswort je Zeile ist ab etwa zehn Artikeln nicht mehr überschaubar.
+2. **Suche im Zettel.** Aus demselben Grund.
+3. **Handlungen auf eine eigene Zeile.** Whatnot setzt „Start Auction", „…" und die Nadel unter den
+   Text statt daneben. Berkat quetscht heute Titel, Status und „Starten" in eine Zeile — mit einem
+   zweiten Knopf („Ins Regal legen", seit heute) wird das eng.
+
+### Was daraus folgt — nach Nutzen sortiert
+
+1. **Termin-Auswahl ins Regal-Formular** („Reserve for Live"). Der Server kann es bereits; es fehlt
+   ein Auswahlfeld. Schließt die Lücke, die Übergabe 62 offen gelassen hat.
+2. **Bild und Kategorie zur Pflicht machen** — zwei Zeilen Prüfung, und sie beheben zwei sichtbare
+   Löcher (leere Kacheln, unauffindbare Artikel).
+3. **Ein gemeinsamer Einstieg mit drei benannten Wegen.** Berkat hat alle drei Wege, aber keiner
+   erklärt sich. Whatnots Formulierung ist übernehmbar, die Wege sind es schon.
+4. **„Recent Categories"-Chips.** Wer zwanzig Abayas einstellt, wählt zwanzigmal dieselbe Kategorie
+   aus 61. Billig, spürbar.
+5. Reiter und Suche im Artikel-Zettel — **erst ab echtem Bestand**.
+
+### Quelle
+
+Fünf Bildschirmfotos der Whatnot-App, Verkäufer-Sicht, 21.08.2026: „Live Listings" mit
+Reitern und Aktionen je Zeile, das „Create"-Blatt hinter dem „+", „Create Quality Listing"
+(Product Details / Pricing / Media) und das Blatt „Add Media".
+
+---
+
+## Elfte Analyse: „Seller Provided Support" — wie ein Streit abläuft (21.08.2026)
+
+Quelle: fünf Bildschirmfotos der Whatnot-App, Verkäufer-Sicht: Posteingang mit drei Reitern, ein
+offener Support-Fall und das Erstattungs-Blatt.
+
+⚠️ **Diese Analyse trifft eine Lücke, keine Verbesserung.** Ein `grep` über `apps/berkat` findet
+**null** Treffer für Erstattung, Rückgabe oder Reklamation. Berkat hat für den Fall „die Ware kam
+kaputt an" **keinen Weg** — weder für den Käufer noch für den Verkäufer, weder in der App noch in
+der Datenbank. Wer heute ein Problem hat, schreibt eine Direktnachricht, und Zaur regelt es von
+Hand. Das trägt bei fünf Verkäufern und bei fünfzig nicht mehr.
+
+Zugleich steht „Käuferschutz-Zusage formulieren" seit dem 21.08. als **Punkt 1** unter „Danach, nach
+Nutzen sortiert" (Übergabe 61) und als **F2** in der Prüfliste — als Entscheidung, nicht als Code.
+Diese Bilder zeigen, was die Entscheidung kostet, sobald sie gefallen ist.
+
+### Was auf den Bildern steht
+
+**1 · Drei getrennte Posteingänge**
+
+```
+   All Messages | Customer Support | Whatnot Support
+ ⚠ Messages from Whatnot, employees of Whatnot, or outside partners
+   like postal carriers will never be sent here.
+   [Newest ⌄] [Purchases] [Unread]
+```
+
+Im Reiter „Whatnot Support" steht der Gegensatz: *„Our team will only contact you through this
+inbox or from a whatnot.com email address"* — und die Absender tragen ein **Verifiziert-Häkchen**.
+
+**2 · Der Reiter „Customer Support" trägt Kennzahlen**
+
+```
+ Total Support Requests    Response Rate      Customer Satisfaction
+          1                    100 %                 100 %
+   Last 90 days             Target 95 %           Target 85 %
+```
+
+**3 · Der Fall selbst — und er ist KEINE Nachricht**
+
+```
+   whatnot_emma
+   Lifetime Spend $247 · Refunds 0 · Cancellations 0
+        4 total orders     $0 refunded    $0 cancelled
+
+   Request Details                        How to Respond
+   The item was damaged in transit            ← Grund aus fester Liste
+   „The item got broken in shipping…"         ← Freitext des Käufers
+   Items in Request (1)
+     [Bild] Apple Wireless Earbuds… #625263584 · $75.46
+     [Foto des Käufers]                       ← Beleg
+
+   Quick Actions:  [ Offer a Refund ]  [ Send a Replacement ]
+```
+
+**4 · Das Erstattungs-Blatt rechnet vor**
+
+```
+ ⦿ Refund the full listing price
+   You are responsible for the full refund, including shipping and processing fees.
+   ┌ Return the item to me                                    [AN] ┐
+   │ A return label will be generated and included in the cost.    │
+ ○ Offer a partial refund
+   Agree on a partial refund … If declined, a full refund will be
+   issued after return.
+
+   Total Refund Cost                                        $75.46
+   Your adjusted payout for this order will be             −$4.76
+   [ Submit Refund ]
+```
+
+### Die vier Ideen, auf die es ankommt
+
+**1 · Ein Streit ist ein OBJEKT, keine Nachricht.**
+
+Der Fall trägt einen **Grund aus fester Liste**, den Freitext des Käufers, die **konkrete
+Bestellposition** samt Nummer und Betrag, und **Fotos als Beleg**. Erst dadurch ist er zählbar
+(„Total Support Requests"), messbar („Response Rate") und entscheidbar — die zwei Knöpfe darunter
+wissen ja, worauf sie sich beziehen.
+
+Eine Direktnachricht kann nichts davon. Sie hat keinen Zustand, keine Verbindung zur Bestellung und
+keine Frist.
+
+**2 · Der Verkäufer sieht, WER vor ihm steht — bevor er entscheidet.**
+
+„Lifetime Spend $247, 4 Bestellungen, 0 Erstattungen" beantwortet die Frage, die jeder Verkäufer in
+diesem Moment hat: *Ist das ein Stammkunde oder jemand, der das jede Woche macht?* Alle drei Zahlen
+liegen in Berkat bereits in `product_orders` — es ist eine Abfrage, kein neues Feld.
+
+⚠️ **Und genau hier ist Berkats Lage anders als Whatnots.** In einer engen Diaspora-Gemeinschaft ist
+„diese Person hat dreimal Geld zurückverlangt" kein Datenpunkt, sondern **Gerede**. Whatnots Käufer
+sind einander fremd; Berkats kennen sich womöglich. Wer diese Kachel baut, sollte sie auf das
+beschränken, was der Verkäufer für SEINE Entscheidung braucht — und das ist die Beziehung zu **ihm**
+(„bei dir schon dreimal gekauft"), nicht das Verhalten der Person auf der ganzen Plattform.
+
+**3 · Das Blatt sagt, was es den Verkäufer kostet — vor dem Knopf.**
+
+`Total Refund Cost $75.46` und darunter `Your adjusted payout will be −$4.76`. Die **negative** Zahl
+ist der ehrliche Teil: Der Verkäufer zahlt drauf, weil die Gebühren nicht zurückkommen.
+
+> **Das ist die Lehre für die Käuferschutz-Zusage:** Was auch immer Berkat verspricht — der
+> Verkäufer muss die Zahl sehen, BEVOR er zustimmt. Eine Zusage, deren Kosten erst auf der
+> Abrechnung auftauchen, ist die zuverlässigste Art, einen Verkäufer zu verlieren. Und Verkäufer zu
+> halten ist Phase 0.
+
+**4 · Die Eskalationsleiter steht in einem Satz.**
+
+„Teilerstattung — wird sie abgelehnt, gibt es nach Rücksendung die volle." Ein Ablauf, kein
+Ermessen. Beide Seiten wissen vorher, wo es endet.
+
+### ⚠️ Der Fund, der nicht in der Gestaltung liegt: Betrugsschutz
+
+Die Warnzeile steht auf **jedem** der drei Reiter, und sie ist keine Höflichkeit:
+
+> „Messages from Whatnot, employees of Whatnot, or outside partners like postal carriers will never
+> be sent here."
+
+Dazu der eigene Reiter für echte Support-Post, ein Verifiziert-Häkchen am Absender und die Ansage,
+dass Kontakt nur von einer `whatnot.com`-Adresse kommt.
+
+Das ist die Abwehr gegen den häufigsten Marktplatz-Betrug: sich als Plattform ausgeben und zu einer
+Zahlung oder Anmeldung außerhalb drängen.
+
+**Berkat ist dafür anfälliger als Whatnot, nicht weniger.** Der ganze Bau steht auf „Vertrauen ist
+personal" — Bürgen, Teip, geschlossene Gemeinschaft. Genau diese Nähe macht die Masche wirksam: Eine
+Nachricht „hier ist Berkat, dein Konto muss bestätigt werden" wirkt in einer Gemeinschaft, in der
+man den Betreiber persönlich kennt, glaubwürdiger als bei einem anonymen Konzern.
+
+Berkat hat heute **eine** Nachrichtenliste (geteilt mit Serlo), keinen Begriff von „offiziell", kein
+Häkchen und keinen Hinweis. **Das ist der billigste und wertvollste Punkt dieser ganzen Analyse.**
+
+### Was für Berkat NICHT gilt
+
+- **Rücksendeetiketten.** Whatnot erzeugt eines und rechnet es in die Erstattung ein. Berkats
+  Versand ist eine Zonen-Pauschale ohne Anbindung an einen Dienstleister
+  (`berkat_shipping_rates`) — es gibt nichts, was ein Etikett erzeugen könnte. Eine Rücksendung
+  müsste vorerst „ihr regelt das miteinander" heißen.
+- **Ein eigener Reiter „Berkat Support".** Es gibt kein Support-Team, es gibt Zaur. Ein Reiter, der
+  eine Abteilung suggeriert, verspricht mehr als da ist.
+- **„Customer Satisfaction" mit Zielwert.** Braucht Volumen. Bei drei Fällen im Quartal ist eine
+  Prozentzahl keine Auskunft, sondern Zufall — dieselbe Begründung wie bei „Account Health"
+  (sechste Analyse) und bei den Kategorie-Zählern.
+- **„Send a Replacement".** Setzt Lagerware in Stückzahlen voraus. Berkats Ware sind Einzelstücke;
+  einen Ersatz gibt es meistens gar nicht.
+
+### Was daraus folgt — nach Nutzen sortiert
+
+1. **Die Warnzeile und der Begriff „offiziell".** Ein fester Hinweis über der Nachrichtenliste
+   („Berkat schreibt dir nie hier und fragt nie nach Passwort oder Zahlung") und, sobald es je ein
+   offizielles Konto gibt, ein Häkchen daran. Kostet fast nichts, verhindert den einen Angriff, der
+   das Produkt an seiner Wurzel trifft. **Unabhängig von allem anderen baubar.**
+2. **Die Käuferschutz-Zusage entscheiden** (F2, Übergabe 61) — und dabei den Satz aus Punkt 3
+   mitnehmen: Der Verkäufer sieht die Zahl vor dem Knopf. Ohne diese Entscheidung ist alles Weitere
+   Code ohne Regel.
+3. **Der Streit als Objekt**, sobald es echte Bestellungen gibt: Grund aus fester Liste, Bezug auf
+   die Bestellposition, Fotos, Zustand. Die Tabelle ist klein; der Aufwand steckt in den Zuständen
+   und in der Frist.
+4. **Käufer-Kontext für den Verkäufer** — aber auf die Beziehung zu IHM beschränkt, nicht auf die
+   Plattform (siehe die Warnung oben).
+5. **Antwortquote mit Zielwert** — erst mit Volumen, und dann als Führung („woran wirst du
+   gemessen"), nicht als Punktestand.
+
+### Quelle
+
+Fünf Bildschirmfotos der Whatnot-App, Verkäufer-Sicht, 21.08.2026: Posteingang „All Messages",
+Reiter „Customer Support" mit Kennzahlen, Reiter „Whatnot Support", ein offener „Support Request"
+mit Käufer-Kontext und Belegfoto, sowie das Blatt „Offer a Refund".
+
+### Nachtrag: die GESTALTUNG dieser fünf Bildschirme
+
+Der Teil oben beschreibt die Mechanik. Hier steht, wie sie gebaut ist — und was davon Berkat
+betrifft.
+
+**1 · Farbdisziplin: Gelb kommt höchstens EINMAL pro Bildschirm vor.**
+
+Im Posteingang trägt es der „Compose"-Knopf, im Erstattungs-Blatt „Submit Refund". Die beiden
+„Quick Actions" im Streitfall — *Offer a Refund*, *Send a Replacement* — sind **grau**, obwohl sie
+die wichtigsten Knöpfe des Bildschirms sind. Der Grund ist erkennbar: Sie sind **Wahlmöglichkeiten**,
+die Verpflichtung kommt erst im Blatt danach.
+
+Das ist wörtlich Berkats eigenes Gesetz („Gold trägt den Kauf") — Whatnot wendet es strenger an, als
+Berkat es bis heute tat. Genau daran ist am 21.08.2026 die goldene Kalender-Scheibe auf dem
+Verkäufer-Profil gescheitert (Übergabe 62, Fund 5).
+
+**2 · Eine Kennzahlen-Karte, zwei Bedeutungen.**
+
+Derselbe Baustein trägt einmal die Zahlen des **Verkäufers** (Anfragen / Antwortquote /
+Zufriedenheit) und einmal die des **Käufers** (Lifetime Spend / Refunds / Cancellations). Immer
+dreispaltig, ohne Trennstriche, und immer dreistufig:
+
+```
+   kleines graues Label        ← was ist das
+       GROSSE ZAHL             ← der Wert
+   kleine graue Zeile          ← Einordnung („Last 90 days", „Target 95 %")
+```
+
+⚠️ **Die dritte Stufe ist der eigentliche Trick.** „100 %" allein ist eitel; „100 % · Target 95 %"
+ist eine Auskunft darüber, ob es reicht. Berkat hat denselben Baustein auf dem Verkäufer-Profil
+(★ 5,0 · *2 Bewertungen* — Symbol, Zahl, Einordnung) und damit dieselbe Sprache. Wer die Karte
+anderswo wiederverwendet, sollte die dritte Zeile nicht weglassen.
+
+**3 · Der Warnhinweis ist je Reiter ein anderer.**
+
+Randlos über die volle Breite, ohne Rundung, hellgraue Fläche, Warndreieck links, drei Zeilen grau.
+Nicht wegtippbar. Und im Reiter „Whatnot Support" steht der **umgekehrte** Satz („nur hier oder von
+einer whatnot.com-Adresse"). Ein Hinweis, der weiß, wo er steht, statt eines globalen Satzes.
+
+**4 · Der Streitfall ist eine KARTE im Nachrichtenstrom.**
+
+Der stärkste Gestaltungszug der fünf Bilder. Der Fall steht dort, wo eine Sprechblase stünde — mit
+Datumstrenner darüber, Absendername darüber, kleinem Avatar links. Er hat also seinen Platz in der
+Zeit. Aber statt Text trägt er Überschrift, Grund, Zitat, Positionsliste und Nummer.
+
+Das Belegfoto ist **eine eigene Nachricht** darunter, nicht Teil der Karte — deshalb hat es seinen
+eigenen Avatar daneben. Sauber getrennt: Die Karte ist die Behauptung, das Foto der Beleg.
+
+**5 · Auswahlknöpfe stehen RECHTS, nicht links.**
+
+Ungewöhnlich, und der Grund ist Typografie: Unter jeder Option steht ein Erklärsatz. Läge der
+Auswahlknopf links, müsste der Satz entweder eingerückt werden oder mit dem Titel kollidieren. Rechts
+bleibt der ganze Textblock bündig links.
+
+**Verschachtelung drückt Whatnot durch einen KASTEN aus, nicht durch Einrückung:** „Return the item
+to me" liegt in einem gerahmten Feld unter seiner Elternoption. Berkat macht dasselbe schon bei
+`offerRow` im Regal-Formular (Text links, Schalter rechts).
+
+**6 · Reiter: Text mit Unterstrich, waagerecht rollbar.**
+
+Der dritte Reiter ist **angeschnitten** — das ist die Auskunft „da ist noch mehr", genau wie beim
+Demnächst-Roller (Übergabe 62, Fund 6). Aktiv = fett schwarz plus Unterstrich; inaktiv = grau. Keine
+Pillen, keine Fläche. Berkat nutzt dasselbe auf dem Verkäufer-Profil.
+
+**7 · Der schwebende Knopf ist BESCHRIFTET — hier.**
+
+„✎ Compose" als Pille mit Text. In den „Live Listings" (zehnte Analyse) war derselbe Knopf ein
+nacktes „+". Der Unterschied ist der Kontext: Im Artikel-Zettel ist offensichtlich, was ein Plus tut;
+in einem Posteingang ist es das nicht. **Beschriftung dort, wo der Ort die Handlung nicht schon
+erklärt.**
+
+**8 · Offizielle Konten sehen anders aus als Menschen.**
+
+Whatnot Support hat ein **rundes Quadrat** mit der Marke, Menschen haben **Kreise**. Dazu ein Häkchen
+hinter dem Namen. Die Form allein trägt schon die Unterscheidung, bevor jemand den Namen liest.
+
+Und `hltoolsdirect` trägt einen **Lorbeerkranz um den Avatar** statt eines Abzeichens daneben —
+Status als Schmuck am Bild, nicht als weitere Spalte in einer ohnehin engen Zeile.
+
+**9 · Die Geld-Zeile: Bezeichnung links, Betrag rechts, Folge als graue Unterzeile.**
+
+```
+ Total Refund Cost ⓘ                       $75.46
+ Your adjusted payout for this order will be −$4.76
+```
+
+⚠️ **Die negative Zahl ist NICHT rot.** Sie ist eine Auskunft, kein Fehler. Rot hätte daraus einen
+Alarm gemacht, und der Verkäufer hätte den Knopf darunter als gefährlich gelesen statt als teuer.
+Berkat hat dieselbe Linie („Rot ist die laufende Uhr, nie Fläche") und dieselbe Ausnahme nur beim
+Löschen des Kontos.
+
+### ⚠️ Zwei Lücken in Berkats eigenem Posteingang, beim Vergleich gefunden
+
+Der Vergleich ging an `app/messages/index.tsx`, und dort steht in jeder Zeile genau zweierlei:
+
+```
+  [Avatar 46]  username
+               vor 3 Std
+```
+
+| | Whatnot | Berkat |
+|---|---|---|
+| Vorschau der letzten Nachricht | ja, eine Zeile, gekürzt | **fehlt** |
+| Ungelesen erkennbar | Punkt am rechten Rand je Zeile | **fehlt** — es gibt nur die Gesamtzahl an der Glocke |
+| Zeitstempel | **neben** dem Namen (`name · 15m`) | in einer eigenen zweiten Zeile |
+
+**Die fehlende Vorschau ist die teurere von beiden.** Ohne sie ist der Posteingang nicht sortierbar:
+Man muss **jede** Unterhaltung öffnen, um zu wissen, worum es geht. Bei drei Unterhaltungen fällt das
+nicht auf, bei dreißig ist die Liste wertlos. Und Berkats zweite Zeile ist ohnehin schon da — sie
+trägt nur die Uhrzeit statt des Textes.
+
+Der fehlende Ungelesen-Punkt ist der zweite Teil desselben Problems: Der Zähler an der Glocke sagt
+„drei neue", die Liste sagt nicht, **welche**.
+
+Beides ist unabhängig von der ganzen Streit-Maschinerie baubar und braucht keine Migration —
+`messages` trägt den Text, und `useDirectMessages` liest die Unterhaltungen ohnehin schon.
+
+### Zweiter Durchgang durch dieselben fünf Bilder (21.08.2026, nachts)
+
+Auf Nachfrage noch einmal angesehen, diesmal jede Behauptung gegen Berkats Code geprüft statt
+vermutet. Das Ergebnis stellt die Rangfolge um.
+
+#### ⚠️ Der Fund, der alles andere schlägt: `messages.image_url` GIBT ES SCHON
+
+Whatnots ganzer Streit-Ablauf ruht auf **einem Foto des Käufers** — „es kam kaputt an" plus Beleg.
+Berkats Nachrichten sind reiner Text, dachte ich. Am Schema-Abzug nachgesehen:
+
+```sql
+CREATE TABLE "public"."messages" (
+  … "content" "text" NOT NULL,
+      "image_url" "text",        ← existiert, von Serlo angelegt
+```
+
+Und weiter, in `lib/useDirectMessages.ts`:
+
+```ts
+.select('id, conversation_id, sender_id, content, image_url, created_at, read')
+export type DirectMessage = { … image_url: string | null; … }
+```
+
+**Die Spalte ist da, die Abfrage holt sie, der Typ trägt sie — und kein Bildschirm zeigt sie an.**
+Es gibt auch keinen Weg, eine zu senden.
+
+Das ist wörtlich die Fehlerklasse aus Übergabe Abschnitt 3 („Ein Feld, das geschrieben und nie
+gelesen wird"), nur spiegelverkehrt: Die Kette ist an **jedem** Glied vollständig außer am letzten.
+Die Probe von damals gilt unverändert:
+
+> **Zeig mir den Bildschirm, auf dem dieser Wert steht.**
+
+Es gibt ihn nicht. Damit ist „der Käufer kann zeigen, was kaputt ist" **keine Migration und keine
+neue Tabelle**, sondern zwei Handgriffe im Client: senden (`pickAndUpload` gibt es, `r2-sign` auch)
+und in der Blase zeichnen.
+
+⚠️ **Und es ist der einzige Teil des Streit-Ablaufs, der VOR der Käuferschutz-Entscheidung gebaut
+werden kann** — weil er nichts verspricht. Ein Foto ist ein Beleg, keine Zusage.
+
+⚠️ **Aber `messages` gehört Serlo mit.** Serlos App und Web lesen dieselbe Tabelle. Bevor Berkat
+`image_url` schreibt, gehört geprüft, was Serlos Clients mit einer Zeile ohne `content` tun — eine
+Nachricht, die dort als leere Blase erscheint, wäre ein Fehler in einer ausgelieferten App.
+
+#### Wo Berkat sonst schlechter ist
+
+| | Whatnot | Berkat |
+|---|---|---|
+| **Datumstrenner im Verlauf** | „Today, 01:10 PM" mittig | **fehlt** — jede Blase trägt ihre Uhrzeit, aber nie den Tag |
+| **Sortieren / Filtern im Posteingang** | `Newest ⌄` · `Purchases` · `Unread`, und der Satz wechselt je Reiter | **gar nichts** |
+| **ⓘ an erklärungsbedürftigen Zahlen** | dreimal auf zwei Bildschirmen, immer gleich | nirgends — dabei hat Berkat genau solche Zahlen |
+| **Farbe für „Hilfe/Verweis"** | Blau, streng getrennt von Gelb (Verpflichtung) und Grau (Wahl) | keine eigene; `ui.brand` trägt Verweise **und** aktive Chips |
+| **Abschnitts-Überschrift über Handlungen** | „Quick Actions" | Knöpfe stehen ohne Ansage da |
+
+**Der Datumstrenner ist der billigste davon** und wird mit der Zeit teurer: Eine Unterhaltung, die
+sich über Wochen zieht, ist ohne ihn nicht lesbar — man sieht „14:20" und weiß nicht, ob das heute
+oder im Juli war.
+
+**Der ⓘ-Gedanke ist ein System, kein Symbol.** Whatnot setzt ihn überall dort, wo eine Zahl stimmt,
+aber ihre Grundlage nicht sichtbar ist („Response Rate", „Customer Satisfaction", „Total Refund
+Cost"). Berkat hat davon mindestens drei: **„Versandzeit < 1 Std"** (woraus gerechnet?),
+**„★ 5,0"** (aus zwei Bewertungen — steht daneben, gut), **„Umsatz"** in der Live-Leiste (brutto?
+nach Versand? vor Gebühren?). Bei der Umsatz-Zahl ist es keine Kosmetik: Der Verkäufer trifft
+danach Entscheidungen.
+
+#### Wo Berkat BESSER ist — und was man deshalb nicht „verbessern" darf
+
+**Die Zeitangaben.** Whatnot zeigt „15m", „29m", „10/7/25" — eine Zahl mit Buchstabe und ein
+US-Datum. Berkat hat eine echte Leiter:
+
+```
+gerade eben → vor 12 Min → vor 3 Std → gestern → 12.08.
+```
+
+Das ist sprachlich richtig, kulturell passend und ohne Nachdenken lesbar. **Nicht anfassen.**
+
+Ebenso besser: Berkats **Leerzustände** sind Sätze mit einer Handlung darin („Schreib ihm die erste
+Nachricht 👋"), Whatnots Reiter zeigt bei einem Eintrag einfach weiße Fläche.
+
+#### Was zu übernehmen wäre — neu sortiert
+
+1. **Foto in einer Nachricht senden und anzeigen.** Kein Schema, kein Versprechen, und es ist die
+   Grundlage jedes späteren Streit-Ablaufs. ⚠️ Vorher Serlos Umgang mit `image_url` prüfen.
+2. **Datumstrenner im Verlauf.** Billig, wird ohne ihn mit jedem Tag schlechter.
+3. **Filter „Ungelesen" im Posteingang.** Fast geschenkt, seit die Zeile den Zustand kennt.
+4. **ⓘ als System** — zuerst an der Umsatz-Zahl, weil dort Entscheidungen dranhängen.
+5. **Eine eigene Farbe für Verweise**, damit `ui.brand` nicht gleichzeitig „aktiv" und „hier
+   entlang" bedeutet.

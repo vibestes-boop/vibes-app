@@ -39,7 +39,19 @@ export type BerkatNotificationType =
    * daraus baut `notificationTarget` das Ziel `/shop?q=…`. Der Artikelname
    * steht in `comment_text`.
    */
-  | 'saved_search_hit';
+  | 'saved_search_hit'
+  /**
+   * Ein Käufer (oder Verkäufer) hat ein Problem mit einer Bestellung gemeldet.
+   *
+   * ⚠️ Der Typ ist NICHT neu — `report_order_dispute` schreibt ihn seit dem
+   * 28.06.2026. Neu ist nur, dass Berkat ihn kennt: Bis zum 21.08.2026 fiel er
+   * in den Standard-Zweig und hieß „Neu bei Berkat" — für „jemand beanstandet
+   * deine Lieferung" ist das keine Auskunft.
+   *
+   * Und bis `20260821170000` kam er ohnehin nie an: Die RPC setzte `app` nicht,
+   * die Meldung landete per DEFAULT in Serlos Posteingang.
+   */
+  | 'order_dispute';
 
 /**
  * Wohin ein Antippen führt — für die LISTE und für den PUSH.
@@ -117,6 +129,12 @@ export function notificationTarget(
     // zurückbrächte, den die gespeicherte Suche abschafft.
     case 'saved_search_hit':
       return n.query ? `/shop?q=${encodeURIComponent(n.query)}` : '/shop';
+    // Die Meldung erreicht den Verkäufer (oder einen Admin). Sie trägt keine
+    // Bestell-ID — `notifications` hat kein Feld dafür, und die RPC füllt nur
+    // `comment_text`. Die Bestellliste ist damit der nächstbeste Ort: Dort
+    // steht der Vorgang, um den es geht, eine Zeile weit entfernt.
+    case 'order_dispute':
+      return '/orders';
     // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
     // Siehe die Regel im Kopf: von außen in die Liste, aus der Liste ins Konto.
     default:

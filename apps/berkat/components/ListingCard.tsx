@@ -49,6 +49,19 @@ type Props = {
   layout?: 'grid' | 'row';
   /** Eigener Artikel — bekommt eine ruhige Markierung statt eines Kaufwegs. */
   mine?: boolean;
+  /**
+   * Wie viele Menschen sich den Artikel gemerkt haben.
+   *
+   * ⚠️ NICHT der eigene Zustand — das ist `saved`. Diese Zahl sagt „andere
+   * finden das interessant", und genau darin liegt ihr Wert bei dünnem
+   * Bestand: Sie unterscheidet die Artikel, die jemand beachtet, von denen,
+   * die nur herumliegen (Whatnot zeigt sie an derselben Ecke, Analyse 13).
+   *
+   * ⚠️ `undefined` oder 0 heißt: nichts anzeigen. Eine Null ist kein Stand,
+   * sondern eine Enttäuschung in Zahlenform — dieselbe Regel wie bei den
+   * Kategorie-Zählern und der Umsatz-Leiste.
+   */
+  saveCount?: number;
   onPress: () => void;
   /**
    * Nur in `row`: der Zurückziehen-Knopf im eigenen Regal.
@@ -74,6 +87,7 @@ export function ListingCard({
   onPress,
   trailing,
   saved = false,
+  saveCount,
   onToggleSaved,
 }: Props) {
   const imageCount = listingImages(listing).length;
@@ -126,7 +140,11 @@ export function ListingCard({
                 {meta}
               </Text>
             ) : null}
-            {kind ? <Text style={s.kind}>{kind}</Text> : null}
+            {/* In der Zeilen-Fassung steht kein Verkäufername — hier bleibt
+                das Etikett allein und braucht seinen eigenen Abstand. Es an die
+                Meta-Zeile zu hängen wäre falsch: Die ist einzeilig gekürzt, und
+                ausgerechnet die Rechtsangabe würde als Erstes abgeschnitten. */}
+            {kind ? <Text style={[s.kind, s.kindAlone]}>{kind}</Text> : null}
           </View>
         </Pressable>
 
@@ -170,18 +188,28 @@ export function ListingCard({
             Kauf (gold). */}
         {!mine && onToggleSaved ? (
           <Pressable
-            style={s.heart}
+            style={[s.heart, saveCount && saveCount > 0 ? s.heartWide : null]}
             hitSlop={6}
             onPress={onToggleSaved}
             accessibilityRole="button"
             accessibilityState={{ selected: saved }}
             accessibilityLabel={saved ? 'Nicht mehr merken' : 'Merken'}
           >
+            {/* ⚠️ Zustand UND Zahl in EINEM Element.
+                Eine zweite Herz-Pille mit der Zahl wäre der naheliegende Weg
+                gewesen — und hätte zwei Herzen auf eine Karte gesetzt, die
+                Verschiedenes bedeuten: „habe ICH gemerkt" und „andere haben
+                gemerkt". Dasselbe Zeichen, zwei Aussagen, ist eine Falle.
+                Whatnot setzt beides in ein Element (Analyse 13); der Knopf
+                wird dafür zur Pille, sobald es etwas zu zählen gibt. */}
             <Heart
               size={14}
               color={saved ? ui.success : ui.overlayMuted}
               fill={saved ? ui.success : 'transparent'}
             />
+            {saveCount && saveCount > 0 ? (
+              <Text style={s.heartCount}>{saveCount}</Text>
+            ) : null}
           </Pressable>
         ) : null}
 
@@ -193,23 +221,49 @@ export function ListingCard({
             <Text style={s.countPillText}>{imageCount}</Text>
           </View>
         ) : null}
+
       </View>
 
-      {sellerName ? (
-        <Text numberOfLines={1} style={s.seller}>
-          {sellerName}
-        </Text>
+      {/* ⚠️ Verkäufer UND Anbietertyp in EINER Zeile.
+          Bis zum 22.08.2026 standen sie an entgegengesetzten Enden des Blocks:
+          der Name ganz oben, „Privatverkauf" ganz unten — losgelöst, wo es wie
+          ein Nachtrag wirkte. Dabei gehören beide zusammen: WER verkauft und
+          ALS WAS. Eine Zeile weniger auf einer Karte, die sechs hatte.
+
+          ⚠️ Die Aufteilung ist nicht beliebig: Der NAME schrumpft
+          (`flexShrink`), das Etikett nicht. Ein langer Benutzername kürzt sich
+          also selbst, statt die Angabe abzuschneiden, die die Rechtsfolge
+          trägt (Art. 246d § 1 EGBGB). Dieselbe Regel wie im Posteingang, wo
+          der Name schrumpft und die Uhrzeit stehen bleibt. */}
+      {sellerName || kind ? (
+        <View style={s.byline}>
+          {sellerName ? (
+            <Text numberOfLines={1} style={s.seller}>
+              {sellerName}
+            </Text>
+          ) : null}
+          {sellerName && kind ? <Text style={s.bylineDot}>·</Text> : null}
+          {kind ? <Text style={s.kind}>{kind}</Text> : null}
+        </View>
       ) : null}
       <Text numberOfLines={2} style={s.title}>
         {listing.title}
       </Text>
+      {/* ⚠️ Der Preis bleibt UNTER dem Bild, nicht darauf.
+          Am 22.08.2026 gefragt und bewusst so entschieden: Ein Preis, der sich
+          BEWEGT, gehört aufs Bild — dort steht er auf den Live-Karten, neben
+          der Uhr, als Teil des Ereignisses. Ein FESTER Preis gehört zu den
+          Fakten: Er wird zusammen mit Größe, Zustand und Ort gelesen, und ihn
+          allein hochzuziehen zerreißt den Block.
+          Dazu die Lesbarkeit: Auf einem fremden Foto bräuchte er die milchige
+          Auflage (Abschnitt 8); hier steht er dunkel auf Sand. Für das Merkmal,
+          das die meisten Käufe entscheidet, ist das die bessere Fläche. */}
       <Text style={s.price}>{formatEuro(listing.buy_now_cents)}</Text>
       {meta ? (
         <Text numberOfLines={1} style={s.meta}>
           {meta}
         </Text>
       ) : null}
-      {kind ? <Text style={s.kind}>{kind}</Text> : null}
     </Pressable>
   );
 }
@@ -258,13 +312,18 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: space.sm,
     right: space.sm,
-    width: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    minWidth: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: ui.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
+  // Mit Zahl wird aus dem Kreis eine Pille — die Breite kommt vom Inhalt.
+  heartWide: { paddingHorizontal: 8 },
+  heartCount: { fontSize: 11, fontWeight: '700', color: ui.overlayMuted },
   countPill: {
     position: 'absolute',
     left: space.sm,
@@ -279,7 +338,9 @@ const s = StyleSheet.create({
   },
   countPillText: { fontSize: 10, fontWeight: '700', color: ui.overlayMuted },
 
-  seller: { fontSize: 11, color: ui.textMuted, marginTop: 6 },
+  byline: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 6 },
+  seller: { flexShrink: 1, fontSize: 11, color: ui.textMuted },
+  bylineDot: { fontSize: 11, color: ui.textMuted },
   title: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 1 },
   price: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
 
@@ -309,5 +370,6 @@ const s = StyleSheet.create({
   /* Bewusst unauffällig: Die Angabe MUSS dastehen, sie ist aber keine Werbung.
      Ein Privatverkauf ist nicht schlechter als ein gewerblicher — er hat nur
      andere Rechte, und die stehen auf der Artikelseite. */
-  kind: { fontSize: 11, color: ui.textMuted, marginTop: 1, fontWeight: '600' },
+  kind: { fontSize: 11, color: ui.textMuted, fontWeight: '600' },
+  kindAlone: { marginTop: 1 },
 });

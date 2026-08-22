@@ -17,8 +17,8 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 61 → 56.** Abschnitt 61 ist der Anschlusspunkt (er löste 54 ab,
-> davor 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle, nach
+> **Wer neu einsteigt, liest 0 → 69 → 56.** Abschnitt 69 ist der Anschlusspunkt (er löste 61 ab,
+> davor 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle, nach
 > Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
 >
 > ⚠️ **Dieser Kopf war am 21.08.2026 an acht Stellen veraltet** — die Marktplatz-Migration galt
@@ -135,7 +135,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–59; **56 ist die Prüfliste** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–69; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -181,7 +181,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | **35 Berkat-eigene, alle eingespielt**; im Tracking 278 ohne Lücke (21.08.2026) — Abschnitt 5 |
+| Migrationen | **60 Berkat-eigene, alle eingespielt**; im Tracking 283 ohne Lücke (22.08.2026) — Abschnitt 5 |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -708,6 +708,55 @@ Quellkarten stehen dort verkürzte Namen.
 Dann `organization` und `project` in die Plugin-Konfiguration, `SENTRY_AUTH_TOKEN` als
 EAS-Geheimnis (`eas secret:create`), und diese Zeile wieder raus. Ein Auth-Token gehört **nie** in
 die `eas.json` — das Repo ist öffentlich.
+
+### ⚠️ `eas update` aus dem falschen Ordner trifft SERLOS Produktions-Nutzer
+
+Am 21.08.2026 passiert, von mir. Der Befehl lief aus `/Users/zaurhatuev/vibes-app` statt aus
+`apps/berkat` — und dort ist das gültige Projekt **`@zaurhat/vibes`, also Serlo**. Ergebnis:
+Berkats OTA landete auf Serlos Produktions-Kanal, Laufzeit 1.31.0.
+
+**Die CLI warnt nicht.** Beide Ordner haben eine `app.json` mit `updates.url`, beide einen Zweig
+namens `production`. Der Befehl sieht identisch aus und tut etwas völlig anderes. Der einzige
+Hinweis steht **nach** der Veröffentlichung im Ergebnis:
+
+```
+Runtime version    1.31.0                              ← Berkat ist 1.0.0
+EAS Dashboard      …/projects/vibes/updates/…          ← Berkat ist /projects/berkat/
+```
+
+**Die Probe, die eine Sekunde kostet und vor jedem `eas update` gehört:**
+
+```bash
+cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info
+```
+
+Steht dort `@zaurhat/berkat` / `fb4e0381-…`, ist es richtig. Steht dort `@zaurhat/vibes` /
+`02ab536a-…`, ist der Ordner falsch. **Nie `eas update` ohne vorangestelltes `cd` in den App-Ordner
+aufrufen** — auch nicht, wenn man „gerade eben schon dort war": Die Arbeitsverzeichnisse einzelner
+Aufrufe halten nicht.
+
+**Zurückgestellt wird per `update:republish`**, nicht per Löschen — eine Veröffentlichung lässt sich
+nicht zurücknehmen, nur überholen:
+
+```bash
+npx eas update:list --branch production --limit 5   # letzte GÜLTIGE Gruppen-ID der Laufzeit suchen
+npx eas update:republish --group <gruppen-id> --message "Zurueck auf …" --non-interactive
+```
+
+⚠️ **Die Laufzeit muss dabei stimmen.** Serlo hat Nutzer auf **1.30.0 und 1.31.0**; ein Fehlgriff
+trifft nur eine der beiden, und zurückgestellt werden muss genau diese. Am 21.08. war es 1.31.0 —
+1.30.0 blieb unberührt.
+
+**Wie groß der Schaden war, gehört gemessen, nicht geschätzt.** Hier: Der Fehl-OTA enthielt Serlos
+eigenen Quelltext bei `HEAD`, und der wich vom veröffentlichten Stand in **genau einer** Datei ab,
+die überhaupt im Mobil-Bündel liegt (`lib/useScheduledLives.ts`, 5 Zeilen App-Filter aus `b3d9a9b`).
+Die zweite unveröffentlichte Änderung (`af0c6b2`) fasste nur `apps/web/` an und war im Bündel gar
+nicht enthalten. Fenster: rund eine Minute.
+
+Der Befund ist beruhigend, die Lehre bleibt: **In einem Monorepo mit zwei Expo-Projekten ist der
+Arbeitsordner ein Produktions-Schalter.** Dieselbe Familie wie Babel, das sich sein Preset aus
+Serlos `node_modules` holte (nächster Eintrag) — nur trifft dieser Fehler nicht den Build, sondern
+die Nutzer.
 
 ### EAS-Build-Logs holen, statt aus der Fehlermeldung zu raten
 
@@ -6531,6 +6580,10 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A8 | **Impressum gewerblich speichern** bis zum Ende. Scheiterte im Simulator nur an der Tastatur, die kein `@` tippt | 36 |
 | A9 | ⚠️ **war nicht prüfbar** — es gab keinen Avatar-Upload. Seit 21.08. gibt es einen (Abschnitt 60), damit ist der Punkt neu offen. **Avatar im Konto-Reiter** — braucht ein gesetztes Profilbild; der Rückfall aufs Symbol ist belegt | 40 |
 | A10 | **Die Umsatz-Leiste im eigenen Raum**: Beschriftung „Umsatz", Blatt mit Leerzustand | 55 |
+| A11 | **Posteingang**: Jede Zeile zeigt den letzten Satz, bei eigenen Nachrichten mit „Du: “ davor. Ungelesenes fett plus grüner Punkt — und beides muss nach dem Öffnen verschwinden | 64 |
+| A12 | **Foto im Verlauf**: senden — erscheint in der Blase, im Posteingang als „📷 Foto", getippter Satz geht mit. Dazu Tagestrenner („Gestern") und der Ungelesen-Filter | 65 |
+| A13 | **Benachrichtigungen einstellen** (Konto → Benachrichtigungen): einen Anlass ausschalten, App neu starten — der Schalter muss aus bleiben. Die Liste zeigt sechs Anlässe, „Zuschlag" darf NICHT dabei sein | 68 |
+| A14 | **Startseite**: Suchfeld und die zwei Knöpfe in EINER Zeile, Kategorie-Leiste folgt beim Scrollen ohne Springen — und die Kopfzeile bleibt dabei sichtbar | 68 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -6540,6 +6593,10 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
 | B3 | **Bewertungen befüllen**: kaufen → versenden → „Ist angekommen" → Sterne → **Text**. Der Bewertungen-Reiter war noch nie mit Inhalt zu sehen | 18 |
 | B4 | ~~Merken-Herz und „Nachricht statt Kaufen" an fremden Angeboten~~ | ✅ 18.08. über die Testware |
+| B6 | **„Wohin damit?" im Regal-Formular**: Termin wählen und einstellen — der Artikel darf danach **nicht** im Regal stehen, sondern muss am Termin „bereit" sein. Gegenprobe mit „Ins Regal". Und: ohne Foto **oder** ohne Kategorie bleibt der Knopf grau — beim **Bearbeiten** aber nicht | 63 |
+| B7 | **Keine Geister-Unterhaltung**: Chat des anderen öffnen, nichts schreiben, zurück — beim anderen darf KEINE Unterhaltung erscheinen. Dann schreiben: sie muss auf beiden Seiten stehen. Dazu „Melden/Sperren" aus der Kopfzeile des Verlaufs | 66 |
+| B8 | **Merken-Zahl**: vom zweiten Konto ein Angebot merken — auf der Marktplatz-Karte muss aus dem Herz-Kreis eine Pille mit „1" werden. Beim eigenen Konto ändert sich nichts | 68 |
+| B5 | **Regal ↔ Show, der Weg ohne Sendung**: Termin anlegen → im Vorbereiten-Blatt „Aus dem Regal holen" → Artikel muss aus dem Regal **verschwinden** und als „bereit" am Termin stehen. Dann im eigenen Regal unter „Aus deinen Sendungen übrig" zurückholen | 62 |
 
 ### C — laufende Sendung, allein. Kein zweites Konto.
 
@@ -6549,6 +6606,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | C2 | **Anbieterkennzeichnung im Live-Raum** — der Satz über dem Gebots-Knopf | 22 |
 | C3 | **Live-Raum gegen Whatnots App halten** — was von Punkt 6 der Liste übrig ist | 54, Analyse 8 |
 | C4 | **Bitrate 540p** im echten Stream messen — das Bild kam am 16.08. an, gemessen wurde nie | 0 |
+| C5 | **Regal → laufende Sendung**: im Artikel-Zettel „Aus dem Regal holen" — der Artikel muss sofort in der Warteschlange stehen und startbar sein, mit 1 € Start und dem Regalpreis als Sofortkauf. Danach „Ins Regal legen" an einer Zeile ohne Zuschlag | 62 |
 
 ### D — Sendung **und** zweites Konto. Der große Durchlauf.
 
@@ -6564,6 +6622,9 @@ in diesem Projekt zu haben ist — und der Grund, warum sich das Ansammeln geloh
 | D5 | **Max-Gebot unter echtem Gegendruck** — Anti-Snipe ist seit 16.08. belegt, das Stellvertreterbieten nicht | 8 |
 | D6 | **„Du führst / Überboten"** gegen echte Gebote statt Beispieldaten | 39 |
 | D7 | **Bezahl-Knopf auf dem Show-Ende-Bildschirm** — braucht einen offenen Korb aus einem echten Zuschlag | 11 |
+| D8 | **Problem melden**: vom Käufer-Konto an einer bezahlten Bestellung melden — beim Verkäufer muss die Meldung **in Berkat** ankommen (nicht in Serlo), rot, Tipp führt in die Bestellliste. Beim Käufer steht danach „Problem gemeldet" | 67 |
+| D9 | **Der Fall im Chat und beim Verkäufer**: nach dem Melden muss der Verkäufer unter „Beanstandet" Grund, Text, Belegfoto, Artikelbild und Bestellnummer sehen — und „Antworten" muss in einen Chat führen, in dem dieselbe Karte im Verlauf steht | 68 |
+| D10 | **Push stummschalten**: „Erinnerung an Sendungen" ausschalten, Termin anlegen, warten — es darf KEIN Push kommen, die Meldung muss aber in der Glocke stehen | 68 |
 
 ⚠️ **Rollenverteilung ist nicht beliebig:** Push gibt es nur auf einem echten Gerät. Fast alles
 Offene endet in einer Meldung an den **Käufer** — also gehört das iPhone dem Käufer und der
@@ -6703,13 +6764,25 @@ und ob Serlo `live_auctions` benutzt (tut es nicht).
 `tsc --noEmit` und `expo export --platform ios` fehlerfrei. Dollar-Quoting paarig, genau zwei
 `CREATE FUNCTION`.
 
-⚠️ **Die Migration ist NICHT eingespielt** und die Edge Function **nicht ausgerollt.** Beides
-gehört zusammen und in einem Schritt gemacht:
+✅ **Beides ist draußen — nachgeprüft am 21.08.2026 nach dem Schreiben dieses Abschnitts.** Hier
+stand bis dahin „Die Migration ist NICHT eingespielt und die Edge Function nicht ausgerollt"; das
+war beim Schreiben richtig und wenige Stunden später falsch. Abschnitt 61 sagte im selben Dokument
+schon das Gegenteil (`42, alle eingespielt`) — **derselbe Drift wie im Kopf, nur andersherum: hier
+war der Rumpf veraltet und die Übersicht aktuell.**
 
-```bash
-supabase db push
-supabase functions deploy send-push-notification
-```
+Der Beleg, drei Zeilen, jederzeit wiederholbar:
+
+| Was | Befund |
+|---|---|
+| `supabase migration list --linked` | `20260821120000` in **beiden** Spalten; 278 Einträge, keine Lücke |
+| `supabase functions list` | `send-push-notification` · Version **55** · 21.08.2026 15:12 UTC |
+| `supabase functions download send-push-notification` | ⚠️ überschreibt die Datei im Arbeitsstand — danach war `git diff` **leer**, die ausgerollte Fassung ist also zeichengleich mit dem committeten Quelltext. `saved_search` und `auction_up` je fünfmal enthalten |
+
+⚠️ **`functions download` schreibt in `supabase/functions/<name>/` des Arbeitsstands**, nicht in
+einen Zwischenordner, und fragt nicht nach. Als Vergleich ist das der genaueste Test, den es ohne
+Browser gibt — aber nur mit sauberem Arbeitsstand ausführen, sonst überschreibt es ungesicherte
+Arbeit. Der Umweg über `--project-ref llymwqfgujwkoxzqxrlm` ist nötig, weil `/tmp` kein verknüpftes
+Projekt ist.
 
 Die sechs Gegenproben stehen am Ende der Migration. Zwei davon brauchen mehr als einen Blick:
 
@@ -7055,7 +7128,7 @@ die Prüfliste ist ab jetzt der Motor, nicht die Feature-Liste.
 
 | | |
 |---|---|
-| Migrationen | **42, alle eingespielt**, keine Lücke |
+| Migrationen | **43, alle eingespielt**, keine Lücke — im Tracking 279 (21.08.2026 abends) |
 | `tsc` / `expo export` | fehlerfrei |
 | Git | sauber, Branch `berkat` |
 | TestFlight | `1.0.0 (1)` · **„Warten auf Prüfung"** in der externen Gruppe „Verkäufer" |
@@ -7070,8 +7143,11 @@ weiterhin über 8 MB liegen und wird abgewiesen. Kein Absturz, aber ein sichtbar
 ### Was heute gebaut wurde
 
 Verkäufer-Umsatz im Live-Raum (55) · gespeicherte Suche (57) · Bürgen im Live-Kopf (58) ·
-Konto löschen (59) · vier Funde aus dem Prüflisten-Durchlauf (60) · achte und neunte
-Whatnot-Analyse.
+Konto löschen (59) · vier Funde aus dem Prüflisten-Durchlauf (60) · **Brücke Regal ↔ Show in beide
+Richtungen (62)** · achte und neunte Whatnot-Analyse.
+
+`20260821160000` ist eingespielt und am frischen Abzug gegengeprüft (Abschnitt 62). Am **Gerät**
+ungeprüft — die vier Wege stehen als B5 und C5 in der Prüfliste.
 
 **Und vier Fehler behoben, von denen keiner im Code sichtbar war:**
 
@@ -7143,3 +7219,1070 @@ kein Schema-Abzug hat einen davon gesehen.
 Und der Satz, der über allem steht, ist unverändert: Keine der zwölf Änderungen hat einen
 Verkäufer gebracht. Das kommt über den TestFlight-Link — und danach über Telefonate, nicht über
 Code.
+
+---
+
+## 62. Regal ↔ Show — die Brücke, die nie gebaut war (21.08.2026, abends)
+
+Zaurs Frage, wörtlich: *„wieso kann ich die Artikel aus meinem Regal nicht ins Live reinstellen"* —
+und gleich hinterher die Gegenrichtung: was nicht verkauft wurde, soll ins Regal wandern können.
+
+Beides war nicht gesperrt. **Es fehlte nur der Weg.**
+
+### Der Befund
+
+Regal-Artikel und Show-Artikel liegen seit `20260815210000` in **derselben Tabelle**. Der
+Unterschied ist eine Spalte:
+
+```
+session_id NULL  + status 'listed'     → Regal, jetzt kaufbar
+session_id NULL  + status 'scheduled'  → für einen Termin vorbereitet
+session_id gesetzt                     → in der Show
+```
+
+Trotzdem gab es dazwischen nichts. `claim_prepared_auctions` filtert auf `status = 'scheduled'` und
+übersieht damit **jeden** Regal-Artikel; `create_live_auction` legt immer eine **neue** Zeile aus dem
+Formular an. Ein Verkäufer mit zwanzig Artikeln im Regal musste sie für die Show ein zweites Mal
+tippen.
+
+Und die Gegenrichtung war eine Sackgasse: `settle_live_auction` setzt bei einer Auktion ohne Gebot
+`status = 'unsold'` — danach passiert mit dem Artikel **nie wieder etwas**. Bei zwanzig Artikeln am
+Abend und einem Drittel ohne Gebot verfällt so jede Woche ein halbes Regal.
+
+**Baugeschichte, nicht Denkfehler:** Regal (17.08.) und Show-Artikel (13.08.) entstanden als zwei
+Geschichten, die zufällig in derselben Tabelle landeten. Abschnitt 48 baute am 19.08. die erste
+Brücke — aber nur für einen Weg, weil sie für einen Termin gedacht war.
+
+### Die Preise passten schon — seit dem 15.08.
+
+Der schönste Teil des Befunds. Im Kopf von `create_standing_listing` steht seit sechs Tagen:
+
+> `start_price_cents` bleibt bei 100. Das ist kein Kunstgriff: **Wandert der Artikel später doch in
+> eine Show, startet er bei 1 €** — genau das Ritual, das die Analyse als „die zentrale Erfindung"
+> bezeichnet.
+
+Jeder Regal-Artikel trägt damit bereits die richtigen Zahlen für eine Auktion: Start bei 1 €, und
+der Festpreis steht als `buy_now_cents` da und wird in der Show zum Sofortkauf. **Regal → Show
+brauchte deshalb kein einziges neues Feld.** Nur die Gegenrichtung braucht einen Preis, weil ein
+Show-Artikel `buy_now_cents` leer haben darf und ein Regal-Artikel nicht.
+
+Der Doppelverkauf ist dabei strukturell ausgeschlossen: `live_auctions_shelf_check` lautet seit
+`20260819120000` `(session_id IS NOT NULL AND status <> 'listed') OR …`. Ein Artikel **kann** nicht
+gleichzeitig im Regal und in der Show liegen. Beide neuen Funktionen verschieben deshalb, sie
+kopieren nicht.
+
+### ⚠️ Zwei Frauen-Only-Lecks, die auf dem Weg lagen
+
+`live_auctions` hat **zwei** Lese-Policies, und sie entscheiden nach **verschiedenen Spalten**:
+
+| | entscheidet nach |
+|---|---|
+| `live_auctions_select` (mit Session) | `live_sessions.women_only` — die eigene Spalte des Artikels wird **nicht angesehen** |
+| `live_auctions_select_standing` (ohne Session) | `live_auctions.women_only` am Artikel selbst |
+
+**Ein Umzug wechselt die zuständige Policy.** Daraus folgen zwei Fallen, beide von der Klasse aus
+Abschnitt 3 („Eine SECURITY-DEFINER-Funktion geht an der Frauen-Only-Grenze vorbei"):
+
+**1.** Ein Regal-Artikel mit `women_only = true`, der in eine **öffentliche** Show wandert, wird
+durch den Session-Erbgang für jeden sichtbar. Die Verkäuferin hat nur „in die Show" getippt.
+→ wird **abgelehnt** (`women_only_mismatch`). In die Gegenrichtung wird geerbt: enger ist erlaubt.
+
+**2. Der Rückweg ist der gefährlichere, weil er auf einem Fehler aufsetzt, der HEUTE SCHON in der
+Datenbank steht.** `create_live_auction` setzt `women_only` **nicht**. Jeder Artikel, der spontan in
+einer Frauen-Only-Show aufgelegt wurde, trägt am eigenen Datensatz `false` — bis heute folgenlos,
+weil die Policy dann die Session fragt. Nimmt man ihm die Session weg, entscheidet plötzlich diese
+Spalte, und die **gesamte Ware einer Frauen-Only-Sendung stünde offen im Regal**.
+→ `move_auction_to_shelf` **erbt** `women_only` von der Session, die der Artikel verlässt. Erben,
+nicht fragen — dieselbe Antwort wie in `20260819130000`, und aus demselben Grund: Es gibt keine
+Gelegenheit, es zu vergessen.
+
+> Die Regel, die daraus wird: **Wer eine Zeile zwischen zwei Policies verschiebt, verschiebt auch
+> die Frage, wer sie sehen darf.** Zwei Policies auf einer Tabelle sind kein Detail — sie sind zwei
+> Wahrheiten, und der Umzug entscheidet, welche gilt.
+
+### Wo es liegt
+
+| Wo | Was |
+|---|---|
+| `20260821160000_berkat_shelf_show_bridge.sql` | **neu** — `move_listing_to_show`, `move_auction_to_shelf`. Keine Schema-Änderung |
+| `lib/useShelfBridge.ts` | **neu** — beide Wege, Fehlertexte, `useLeftovers` |
+| `components/ShelfPickSheet.tsx` | **neu** — „Aus dem Regal holen", ein Zettel für beide Ziele |
+| `components/LeftoverShelf.tsx` | **neu** — „Aus deinen Sendungen übrig", im eigenen Regal |
+| `components/PrepareSheet.tsx` | Knopf über dem Formular → Regal an einen **Termin** |
+| `components/ShowItemsSheet.tsx` | Leiste → Regal in die **laufende** Show; „Ins Regal legen" an jeder Zeile ohne Zuschlag |
+| `app/live/[id].tsx`, `app/shelf.tsx` | Verkabelung |
+
+### Entscheidungen (von Zaur delegiert: „entscheide du")
+
+- **Gefragt, nicht automatisch.** Ein Artikel, der bei 1 € keinen Bieter fand, hat damit noch keinen
+  Festpreis. Der Sofortkauf steht als **Vorschlag** da — er war der Preis fürs *Abkürzen* der
+  Auktion und liegt bewusst hoch; als stiller Regalpreis wäre er zu teuer und der Artikel läge
+  wieder wie Blei.
+- **Beide Ziele erlaubt: Termin *und* laufende Sendung.** Mitten in der Show aus dem Regal zu holen
+  ist genau der Live-Vorteil — jemand fragt nach etwas, und es liegt schon da. Die Regel aus
+  Abschnitt 48 („nur mit Termin-ID") bleibt unberührt: Sie schützt davor, dass eine spontane Show
+  die Vorbereitung des nächsten Samstags verschluckt, und das ist ein anderer Fall.
+- **`running` ist ausgenommen.** Einen Artikel aus einer laufenden Auktion zu ziehen, während jemand
+  bietet, ist kein Umräumen, sondern ein Wortbruch. Der Server lehnt es ab (`not_returnable`), und
+  der Knopf steht gar nicht erst da.
+- **Ein Tipp verschiebt sofort, ohne Rückfrage.** Gegenpol zu `discard_prepared_auction`, das
+  nachfragt: Dort wird **gelöscht**, hier nur umgeräumt, und der Rückweg ist zwei Tipps entfernt.
+  Zwölf Rückfragen bei zwölf Artikeln schützen nichts.
+- **Die Übrig-Liste rendert sich weg, wenn nichts übrig ist.** Ein Leerzustand „Hier landet, was du
+  nicht verkauft hast" wäre eine Erinnerung an Misserfolge auf einem Bildschirm, der vom Bestand
+  handelt.
+- **Der Ort der Übrig-Liste ist das eigene Regal, nicht der Live-Raum.** Aufgeräumt wird **nach**
+  der Sendung — und dann ist der Live-Raum zu. Ohne diesen zweiten Ort wäre der Weg nur erreichbar,
+  wenn man ihn nicht braucht.
+- **Eine Funktion für beide Ziele, nicht zwei.** Die Wächter sind zu neunzig Prozent dieselben.
+  Zwei Fassungen hießen zwei Orte, an denen die Frauen-Only-Prüfung stehen muss — und einer davon
+  vergisst sie irgendwann.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Dollar-Quoting paarig, genau zwei
+`CREATE FUNCTION`, beide mit `REVOKE … FROM PUBLIC, anon` und `GRANT … TO authenticated`.
+
+✅ **Eingespielt am 21.08.2026 von Zaur, danach am frischen Abzug gegengeprüft** (mit Rechten nach
+`/tmp` gezogen, sofort gelöscht — er trägt ~1000 GRANT-Zeilen und das Repo ist öffentlich):
+
+| Prüfung | Befund |
+|---|---|
+| Tracking | `20260821160000` in beiden Spalten · 279 Einträge, keine Lücke |
+| Beide Funktionen | vorhanden, **je genau eine Signatur** — keine Überladung, also kein HTTP 300 |
+| Rechte | `REVOKE ALL … FROM PUBLIC` + `GRANT … TO authenticated`. **Kein `anon`** — die `credit_coins`-Falle (Abschnitt 7) greift hier nicht |
+| Beide Rümpfe | `SECURITY DEFINER` mit gepinntem `search_path`, `FOR UPDATE` vor jeder Prüfung |
+| Die Frauen-Only-Zeilen | `women_only_mismatch` und der Erbgang stehen **wirklich im Live-Code**, nicht nur in der Datei |
+| Aufräumen beim Rückweg | `winner_id`, `ends_at`, `cart_id`, `current_bid_cents` werden auf NULL gesetzt |
+| Nichts Bestehendes verändert | `live_auctions_shelf_check` unverändert, `claim_prepared_auctions` filtert weiter auf `status = 'scheduled'` |
+
+Die Gegenproben am Ende der Migration bleiben trotzdem offen — sie brauchen echte Daten. Zwei davon
+zählen:
+
+- **Der Umzug ins Regal räumt wirklich auf** — `winner_id`, `ends_at`, `cart_id`, `current_bid_cents`
+  müssen danach NULL sein. Ein Regal-Artikel mit abgelaufener Uhr wäre ein sichtbarer Fehler.
+- **Die Frauen-Only-Probe**, und sie ist wieder die, die man nicht nebenbei macht: In der Datenbank
+  liegt bis heute **null** WOZ-Datum (Abschnitt 44). Gehört in Gruppe E der Prüfliste.
+
+⚠️ **Am Gerät ungeprüft, alle vier Wege.** Neu in der Prüfliste als **B5** (Regal → Termin und
+zurück, allein machbar) und **C5** (Regal → laufende Sendung, braucht eine Show).
+
+### ⚠️ Zwei Funde am Gerät, beide am selben Abend (21.08.2026)
+
+Der erste Durchlauf am iPhone brachte zwei Meldungen, und beide waren **nicht** die Fehler, für die
+sie sich ausgaben.
+
+**1. „Unter Termin ankündigen gibt es kein ‚Aus dem Regal holen', wenn ich die Terminzeile
+antippe."**
+
+Der Knopf war gebaut und stand richtig. Der Grund war ein anderer: **Dieselbe Terminliste steht an
+zwei Orten, und nur einer von beiden reagierte auf einen Tipp.**
+
+| Wo | Tipp auf die Zeile | Absagen |
+|---|---|---|
+| Übersicht, Karte „Deine nächsten Termine" | öffnet das Vorbereiten-Blatt | **gab es nicht** |
+| Blatt „Termin ankündigen" | **tat nichts** | kleines ✕ am Zeilenrand |
+
+Keine der beiden Listen konnte, was die andere konnte. Wer in der falschen stand — und „Termin
+ankündigen" ist der Knopf, den man drückt, wenn man an Termine denkt — hielt das Fehlende für nicht
+gebaut.
+
+> **Die Regel: Zwei Listen derselben Sache brauchen dieselben Fähigkeiten.** Sonst ist die
+> Auffindbarkeit eines Weges davon abhängig, durch welche Tür man hereinkam — und das merkt niemand
+> beim Bauen, weil man immer durch dieselbe geht.
+
+**2. „Nächste Termine kann man nicht löschen, nachdem sie angelegt wurden."**
+
+Konnte man — als ✕ am Zeilenrand, im Ankündigen-Blatt, **unter** dem Formular. Also hinter einem
+Knopf, der „neuen Termin anlegen" verspricht, und unterhalb der Stelle, an der die meisten aufhören
+zu scrollen. Ein gebauter Weg, den man nicht findet, ist kein Weg.
+
+**Behoben:**
+
+- Die Zeilen im Ankündigen-Blatt sind jetzt antippbar und öffnen dasselbe Vorbereiten-Blatt
+  (`SchedulePlanner`, neues Prop `onOpen`).
+- **„Diesen Termin absagen"** steht jetzt unten im Vorbereiten-Blatt — auf dem Bildschirm des
+  Termins, wo man ihn ansieht. Mit Rückfrage, und die Rückfrage sagt, was mit den vorbereiteten
+  Artikeln geschieht: Sie bleiben und rutschen zu „ohne Termin" (`cancel_scheduled_live` setzt nur
+  `status = 'cancelled'`, und `planned_for` hängt mit `ON DELETE SET NULL` daran). Genau das ist die
+  Frage, die man vor einem Absagen hat.
+- Als Textzeile in Rot, **nicht** als rote Fläche: Rot ist in Berkat die laufende Uhr, und die
+  einzige rote Fläche bleibt das Löschen des Kontos (Abschnitt 59).
+
+⚠️ **Und eine iOS-Falle, die dabei fast einen zweiten toten Tipp erzeugt hätte:** Ein `pageSheet`
+ist ein echter `UIViewController`. Wer eines schließt und **im selben Render** das nächste öffnet,
+präsentiert auf einen Controller, der noch in seiner Schließ-Animation steckt — UIKit verwirft die
+zweite Präsentation **still**. Der Wechsel läuft deshalb über `onDismiss`: Erst wenn das
+Ankündigen-Blatt wirklich weg ist, geht das Vorbereiten-Blatt auf. Android kennt weder das Problem
+noch `onDismiss` und setzt direkt.
+
+### ⚠️ Fund 3 und 4: der Weg fühlte sich falsch an, obwohl jeder Schritt richtig war
+
+Zwei weitere Meldungen vom selben Abend, und beide betreffen nicht *ob* etwas geht, sondern *wie es
+sich anfühlt* — die teurere Sorte, weil kein Werkzeug sie findet.
+
+**3. „Nach dem Termin erstellen muss man dann extra auf den Termin noch mal klicken."**
+
+Stimmt. Nach „Ankündigen" landete man wieder auf der Übersicht, musste den frischen Termin dort
+**suchen** und **antippen**, um Artikel hineinzulegen. Das ist der teuerste Klick im ganzen
+Verkäufer-Weg: Wer gerade entschieden hat, Samstag zu senden, denkt als Nächstes „was verkaufe ich
+da" — nicht „wo ist die Liste".
+
+Behoben: Nach dem Ankündigen geht das Vorbereiten-Blatt des neuen Termins **direkt** auf, und die
+Erfolgsmeldung wandert mit hinein. Dafür gibt `usePlanShow.plan` jetzt zusätzlich `firstId` zurück
+(bei einer Reihe der erste Abend). Auf dem Reiter darunter stünde die Meldung hinter einem
+`pageSheet` und wäre unsichtbar — dieselbe Begründung wie bei `prepareNotice` in Abschnitt 48.
+
+**4. „Man muss das Fenster mit ✕ oben rechts schließen, das fühlt sich komisch an."**
+
+Der genaueste Fund des Tages, und er hat einen Namen: **Ein ✕ heißt „verwerfen, nichts behalten".**
+
+In beiden Blättern wird aber gar nichts gesammelt und am Ende abgeschickt — jeder Artikel ist in dem
+Moment in der Datenbank, in dem er in der Liste erscheint. Der einzige Ausgang **behauptete das
+Gegenteil**. Wer gerade fünf Artikel vorbereitet hat und dann auf ✕ tippen muss, fragt sich zu Recht,
+ob er sie gerade wegwirft.
+
+Beide Blätter tragen jetzt **„Fertig"**. Kein neues Verhalten — dieselbe Handlung, ehrlich
+beschriftet.
+
+> **Die Regel: Die Beschriftung des Ausgangs muss zum Speicher-Modell passen.** ✕ nur dort, wo es
+> wirklich etwas zu verwerfen gibt — also bei einem Formular, das erst beim Abschicken schreibt.
+> Wo sofort gespeichert wird, heißt der Ausgang „Fertig".
+
+⚠️ **Was daraus für neue Blätter folgt:** Berkat hat beide Sorten. Der `StandingComposer` sammelt
+und schickt ab (✕ richtig), `PrepareSheet` und `ShelfPickSheet` speichern sofort („Fertig" richtig).
+Wer ein neues Blatt baut, entscheidet das zuerst — nicht am Ende nach Gefühl.
+
+**Was NICHT übernommen wurde:** Whatnots Ablauf an dieser Stelle. Die sechste Analyse beschreibt
+seinen Verkäufer-Bereich („zwei Türen: Produkt anlegen, Show planen"), sagt aber **nichts** darüber,
+was nach dem Planen passiert. Diese vier Änderungen sind deshalb aus der Sache begründet, nicht als
+Whatnot-Parität — und das ist hier ausdrücklich vermerkt, damit niemand später eine Quelle
+unterstellt, die es nicht gibt.
+
+### ⚠️ Fund 5: die Show-Karte auf dem Profil — eine Linie an der falschen Stelle
+
+„Das Show-Card auf Profil sieht nicht gut aus, sehr hässlich." Dahinter steckten drei Dinge, und
+das erste ist ein echter Struktur-Fehler, kein Geschmack.
+
+**1. Die Trennlinie verlief zwischen einer Show und IHREN EIGENEN Artikeln.**
+
+`showRow` trug den `borderBottom`, und `LineupPreview` wird **danach** gerendert. Die Linie lag also
+zwischen der Zeile „Kjjj · Angekündigt · heute 22:00" und den Kacheln, die genau zu dieser Show
+gehören — optisch gehörten sie damit zur **nächsten**. Deshalb zerfiel der Abschnitt: Man sah keine
+Show mit Inhalt, sondern eine Zeile, dann zusammenhanglose Bilder, dann wieder eine Zeile.
+
+Behoben: Die Linie sitzt jetzt an einem umschließenden `showBlock`, also zwischen zwei Shows.
+
+> **Die Regel: Eine Trennlinie am Element trennt nicht, was man meint, sobald das Element Kinder
+> unter sich rendert.** Sie gehört an den Block, nicht an die Zeile.
+
+**2. Die goldene Scheibe.** Eine angekündigte Show bekam ein voll gesättigtes Gold-Rund von 38
+Punkten (`showIconSoon: { backgroundColor: ui.gold }`) — auf dem Profil das Lauteste nach dem
+Bürgen-Knopf, und der steht **direkt darüber**. Zwei Goldflächen übereinander, von denen nur eine
+etwas bedeutet.
+
+Berkats eigenes Farbgesetz sagt: **Gold trägt den Kauf.** Ein Kalendereintrag ist kein Kauf. Der
+Unterschied „angekündigt / gelaufen" steht ohnehin im Text und im Symbol; die Betonung übernimmt
+jetzt der Symbolton — kräftig für das, was kommt, gedämpft für das, was war.
+
+**3. Die Kacheln schwebten.** Überschrift und Bilder standen am linken Seitenrand, während die
+Zeile darüber erst hinter Symbol und Abstand beginnt. Bei zwei Artikeln blieb die rechte
+Bildschirmhälfte leer und der Block wirkte unfertig. Jetzt auf 50 Punkte eingerückt — genau die
+Textkante der Zeile darüber (38 Symbol + 12 Abstand).
+
+⚠️ **Was das NICHT behebt:** Die Vorschaubilder selbst. Auf dem Gerät waren es eine graue Wand und
+ein Bildschirmfoto der eigenen App — Testware aus dem Vorbereiten-Formular. Kein Layout rettet ein
+Foto, das nichts zeigt. Wie der Abschnitt mit echten Artikelbildern aussieht, ist damit weiterhin
+ungeprüft und gehört in Gruppe A der Prüfliste.
+
+### ⚠️ Fund 6: „Demnächst" auf der Startseite — ein Streifen mit einer Karte
+
+Dieselbe Klasse wie Fund 5, nur eine Ebene höher: Nicht die Karte war hässlich, sondern **die
+Aufstellung**.
+
+Bei einem einzigen angekündigten Termin stand eine 168 Punkte schmale Hochkant-Karte in einem
+waagerechten Roller — und daneben blieb der halbe Bildschirm leer. Der Eindruck, den das erzeugt,
+ist präzise: **Eine Liste mit einem Element sieht nicht nach „das ist alles" aus, sondern nach
+„hier fehlt etwas".** Dazu die Mindesthöhe von 36 Punkten am Titel (sie hält im Roller alle Karten
+gleich hoch) — bei einem einzeiligen Titel wie „Kjjj" sind das 19 leere Punkte mitten in der Karte,
+die aussehen wie ein Layout-Fehler.
+
+**Nicht behoben durch Breitermachen.** Eine 168er-Karte auf volle Breite zu ziehen ergäbe einen Turm
+über den ganzen Bildschirm — Bild, Titel, Zeit, Kacheln, Pille untereinander. Der Ausweg ist,
+sie zu **drehen**: Bild links (84 Punkte, weiterhin 4:5, damit dieselben Cover in beiden Fassungen
+gleich aussehen), Text rechts. Gleiche Angaben, gleiche Reihenfolge, quer statt hoch. Und ohne die
+Mindesthöhe, weil es bei einer Karte nichts anzugleichen gibt.
+
+**Ab zwei Terminen bleibt der Roller.** Dort ist das Anschneiden der zweiten Karte am rechten Rand
+die Auskunft „da kommt noch mehr" — genau das, was bei einer Karte fehlt und nicht herstellbar ist.
+
+> **Die Regel: Eine Aufstellung für viele ist bei einem Element keine Aufstellung.** Roller,
+> Raster und Karussell setzen alle voraus, dass es etwas zu rollen gibt. Wer sie baut, baut den
+> Ein-Element-Fall mit — sonst sieht der häufigste Zustand einer jungen App am schlechtesten aus.
+
+Das trifft bei Berkat noch mehr Stellen als diese: Der Streifen zeigt bis zu zwölf Termine, das
+Regal-Raster bis zu sechzig Angebote. Beide sind für Fülle entworfen, und beide werden in Phase 0
+fast immer ein oder zwei Einträge zeigen.
+
+**Nachbesserung am selben Abend:** Die quere Karte hatte das Bild noch eingerückt — rundherum blieb
+ein Streifen Papier. Gefordert war „das Bild muss die Karte von oben bis unten füllen", und dafür
+mussten drei Dinge zusammenkommen:
+
+| | |
+|---|---|
+| Kein `padding` auf der Karte | sonst bleibt der Streifen stehen; der Innenabstand wandert in die Textspalte |
+| `overflow: 'hidden'` auf der Karte | damit das Bild die runde Ecke links **mitnimmt** statt darüber hinauszustehen |
+| `alignSelf: 'stretch'` statt `aspectRatio` | der eigentliche Trick — siehe unten |
+
+⚠️ **Warum `aspectRatio` hier falsch ist.** Es schreibt die Höhe VOR. In einer Zeile ist die
+richtige Höhe aber die der Zeile, und die bestimmt die Textspalte daneben — je nachdem, ob ein
+Titel umbricht, ob Artikel vorbereitet sind, ob die Wochen-Pille steht. Mit festem Verhältnis
+bliebe oben oder unten wieder ein Rest. `alignSelf: 'stretch'` nimmt stattdessen genau die Höhe an,
+die da ist. Das Bild ist damit **immer** so hoch wie die Karte.
+
+Dazu ein `minHeight` von 116: Ein Termin ohne vorbereitete Artikel und ohne Wochen-Pille hat nur
+Kopfzeile, Titel und Zeit — ein 112 Punkte breites Bild in einer 90 Punkte hohen Karte sähe aus wie
+ein liegendes Rechteck, nicht wie ein Cover. Und keine eigene Rundung am Bild: Die Karte beschneidet
+schon, zwei Rundungen übereinander geben eine sichtbare Doppelkante.
+
+---
+
+## 63. „Wohin damit?" — der Termin gehört ins Anlege-Formular (21.08.2026, spät)
+
+Punkt 1 und 2 aus der **zehnten Whatnot-Analyse** (`WHATNOT-ANALYSE.md`), und beide schließen ein
+Loch, das Abschnitt 62 am selben Tag offen gelassen hat.
+
+### Punkt 1: „Reserve for Live"
+
+Whatnot fragt beim Anlegen eines Artikels mit einem Schalter und einer Auswahl, ob er nur in einer
+Sendung kaufbar sein soll und **in welcher** — in derselben Maske wie Preis und Bild.
+
+Berkat konnte dieselbe Sache seit Abschnitt 62, aber **nur nachträglich**: einstellen, Verkaufen-
+Reiter öffnen, Termin antippen, „Aus dem Regal holen". Vier Handgriffe für etwas, das der Verkäufer
+schon wusste, als er es eintippte.
+
+> **Eine Zuordnung, die der Mensch beim Anlegen im Kopf hat, gehört ins Anlege-Formular.** Ein
+> nachträglicher Weg ist die Reparatur, kein Ersatz.
+
+Das Regal-Formular trägt jetzt eine Chip-Zeile **„Wohin damit?"**: `Ins Regal` (Vorgabe) oder einer
+der eigenen Termine. Der erklärende Satz darunter wechselt mit der Wahl — „rund um die Uhr kaufbar"
+gegen „wird an dem Abend versteigert, Start bei 1 €, dein Preis wird der Sofortkauf".
+
+**Entscheidungen:**
+
+- **Die Wahl erscheint nur, wenn es Termine GIBT** — und nur beim Anlegen. Wer keinen Termin hat,
+  soll hier nicht lesen, dass ihm einer fehlt; das wäre eine Aufforderung an der falschen Stelle.
+- **Vorgabe ist das Regal.** Ein Artikel, den niemand einem Abend zuordnet, soll rund um die Uhr
+  kaufbar sein — das ist der Normalfall und der einzige, der ohne Zutun Geld bringt.
+- **⚠️ Der Termin wird nach dem Abschicken NICHT zurückgesetzt**, alles andere schon. Wer für
+  Samstag zwanzig Artikel einstellt, wählt ihn sonst zwanzigmal. Der Artikel ist je Zeile
+  verschieden, der Abend ist es nicht.
+- **⚠️ Zwei RPC-Rufe statt eines erweiterten.** `create_standing_listing`, dann
+  `move_listing_to_show`. Ein zwölfter Parameter wäre eine Signatur-Änderung an einer Funktion, die
+  **seit dem 21.08. in TestFlight gerufen wird** — und zwei Überladungen machen PostgREST
+  mehrdeutig (HTTP 300, Abschnitt 13). Scheitert der zweite Ruf, liegt der Artikel im Regal statt am
+  Termin, und der Verkäufer erfährt es. Der harmlose Ausgang.
+
+⚠️ **Nebenbefund, und er hätte teuer werden können:** Im Kopf von `useStanding.create` stand „das ist
+gefahrlos, weil Berkat in keinem Store liegt". Seit dem 21.08. stimmt das nicht mehr. Wer diese RPC
+noch einmal per DROP + CREATE ersetzt, macht jede ausgelieferte Fassung ohne passenden OTA blind.
+Der Kommentar ist richtiggestellt — es ist derselbe Drift wie im Kopf dieses Dokuments, nur im Code.
+
+### Punkt 2: Bild und Kategorie sind Pflicht — beim Anlegen
+
+Der Feldvergleich in der zehnten Analyse zeigt: Berkats Formular ist **reicher** als Whatnots
+(Zustand, PLZ/Ort, Anbietertyp — alles deutsches Recht). Aber zwei von Whatnots Pflichtfeldern
+fehlten, und beide beheben ein sichtbares Loch:
+
+| | ohne | Folge |
+|---|---|---|
+| Bild | leere Kachel im Regal-Raster | Die Karte ist fast nur Bildfläche. Es gibt nichts anderes zu zeigen |
+| Kategorie | über die Kategorie-Leiste **unauffindbar** | Der Artikel existiert, aber niemand stolpert über ihn |
+
+⚠️ **Nur im `create`-Modus, nicht beim Bearbeiten.** Im Bestand liegen Angebote ohne beides
+(Testware und alles vor heute). Sie zu blockieren hieße, dass ein Verkäufer seine eigene
+Beschreibung nicht mehr korrigieren kann, bis er ein Foto nachreicht. **Eine neue Regel darf
+bestehende Arbeit nicht einsperren.**
+
+⚠️ **Und bewusst nur im Client.** `create_standing_listing` nimmt weiterhin beides ohne Wert an —
+eine ältere App-Fassung kann also weiter ohne Bild einstellen. Das ist hinnehmbar: Geld und Rechte
+entscheidet der Server, Vollständigkeit die Oberfläche. Wer daraus eine Server-Prüfung macht, ändert
+die Signatur nicht, sondern nur den Rumpf — aber dann scheitern alte Clients mit einem Fehler statt
+mit einem grauen Knopf, und das ist die schlechtere Auskunft.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration — die Serverseite steht
+seit `20260821160000`.
+
+⚠️ **Am Gerät ungeprüft.** Neu in der Prüfliste als **B6**: Termin anlegen, dann im Regal-Formular
+„Wohin damit?" auf den Termin stellen und einstellen — der Artikel darf danach **nicht** im Regal
+stehen, sondern muss am Termin als „bereit" auftauchen. Gegenprobe: derselbe Weg mit „Ins Regal".
+Und: Ohne Foto oder ohne Kategorie muss der Knopf grau bleiben, beim **Bearbeiten** aber nicht.
+
+**Nachtrag 21.08.2026, mit zwei Terminen im Bestand:** Sobald der Roller wieder greift (ab zwei
+Karten), war das Loch zurück — nur diesmal in beiden Karten. Ursache war die Mindesthöhe von 36
+Punkten am Titel: Sie sollte die Zeitzeilen über alle Karten auf eine Höhe ziehen, auch wenn ein
+Titel eine Zeile hat und der nächste zwei. Berkats Titel sind aber fast immer einzeilig — die Regel
+machte den seltenen Fall ordentlich und den häufigen kaputt.
+
+**Die Ausrichtung wird jetzt von UNTEN hergestellt statt von oben:** `marginTop: 'auto'` an der
+Zeitzeile schiebt Zeit, Vorschaubilder und Wochen-Pille an den unteren Kartenrand. Weil die Karten
+im waagerechten Roller ohnehin auf gleiche Höhe gestreckt werden, stehen die Zeiten damit exakt
+nebeneinander — dasselbe Ziel wie vorher, aber ohne Loch. Der Freiraum sammelt sich zwischen Titel
+und Zeit, und dort gliedert er die Karte, statt sie zu zerreißen.
+
+> **Die Regel: Wer Elemente über mehrere Karten hinweg ausrichten will, richtet sie am gemeinsamen
+> Rand aus — nicht über eine Mindesthöhe beim Element davor.** Eine Mindesthöhe verteilt den
+> Überschuss dorthin, wo er auffällt.
+
+⚠️ Die quere Ein-Karten-Fassung bekam dafür eine **eigene** Zeitzeile (`wideWhen`): Dort ist die
+Textspalte mittig ausgerichtet, und ein automatischer Rand würde ihren Inhalt auseinanderziehen,
+sobald das Bild die Karte höher macht als der Text. Zwei Aufstellungen, zwei Regeln — hier ist das
+kein Duplikat, sondern der Unterschied selbst.
+
+Nebenbei berichtigt: Der Kommentar am Bild behauptete „derselbe **quadratische** Zuschnitt". Das war
+seit dem 18.08.2026 falsch, als alle Stöber-Karten von 1:1 auf 4:5 umgestellt wurden. Der Code war
+richtig, nur der Satz daneben nicht.
+
+---
+
+## 64. Der Posteingang war nicht sortierbar (21.08.2026, nachts)
+
+Aus dem Gestaltungs-Nachtrag der **elften Whatnot-Analyse**. Jede Zeile in `app/messages/index.tsx`
+trug genau zweierlei:
+
+```
+  [Avatar 46]  username
+               vor 3 Std
+```
+
+**Kein Wort davon, worum es geht.** Wer wissen wollte, was jemand geschrieben hat, musste die
+Unterhaltung öffnen — jede einzelne. Bei drei fällt das nicht auf, bei dreißig ist die Liste
+wertlos. Und die zweite Zeile war ohnehin schon da; sie trug nur die Uhrzeit statt des Textes.
+
+Dazu: **Die Glocke sagte „3 neue", die Liste sagte nicht, welche.** Ein Zähler ohne Ziel.
+
+### Was jetzt dasteht
+
+```
+  [Avatar 46]  username · vor 3 Std
+               Du: Ist das noch da?              ●
+```
+
+Name und Zeit teilen sich die erste Zeile, die zweite gehört dem Text. Ungelesenes wird **fett**,
+nicht bunt — die Zeile selbst ist die Auskunft, der Punkt rechts nur die Marke am Rand. „Du: " davor,
+wenn die letzte Nachricht von einem selbst war; sonst weiß man nicht, ob man am Zug ist.
+
+Der Punkt ist **grün, nicht rot**: Rot ist in Berkat die laufende Uhr, und eine ungelesene Nachricht
+ist keine Frist.
+
+### ⚠️ Zwei eigene Abfragen — und beide dürfen scheitern
+
+Der naheliegende Weg wäre ein Einbau gewesen: `conversations` mit `messages(…)` in **einer** Abfrage.
+Genau das wäre die Falle aus Abschnitt 3: Löst PostgREST eine Beziehung nicht auf, antwortet es mit
+`PGRST200` — und dann wäre nicht die Vorschau weg, sondern **die ganze Liste**.
+
+> **Eine Verzierung darf den Inhalt nicht mit ins Grab nehmen.** Was eine Liste schöner macht,
+> gehört in eine eigene Abfrage mit eigenem `try/catch`.
+
+Also: Grundliste zuerst und unabhängig, danach zwei Nachschläge, jeder in `try/catch`. Fällt einer
+aus, fehlt genau das eine.
+
+- **Vorschau:** `limit(1, { referencedTable: 'messages' })` — PostgREST liefert damit die *neueste
+  Nachricht je Unterhaltung* in einem Rundgang. Ohne dieses „top N je Elternteil" müsste man raten,
+  wie viele Zeilen reichen, und **eine einzige geschwätzige Unterhaltung fräße das Kontingent auf**
+  — ausgerechnet der Posteingang mit dem meisten Betrieb hätte dann die wenigsten Vorschauen.
+- **Ungelesen:** eine eigene Abfrage nur auf ungelesene Zeilen. Billig, weil sie fast immer leer ist.
+  Bewusst **nicht** aus der Vorschau abgeleitet: Die neueste Nachricht kann gelesen sein, während
+  eine ältere es nicht ist.
+
+### Eine zweite Wahrheit, die mitgepflegt werden muss
+
+`useMarkMessagesRead` setzte bisher zwei Zwischenspeicher zurück (Glocke, Verlauf). Seit der
+Posteingang je Zeile einen Punkt trägt, steht dieselbe Wahrheit an **drei** Orten — der dritte ist
+jetzt dabei. Der Fokus-Effekt im Posteingang holt es zwar ohnehin nach, aber sich darauf zu
+verlassen hieße, den Fehler beim nächsten Umbau zu erben (die Regel aus Abschnitt 18: Wer etwas an
+zwei Orten anzeigt, muss an beiden zurücksetzen).
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration — `messages` trägt den
+Text längst.
+
+⚠️ **Am Gerät ungeprüft**, und die Vorschau braucht mindestens eine Unterhaltung mit Inhalt. Neu in
+der Prüfliste als **A11**: Posteingang öffnen — jede Zeile muss den letzten Satz zeigen, bei eigenen
+Nachrichten mit „Du: " davor. Vom zweiten Konto schreiben lassen: Punkt und Fettschrift müssen
+erscheinen und nach dem Öffnen verschwinden.
+
+### Nachtrag: die Warnzeile — Punkt 1 derselben Analyse
+
+Beim Nachfragen aufgefallen: Gebaut waren die zwei **Gestaltungs**-Lücken (Vorschau,
+Ungelesen-Punkt), nicht der Punkt, den die Analyse selbst an die erste Stelle gesetzt hatte.
+Nachgeholt.
+
+Über der Nachrichtenliste steht jetzt dauerhaft:
+
+> 🛡 **Berkat schreibt dir nie hier.** Wer nach deinem Passwort fragt, dich außerhalb der App
+> bezahlen lassen will oder sagt, dein Konto müsse bestätigt werden, ist nicht von uns — auch wenn
+> der Name so aussieht.
+
+**Warum das kein Kleinkram ist.** Der häufigste Marktplatz-Betrug ist, sich als Plattform auszugeben
+und zu einer Zahlung oder Anmeldung außerhalb zu drängen. **Berkat ist dafür anfälliger als Whatnot,
+nicht weniger:** Der ganze Bau steht auf „Vertrauen ist personal" — Bürgen, Teip, enge Gemeinschaft.
+Genau diese Nähe macht die Masche wirksam. „Hier ist Berkat, dein Konto muss bestätigt werden" wirkt
+dort, wo man den Betreiber persönlich kennt, **glaubwürdiger** als bei einem anonymen Konzern.
+
+Und der Schaden wäre nicht eine Transaktion, sondern das Einzige, was Berkat gegen TikTok und
+Whatnot in der Hand hat.
+
+**Drei Entscheidungen:**
+
+- **Der Satz nennt die drei konkreten Bitten** — Passwort, Zahlung außerhalb, Konto bestätigen —
+  statt allgemein „sei vorsichtig" zu sagen. **Eine Warnung, die den Angriff nicht beschreibt,
+  erkennt man nicht wieder, wenn er kommt.**
+- **Randlos und ohne Rundung.** Eine gerundete Karte liest sich als Inhalt, ein randloses Band als
+  Eigenschaft des Bildschirms. Der Hinweis gehört zum Raum, nicht zur Liste.
+- **Gedämpft, nicht rot.** Er steht dauerhaft da, und ein Dauer-Alarm stumpft ab (Design-Gesetz 3) —
+  dieselbe Überlegung wie bei der Lösch-Zeile im Konto (Abschnitt 59). Getragen wird er von der
+  Fettung im ersten Halbsatz.
+
+⚠️ **Was damit NICHT gelöst ist:** Berkat hat weiterhin keinen Begriff von „offiziell" — kein
+verifiziertes Konto, kein Häkchen, keine andere Avatar-Form für Systemabsender (bei Whatnot sind es
+runde Quadrate, Menschen sind Kreise). Solange es kein offizielles Konto gibt, ist der Satz
+vollständig richtig: Berkat schreibt **nie** hier. Wer je eines anlegt, muss dieselbe Zeile
+umschreiben **und** das Häkchen mitbauen — sonst wird aus der Warnung die Vorlage für den Betrug.
+
+Ebenfalls offen aus derselben Analyse und weiterhin auf eine **Entscheidung** wartend, nicht auf
+Code: die Käuferschutz-Zusage (F2). Daran hängen der Streit als Objekt, der Käufer-Kontext und die
+Antwortquote — alle drei brauchen ohnehin echte Bestellungen.
+
+---
+
+## 65. Der Käufer kann jetzt zeigen, was kaputt ist (21.08.2026, nachts)
+
+Drei Punkte aus dem zweiten Durchgang der **elften Whatnot-Analyse**. Der erste ist der wichtigste
+und war fast schon gebaut, ohne dass es jemand wusste.
+
+### ⚠️ `messages.image_url` gab es die ganze Zeit
+
+Whatnots Streit-Ablauf ruht auf **einem Foto des Käufers** — „es kam kaputt an" plus Beleg. Berkats
+Nachrichten waren reiner Text, dachte ich. Am Schema-Abzug nachgesehen:
+
+```sql
+CREATE TABLE "public"."messages" ( … "content" text NOT NULL, "image_url" text, … )
+```
+
+Und in `lib/useDirectMessages.ts`:
+
+```ts
+.select('id, conversation_id, sender_id, content, image_url, created_at, read')
+export type DirectMessage = { … image_url: string | null; … }
+```
+
+**Spalte da, Abfrage holt sie, Typ trägt sie — und kein Bildschirm zeigt sie an.** Senden ging auch
+nicht.
+
+Das ist die Fehlerklasse aus Abschnitt 3 („Ein Feld, das geschrieben und nie gelesen wird"), nur
+spiegelverkehrt: Die Kette ist an **jedem** Glied vollständig außer am letzten. Die Probe von damals
+gilt unverändert — *zeig mir den Bildschirm, auf dem dieser Wert steht.* Es gab ihn nicht.
+
+⚠️ **`messages` gehört Serlo mit**, also vor dem Bau geprüft statt angenommen. Beide Serlo-Clients
+schreiben dieselbe Form, und der Kommentar in `apps/web/app/actions/messages.ts:134` sagt sogar
+warum:
+
+```ts
+// messages.content ist NOT NULL in der DB. Leerer String statt null
+// wenn nur postId/imageUrl/storyMediaUrl mitkommt (kein Text).
+content: content.length > 0 ? content : '',
+image_url: input.imageUrl ?? null,
+```
+
+Berkat schreibt jetzt **genau diese Form**. Eine eigene Konvention hätte in Serlos ausgelieferter App
+eine leere Blase erzeugt — ein Fehler, den wir verursachen und dort nicht beheben können.
+
+**Der Umzug ins Bild ist damit kein Versprechen.** Das ist der Grund, warum dieser Teil **vor** der
+Käuferschutz-Entscheidung (F2) gebaut werden darf: Ein Foto ist ein Beleg, keine Zusage.
+
+Umgesetzt: Knopf links vom Eingabefeld, Zuschnitt `square` (die Blase zeichnet quadratisch, und
+iOS' Rahmen IST quadratisch — hier ist die Form die richtige, nicht der Kompromiss; nebenbei
+verkleinert der Zuschnitt die Datei und umgeht die 8-MB-Grenze). Getippter Text geht **mit**, sonst
+tippt der Nutzer denselben Satz zweimal. Im Posteingang erscheint ein Bild ohne Text als **„📷 Foto"**
+— ohne diesen Zweig stünde dort eine leere Zeile, die schlimmste Vorschau von allen.
+
+### Tagestrenner im Verlauf
+
+Jede Blase trug ihre Uhrzeit, keine den Tag. In einer Unterhaltung über Wochen steht dann „14:20" —
+und niemand weiß, ob das heute oder im Juli war.
+
+⚠️ **`sameDay()` vergleicht den KALENDERTAG, nicht den Abstand in Stunden.** „Weniger als 24 Stunden
+her" ist nicht dasselbe wie „heute": Um 01:00 wäre eine Nachricht von gestern 23:00 nach dieser
+Rechnung „heute", der Trenner fiele aus — genau dort, wo er gebraucht wird. Das Jahr steht nur dabei,
+wenn es ein anderes ist.
+
+### „Ungelesen"-Filter
+
+⚠️ **Erscheint nur, wenn es etwas zu filtern gibt**, und fällt von selbst weg, sobald alles gelesen
+ist. Whatnot zeigt die Pille dauerhaft (dort gibt es immer Ungelesenes); bei Berkats Menge wäre das
+die falsche Übernahme — eine Pille, die in neun von zehn Fällen eine leere Liste erzeugt, lässt den
+Posteingang kaputt aussehen. Der Leerzustand ist ein eigener („Alles gelesen 🎉"), weil „du hast noch
+nie geschrieben" hier schlicht falsch wäre.
+
+### Ein Kommentar, der eine Funktion verhindert hat
+
+Im Kopf von `app/messages/index.tsx` stand seit jeher:
+
+> „Vorschautexte gibt es nicht — dafür müsste jede Zeile eine eigene Abfrage machen, und ein
+> Posteingang mit fünfzig Abfragen ist kein Posteingang."
+
+**Die Sorge war berechtigt, die Schlussfolgerung falsch.** Es braucht keine fünfzig Abfragen:
+PostgREST kann „die neueste Zeile je Elternteil" in einem Rundgang. Der Satz hat ein Merkmal
+gestrichen und die Begründung gleich mitgeliefert — und niemand hat sie je nachgeprüft.
+
+> **Eine technische Annahme, die ein Merkmal streicht, gehört geprüft, bevor sie zur Begründung
+> wird.** Sonst wird aus „ich glaube, das geht nicht" ein Kommentar, und aus dem Kommentar ein
+> Gesetz.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration.
+
+⚠️ **Am Gerät ungeprüft.** Neu als **A12**: Foto im Verlauf senden — es muss in der Blase erscheinen,
+im Posteingang als „📷 Foto" stehen, und der getippte Satz muss mitgehen statt liegen zu bleiben.
+Dazu der Tagestrenner (eine Nachricht von gestern muss „Gestern" tragen) und der Filter.
+
+⚠️ **Und eine Gegenprobe in SERLO**, die nur dort möglich ist: Ein aus Berkat gesendetes Foto muss in
+Serlos App und Web als Bild erscheinen, nicht als leere Blase. Die Form ist abgeschrieben, aber
+abgeschrieben ist nicht belegt.
+
+---
+
+## 66. Der Nachrichten-Bereich, komplett durchgelesen (21.08.2026, nachts)
+
+Nach dem Umbau aus Abschnitt 64/65 einmal alles gelesen — beide Bildschirme und der Hook, 1125
+Zeilen. Drei Funde behoben, vier notiert.
+
+### ⚠️ Fund 1: Der Verlauf lud die ÄLTESTEN 200 Nachrichten
+
+```ts
+.order('created_at', { ascending: true }).limit(200)
+```
+
+Aufsteigend sortieren und dann kappen nimmt die **ersten** 200. Ab der 201. Nachricht hätte man für
+immer den Anfang der Unterhaltung gesehen und nie das Aktuelle — die Antwort von gerade eben
+unsichtbar, **ohne Fehler, ohne Lücke, ohne Hinweis**.
+
+Zugeschlagen hätte es zuerst in der aktivsten Unterhaltung, also der wichtigsten. Behoben:
+absteigend holen, im Client umdrehen (`reverse()` auf höchstens 200 Einträgen kostet nichts).
+
+> Ein `limit` ohne passende Sortierrichtung ist keine Begrenzung, sondern eine **Auswahl** — und
+> zwar meistens die falsche.
+
+### ⚠️ Fund 2: Das bloße Öffnen eines Chats legte eine Unterhaltung an — auch beim anderen
+
+`useConversationWith` schrieb beim Öffnen des Bildschirms eine Zeile in `conversations`. Die
+Begründung im Kommentar war ehrlich gemeint: „Ein leerer Verlauf mit sichtbarer Anrede ist ehrlicher
+als ein Feld, das erst beim Absenden entscheidet, wohin es schreibt."
+
+**Sie stimmt für den eigenen Bildschirm und übersieht die andere Seite.** `conversations` ist mit
+Serlo geteilt: Wer nur nachsah, wer da eigentlich schreibt, erzeugte im Posteingang des anderen eine
+Unterhaltung — in Berkat **und in Serlo**, von jemandem, der ihn nie angeschrieben hat.
+
+Sichtbar wurde es erst durch die Vorschau aus Abschnitt 64: Die Zeile stand da, mit Namen und leerer
+zweiter Zeile. Vorher sah sie aus wie jede andere.
+
+> **Eine Nebenwirkung auf einer geteilten Tabelle ist nie nur die eigene.**
+
+Behoben: `useConversationWith` schlägt nur noch nach. Angelegt wird beim **ersten Absenden**
+(`ensureConversation` in `useSendMessage`). Der leere Verlauf funktioniert unverändert — er hat nur
+noch keine ID.
+
+⚠️ Zwei Dinge hängen daran und sind mitgebaut: Der Insert **fängt den Eindeutigkeits-Konflikt ab**
+und schlägt dann nach (zwei Geräte oder beide Seiten können gleichzeitig senden — das ist kein
+Fehler, sondern die Auskunft „gibt es schon"). Und beim ersten Absenden wird zusätzlich die
+Konversations-Abfrage zurückgesetzt, sonst bliebe der Verlauf ohne Realtime-Abo und die eigene
+Nachricht erschiene gar nicht.
+
+### Fund 3: Die Warnzeile hatte keinen Ausgang
+
+Seit Abschnitt 64 steht über dem Posteingang „Berkat schreibt dir nie hier". Wer den Betrugsversuch
+daraufhin erkannte, hatte in der Unterhaltung **keinen einzigen Knopf** — Melden und Sperren lagen
+zwei Tipps weiter auf dem Verkäufer-Profil.
+
+> **Eine Warnung ohne Handlung ist eine Belehrung.** Der Ort, an dem man den Angriff sieht, muss der
+> Ort sein, an dem man ihn beenden kann.
+
+Das „…"-Menü aus dem Verkäufer-Profil steht jetzt auch in der Kopfzeile des Verlaufs — gleiche
+Reihenfolge, gleiche Gründe, gleiche Sätze. Kein drittes Muster für dieselbe Handlung.
+
+### Notiert, nicht gebaut
+
+| | Was | Warum später |
+|---|---|---|
+| **Posteingang ohne Realtime** | Der Verlauf hat ein Abo, die Glocke lädt jede Minute nach, die Liste dazwischen tut nichts. Die Glocke sagt „1 neu", die Liste zeigt nichts | Der Fokus-Effekt fängt es beim Öffnen ab; es stört nur, wenn man die Liste offen liegen lässt |
+| **Foto nicht vergrößerbar** | 210 Punkte breit und beschnitten — bei einem Beleg ist das Ansehen der Zweck | Braucht einen Vollbild-Betrachter, den es sonst nirgends gibt |
+| **Kein optimistisches Senden** | Der Satz verschwindet aus dem Feld und erscheint erst nach der Serverantwort | Serlos Hook macht es; bei gutem Netz unsichtbar |
+| **Springt beim Lesen nach unten** | `onContentSizeChange` scrollt immer ans Ende, auch wenn man oben liest | Fällt erst bei langen Verläufen auf |
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration.
+
+⚠️ **Am Gerät ungeprüft**, und Fund 2 braucht **zwei Konten**: Chat des anderen öffnen, nichts
+schreiben, zurückgehen — beim anderen darf **keine** Unterhaltung auftauchen. Dann schreiben, und
+sie muss auf beiden Seiten stehen. Neu als **B7**.
+
+### Nachtrag: die vier notierten Punkte sind gebaut
+
+Alle vier aus der Tabelle oben, im selben Zug.
+
+**Der Posteingang hört mit — mit ZWEI gefilterten Abos.**
+
+Das ist keine Umständlichkeit, sondern die einzige Form, die die Kostenhygiene einhält:
+
+- Auf `messages` zu hören wäre **tabellenweit** — jedes offene Gerät bezahlte jede Nachricht der
+  ganzen Plattform (Abschnitt 4).
+- Auf `conversations` zu hören geht, aber **der Realtime-Filter kennt nur EINE Bedingung** — und ich
+  stehe mal in `participant_1`, mal in `participant_2`. Ein Abo je Spalte deckt beide Fälle ab, ohne
+  die Tabelle aufzumachen.
+
+Gehört wird **UPDATE**, nicht INSERT: `last_message_at` pflegt Serlos Trigger bei jeder neuen
+Nachricht; die Zeile selbst entsteht nur einmal.
+
+**Sofortiges Senden.** Der Platzhalter geht in den Zwischenspeicher, bevor die Anfrage rausgeht, und
+wird bei einem Fehler wieder zurückgenommen — sonst stünde eine Nachricht da, die es nicht gibt, und
+das ist die schlimmste Form von optimistisch. Aufräumen braucht es nicht: Das Nachladen ersetzt die
+Liste vollständig.
+
+**Foto vollflächig.** Ein Tipp öffnet es auf schwarzem Grund, ein Tipp schließt es. ⚠️ Das ist die
+einzige schwarze Fläche außerhalb des Live-Raums, und sie ist begründet: Ein Foto beurteilt man auf
+neutralem Grund, Berkats heller Sand färbt jeden Weißabgleich. Kein Schließen-Knopf — auf einem Foto
+wäre er der einzige Fremdkörper.
+
+**Kein Springen mehr beim Lesen.** `onContentSizeChange` feuert bei jeder neuen Nachricht und riss
+den Leser bisher mitten im Satz nach unten — durch eine Nachricht, die er noch gar nicht lesen
+wollte. Jetzt nur noch, wenn er ohnehin unten steht (80 Punkte Spielraum: Wer fast unten steht, meint
+unten). `atBottom` ist bewusst ein Ref und kein Zustand — es steuert nichts, was gezeichnet wird,
+und soll kein Neuzeichnen auslösen.
+
+Damit ist die Tabelle „notiert, nicht gebaut" leer. `tsc` und `expo export` fehlerfrei, keine
+Migration. **Am Gerät ungeprüft** — gehört zu **A12** und **B7**.
+
+---
+
+## 67. Ein Problem melden — und die Meldung wäre in Serlos Posteingang gelandet (21.08.2026, nachts)
+
+Aus der elften Whatnot-Analyse, und wieder derselbe Befund wie bei `messages.image_url`
+(Abschnitt 65): **Die Serverseite war längst da.**
+
+`order_disputes` liegt seit dem 28.06.2026 in der Datenbank — Tabelle, Lese-Policy, zwei RPCs,
+Benachrichtigungen an Gegenseite und Admins. Und sie hängt an **`product_orders`**, also an genau
+der Tabelle, in die Berkats Kasse schreibt. Berkats Bestellungen waren streitfähig, ohne dass es je
+jemand benutzt hat.
+
+Die Form deckt sich fast Feld für Feld mit Whatnots „Support Request": Grund aus fester Liste
+(`not_received`, `damaged`, `not_as_described`, `not_paid`, `fraud`, `other`), Freitext, Rolle,
+Zustand (`open`/`resolved`/`dismissed`), Auflösung.
+
+### ⚠️ Der Blocker, der beim Verkabeln herauskam
+
+`report_order_dispute` schreibt zwei Benachrichtigungen — **ohne die Spalte `app`**:
+
+```sql
+INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+```
+
+Die Spalte kam erst am 14.08.2026 dazu (`20260814280000`) und trägt `DEFAULT 'serlo'`. Berkats
+Liste liest ausschließlich `app = 'berkat'`. **Ein Verkäufer, dem jemand ein Problem meldet, hätte
+die Meldung in Berkat nie gesehen** — und in Serlo, wo sie landet, ergibt sie keinen Sinn.
+
+> **Jede geteilte Tabelle braucht die App-Spalte an ALLEN Schreibwegen, nicht nur an den neuen.**
+> `20260814280000` hat die damals bekannten umgestellt; diese RPC war zwei Monate älter und stand
+> auf keiner Liste. Wer die Spalte einführt, sucht danach **alle** Schreibpfade — auch die, die
+> niemand benutzt.
+
+Behoben mit `20260821170000`. Die App wird aus **`product_orders.cart_id`** abgeleitet: Er zeigt auf
+`auction_carts`, eine Tabelle, die es nur in Berkat gibt, und **beide** Berkat-Geldwege setzen ihn
+(`settle_live_auction` beim Zuschlag, `buy_now_live_auction` beim Sofortkauf). Das ist die exakte
+Grenze, keine Näherung. Serlo-Bestellungen bekommen `'serlo'` — also genau den heutigen Default,
+**Serlos Verhalten ändert sich nicht.**
+
+✅ **Eingespielt und am frischen Abzug gegengeprüft** (mit Rechten nach `/tmp`, sofort gelöscht):
+`v_app` und der `cart_id`-Zweig stehen im Live-Code, beide INSERTs tragen `app`, genau eine
+Signatur, `REVOKE … FROM PUBLIC` und `GRANT … TO authenticated`.
+
+### Was gebaut ist
+
+| Wo | Was |
+|---|---|
+| `lib/useDispute.ts` | **neu** — melden, eigener Fall, Fehlertexte |
+| `components/DisputeSheet.tsx` | **neu** — Grund wählen, Text dazu, abschicken |
+| `app/order/[id].tsx` | „Problem mit dieser Bestellung melden" plus Zustand des Falls |
+| `lib/useNotifications.ts`, `app/notifications.tsx` | Typ, Ziel, Symbol, Titel — Liste **und** Push |
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **⚠️ Der Weg verspricht einen VORGANG, kein Geld.** *„Der Verkäufer wird sofort benachrichtigt und
+  meldet sich bei dir. Deine gesetzlichen Rechte bleiben davon unberührt."* Das ist unter
+  Käuferschutz-**Fassung A** einlösbar (`STRATEGIE-VERKAEUFER-UND-GELD.md` Abschnitt 8), weil Zaur
+  der Verkäufer ist. Wer die Beschriftung je auf „Geld zurück" ändert, ändert eine **Rechtsfrage**
+  und nicht einen Text.
+- **Die Bedingung für den Knopf ist aus der RPC abgeschrieben**, nicht geraten: nur `paid`,
+  `shipped`, `delivered`. Ein Knopf, den der Server ablehnt, ist eine Einladung ins Leere
+  (Abschnitt 22).
+- **`not_paid` fehlt in der Käufer-Liste.** Das ist der Vorwurf des *Verkäufers*; ein Käufer, der
+  ihn in seiner Liste findet, versteht die Liste falsch. Der Server kennt ihn weiter.
+- **⚠️ Die RPC wirft nicht, sie ANTWORTET mit `{ error: … }`.** Wer nur auf `error` von supabase-js
+  prüft, hält jeden abgelehnten Fall für erfolgreich — und der Käufer glaubt, sein Problem sei
+  gemeldet. Der Hook prüft beides.
+- **Das Foto liegt NICHT im Blatt**, sondern in der Unterhaltung (Abschnitt 65). Ein Ort für Belege
+  statt zwei; der Satz im Blatt sagt es, damit niemand danach sucht.
+- **Rot in der Meldungsliste** — die einzige Verkäufer-Meldung in dieser Farbe. Nicht als Alarm,
+  sondern weil sie eine **Frist** auslöst: Wer meldet, wartet auf Antwort, und Rot ist in Berkat die
+  laufende Uhr. Gold wäre falsch, es gibt nichts zu feiern.
+- **`useMyDispute` filtert auf `reporter_id`**, obwohl die Policy beide Seiten durchlässt. Ohne den
+  Filter zeigte die Käuferseite den Fall, den der Verkäufer gegen sie eröffnet hat, als ihren
+  eigenen.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Migration eingespielt, OTA raus.
+
+⚠️ **Am Gerät ungeprüft, und es braucht eine echte bezahlte Bestellung.** Neu als **D8**: Vom
+Käufer-Konto ein Problem melden — beim Verkäufer muss die Meldung **in Berkat** ankommen (nicht in
+Serlo), rot, mit dem Titel „Problem mit einer Bestellung", und ein Tipp muss in die Bestellliste
+führen. Auf der Bestellseite des Käufers muss danach „Problem gemeldet" stehen.
+
+Die Gegenprobe dazu steht am Ende der Migration:
+
+```sql
+SELECT app, type FROM notifications WHERE type='order_dispute' ORDER BY created_at DESC LIMIT 2;
+-- erwartet: 'berkat'
+```
+
+---
+
+## 68. Der Whatnot-Tag — vier Analysen, elf Änderungen, drei Migrationen (22.08.2026)
+
+Ein Tag, der fast vollständig aus **Vergleich** bestand: Zaur schickte Bildschirmfotos aus Whatnots
+App, ich verglich sie gegen den eigenen Code, und gebaut wurde nur, was der Vergleich als Lücke
+auswies. Die Analysen 10 bis 13 stehen in `WHATNOT-ANALYSE.md`.
+
+⚠️ **Das Muster des Tages, und es wiederholte sich viermal:** Die Serverseite war schon da.
+`messages.image_url` (65), `order_disputes` samt zwei RPCs (67), die `tint`-Farben je Kategorie,
+und die Zustände in `live_auctions`. Jedes Mal war die Kette an jedem Glied vollständig außer am
+letzten. Die Probe bleibt dieselbe — **zeig mir den Bildschirm, auf dem dieser Wert steht.**
+
+### Der Streitfall, fertig gebaut
+
+Abschnitt 67 hatte nur die Melde-Hälfte. Whatnots Bilder zeigen die andere.
+
+| | |
+|---|---|
+| **Verkäufer-Seite** | Eigener Abschnitt „Beanstandet (N)" ganz oben in den Bestellungen, **vor** dem Packen — ein Streitfall ist keine Versandaufgabe |
+| **Käufer-Bezug** | „Bei dir 3× gekauft · 71,40 €" statt Whatnots plattformweiter Erstattungs-Historie |
+| **Belegfoto** | `20260821180000` — Spalte `image_url`, Foto beim Melden UND in der Fall-Karte, antippbar auf Vollbild |
+| **Der Fall im Chat** | als Karte **im Verlauf**, an ihrer Stelle in der Zeit |
+| **Antwort-Hinweis** | „Wie antworte ich darauf?", aufklappbar, kein Satz nennt einen Betrag |
+| **Schließen** | nur der Betreiber (`is_admin()`), und das bleibt so |
+
+⚠️ **Der Käufer-Bezug ist bewusst auf die Beziehung zu DIESEM Verkäufer beschränkt.** Whatnot zeigt
+„Lifetime Spend · Refunds · Cancellations" — das Verhalten auf der ganzen Plattform. In einer engen
+Gemeinschaft ist „hat dreimal reklamiert" kein Datenpunkt, sondern **Gerede**: Whatnots Käufer sind
+einander fremd, Berkats kennen sich womöglich.
+
+⚠️ **Zweimal falsch platziert, bevor es stimmte:** Die Fall-Karte hing erst fest über dem Verlauf,
+mit dem Argument, sie scrolle sonst weg. Zaur hielt dagegen — Whatnot setzt sie in den Strom. Das
+Argument fiel bei genauem Hinsehen weg: Wir **schreiben** keine Nachricht, wir schlagen den Fall
+nach; er ist im Strom genauso aktuell. Und dort hat er etwas, das der Kasten nicht hat — **einen
+Platz in der Zeit.** Man sieht, was vor und was nach der Meldung gesagt wurde.
+
+### Die Startseite, 114 Punkte kürzer
+
+**Kopfzeile und Suchfeld in einer Zeile** (46 Punkte). ⚠️ Der Preis: Das Wortzeichen „berkat" ist
+weg, das Ährenzeichen bleibt — beides plus Suchfeld plus zwei Knöpfe geht auf 393 Punkten nicht auf.
+Analyse 13 zeigt, wie Whatnot es löst: **Der Markenname lebt im Platzhalter** („Whatnot
+durchsuchen"). Bei uns steht dort „Show oder Verkäufer" — die Marke fehlt damit auf der Startseite
+ganz. Ein Wort würde sie zurückholen; **offen**.
+
+**Die Kategorie-Leiste, dreimal gebaut:**
+
+1. Ein **Schalter** mit Höhen-Animation. Drei Fehler auf einmal: Eine Höhe lässt sich nicht auf dem
+   UI-Thread animieren; die Leiste stand im Fluss über der Liste und verschob deren Inhalt mit; und
+   ein Schalter SPRINGT — wer nahe am oberen Rand wischt, kreuzt die Schwelle ständig.
+2. **Ersatzlos gestrichen.** Ehrlich, aber die stumpfe Lösung — Zaur fragte zu Recht nach.
+3. **Fortlaufend.** Sie hängt an der Scrollposition und folgt dem Finger; bewegt werden nur
+   `translateY` und `opacity` (UI-Thread); sie liegt ÜBER der Liste, die ein Polster trägt.
+
+> **Was beim Scrollen mitgeht, darf weder die Höhe eines Geschwisters ändern noch auf dem
+> JS-Thread laufen — und es soll folgen, nicht umschalten.**
+
+⚠️ Und ein vierter Fehler direkt danach: Die Leiste schob sich 68 Punkte nach oben und legte ihre
+Fläche über die Kopfzeile. Suchfeld und Knöpfe waren „weg" — sie lagen dahinter. **Wer etwas absolut
+positioniert und dann verschiebt, muss sagen, wo es aufhören soll.**
+
+### Die Karten
+
+- **„Alles in einem Paket"** steht jetzt in der Live-Vorschau, dort wo Whatnot „Vergünstigter
+  Versand" hat. Berkats Argument ist das stärkere — ohne den Sammelkorb wäre eine 5-€-Auktion
+  unmöglich — und es stand auf keiner Karte.
+- **Die Kategorie ist eine Tür**, kein grauer Text: ein Tipp filtert die Startseite. Außerhalb des
+  Karten-Knopfes, nicht darin (die „button-in-button"-Regel aus Abschnitt 25).
+- **Verkäufer und Anbietertyp in einer Zeile** („brandwerkx1 · Privatverkauf"). Eine Zeile weniger
+  von sechs. ⚠️ Der Name schrumpft, das Etikett nicht — sonst schnitte ein langer Benutzername
+  ausgerechnet die Rechtsangabe ab.
+- **„zzgl. Versand" am Preis** der Artikelseite. Der ausführliche Satz stand hinter dem Kaufknopf,
+  also zu spät.
+- **Merken-Zahl** auf der Marktplatz-Karte (`20260822120000`).
+
+⚠️ **Warum der Preis NICHT aufs Bild wanderte** (gefragt am 22.08.): Ein Preis, der sich **bewegt**,
+gehört aufs Bild — dort steht er auf den Live-Karten, neben der Uhr, als Teil des Ereignisses. Ein
+**fester** Preis gehört zu den Fakten und wird mit Größe, Zustand und Ort zusammen gelesen. Die
+Begründung steht jetzt im Code, damit ihn niemand versehentlich verschiebt.
+
+### Zwei Migrationen mit einer Lehre
+
+**`20260822120000` — Merken-Zahl.** Die Merkliste ist absichtlich privat (`user_id = auth.uid()`);
+eine gewöhnliche Zählabfrage hätte immer nur die **eigene** Merkung getroffen, ohne Fehler. Die
+Lösung ist eine Funktion, die nur das Aggregat herausgibt — wie `get_seller_rating`. Frauen-Only
+von Hand mitgeschrieben, **ganz**, mit `is_women_only_verified()`.
+
+⚠️ **Der Server hat mich beim ersten Anlauf abgewiesen:** Ich hatte die Spalte `listing_id` genannt,
+sie heißt `auction_id`. Der Grund steckt im Bau — Regal-Artikel und Show-Artikel sind DIESELBE
+Tabelle; im Client heißen sie `Listing`, in der Datenbank `auction`. **Beide Namen sind richtig, und
+genau deshalb verwechselt man sie.**
+
+**`20260822130000` — Push stummschalten.** Berkat schickte Push für acht Anlässe und hatte keinen
+einzigen Schalter; wem es zu viel wurde, dem blieb nur iOS — und dort gibt es alles oder nichts,
+also fällt der Zuschlag mit weg.
+
+Zwei Entscheidungen tragen den Bau:
+
+> **Die Meldung bleibt, nur der Push geht.** Unterschied zwischen „nicht stören" und „nicht
+> informieren" — nur der erste ist eine Einstellung.
+>
+> **Abschaltbar ist, was einlädt — nicht, was betrifft.** Zuschlag, Zahlungserinnerung, Versand,
+> neue Bestellung und Streitfall bleiben an. Dort hängt Geld oder eine Frist dran, und wer sie
+> stummschalten könnte, sperrte sich selbst aus einem laufenden Geschäft aus.
+
+⚠️ Die Grenze steht als **CHECK in der Datenbank**, nicht nur im Client: Ein späterer Bildschirm,
+der versehentlich `auction_won` anbietet, läuft dann in einen Fehler statt in einen stillen Schaden.
+Und der Trigger-Rumpf wurde **maschinell aus dem Live-Abzug** übernommen — bei genau dieser Funktion
+sind schon zweimal spätere Änderungen verlorengegangen.
+
+### Die Käuferschutz-Entscheidung ist gefallen: Fassung A
+
+Zaurs Frage war „ich weiß nicht, was das Sichere ist". Antwort und Begründung stehen ausführlich in
+`STRATEGIE-VERKAEUFER-UND-GELD.md`, Abschnitt 8. Kurz:
+
+**A ist das Sicherste**, weil ein Versprechen, das man nicht gibt, nicht gebrochen werden kann. Und
+**heute kostet die Entscheidung nichts**: Zaur ist der einzige Verkäufer, er ist gewerblich, also
+schuldet er ohnehin, was Fassung B verspräche. Die Lücke, die B schlösse — der Privatverkauf im
+Regal — hat heute niemanden darin.
+
+> **Der Auslöser, an dem B wieder auf den Tisch kommt:** sobald der erste Verkäufer außer Zaur
+> `checkout_enabled = true` bekommt.
+
+⚠️ Meine erste Empfehlung war B. Sie beantwortete „am besten", gefragt war „am sichersten".
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` nach jeder Änderung fehlerfrei. Drei Migrationen
+eingespielt und am frischen Abzug gegengeprüft (mit Rechten nach `/tmp`, sofort gelöscht).
+
+⚠️ **Am Gerät ist von diesem Tag fast nichts geprüft.** Bestätigt hat Zaur genau zwei Dinge: dass
+die Leiste jetzt „richtig gut" auf- und zugeht, und dass „Beanstandet (2)" in den Bestellungen
+steht. Alles andere sind Bildschirme, die niemand geöffnet hat.
+
+⚠️ **Ein offener Widerspruch:** Ein Tipp auf die Streit-Meldung in der Glocke führte bei Zaur ins
+Profil statt zu den Bestellungen. In der Datenbank ist alles richtig (`type = order_dispute`,
+`app = berkat`, per `psql` nachgesehen), und im Code steht der Fall vor dem Standard-Zweig. Das
+Profil IST der Standard-Zweig — es passt also nur zusammen, wenn das Gerät den Stand ohne diesen
+Fall hatte. **Ungeklärt.** Die Frage, die es entscheidet: Steht in der Glocke „Problem mit einer
+Bestellung" oder „Neu bei Berkat"? Symbol, Titel und Ziel kommen aus derselben Kennung.
+
+---
+
+## 69. Anschlusspunkt für den nächsten Chat (Stand 22.08.2026, Nachmittag)
+
+**Hier anfangen.** Löst Abschnitt 61 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) —
+die Prüfliste ist weiterhin der Motor, nicht die Feature-Liste.
+
+### Der Zustand
+
+| | |
+|---|---|
+| Migrationen | **60 Berkat-eigene, alle eingespielt** · im Tracking 283, keine Lücke |
+| `tsc` / `expo export` | fehlerfrei |
+| Git | ⚠️ **43 Dateien geändert und NICHT committet** — siehe unten |
+| TestFlight | `1.0.0 (1)` · Beta App Review, Gruppe „Verkäufer" hat **0 Tester** |
+| OTA | rund fünfzehn seit gestern Abend, zuletzt „Benachrichtigungen einstellen" |
+| Käuferschutz | **Fassung A entschieden** (Strategie, Abschnitt 8) |
+
+⚠️ **Der Arbeitsstand ist nicht committet.** 43 Dateien, drei Migrationen, zwei neue Analysen. Alles
+ist per OTA draußen und eingespielt — aber nichts davon steht in git. **Das ist das Erste, was zu
+tun ist**, bevor irgendjemand `git checkout` tippt.
+
+⚠️ **Ein nativer Eintrag steht weiter in der Warteschlange** (Abschnitt 12): `expo-image-manipulator`.
+Bis zum nächsten Build kann ein 48-MP-Foto die 8-MB-Grenze reißen — jetzt an mehr Stellen als
+gestern, weil Fotos inzwischen auch in Nachrichten und an Streitfällen hängen.
+
+### Das Erste, was zu tun ist
+
+1. **Committen und pushen.** 43 Dateien, siehe oben.
+2. **Die eine offene Frage klären:** Steht in der Glocke bei einer Streit-Meldung „Problem mit einer
+   Bestellung" (rot, Warndreieck) oder „Neu bei Berkat" (graue Glocke)? Das eine Wort entscheidet,
+   ob der Sprung ins Profil ein alter Stand war oder ein echter Fehler (Abschnitt 68, Ende).
+3. **Die Beta App Review abwarten — und danach Tester eintragen.** Unverändert seit gestern: Die
+   Gruppe hat 0 Tester, die Freigabe allein bringt die App zu niemandem.
+4. **Gruppe A der Prüfliste zu Ende** — A5, A7, A8, A9, A10 stehen noch aus, dazu die neuen
+   **A11** (Posteingang) und **A12** (Foto im Verlauf).
+
+### Was auf eine Entscheidung wartet, nicht auf Code
+
+⚠️ **Der Kaufknopf am Regal-Artikel** — unverändert. `checkout_enabled` ist die ZAG-Schranke; das
+SQL für die Testware liegt in `supabase/_ops/kassen-freigabe-testware.sql`.
+
+⚠️ **Der Gewinnspiel-Versand** — `draw_live_giveaway` setzt nur `winner_id`, erzeugt keine
+Bestellung.
+
+Beides hängt an derselben Frage wie gestern: **wie im Testlauf Geld fließt.** Die
+Käuferschutz-Frage ist damit NICHT gemeint — die ist entschieden.
+
+### Danach, nach Nutzen sortiert
+
+1. **Markenname in den Such-Platzhalter** („Berkat durchsuchen") — ein Wort, holt die Marke auf die
+   Startseite zurück, die das Wortzeichen heute verloren hat
+2. **Versand in Stufen** — Brief ab 1,19 €; `berkat_shipping_rates` hat `label` und `sort_index`
+   schon, es sind Zeilen, kein Umbau
+3. **Kein Bildschirm für die eigenen Versandsätze** — ein Verkäufer kann seine Pauschalen nirgends
+   ansehen. Trifft heute niemanden außer Zaur, ab dem zweiten Verkäufer sofort
+4. **Farbtönung je Kategorie-Pille** — die `tint`-Werte liegen ungenutzt in `theme/categoryArt.ts`
+5. **Vacation Mode** — ab etwa zwanzig Verkäufern; heute müsste man zwanzig Angebote einzeln
+   zurückziehen
+6. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren
+
+### Nicht neu diskutieren
+
+Keine Varianten (41) · kein Account Health / „Seller Status" (Analysen 6, 11, 13) · keine
+abgekürzten Zahlen, kein Dunkelmodus (40) · kein Kaufknopf im Raster (27) · **Chat-Kasten bleibt**
+(60) · **fester Preis bleibt unter dem Bild** (68) · **kein „Einstellungen"-Sammelbildschirm**,
+solange er zwei Zeilen hätte — er bekommt seinen ersten echten Bewohner mit Russisch · **kein
+Erstattungsweg**, solange Fassung A gilt.
+
+### Die Blocker
+
+1. **Kein Build bei Testern.** Läuft am 19.11.2026 ab.
+2. **Stripe:** Testbetrieb, Ratenzahlung aus.
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass.**
+
+### Was dieser Tag gelehrt hat
+
+Vier Analysen, elf Änderungen, drei Migrationen — und **kein einziger Verkäufer**. Der Satz von
+gestern gilt unverändert, nur schärfer: Die App ist an einem Tag deutlich besser geworden, und
+genau null davon bringt jemanden dazu, Samstagabend eine Stunde vor die Kamera zu treten.
+
+> Der teuerste Fund des Tages war viermal derselbe: **Die Serverseite war schon da.**
+> `messages.image_url`, `order_disputes`, die Kategorie-Farben, die Zustände in `live_auctions` —
+> jedes Mal fehlte nur der letzte Bildschirm. Wer in diesem Projekt etwas vermisst, sucht zuerst in
+> der Datenbank, ob es das nicht längst gibt.

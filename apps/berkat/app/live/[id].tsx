@@ -43,6 +43,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   TrendingUp,
+  type LucideIcon,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -94,6 +95,36 @@ import { EarningsSheet } from '../../components/EarningsSheet';
 import { useShowEarnings } from '../../lib/useShowEarnings';
 
 const FILL: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 };
+
+/* ⚠️ DER SCHATTEN ERSETZT DEN KREIS — er schmückt ihn nicht.
+   Bis zum 21.08.2026 saß jedes Symbol der rechten Leiste auf einer schwarzen
+   Scheibe (`rgba(0,0,0,0.35)`). Die war nicht Geschmack, sondern Lesbarkeit:
+   Ohne Fläche steht ein weißes Symbol auf dem nackten Video — und das Video
+   kontrolliert niemand. Hält der Verkäufer eine weiße Abaya vor eine weiße
+   Wand, ist die halbe Bedienung unsichtbar (Abschnitt 8: „lesbar auf dem einen
+   Bild, unsichtbar auf dem nächsten").
+
+   Whatnot löst dasselbe Problem ohne Scheibe: größeres Symbol, harter
+   Schlagschatten. Das ist genau der Mittelweg, der in Abschnitt 58 notiert und
+   damals nicht gebaut wurde — die Scheibe fällt weg, die Lesbarkeit bleibt.
+
+   Gezeichnet wird deshalb ZWEIMAL: eine schwarze Kopie einen Punkt tiefer,
+   darüber das eigentliche Symbol. Ein View-Schatten (`shadowColor`) wäre
+   kürzer, käme aber auf Android nicht an — dort verlangt `elevation` eine
+   Hintergrundfläche, und genau die soll weg. */
+const RAIL_ICON = 26;
+const RAIL_SHADOW = 'rgba(0,0,0,0.6)';
+
+function RailIcon({ icon: Icon, color, fill }: { icon: LucideIcon; color: string; fill?: string }) {
+  return (
+    <View style={styles.railIcon}>
+      <View style={styles.railIconShadow} pointerEvents="none">
+        <Icon size={RAIL_ICON} color={RAIL_SHADOW} fill={fill ? RAIL_SHADOW : 'none'} />
+      </View>
+      <Icon size={RAIL_ICON} color={color} fill={fill ?? 'none'} />
+    </View>
+  );
+}
 
 type StageModule = {
   useStageReady: () => boolean;
@@ -238,6 +269,29 @@ export default function LiveAuctionRoom() {
   const [sellerOpen, setSellerOpen] = useState(false);
   const [viewersOpen, setViewersOpen] = useState(false);
   const [earningsOpen, setEarningsOpen] = useState(false);
+
+  // ⚠️ NUR für den sicheren Rand unten, nicht für Layout-Sprünge.
+  // `KeyboardAvoidingView` mit `behavior="padding"` legt die VOLLE Höhe des
+  // Tastatur-Rahmens als Polster an — und dieser Rahmen reicht auf Geräten mit
+  // Home-Indikator bis an die Bildschirmkante. Der sichere Rand steckt also
+  // bereits darin. Wer ihn zusätzlich addiert, schiebt das Auktions-Blatt um
+  // weitere 34 pt hoch, und zwischen Eingabefeld und Tasten klafft eine Lücke,
+  // die nach einem Fehler aussieht (am Gerät gemeldet, 21.08.2026).
+  //
+  // `willShow` statt `didShow`: Das Polster soll sich MIT der Tastatur bewegen,
+  // nicht danach — sonst zuckt das Blatt am Ende der Animation noch einmal.
+  // Android kennt die Ereignisse nicht zuverlässig und bekommt ohnehin kein
+  // Polster (`behavior` ist dort `undefined`); dort bleibt der Rand immer.
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const show = Keyboard.addListener('keyboardWillShow', () => setKeyboardUp(true));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardUp(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   // Wer ist der Mensch da vorne? Die Zahlen holt das Sheet erst, wenn es
   // gebraucht wird — sonst zahlte jeder Zuschauer drei Abfragen für einen
@@ -920,15 +974,11 @@ export default function LiveAuctionRoom() {
               accessibilityRole="button"
               accessibilityLabel="Herz senden"
             >
-              <View style={styles.railButton}>
-                <Heart size={17} color={stage.live} fill={stage.live} />
-              </View>
+              <RailIcon icon={Heart} color={stage.live} fill={stage.live} />
               <Text style={styles.railLabel}>{formatCount(hearts.likes)}</Text>
             </Pressable>
             <Pressable style={styles.railItem} onPress={shareShow} accessibilityRole="button">
-              <View style={styles.railButton}>
-                <Share2 size={17} color={stage.text} />
-              </View>
+              <RailIcon icon={Share2} color={stage.text} />
               <Text style={styles.railLabel}>Teilen</Text>
             </Pressable>
             <Pressable
@@ -936,8 +986,8 @@ export default function LiveAuctionRoom() {
               onPress={() => setItemsOpen(true)}
               accessibilityRole="button"
             >
-              <View style={styles.railButton}>
-                <ShoppingBag size={17} color={stage.text} />
+              <View>
+                <RailIcon icon={ShoppingBag} color={stage.text} />
                 {auctions.length > 0 ? (
                   <View style={styles.railBadge}>
                     <Text style={styles.railBadgeText}>{auctions.length}</Text>
@@ -967,9 +1017,7 @@ export default function LiveAuctionRoom() {
                     : 'Dieser Abend — noch nichts verkauft'
                 }
               >
-                <View style={styles.railButton}>
-                  <TrendingUp size={17} color={stage.lead} />
-                </View>
+                <RailIcon icon={TrendingUp} color={stage.lead} />
                 <Text style={[styles.railLabel, { color: stage.lead }]} numberOfLines={1}>
                   {earnings && earnings.grossCents > 0
                     ? formatEuro(earnings.grossCents)
@@ -984,7 +1032,7 @@ export default function LiveAuctionRoom() {
           <FloatingHearts reactions={hearts.reactions} />
         </View>
 
-        <View style={{ paddingBottom: insets.bottom || space.xs }}>
+        <View style={{ paddingBottom: keyboardUp ? 0 : insets.bottom || space.xs }}>
           <AuctionPanel
             auction={active}
             upcoming={upcoming}
@@ -1036,6 +1084,11 @@ export default function LiveAuctionRoom() {
           isHost ? (title) => void runGiveaway(() => createGiveaway(title)) : undefined
         }
         giveawayOpen={giveaway?.status === 'open'}
+        // Nur für den Gastgeber: Regal → laufende Sendung und zurück
+        // (`20260821160000`). Ohne die Bedingung stünde der Knopf auch beim
+        // Zuschauer, und `sellerId` wäre der fremde Gastgeber.
+        sessionId={isHost ? id : undefined}
+        hostId={isHost ? myUserId : null}
       />
 
       {active ? (
@@ -1229,21 +1282,41 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
 
-  rail: { paddingRight: space.sm, paddingBottom: space.md, gap: space.md },
-  railItem: { alignItems: 'center', gap: 1 },
-  railButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+  rail: { paddingRight: space.sm, paddingBottom: space.md, gap: 14 },
+  railItem: { alignItems: 'center', gap: 2 },
+  railIcon: {
+    width: RAIL_ICON,
+    height: RAIL_ICON,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  railLabel: { fontSize: 10, color: stage.text, fontWeight: '600' },
+  // Die schwarze Kopie liegt deckungsgleich darunter und ist um einen Punkt
+  // nach unten versetzt — mehr wäre ein sichtbarer Doppelkontur-Effekt.
+  railIconShadow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateY: 1.5 }],
+  },
+  // ⚠️ Der Textschatten gehört zur Lesbarkeit, nicht zur Optik — siehe den
+  // Block über `RailIcon`. Ohne ihn verschwindet die Beschriftung auf einem
+  // hellen Bild genauso wie das Symbol.
+  railLabel: {
+    fontSize: 11,
+    color: stage.text,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   railBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: -4,
+    right: -6,
     minWidth: 16,
     height: 16,
     borderRadius: 8,

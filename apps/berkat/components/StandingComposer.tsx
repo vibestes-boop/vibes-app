@@ -35,6 +35,7 @@ import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
 import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
 import { tidySize } from '../lib/useListings';
+import { formatSlot, type PlannedShow } from '../lib/useSchedule';
 
 /** Serverseitig als CHECK gespiegelt — wer hier erhöht, erhöht dort mit. */
 const MAX_IMAGES = 8;
@@ -57,6 +58,24 @@ export type ListingFormValues = {
   size: string | null;
   postalCode: string | null;
   city: string | null;
+  /**
+   * ⚠️ „Reserve for Live" — nur beim ANLEGEN, und der einzige Wert hier, der
+   * NICHT in `create_standing_listing` fließt.
+   *
+   * Whatnot löst die Frage „gehört das ins Regal oder in eine Sendung" mit einem
+   * Schalter samt Termin-Auswahl in derselben Maske wie Preis und Bild (zehnte
+   * Analyse). Berkat konnte das bis zum 21.08.2026 nur NACHTRÄGLICH: einstellen,
+   * Verkaufen-Reiter öffnen, Termin antippen, „Aus dem Regal holen" — für etwas,
+   * das der Verkäufer schon wusste, als er es eintippte.
+   *
+   * Der Aufrufer legt zuerst das Angebot an und ruft danach
+   * `move_listing_to_show` mit dieser ID. Zwei Rufe statt einem, bewusst: Der
+   * zweite darf fehlschlagen, ohne den ersten mitzureißen — dann liegt der
+   * Artikel im Regal statt am Termin, und das ist der harmlose Ausgang.
+   *
+   * `null` = bleibt im Regal, rund um die Uhr kaufbar. Das ist die Vorgabe.
+   */
+  planId: string | null;
 };
 
 type Props = {
@@ -70,6 +89,12 @@ type Props = {
    */
   mode?: 'create' | 'edit';
   initial?: Partial<ListingFormValues>;
+  /**
+   * Die eigenen angekündigten Termine, für die „Für welchen Abend?"-Wahl.
+   * Leer oder nicht gesetzt = die Wahl erscheint gar nicht: Wer keinen Termin
+   * hat, soll hier nicht lesen, dass ihm einer fehlt.
+   */
+  plans?: PlannedShow[];
   /** Was der Verkäufer bisher erklärt hat. `null` = noch nie gefragt worden. Nur `create`. */
   sellerKind?: SellerKind | null;
   /** Wird nur gerufen, wenn sich der Typ tatsächlich ändert. Nur `create`. */
@@ -87,7 +112,9 @@ export function StandingComposer({
   onDeclareKind,
   onSubmit,
   submitLabel,
+  plans,
 }: Props) {
+  const [planId, setPlanId] = useState<string | null>(null);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [price, setPrice] = useState(() =>
     initial?.priceCents != null ? String(initial.priceCents / 100).replace('.', ',') : '',
@@ -128,9 +155,36 @@ export function StandingComposer({
   // Der Server lehnt alles bis 1 € ab. Das vorher zu sagen ist freundlicher,
   // als es sich als Fehlermeldung abzuholen.
   const priceOk = cents !== null && cents > 100;
+  /**
+   * ⚠️ Bild und Kategorie sind Pflicht — aber NUR beim Anlegen.
+   *
+   * Beides folgt aus dem Vergleich mit Whatnot (zehnte Analyse), und beides
+   * behebt ein Loch, das die Testware sichtbar gemacht hat:
+   *
+   *   ohne Bild      → im Regal-Raster eine leere Kachel; die Karte ist zu 70 %
+   *                    Bildfläche, es gibt nichts anderes zu zeigen
+   *   ohne Kategorie → über die Kategorie-Leiste UNAUFFINDBAR. Der Artikel
+   *                    existiert, aber niemand stolpert über ihn
+   *
+   * Nicht im `edit`-Modus: Im Bestand liegen Angebote ohne beides (Testware und
+   * alles vor heute). Sie zu blockieren hieße, dass ein Verkäufer seine eigene
+   * Beschreibung nicht mehr korrigieren kann, bis er ein Foto nachreicht — eine
+   * neue Regel darf bestehende Arbeit nicht einsperren.
+   *
+   * Und bewusst nur im Client: Das ist eine Qualitätsregel, keine
+   * Sicherheitsgrenze. `create_standing_listing` nimmt weiterhin beides ohne
+   * Wert an — eine ältere App-Fassung kann also weiter ohne Bild einstellen.
+   * Das ist hinnehmbar; Geld und Rechte entscheidet der Server, Vollständigkeit
+   * die Oberfläche.
+   */
+  const needsMedia = mode === 'create';
+  const mediaOk = !needsMedia || imageUrls.length > 0;
+  const categoryOk = !needsMedia || category !== null;
+
   // `uploading` blockiert mit: Wer währenddessen abschickt, verlöre das Bild,
   // weil die URL erst nach dem Hochladen in der Liste steht.
-  const canSubmit = title.trim().length >= 2 && priceOk && !busy && !uploading;
+  const canSubmit =
+    title.trim().length >= 2 && priceOk && mediaOk && categoryOk && !busy && !uploading;
 
   const addImage = () => {
     if (imageUrls.length >= MAX_IMAGES || uploading) return;
@@ -261,9 +315,16 @@ export function StandingComposer({
       {/* Kein Bild-ZWANG, aber ein deutlicher Hinweis. In der Show hältst du
           den Artikel in die Kamera — hier gibt es keine Kamera, das Foto IST
           die Auslage. */}
+      {/* ⚠️ Der Satz sagt jetzt „braucht", nicht „sieht schlecht aus". Solange
+          ein Foto freiwillig war, las sich der Hinweis als Geschmacksfrage —
+          und die Testware ist voller Angebote ohne Bild. Beim Bearbeiten bleibt
+          der alte, mildere Ton: Dort ist es weiterhin freiwillig, weil sonst
+          bestehende Angebote nicht mehr korrigierbar wären. */}
       {imageUrls.length === 0 && !uploading ? (
         <Text style={s.photoHint}>
-          Ohne Foto sehen Fremde nur ein graues Feld — hier gibt es keine Kamera, die es zeigt.
+          {needsMedia
+            ? 'Ein Foto brauchst du — ohne sehen Fremde nur ein graues Feld, und die Karte im Regal ist fast nur Bild.'
+            : 'Ohne Foto sehen Fremde nur ein graues Feld — hier gibt es keine Kamera, die es zeigt.'}
         </Text>
       ) : null}
       {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
@@ -359,6 +420,54 @@ export function StandingComposer({
         />
       </View>
 
+      {/* ── Für welchen Abend? — Whatnots „Reserve for Live" ────────────────
+          Erscheint NUR beim Anlegen und NUR, wenn es überhaupt Termine gibt:
+          Wer keinen hat, soll hier nicht lesen, dass ihm einer fehlt — das wäre
+          eine Aufforderung an der falschen Stelle.
+
+          Die Vorgabe ist das Regal. Ein Artikel, den niemand einem Abend
+          zuordnet, soll rund um die Uhr kaufbar sein — das ist der Normalfall
+          und der einzige, der ohne Zutun Geld bringt. */}
+      {mode === 'create' && plans && plans.length > 0 ? (
+        <View style={s.planBlock}>
+          <Text style={s.label}>Wohin damit?</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.planRow}>
+            <Pressable
+              onPress={() => setPlanId(null)}
+              style={[s.planChip, planId === null && s.planChipOn]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: planId === null }}
+            >
+              <Text style={[s.planChipText, planId === null && s.planChipTextOn]}>
+                Ins Regal
+              </Text>
+            </Pressable>
+            {plans.map((plan) => (
+              <Pressable
+                key={plan.id}
+                onPress={() => setPlanId(plan.id)}
+                style={[s.planChip, planId === plan.id && s.planChipOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: planId === plan.id }}
+                accessibilityLabel={`Für ${plan.title} am ${formatSlot(plan.scheduled_at)}`}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[s.planChipText, planId === plan.id && s.planChipTextOn]}
+                >
+                  {formatSlot(plan.scheduled_at)}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Text style={s.planHint}>
+            {planId === null
+              ? 'Rund um die Uhr kaufbar, auch wenn du nicht sendest.'
+              : 'Wird an dem Abend versteigert — Start bei 1 €, dein Preis wird der Sofortkauf. Bis dahin ist er nicht im Regal.'}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Preisvorschläge. Steht bei den anderen Preis-Entscheidungen, nicht
           bei den Rechtsangaben — es ist eine Verkaufs-, keine Rechtsfrage. */}
       <View style={s.offerRow}>
@@ -392,15 +501,25 @@ export function StandingComposer({
         </Pressable>
       )}
 
-      {/* Kategorie ist freiwillig, aber der einzige Weg in den Kategorien-
-          Reiter. Ohne sie liegt der Artikel nur auf dem eigenen Profil — und
-          wer den Verkäufer noch nicht kennt, findet ihn dort nie. */}
+      {/* ⚠️ Seit dem 21.08.2026 beim ANLEGEN Pflicht.
+          Der Satz darunter stand schon immer hier und war schon immer richtig:
+          Die Kategorie ist der einzige Weg in den Kategorien-Reiter. Ohne sie
+          liegt der Artikel nur auf dem eigenen Profil — und wer den Verkäufer
+          noch nicht kennt, findet ihn dort nie. Etwas, das über
+          Auffindbarkeit entscheidet, freiwillig zu lassen, war die falsche
+          Abwägung; Whatnot hat es aus demselben Grund als Pflichtfeld
+          (zehnte Analyse). */}
       <CategoryPicker
         value={category}
         onChange={setCategory}
         openParent={openParent}
         onOpenParent={setOpenParent}
       />
+      {needsMedia && category === null ? (
+        <Text style={s.photoHint}>
+          Wähl eine Kategorie — sonst findet dich nur, wer dich schon kennt.
+        </Text>
+      ) : null}
 
       {/* Die Rechtsangabe steht direkt über dem Knopf, weil sie zur Handlung
           gehört — nicht in einer Einstellung, die niemand findet. Kein Riegel:
@@ -457,6 +576,7 @@ export function StandingComposer({
             size: tidySize(size),
             postalCode: postalCode.trim() || null,
             city: city.trim() || null,
+            planId: mode === 'create' ? planId : null,
           });
           if (mode === 'create') {
             setTitle('');
@@ -468,6 +588,10 @@ export function StandingComposer({
             setImageUrls([]);
             setUploadError(null);
             setCondition(null);
+            // ⚠️ Der Termin wird NICHT zurückgesetzt. Wer für Samstag zwanzig
+            // Artikel einstellt, wählt ihn sonst zwanzigmal — und genau dieser
+            // Fall ist der Grund für das Feld. Alles andere setzt sich zurück,
+            // weil es je Artikel verschieden ist; der Abend ist es nicht.
             // Die Größe wird zurückgesetzt, PLZ und Ort nicht: Wer fünf Sachen
             // einstellt, wohnt bei allen fünf gleich — aber die Größe ist bei
             // jedem Stück eine andere. Sie stehen zu lassen hieße, sie beim
@@ -585,6 +709,28 @@ const s = StyleSheet.create({
   warn: { fontSize: 12, color: ui.live, marginTop: space.sm },
 
   label: { fontSize: 12, color: ui.textMuted, marginTop: space.md },
+
+  // ── „Wohin damit?" ────────────────────────────────────────────────────────
+  // Chips statt Auswahlfeld: Ein Verkäufer hat selten mehr als vier Termine,
+  // und die Wahl soll auf einen Blick sichtbar sein statt hinter einem Tipp.
+  // Dieselbe Bauart wie die Zustands-Chips darüber — zwei Auswahl-Sprachen in
+  // einem Formular wären eine zu viel.
+  planBlock: { marginTop: space.xs },
+  planRow: { gap: space.sm, paddingRight: space.md, paddingVertical: space.sm },
+  planChip: {
+    maxWidth: 190,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: ui.line,
+    backgroundColor: ui.card,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
+  // Grün, nicht gold: Das hier ist eine Einordnung, kein Kaufweg.
+  planChipOn: { borderColor: ui.brand, backgroundColor: ui.sunken },
+  planChipText: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
+  planChipTextOn: { color: ui.brand },
+  planHint: { fontSize: 11, color: ui.textMuted, lineHeight: 16 },
   chipRow: { marginTop: space.sm },
   chip: {
     borderRadius: radius.pill,

@@ -1,24 +1,31 @@
-// Die Kategorie-Leiste mit zwei Größen.
+// Die Kategorie-Leiste auf der Startseite — Kacheln oben, Pillen beim Scrollen.
 //
-// Ganz oben sind es Kacheln, beim Scrollen schrumpfen sie zu Pillen und beim
-// Zurückscrollen wachsen sie wieder. Der Sinn: solange man noch nicht weiß,
-// was man will, ist die Auswahl das Wichtigste auf dem Bildschirm. Sobald man
-// scrollt, hat man sich entschieden — dann darf sie Platz abgeben, ohne ganz
-// zu verschwinden.
+// ⚠️ ZWEIMAL FALSCH GEBAUT, BEVOR ES STIMMTE (22.08.2026).
 //
-// SEIT 18.08.2026: ENTDECKUNG, NICHT FILTER FÜR LAUFENDE SHOWS.
-// Vorher wurde die Leiste aus den gerade laufenden Shows aufgebaut. Damit war
-// sie genau dann leer, wenn niemand sendet — also rund 94 % der Zeit, und dann
-// stand dort eine einzelne goldene Kachel „Für dich", die nichts filterte.
+// 1. Fassung: ein SCHALTER. Ab 48 Punkten Scrollhöhe klappte sie zu, unter 8
+//    wieder auf, dazwischen lief eine 190-ms-Animation auf die HÖHE. Zwei
+//    Fehler in einem:
+//      * Eine Höhe lässt sich in React Native nicht auf dem UI-Thread
+//        animieren (`useNativeDriver: false`). Sie lief also auf demselben
+//        Strang wie das Scrollen.
+//      * Die Leiste stand ÜBER der Liste im Fluss — jede Höhenänderung
+//        verschob den Listeninhalt gleich mit. Ruckeln war die Regel.
+//      * Und ein Schalter SPRINGT. Wer nahe am oberen Rand auf und ab wischt,
+//        kreuzt die Schwelle ständig; genau das war am Gerät zu sehen.
 //
-// Whatnots Leiste zeigt ALLE Kategorien, immer, unabhängig davon ob dort jemand
-// sendet (WHATNOT-ANALYSE, Nachtrag zur vierten Analyse). Sie beantwortet „was
-// gibt es hier?", nicht „was läuft gerade?" — die zweite Frage beantwortet das
-// Raster darunter ohnehin schon.
+// 2. Fassung: ersatzlos gestrichen. Ehrlich, aber die stumpfe Lösung.
 //
-// Jede Kachel trägt deshalb ein Bild: heute das Symbol aus `categoryArt`,
-// später das freigestellte Produktfoto. Die Kachel ändert sich dabei nicht.
-
+// 3. Fassung, diese: **fortlaufend statt geschaltet.** Die Leiste hängt an der
+//    Scrollposition und folgt dem Finger, statt bei einer Schwelle
+//    umzuklappen. Bewegt werden nur `translateY` und `opacity` — beides läuft
+//    mit `useNativeDriver: true` auf dem UI-Thread und ist selbst dann flüssig,
+//    wenn JavaScript gerade beschäftigt ist. Und die Leiste LIEGT ÜBER der
+//    Liste (die trägt oben ein Polster), also ändert sich am Listen-Layout
+//    nichts mehr.
+//
+// Die Regel daraus: **Was beim Scrollen mitgeht, darf weder die Höhe eines
+// Geschwisters ändern noch auf dem JS-Thread laufen — und es soll folgen, nicht
+// umschalten.**
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -64,34 +71,26 @@ type Props = {
   items: RailItem[];
   /** Slug der gewählten Kategorie. */
   active: string;
-  collapsed: boolean;
   onSelect: (slug: string) => void;
+  /**
+   * 0 = ganz oben (Kacheln), 1 = gescrollt (Pillen).
+   *
+   * ⚠️ Kommt von AUSSEN und wird nicht hier gerechnet: Nur der Bildschirm
+   * kennt die Scrollposition, und nur wenn derselbe Wert Leiste UND Verschiebung
+   * treibt, laufen beide synchron. Zwei getrennte Animationen für eine Bewegung
+   * wären genau der Bruch, den man als Zucken sieht.
+   */
+  progress: Animated.AnimatedInterpolation<number>;
 };
 
-export function CategoryRail({ items, active, collapsed, onSelect }: Props) {
-  // Ein Wert von 0 (Kachel) bis 1 (Pille) treibt Höhe und Übergang.
-  const shrink = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(shrink, {
-      toValue: collapsed ? 1 : 0,
-      duration: 190,
-      // Höhe lässt sich nicht auf dem UI-Thread animieren.
-      useNativeDriver: false,
-    }).start();
-  }, [collapsed, shrink]);
-
-  const height = shrink.interpolate({
-    inputRange: [0, 1],
-    outputRange: [RAIL_TALL, RAIL_SHORT],
-  });
-  const tileOpacity = shrink.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0] });
-  const pillOpacity = shrink.interpolate({ inputRange: [0.4, 1], outputRange: [0, 1] });
+export function CategoryRail({ items, active, onSelect, progress }: Props) {
+  // Die Kacheln sind schon halb weg, bevor die Pillen kommen — sonst lägen
+  // beide gleichzeitig sichtbar übereinander und es sähe nach Doppelbild aus.
+  const tileOpacity = progress.interpolate({ inputRange: [0, 0.55], outputRange: [1, 0], extrapolate: 'clamp' });
+  const pillOpacity = progress.interpolate({ inputRange: [0.45, 1], outputRange: [0, 1], extrapolate: 'clamp' });
 
   return (
-    <Animated.View style={{ height }}>
-      {/* Beide Formen liegen übereinander und blenden gegeneinander — das ist
-          ruhiger als ein Umbau des Baums mitten in der Bewegung. */}
+    <View style={styles.wrap}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: tileOpacity }]}>
         <ScrollView
           horizontal
@@ -162,7 +161,10 @@ export function CategoryRail({ items, active, collapsed, onSelect }: Props) {
         </ScrollView>
       </Animated.View>
 
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: pillOpacity }]}>
+      {/* Die Pillen sitzen UNTEN in der Leiste. Wird sie nach oben
+          geschoben, stehen sie genau dort, wo die Leiste endet — der
+          Übergang braucht keine zweite Bewegung. */}
+      <Animated.View style={[styles.pillLayer, { opacity: pillOpacity }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -185,11 +187,13 @@ export function CategoryRail({ items, active, collapsed, onSelect }: Props) {
           })}
         </ScrollView>
       </Animated.View>
-    </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: { height: RAIL_TALL, backgroundColor: ui.bg, overflow: 'hidden' },
+  pillLayer: { position: 'absolute', left: 0, right: 0, bottom: 0, height: RAIL_SHORT },
   row: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'center' },
   rowShort: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'center', height: RAIL_SHORT },
 

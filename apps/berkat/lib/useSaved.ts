@@ -113,3 +113,36 @@ export function useToggleSaved(userId: string | null) {
     },
   });
 }
+
+/**
+ * Wie oft ein Artikel gemerkt wurde — als Zahl, nie als Namen.
+ *
+ * ⚠️ Zwingend über die RPC `get_saved_counts` (`20260822120000`). Die Policy
+ * auf `berkat_saved_listings` lässt ausschließlich die EIGENEN Zeilen durch;
+ * eine gewöhnliche Zählabfrage träfe also immer nur die eigene Merkung — ohne
+ * Fehler, einfach falsch. Dieselbe Falle wie bei `order_reviews` (Übergabe,
+ * Abschnitt 3): richtige Abfrage, fehlendes Recht, leere Menge statt Meldung.
+ *
+ * Die Policy bleibt, wie sie ist. Wer was gemerkt hat, ist eine private
+ * Auskunft — nur die Summe ist öffentlich.
+ */
+export function useSavedCounts(ids: string[]) {
+  const key = ids.join(',');
+  return useQuery({
+    queryKey: ['berkat', 'saved-counts', key],
+    enabled: ids.length > 0,
+    // Kein Realtime und kein kurzer Takt: Die Zahl ist ein Stimmungsbild,
+    // keine Auskunft mit Frist. Sie darf eine Minute alt sein.
+    staleTime: 60_000,
+    queryFn: async (): Promise<Map<string, number>> => {
+      const { data, error } = await supabase.rpc('get_saved_counts', { p_ids: ids });
+      // Fällt sie aus, fehlt ein Abzeichen — die Karten bleiben vollständig.
+      if (error) return new Map();
+      const map = new Map<string, number>();
+      for (const row of (data ?? []) as { listing_id: string; saves: number }[]) {
+        map.set(row.listing_id, row.saves);
+      }
+      return map;
+    },
+  });
+}

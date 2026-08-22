@@ -63,7 +63,7 @@ import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { formatEuro, useProfiles } from '../lib/useAuction';
 import { useShopListings, type Listing } from '../lib/useListings';
-import { useSavedIds, useToggleSaved } from '../lib/useSaved';
+import { useSavedIds, useToggleSaved, useSavedCounts } from '../lib/useSaved';
 import {
   normalizeQuery,
   savedSearchError,
@@ -288,6 +288,12 @@ export default function ShopScreen() {
     );
   }, [listings, query, sort, cat, cond, size, city, maxPrice, parentOf]);
 
+  // Wie oft andere sich einen Artikel gemerkt haben — nur die Summe, nie wer
+  // (`get_saved_counts`, `20260822120000`). Nur für die Artikel, die gerade
+  // in der Liste stehen; eine Zahl für sechzig ungesehene wäre Arbeit ohne
+  // Empfänger.
+  const { data: saveCounts } = useSavedCounts(shown.map((l) => l.id));
+
   // Die Reiter- und Stapel-Falle aus HANDOFF 3: Expo Router hält Bildschirme
   // aufgebaut. Wer ein Angebot kauft oder zurückzieht und zurückkommt, sähe es
   // sonst noch.
@@ -510,6 +516,7 @@ export default function ShopScreen() {
               sellerName={profiles[item.seller_id]?.username}
               mine={mine}
               saved={saved}
+              saveCount={saveCounts?.get(item.id)}
               onToggleSaved={
                 mine
                   ? undefined

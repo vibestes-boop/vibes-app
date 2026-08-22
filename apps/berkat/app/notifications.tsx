@@ -29,6 +29,7 @@ import {
   PartyPopper,
   Radio,
   Search,
+  TriangleAlert,
   Truck,
 } from 'lucide-react-native';
 
@@ -75,6 +76,12 @@ function present(type: string): { Icon: typeof Bell; title: string; tint: string
     // Einladung zum Hinsehen. Dieselbe Zuordnung wie beim Termin (Abschnitt 13).
     case 'saved_search_hit':
       return { Icon: Search, title: 'Das hast du gesucht', tint: ui.success };
+    // ⚠️ Die einzige Verkäufer-Meldung in Rot. Nicht als Alarm, sondern weil
+    // sie eine FRIST auslöst: Wer ein Problem meldet, wartet auf Antwort, und
+    // Rot ist in Berkat die laufende Uhr. Gold wäre hier falsch — es gibt
+    // nichts zu feiern.
+    case 'order_dispute':
+      return { Icon: TriangleAlert, title: 'Problem mit einer Bestellung', tint: ui.live };
     default:
       return { Icon: Bell, title: 'Neu bei Berkat', tint: ui.textMuted };
   }

@@ -367,7 +367,17 @@ function PrebidPanel({ item, when }: { item: PreparedAuction; when: string }) {
 }
 
 const s = StyleSheet.create({
-  wrap: { marginTop: space.xs, marginBottom: space.md },
+  /**
+   * ⚠️ Eingerückt auf die Höhe des Show-TITELS, nicht auf den Seitenrand.
+   *
+   * Vorher standen Überschrift und Kacheln ganz links, während die Zeile
+   * darüber erst hinter einem 38er-Symbol plus 12er-Abstand beginnt. Damit
+   * schwebten sie unter dem Abschnitt, statt zu ihm zu gehören — bei zwei
+   * Artikeln sah der halbe Bildschirm rechts daneben leer aus, und der Block
+   * wirkte unfertig. 50 = 38 (Symbol) + 12 (`space.md`), also genau die
+   * Textkante darüber (21.08.2026 am Gerät gemeldet).
+   */
+  wrap: { marginTop: 0, marginBottom: space.md, paddingLeft: 50 },
   head: { fontSize: 12, fontWeight: '700', color: ui.textMuted, marginBottom: space.sm },
 
   row: { gap: space.sm, paddingRight: space.md },

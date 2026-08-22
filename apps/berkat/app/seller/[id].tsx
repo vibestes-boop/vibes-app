@@ -878,7 +878,13 @@ export default function SellerScreen() {
               const soon = item.kind === 'announced';
               const lineup = item.planId ? (lineupByPlan.get(item.planId) ?? []) : [];
               return (
-                <View>
+                // ⚠️ Die Trennlinie sitzt am BLOCK, nicht an der Zeile.
+                // Vorher trug `showRow` den `borderBottom` — und weil die
+                // Artikel-Kacheln darunter gerendert werden, verlief die Linie
+                // zwischen einer Show und IHREN EIGENEN Artikeln. Optisch
+                // gehörten die Kacheln damit zur nächsten Show. Das war der
+                // Grund, warum der Abschnitt zerfallen aussah (21.08.2026).
+                <View style={styles.showBlock}>
                 <Pressable
                   style={({ pressed }) => [styles.showRow, pressed && styles.rowPressed]}
                   // Eine vergangene Show hat keinen Raum mehr, in den man gehen
@@ -901,9 +907,9 @@ export default function SellerScreen() {
                       />
                     </View>
                   ) : (
-                    <View style={[styles.showIcon, soon && styles.showIconSoon]}>
+                    <View style={styles.showIcon}>
                       {soon ? (
-                        <CalendarClock size={17} color={ui.goldInk} />
+                        <CalendarClock size={17} color={ui.text} />
                       ) : (
                         <Radio size={17} color={ui.textMuted} />
                       )}
@@ -1161,14 +1167,32 @@ const styles = StyleSheet.create({
   tabTextOn: { color: ui.text, fontWeight: '700' },
 
   rowPressed: { opacity: 0.6 },
+  // Trägt die Trennlinie für Zeile UND Artikel-Kacheln zusammen — siehe die
+  // Begründung am Aufrufort.
+  showBlock: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
+  },
   showRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     paddingVertical: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ui.line,
   },
+  /**
+   * ⚠️ KEIN Gold mehr für die angekündigte Show.
+   *
+   * Bis zum 21.08.2026 war das eine voll gesättigte goldene Scheibe von 38
+   * Punkten — auf dem Verkäufer-Profil das Lauteste nach dem Bürgen-Knopf, und
+   * der steht direkt darüber. Zwei Goldflächen, von denen nur eine etwas
+   * bedeutet.
+   *
+   * Berkats eigenes Farbgesetz: **Gold trägt den Kauf.** Ein Kalendereintrag
+   * ist kein Kauf. Der Unterschied „angekündigt / gelaufen" steht ohnehin im
+   * Text daneben und im Symbol — er braucht keine Farbe, und die Betonung
+   * übernimmt der Symbolton (kräftig für das, was kommt, gedämpft für das, was
+   * war).
+   */
   showIcon: {
     width: 38,
     height: 38,
@@ -1177,7 +1201,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  showIconSoon: { backgroundColor: ui.gold },
   // Eckig wie überall, wo eine Sache steht und kein Mensch.
   showThumb: {
     width: 38,

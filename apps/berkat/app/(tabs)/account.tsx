@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  Bell,
   ChevronRight,
   FileText,
   Gift,
@@ -370,6 +371,25 @@ export default function AccountScreen() {
       >
         <Heart size={19} color={ui.text} />
         <Text style={styles.linkLabel}>Gemerkt</Text>
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
+
+      {/* ── Benachrichtigungen. Berkat schickt Push für acht Anlässe, und bis
+          zum 22.08.2026 gab es keinen einzigen Schalter. Wem es zu viel wurde,
+          dem blieb nur der Weg über die iPhone-Einstellungen — und dort gibt es
+          alles oder nichts, also fällt der Zuschlag mit weg.
+
+          Steht bei „Gemerkt" und nicht bei „Abmelden": Es ist eine
+          Einstellung, die man sucht, wenn einen etwas stört — nicht eine, mit
+          der man das Konto verlässt. ─────────────────────────────────────── */}
+      <Pressable
+        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        onPress={() => router.push('/notification-settings')}
+        accessibilityRole="button"
+        accessibilityLabel="Benachrichtigungen einstellen"
+      >
+        <Bell size={19} color={ui.text} />
+        <Text style={styles.linkLabel}>Benachrichtigungen</Text>
         <ChevronRight size={18} color={ui.textMuted} />
       </Pressable>
 

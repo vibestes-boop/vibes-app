@@ -548,7 +548,19 @@ export default function ListingScreen() {
         <View style={styles.body}>
           {/* ── Preis vor Titel. Bei einem Festpreis ist die Zahl die Frage,
               die zuerst beantwortet werden muss. ─────────────────────────── */}
-          <Text style={styles.price}>{formatEuro(listing.buy_now_cents)}</Text>
+          {/* ⚠️ „zzgl. Versand" GEHÖRT AN DEN PREIS, nicht hinter den Knopf.
+              Der Versandsatz stand bisher unter dem Kaufknopf — gut formuliert
+              („Kommt in dasselbe Paket, du zahlst nur einmal Versand"), aber zu
+              spät: Man liest die Zahl, entscheidet, und erfährt erst danach,
+              dass mehr kommt.
+              Whatnot setzt „+ shipping + taxes" direkt neben den Preis
+              (Analyse 13). Der ausführliche Satz bleibt unten stehen, wo er
+              erklärt; hier steht nur die Warnung, dass die Zahl nicht die
+              ganze ist. */}
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>{formatEuro(listing.buy_now_cents)}</Text>
+            <Text style={styles.priceAdd}>zzgl. Versand</Text>
+          </View>
           <Text style={styles.title}>{listing.title}</Text>
 
           {meta.length ? (
@@ -1077,7 +1089,10 @@ const styles = StyleSheet.create({
   heroLockText: { fontSize: 11, fontWeight: '700', color: ui.successInk },
 
   body: { padding: space.lg, gap: space.md },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   price: { fontSize: 28, fontWeight: '700', color: ui.text },
+  // Klein und gedämpft: Es ist eine Einschränkung, keine zweite Zahl.
+  priceAdd: { fontSize: 13, color: ui.textMuted },
   title: { fontSize: 18, fontWeight: '600', color: ui.text, marginTop: -space.sm, lineHeight: 24 },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },

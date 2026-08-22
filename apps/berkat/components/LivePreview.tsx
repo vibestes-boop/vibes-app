@@ -108,6 +108,20 @@ export function LivePreview({ preview, secondsLeft }: Props) {
         )}
       </View>
 
+      {/* ⚠️ BERKATS BESTES VERSANDARGUMENT STAND AUF KEINER KARTE.
+          Whatnot setzt an genau diese Stelle „Vergünstigter Versand" — eine
+          eigene Zeile in der Vorschau-Box, dort wo jemand entscheidet, ob er
+          reingeht (zwölfte Analyse).
+
+          Berkats Argument ist stärker als ihres: Alles, was man bei einem
+          Verkäufer an einem Abend gewinnt, kommt in EINEM Paket. Das ist laut
+          Ausgangsanalyse der Grund, warum eine 5-€-Auktion überhaupt möglich
+          ist — ohne den Sammelkorb wäre der Versand teurer als die Ware.
+
+          Es steht fest da und nicht bedingt: Der Sammelkorb ist eine
+          Eigenschaft von Berkat, nicht dieser Show. */}
+      <Text style={s.shipping}>Alles in einem Paket</Text>
+
       {shown.imageUrl ? (
         <View style={s.thumb}>
           <Image
@@ -172,6 +186,11 @@ const s = StyleSheet.create({
   urgent: { color: ui.overlayUrgent },
   calm: { color: ui.overlayMuted },
   price: { fontSize: 13, fontWeight: '700', color: ui.text },
+
+  // Gedämpft wie die Zustandszeile: Es ist eine Zusicherung, kein Preis. Und
+  // `overlayMuted`, weil auch diese Zeile auf einem fremden Foto liegt — die
+  // Messung von oben gilt hier genauso.
+  shipping: { fontSize: 10, fontWeight: '600', color: ui.overlayMuted, marginTop: 3 },
 
   thumb: {
     position: 'absolute',

@@ -685,3 +685,212 @@ Bauen ist konkreter und angenehmer, als fünf Leute anzurufen. Das Risiko ist tr
    dem Bauen-statt-Telefonieren gedacht; die Entscheidung, sie nicht anzuwenden, ist seine.
    Festgehalten, damit später nachvollziehbar ist, dass die Warnung ausgesprochen und bewusst
    verworfen wurde — nicht übersehen.
+
+---
+
+## 8. Die Käuferschutz-Zusage — drei Fassungen zur Entscheidung (21.08.2026)
+
+> ⚠️ **Entwurf zur Entscheidung, keine Rechtsberatung.** Ich bin kein Anwalt. Alles hier ist eine
+> geordnete Vorlage, damit du nicht bei null anfängst — die Wahl und die endgültige Formulierung
+> gehören zu F1 (AGB und Widerrufsbelehrung anwaltlich prüfen).
+
+Das ist Punkt F2 der Prüfliste und der Engpass für drei Bauteile: den Streitfall als Objekt, den
+Käufer-Kontext und die Antwortquote (elfte Whatnot-Analyse). Alle drei sind Code **ohne Regel**,
+solange diese Frage offen ist.
+
+### Zuerst: die Lage ist heute eine andere, als das Wort vermuten lässt
+
+„Käuferschutz" klingt nach Marktplatz-Garantie. Berkat ist heute aber **kein** Marktplatz im
+rechtlichen Sinn:
+
+- Zaur ist **Verkäufer und Betreiber zugleich**, das Geld geht auf sein Stripe-Konto
+- `checkout_enabled` ist die ZAG-Schranke und steht nur bei ihm auf `true`
+- Der empfohlene Weg für Fremdware ist das **Kommissionsgeschäft** (Abschnitt 1) — dabei bleibt
+  Zaur der Verkäufer
+
+**Daraus folgt das Wichtigste an diesem ganzen Abschnitt:** Solange das so ist, ist eine
+Käuferschutz-Zusage **keine Garantie gegen einen Dritten**, sondern **Zaurs eigene
+Verkäufer-Zusage.** Er verspricht nichts, wofür ein anderer geradestehen müsste — er verspricht,
+wie er selbst mit Fehlern umgeht.
+
+Das macht die Entscheidung heute **billig** und später teuer. Wer sie jetzt trifft, trifft sie an
+sich selbst.
+
+### Was ohnehin gilt, ganz ohne Zusage
+
+| | gewerblicher Verkäufer | privater Verkäufer |
+|---|---|---|
+| **Widerruf**, 14 Tage, ohne Grund | ✅ Pflicht, **auch bei Online-Auktionen** (Abschnitt 25) | ❌ gibt es nicht |
+| **Gewährleistung** (Sache ist mangelhaft) | ✅ 2 Jahre, gegenüber Verbrauchern **nicht ausschließbar** | ❌ ausschließbar, und die Artikelseite tut das (Abschnitt 21) |
+| **Transportrisiko** beim Versand an Verbraucher | ✅ trägt der Verkäufer bis zur Ablieferung | ❌ geht auf den Käufer über |
+
+⚠️ **Bei einem gewerblichen Verkäufer ist „kam kaputt an" und „war nicht wie beschrieben" also
+bereits vollständig abgedeckt.** Eine Zusage fügt dort rechtlich **nichts** hinzu — sie fügt
+*Tempo*, *Klarheit* und *Vertrauen* hinzu. Das ist nicht wenig, aber es ist etwas anderes, und es
+sollte nicht mit „wir schützen dich" beworben werden, als wäre es ein Extra.
+
+**Die eigentliche Lücke ist der Privatverkauf im Regal.** Dort gibt es weder Widerruf noch
+Gewährleistung — und genau dort würde eine Zusage echten Unterschied machen.
+
+### Fassung A — Nur das Gesetz, aber klar gesagt
+
+Kein Versprechen über die Pflicht hinaus. Stattdessen sagt die App an jedem Angebot in einem Satz,
+was gilt — was sie seit Abschnitt 21 ohnehin tut.
+
+| | |
+|---|---|
+| Kosten Verkäufer | **0 €** zusätzlich. Nur was das Gesetz ohnehin auferlegt |
+| Kosten Betreiber | 0 € |
+| Baubar | sofort, ohne Migration |
+| Was der Käufer liest | „Gewerblich: 14 Tage Widerruf, 2 Jahre Gewährleistung." / „Privatverkauf: Rückgabe ist Verhandlungssache." |
+
+**Dagegen spricht:** Das Wort „Käuferschutz" darf nicht fallen. Wer Berkat neben Whatnot oder eBay
+hält, sieht weniger — und ausgerechnet beim Privatverkauf, wo das Vertrauen am dünnsten ist, steht
+„Verhandlungssache".
+
+**Dafür spricht:** Es ist die einzige Fassung, die **nichts verspricht, was schiefgehen kann**. Für
+Phase 0 mit fünf Verkäufern und Testbetrieb ist das ein ernstzunehmendes Argument.
+
+### Fassung B — Berkat legt sich ins Mittel, gedeckelt
+
+Die Zusage: **Kommt Ware nicht an oder kommt sie beschädigt an, bekommt der Käufer sein Geld
+zurück — bis zu einem Höchstbetrag, entschieden binnen 72 Stunden.** Zahlt der Verkäufer nicht,
+zahlt Berkat.
+
+| | |
+|---|---|
+| Kosten Verkäufer | **0 €**, solange er im Recht ist. Im Streitfall trägt er die Erstattung — wie ohnehin |
+| Kosten Betreiber | der Deckel × Schadensquote. Bei 100 € Deckel, 40 Paketen/Monat und 2 % Fällen: **~80 €/Monat im schlechten Monat**, meistens 0 € |
+| Baubar | sofort (heute kostet es **nichts**, weil Zaur ohnehin der Verkäufer ist) |
+| Braucht | eine Formulierung, die **Kulanz** heißt und nicht Versicherung |
+
+⚠️ **Der Satz muss anwaltlich sitzen.** Eine Zusage, die aussieht wie eine Versicherungsleistung
+oder wie das Einstehen für fremde Schuld, kann aufsichtsrechtlich zum Problem werden. Formuliert
+als *freiwillige Kulanz des Betreibers, ohne Rechtsanspruch, gedeckelt und befristet*, ist sie
+üblicher Marktplatz-Standard. **Das gehört zu F1.**
+
+**Der Deckel ist der Kern.** Ohne ihn ist die Zusage unbezifferbar; mit ihm ist sie ein Budget. Und
+er passt zu Berkats Warenkorb: Bei 1–50-€-Artikeln deckt ein 100-€-Deckel praktisch alles ab.
+
+### Fassung C — Das Geld fließt erst nach Ankunft
+
+Der Käufer zahlt, das Geld bleibt liegen, der Verkäufer bekommt es nach „Ist angekommen" oder nach
+14 Tagen automatisch.
+
+| | |
+|---|---|
+| Kosten Verkäufer | **kein Geld, aber Zeit** — bis zu zwei Wochen später bezahlt |
+| Kosten Betreiber | 0 € direkt |
+| Baubar | **nein, noch nicht** |
+
+⚠️ **Selbst Geld halten und weiterleiten ist ein erlaubnispflichtiges Zahlungsgeschäft (ZAG).** Das
+steht schon in Abschnitt 2.4 als harte Linie. Zulässig ist es nur, wenn **Stripe** das Geld hält —
+also mit Stripe Connect und verzögerter Auszahlung. Das ist Phase 2, zusammen mit LUCID, USt-ID und
+DAC7.
+
+⚠️ **Und in Phase 0 ist der Preis falsch herum verteilt.** Der Engpass sind nicht Käufer, sondern
+Verkäufer — fünf Menschen, die acht Wochen freiwillig senden. Denen zwei Wochen später ihr Geld zu
+geben, ist genau das falsche Signal an genau die falsche Gruppe.
+
+### Was jede Fassung in den drei Fällen bedeutet
+
+Beispiel: Artikel 20 €, Versand 4,90 €, gewerblicher Verkäufer.
+
+| | A — nur Gesetz | B — Berkat legt sich ins Mittel | C — Geld erst nach Ankunft |
+|---|---|---|---|
+| **Kam nie an** | Verkäufer trägt das Risiko bis zur Ablieferung → volle Erstattung, er streitet mit dem Paketdienst | wie A, aber **binnen 72 h entschieden**; zahlt er nicht, zahlt Berkat | Geld war nie weg — es fließt einfach nicht |
+| **Kam kaputt an** | Gewährleistung: Nachbesserung, Ersatz oder Geld zurück | wie A, mit Frist und Rückfallgarantie. Das **Foto in der Nachricht** ist der Beleg (Abschnitt 65) | wie A, Auszahlung wird gestoppt |
+| **Nicht wie beschrieben** | Widerruf reicht schon: 14 Tage, ohne Grund. ⚠️ Rücksendekosten trägt der Käufer, **wenn** die Belehrung es sagt | wie A | wie A |
+| **Beim PRIVAT-Verkäufer** | ❌ nichts davon | ✅ **hier wirkt die Zusage wirklich** | ✅ wirkt |
+
+### ⚠️ Was in JEDER Fassung mitgebaut werden muss
+
+Aus der elften Analyse, und es ist die Bedingung, unter der ich das überhaupt bauen würde:
+
+> **Der Verkäufer sieht die Zahl, BEVOR er zustimmt.**
+
+Whatnots Erstattungs-Blatt zeigt „Total Refund Cost 75,46 $" und darunter „dein Auszahlungsbetrag
+wird **−4,76 $**" — die negative Zahl, weil die Zahlungsgebühren bei einer Erstattung **nicht**
+zurückkommen. Bei 20 € + 4,90 € Versand sind das nach heutigem Stand grob **0,60 €**, die der
+Verkäufer trägt, plus den Versand, den er schon bezahlt hat.
+
+⚠️ Ob Stripe die Gebühr bei Erstattungen erstattet, **vor dem Go-Live nachsehen** — die Tarife
+ändern sich, und dieser Punkt entscheidet über die Zahl im Blatt (Abschnitt 6 mahnt dasselbe für
+alle Sätze).
+
+Eine Zusage, deren Kosten erst auf der Abrechnung auftauchen, ist die zuverlässigste Art, einen
+Verkäufer zu verlieren. Und Verkäufer zu halten **ist** Phase 0.
+
+### Was ich empfehlen würde
+
+**Fassung B, mit 100 € Deckel und 72 Stunden — aber erst formuliert, wenn ein Anwalt draufsieht.**
+
+Die Begründung in drei Sätzen:
+
+1. **Heute kostet sie nichts.** Zaur ist der Verkäufer; er verspricht, was er ohnehin schuldet, nur
+   schneller und deutlicher.
+2. **Sie deckt die einzige echte Lücke** — den Privatverkauf im Regal, wo weder Widerruf noch
+   Gewährleistung greifen und das Vertrauen am dünnsten ist.
+3. **Sie ist die einzige, die man später hochziehen kann.** A sagt nichts und muss neu erfunden
+   werden, wenn Dritte verkaufen. C braucht Stripe Connect und bestraft die falsche Gruppe.
+
+**Was ich von dir brauche, um weiterzubauen** — drei Zahlen und ein Satz:
+
+| | Vorschlag |
+|---|---|
+| Deckel | 100 € |
+| Frist bis zur Entscheidung | 72 Stunden |
+| Rücksendekosten bei Widerruf | trägt der Käufer (dann muss es in der Belehrung stehen) |
+| Der Satz selbst | *„Kommt deine Ware nicht an oder kommt sie beschädigt an, bekommst du dein Geld zurück — bis 100 €, entschieden in 72 Stunden."* |
+
+Steht das, baue ich den Streitfall als Objekt: `order_disputes` liegt samt RPCs und Rechten seit dem
+28.06.2026 fertig in der Datenbank und hängt an `product_orders` — also an genau der Tabelle, in die
+Berkats Kasse schreibt. Es fehlt **nur die Oberfläche**.
+
+### ✅ Entschieden am 21.08.2026: Fassung A — und ein Auslöser für B
+
+Zaurs Frage war „ich weiß nicht, was das Sichere ist". Die Antwort ist **A**, und meine Empfehlung
+oben (B) war voreilig — sie hat „am besten" beantwortet, gefragt war „am sichersten".
+
+**A ist rechtlich das Sicherste**, weil ein Versprechen, das man nicht gibt, nicht gebrochen, nicht
+falsch formuliert und nicht als Versicherungsleistung umgedeutet werden kann. Es entsteht keine neue
+rechtliche Fläche.
+
+⚠️ **A hat trotzdem ein Risiko, nur ein anderes:** Verliert jemand in einer engen Gemeinschaft Geld
+und Berkats Antwort lautet „Verhandlungssache", ist der Schaden nicht juristisch, sondern der Ruf —
+und der Ruf **ist** hier das Produkt. Beide Risiken sind echt. Die Frage ist nicht, welches man
+vermeidet, sondern welches einen zuerst trifft.
+
+**Und heute trifft keines.** Der Unterschied zwischen A und B ist im Augenblick praktisch null:
+
+- Nur Zaur verkauft — `checkout_enabled` steht nur bei ihm
+- Er ist gewerblich, also gelten Widerruf und Gewährleistung ohnehin: **rechtlich schuldet er
+  bereits, was B verspricht**
+- Die Lücke, die B schließt, ist der Privatverkauf im Regal — dort verkauft **niemand**, die
+  Testware ist erfunden
+
+Es gibt also keinen Käufer, den A schlechter stellt als B. Die Entscheidung kauft heute nichts.
+
+> **Der Auslöser, an dem B wieder auf den Tisch kommt:** sobald der **erste Verkäufer außer Zaur**
+> `checkout_enabled = true` bekommt. Ab dann verkauft jemand, für den er nicht haftet — und erst
+> dann ist die Frage echt.
+
+Das ist die sicherste Form von allen: **nicht unter Unsicherheit entscheiden, wenn man nicht muss** —
+aber den Auslöser aufschreiben, damit es niemandem entfällt.
+
+#### ⚠️ Was daraus für den Streitfall folgt — Richtigstellung
+
+Oben stand, die Melde-Oberfläche brauche erst die Zusage. **Das stimmt so nicht.** Es kommt darauf
+an, was der Knopf verspricht:
+
+| Beschriftung | verspricht | geht unter A? |
+|---|---|---|
+| „Geld-zurück-Garantie" | Geld | ❌ |
+| „Problem melden — wir sehen es uns an" | einen Vorgang | ✅ |
+
+Unter A ist der zweite Satz buchstäblich wahr: Zaur **ist** der Verkäufer, er sieht es sich an. Der
+Fall bekommt eine Nummer, einen Grund, ein Belegfoto und einen Zustand, statt in einer
+Direktnachricht zu versanden.
+
+Kommt B später, wird aus „wir sehen es uns an" ein Betrag und eine Frist — `order_disputes` trägt
+mit `resolution` und `resolved_at` beides bereits.

@@ -35,6 +35,9 @@ import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { standingErrorText, useStandingActions } from '../lib/useStanding';
 import { useSellerListings } from '../lib/useListings';
+import { LeftoverShelf } from '../components/LeftoverShelf';
+import { shelfBridgeErrorText, useShelfBridge } from '../lib/useShelfBridge';
+import { useMyPlannedShows } from '../lib/useSchedule';
 import { StandingComposer } from '../components/StandingComposer';
 import { useBerkatSeller, useDeclareSellerKind } from '../lib/useBerkatSeller';
 import { StandingShelf } from '../components/StandingShelf';
@@ -48,6 +51,9 @@ export default function ShelfScreen() {
   const { data: standing = [], refetch } = useSellerListings(myUserId ?? undefined);
   const actions = useStandingActions(myUserId ?? undefined, myUserId);
   const { data: seller } = useBerkatSeller(myUserId);
+  // Für „Wohin damit?" im Formular — die eigenen angekündigten Abende.
+  const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
+  const bridge = useShelfBridge();
   const declareKind = useDeclareSellerKind(myUserId);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -113,10 +119,39 @@ export default function ShelfScreen() {
               )
               .catch(() => setNotice('Das ließ sich gerade nicht speichern.'))
           }
+          plans={plannedShows}
           onSubmit={(input) =>
             void actions.create
               .mutateAsync(input)
-              .then(() => setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉'))
+              .then(async (id) => {
+                // ⚠️ ZWEI Rufe, und der zweite darf scheitern.
+                //
+                // `create_standing_listing` kennt keinen Termin — der Umzug ist
+                // seit `20260821160000` eine eigene Funktion. Sie hier
+                // hinterherzuschicken ist die kleinere Änderung, als die
+                // Anlege-RPC um einen Parameter zu erweitern: Das wäre eine
+                // Signatur-Änderung an einer Funktion, die schon in TestFlight
+                // gerufen wird, und zwei Überladungen machen PostgREST
+                // mehrdeutig (HTTP 300).
+                //
+                // Scheitert der Umzug, liegt der Artikel im Regal statt am
+                // Termin — das ist der harmlose Ausgang, und der Verkäufer
+                // erfährt ihn. Verloren geht nichts.
+                if (!input.planId) {
+                  setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉');
+                  return;
+                }
+                try {
+                  await bridge.toShow.mutateAsync({ id, planId: input.planId });
+                  setNotice('Für den Abend vorgemerkt — startet dort bei 1 €. 🎉');
+                } catch (e: unknown) {
+                  setNotice(
+                    `Angelegt, aber der Termin ließ sich nicht zuordnen: ${shelfBridgeErrorText(
+                      e instanceof Error ? e.message : String(e),
+                    )} Der Artikel liegt jetzt im Regal.`,
+                  );
+                }
+              })
               .catch((e: unknown) =>
                 setNotice(standingErrorText(e instanceof Error ? e.message : String(e))),
               )
@@ -142,6 +177,16 @@ export default function ShelfScreen() {
               .finally(() => setBusyId(null));
           }}
           emptyText="Noch nichts drin. Trag oben den ersten Artikel ein — er ist dann rund um die Uhr kaufbar, auch wenn du nicht sendest."
+        />
+
+        {/* ── Was aus Sendungen übrig ist ────────────────────────────────────
+            Steht UNTER dem Regal, nicht darüber: Das Regal ist der Bestand,
+            das hier ist die Nachlese. Rendert sich selbst weg, wenn nichts
+            übrig ist — ein Abschnitt mit Leerzustand wäre an dieser Stelle
+            eine Erinnerung an Misserfolge. */}
+        <LeftoverShelf
+          userId={myUserId}
+          onNotice={setNotice}
         />
       </ScrollView>
     </KeyboardAvoidingView>

@@ -109,9 +109,20 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
       // ⚠️ Elf Parameter seit Migration 20260819100000 (vorher zehn, davor
       // vier). Die RPC wurde jedes Mal per DROP + CREATE ersetzt, NICHT
       // überladen — zwei Überladungen machen PostgREST mehrdeutig (HTTP 300).
-      // Ein älterer Client mit weniger Parametern bekommt deshalb PGRST202; das
-      // ist hier gefahrlos, weil Berkat in keinem Store liegt und dieser Hook
-      // der einzige Aufrufer ist.
+      // Ein älterer Client mit weniger Parametern bekommt deshalb PGRST202.
+      //
+      // ⚠️ RICHTIGSTELLUNG 21.08.2026: Hier stand „das ist gefahrlos, weil
+      // Berkat in keinem Store liegt". Das gilt NICHT MEHR — `1.0.0 (1)` liegt
+      // seit dem 21.08. in TestFlight, und ein OTA erreicht nur die Laufzeit
+      // 1.0.0. Wer diese RPC jetzt noch einmal per DROP + CREATE ersetzt, macht
+      // jede ausgelieferte Fassung ohne passenden OTA blind — das Anlegen
+      // scheitert dann mit PGRST202 statt mit einer Fehlermeldung, die jemand
+      // versteht.
+      //
+      // Deshalb bekommt der Termin („Reserve for Live", Analyse 10) auch KEINEN
+      // zwölften Parameter, sondern einen zweiten Ruf: `move_listing_to_show`
+      // nach dem Anlegen (`app/shelf.tsx`). Eine neue Funktion daneben ist
+      // billiger als eine geänderte Signatur unter einer laufenden App.
       const { data, error } = await supabase.rpc('create_standing_listing', {
         p_title: input.title.trim(),
         p_price_cents: input.priceCents,

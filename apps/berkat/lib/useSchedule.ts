@@ -194,7 +194,15 @@ export function usePlanShow(userId: string | null) {
        * nichts nachschlagen und kann es auch nicht besser wissen.
        */
       coverUrl?: string | null;
-    }): Promise<{ created: number; total: number }> => {
+      /**
+       * ⚠️ `firstId` ist der Grund, warum hier eine ID zurückkommt und nicht nur
+       * eine Zahl: Wer einen Termin anlegt, denkt als Nächstes „was verkaufe ich
+       * da eigentlich" — und musste ihn dafür bis zum 21.08.2026 erst wieder
+       * suchen und antippen. Mit der ID kann der Aufrufer direkt ins
+       * Vorbereiten-Blatt springen. Bei einer Reihe ist es der erste Abend; die
+       * folgenden erbt man ohnehin nicht automatisch.
+       */
+    }): Promise<{ created: number; total: number; firstId: string }> => {
       const total = Math.max(1, Math.min(MAX_WEEKS, Math.floor(input.weeks ?? 1)));
       const title = input.title.trim();
       const created: string[] = [];
@@ -225,7 +233,7 @@ export function usePlanShow(userId: string | null) {
       // Nur wenn gar nichts entstanden ist, ist es ein Fehlschlag. Sonst hat der
       // Verkäufer echte Termine, und die Zahl sagt ihm ehrlich, wie viele.
       if (created.length === 0) throw new Error(firstError ?? 'unknown');
-      return { created: created.length, total };
+      return { created: created.length, total, firstId: created[0] };
     },
     onSuccess: invalidate,
   });

@@ -54,6 +54,105 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
         <Text style={s.hint}>Folge — dann erinnern wir dich</Text>
       </View>
 
+      {/* ⚠️ EIN Termin ist kein Streifen.
+          Bis zum 21.08.2026 stand auch bei einer einzigen Ankündigung eine
+          168 Punkte schmale Hochkant-Karte in einem waagerechten Roller — und
+          daneben blieb der halbe Bildschirm leer. Am Gerät gemeldet, und der
+          Eindruck ist richtig: Eine Liste mit einem Element sieht nicht nach
+          „das ist alles", sondern nach „hier fehlt etwas".
+
+          Der Ausweg ist nicht, die Karte breiter zu machen (dann steht ein Turm
+          über die volle Breite), sondern sie zu DREHEN: Bild links, Text
+          rechts. Dieselben Angaben, dieselbe Reihenfolge, nur quer — und die
+          Karte füllt die Zeile, weil sie es dann auch soll.
+
+          Ab zwei Terminen ist der Roller wieder richtig: Dort ist das Anschneiden
+          der zweiten Karte die Auskunft „da kommt noch mehr". */}
+      {series.length === 1 ? (
+        (() => {
+          const { next: show, count } = series[0];
+          const ready = byPlan.get(show.id) ?? [];
+          return (
+            <Pressable
+              style={s.wide}
+              onPress={() => onSelect(show.host_id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${show.title} — ${formatSlot(show.scheduled_at)}${
+                count > 1 ? ', jede Woche' : ''
+              }${ready.length > 0 ? `, ${ready.length} Artikel` : ''}`}
+            >
+              <View style={s.wideThumb}>
+                {show.cover_url ? (
+                  <Image
+                    source={{ uri: show.cover_url }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                    transition={140}
+                  />
+                ) : (
+                  <BerkatMark size={28} color={ui.lineStrong} />
+                )}
+              </View>
+
+              <View style={s.wideText}>
+                <View style={s.cardHead}>
+                  <Avatar uri={show.host?.avatar_url} name={show.host?.username} size={22} />
+                  <Text numberOfLines={1} style={s.host}>
+                    {show.host?.username ?? 'Verkäufer'}
+                  </Text>
+                  {show.women_only ? <Lock size={12} color={ui.success} /> : null}
+                </View>
+
+                {/* Ohne `minHeight`: Der Zweck dieser Mindesthöhe drüben im
+                    Roller ist, dass alle Karten gleich hoch bleiben. Bei einer
+                    einzigen gibt es nichts anzugleichen — und genau die 19
+                    leeren Punkte unter einem kurzen Titel waren die zweite
+                    Hälfte der Meldung. */}
+                <Text numberOfLines={2} style={s.wideTitle}>
+                  {show.title}
+                </Text>
+
+                {/* ⚠️ Eigene Zeitzeile, NICHT `s.when`.
+                    Die trägt seit heute `marginTop: 'auto'`, um im Roller die
+                    Zeiten aller Karten auf eine Höhe zu ziehen. Hier wäre das
+                    falsch: Die Textspalte ist mittig ausgerichtet, und ein
+                    automatischer Rand würde ihren Inhalt auseinanderziehen,
+                    sobald das Bild die Karte höher macht als der Text. */}
+                <View style={s.wideWhen}>
+                  <Text style={s.slot}>{formatSlot(show.scheduled_at)}</Text>
+                  <Text style={s.until}>{formatUntil(show.scheduled_at)}</Text>
+                </View>
+
+                {ready.length > 0 ? (
+                  <View style={s.peekRow}>
+                    {ready
+                      .filter((item) => item.image_url)
+                      .slice(0, PEEK)
+                      .map((item) => (
+                        <View key={item.id} style={s.peek}>
+                          <Image
+                            source={{ uri: item.image_url! }}
+                            style={StyleSheet.absoluteFill}
+                            contentFit="cover"
+                            transition={120}
+                          />
+                        </View>
+                      ))}
+                    <Text style={s.peekCount}>{ready.length} Artikel</Text>
+                  </View>
+                ) : null}
+
+                {count > 1 ? (
+                  <View style={s.weeklyPill}>
+                    <Repeat size={10} color={ui.brand} />
+                    <Text style={s.weeklyText}>jede Woche</Text>
+                  </View>
+                ) : null}
+              </View>
+            </Pressable>
+          );
+        })()
+      ) : (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -81,8 +180,11 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
 
             {/* Das Bild steht zwischen Kopf und Titel — dieselbe Reihenfolge
                 wie auf den Live-Karten darunter (Verkäufer, Bild, Name), und
-                derselbe quadratische Zuschnitt. Zwei Bildsprachen auf einer
-                Startseite wären eine zu viel.
+                dasselbe Seitenverhältnis `ratio.card` (4:5). ⚠️ Hier stand bis
+                zum 21.08.2026 „derselbe quadratische Zuschnitt" — das war seit
+                dem 18.08. falsch, als alle Stöber-Karten von 1:1 auf 4:5
+                umgestellt wurden. Der Code war richtig, nur der Satz daneben
+                nicht. Zwei Bildsprachen auf einer Startseite wären eine zu viel.
 
                 Kein Text darüber: Der Kontrast über einem fremden Foto ist die
                 einzige Stelle, an der Berkats zwei feste Flächen nicht greifen
@@ -158,6 +260,7 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
           );
         })}
       </ScrollView>
+      )}
     </View>
   );
 }
@@ -174,6 +277,59 @@ const s = StyleSheet.create({
   // Die Erklärung steht neben der Überschrift und nicht auf jeder Karte —
   // einmal gesagt reicht, zwölfmal wäre Lärm.
   hint: { fontSize: 11, color: ui.textMuted, marginLeft: 'auto' },
+
+  // ── Die quere Fassung, wenn genau EIN Termin ansteht ───────────────────────
+  // Gleiche Fläche, gleiche Kante, gleiche Angaben wie die Roller-Karte — nur
+  // nebeneinander statt untereinander. Das Bild behält sein 4:5, damit dieselben
+  // Cover in beiden Fassungen gleich aussehen.
+  // ⚠️ KEIN `padding` auf der Karte, und `overflow: 'hidden'`.
+  //
+  // Das Bild soll die Karte oben bis unten ausfüllen (21.08.2026 am Gerät
+  // gefordert). Dafür muss zweierlei zusammenkommen: Die Karte selbst darf
+  // keinen Innenabstand haben — sonst bleibt rundherum ein Streifen Papier
+  // stehen — und sie muss beschneiden, damit das Bild die runde Ecke links
+  // mitnimmt statt darüber hinauszustehen. Der Innenabstand wandert deshalb
+  // in die Textspalte.
+  wide: {
+    flexDirection: 'row',
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: ui.line,
+    overflow: 'hidden',
+    // Ein Boden, damit die Karte nicht einfällt: Ein Termin ohne vorbereitete
+    // Artikel und ohne Wochen-Pille hätte sonst nur Kopfzeile, Titel und Zeit —
+    // und ein 112 Punkte breites Bild in einer 90 Punkte hohen Karte sähe aus
+    // wie ein liegendes Rechteck, nicht wie ein Cover.
+    minHeight: 116,
+  },
+  // ⚠️ `alignSelf: 'stretch'` statt `aspectRatio`.
+  //
+  // Das ist der eigentliche Trick: In einer Zeile nimmt ein gestrecktes Kind
+  // die volle Höhe der Zeile an — und die bestimmt die Textspalte daneben. Ein
+  // festes Seitenverhältnis würde stattdessen die Höhe VORSCHREIBEN, und dann
+  // bliebe unten oder oben wieder ein Rest. Das Bild ist damit immer genau so
+  // hoch wie die Karte, egal wie lang der Titel wird.
+  //
+  // Keine eigene `borderRadius`: Die Karte beschneidet bereits, und zwei
+  // Rundungen übereinander ergeben eine sichtbare Doppelkante.
+  wideThumb: {
+    width: 112,
+    alignSelf: 'stretch',
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wideText: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    gap: 2,
+    padding: space.md,
+  },
+  wideTitle: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
+  wideWhen: { marginTop: space.xs, flexDirection: 'row', alignItems: 'baseline', gap: 6 },
 
   row: { gap: space.md, paddingRight: space.md },
   card: {
@@ -197,15 +353,42 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  /**
+   * ⚠️ KEIN `minHeight` mehr.
+   *
+   * Hier standen 36 Punkte, damit die Zeitzeile über alle Karten hinweg auf
+   * derselben Höhe sitzt — auch wenn ein Titel eine Zeile hat und der nächste
+   * zwei. Der Preis dafür war ein LOCH: Unter einem einzeiligen Titel wie
+   * „Sdsdsdsdsd" klafften 19 leere Punkte mitten in der Karte, und Berkats
+   * Titel sind fast immer einzeilig. Eine Regel, die den seltenen Fall
+   * ordentlich macht und den häufigen kaputt.
+   *
+   * Die Ausrichtung ist trotzdem nicht verloren — sie wird nur von unten
+   * hergestellt statt von oben (siehe `when`).
+   */
   title: {
     fontSize: 14,
     fontWeight: '700',
     color: ui.text,
     marginTop: space.sm,
-    minHeight: 36,
   },
 
-  when: { marginTop: space.sm, flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  /**
+   * `marginTop: 'auto'` schiebt Zeit, Vorschaubilder und Wochen-Pille an den
+   * UNTEREN Rand der Karte. Weil die Karten im waagerechten Roller ohnehin auf
+   * gleiche Höhe gestreckt werden, sitzen die Zeitzeilen damit exakt
+   * nebeneinander — dasselbe Ziel wie die alte Mindesthöhe, aber ohne Loch:
+   * Der Freiraum sammelt sich zwischen Titel und Zeit statt direkt unter dem
+   * Titel, und dort fällt er nicht auf, weil er die Karte gliedert statt sie
+   * zu zerreißen.
+   */
+  when: {
+    marginTop: 'auto',
+    paddingTop: space.sm,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
 
   peekRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: space.sm },
   peek: {
