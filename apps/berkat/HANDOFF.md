@@ -8893,3 +8893,49 @@ wahrscheinlichsten halte:
 Drei der vier behobenen Löcher standen seit Monaten offen und sind bei sechs früheren Audits nicht
 aufgefallen. Der Unterschied war diesmal nicht die Gründlichkeit, sondern die Quelle: gegen die
 **Rechte** des Produktivsystems geprüft statt gegen den Quelltext.
+
+### Nachtrag: der zweite Durchgang — und was mein eigener Fehler aufgedeckt hat
+
+Zaur: *„lass uns nochmal sicher gehen."* Der Durchgang hat ein weiteres Loch gefunden, und zwar
+**genau in dem blinden Fleck, den der Fehler aus `20260822190000` offengelegt hat.**
+
+Der Audit hatte im Abzug nach `GRANT … TO "anon"` gesucht — 154 Treffer. Aber `EXECUTE` gehört bei
+Funktionen von Haus aus **PUBLIC**, und das schreibt `pg_dump` nicht aus, weil es der Standard ist.
+Die richtige Frage ist deshalb nicht „wer hat ein Recht bekommen", sondern „wem wurde keines
+entzogen". Nachgezählt:
+
+```
+315 Funktionen · 240 per RPC aufrufbar · 200 mit REVOKE … FROM PUBLIC
+→ 47 offen, davon 38 SECURITY DEFINER
+```
+
+Von den 38: **27** tragen einen Wächter im Rumpf (`auth.uid()`, `is_admin()`,
+`has_admin_console_access()`), **10** sind Serlos absichtlich öffentliche Web-Endpunkte — einzeln
+nachgelesen, alle mit `privacy = 'public' AND women_only = false` im Rumpf. Übrig blieb **eine**:
+
+**⚠️ `send_expo_push(token, title, body, data)`** prüfte ausschliesslich das *Format* des Tokens.
+Kein `auth.uid()`, kein Wächter, keine Drosselung — wer ein Token kennt, konnte **ohne Anmeldung**
+eine Push-Meldung mit frei gewähltem Titel und Text im Namen der App zustellen lassen. Und wer
+keines kennt, die ausgehende HTTP-Warteschlange der Datenbank volllaufen lassen.
+
+Behoben mit `20260822200000`. Die Kette wurde vorher verfolgt statt vermutet: genau **ein**
+Aufrufer (`send_push_to_user`, Z. 13064), und der ist `SECURITY DEFINER` — läuft also als
+`postgres` und behält das Recht unabhängig von jedem GRANT. Kein Client ruft sie.
+Gemessen danach: **401 / 42501.**
+
+> **Die Regel: Wer Ausführungsrechte prüft, darf nicht nach `TO anon` suchen, sondern muss
+> `has_function_privilege('anon', …)` fragen. Der Abzug zeigt die Rechte, die jemand VERGEBEN hat —
+> nicht die, die Postgres verschenkt.**
+
+**Zwei Entlastungen aus demselben Durchgang:**
+
+- `get_admin_stats()` ist zwar für PUBLIC erreichbar, antwortet aber gemessen mit
+  `{"error": "not_authorized"}` — `has_admin_console_access()` greift. Unschön, kein Loch.
+- `send_gift` fängt Unangemeldete sauber ab (`auth.uid()` → NULL → `no_wallet`).
+- `get_profile_posts_web`, `get_public_post_web`, `get_public_discover_people_web` tragen alle drei
+  die Filter. **Das kritische `get_creator_top_posts` war ein Ausreisser, keine Norm** — das ist der
+  beruhigendere Teil des Befunds.
+
+**Und die fünf Fixes von vorhin stehen nach dem zweiten Abzug unverändert:** Wächter-Trigger da,
+`posts` mit genau zwei SELECT-Policies, alle fünf Creator-Funktionen mit `REVOKE … FROM PUBLIC`
+**und** `GRANT … TO authenticated` — Serlos Studio behält seinen Zugang.

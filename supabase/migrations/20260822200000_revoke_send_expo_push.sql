@@ -1,0 +1,92 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ⚠️ `send_expo_push` war für JEDEN aufrufbar — auch ohne Anmeldung
+--
+-- GEFUNDEN am 22.08.2026 beim zweiten Durchgang („lass uns nochmal sicher
+-- gehen"), und gefunden nur deshalb, weil der erste Durchgang einen blinden
+-- Fleck hatte — siehe unten.
+--
+-- Der Rumpf prüft ausschliesslich das FORMAT des Tokens:
+--
+--     IF token IS NULL OR token = '' THEN RETURN; END IF;
+--     IF token NOT LIKE 'ExponentPushToken[%]'
+--        AND token NOT LIKE 'ExpoPushToken[%]' THEN RETURN; END IF;
+--     PERFORM net.http_post(url := 'https://exp.host/--/api/v2/push/send', …);
+--
+-- Kein `auth.uid()`, kein Wächter, keine Drosselung. Wer ein Token kennt, kann
+-- **Titel und Text frei wählen** und eine echte Push-Meldung im Namen der App
+-- zustellen lassen. Und wer keines kennt, kann die ausgehende
+-- HTTP-Warteschlange der Datenbank unangemeldet volllaufen lassen.
+--
+-- ⚠️ Das ist dieselbe Angriffsfläche wie die offene `notifications`-INSERT-
+-- Policy (Abschnitt 73), nur eine Ebene tiefer und ohne jede Anmeldung. Beide
+-- untergraben die Warnzeile aus Abschnitt 64: „Berkat schreibt dir nie hier."
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ⚠️ WARUM DER ERSTE DURCHGANG SIE NICHT GEFUNDEN HAT
+--
+-- Der Audit suchte im Abzug nach `GRANT … TO "anon"`. `send_expo_push` hat
+-- keinen solchen Eintrag — sie ist über **PUBLIC** erreichbar, und das schreibt
+-- `pg_dump` nicht aus, weil `EXECUTE` für PUBLIC bei Funktionen der Standard
+-- ist. Genau der blinde Fleck, in den ich beim ersten REVOKE selbst gelaufen
+-- bin (`20260822190000`).
+--
+-- Nachgezählt am Abzug: **240 per RPC aufrufbare Funktionen, 200 mit einem
+-- ausdrücklichen `REVOKE … FROM PUBLIC` — bleiben 47 offene, davon 38
+-- SECURITY DEFINER.** Von den 38 sind 27 durch einen Wächter im Rumpf gedeckt
+-- und 10 sind Serlos absichtlich öffentliche Web-Endpunkte (`get_public_*`,
+-- `get_profile_posts_web` — alle mit `privacy = 'public' AND women_only = false`
+-- im Rumpf, einzeln nachgelesen). Übrig bleibt diese eine.
+--
+-- > **Die Regel: Wer Ausführungsrechte prüft, darf nicht nach `TO anon` suchen,
+-- > sondern muss `has_function_privilege('anon', …)` fragen. Der Abzug zeigt
+-- > Rechte, die jemand vergeben hat — nicht die, die Postgres verschenkt.**
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WARUM DAS GEFAHRLOS IST — die Kette wurde verfolgt, nicht vermutet
+--
+-- `send_expo_push` hat im ganzen System **genau einen** Aufrufer:
+-- `send_push_to_user` (Abzug Z. 13064). Und die ist `SECURITY DEFINER`, läuft
+-- also als `postgres` — dem Eigentümer der Funktion, der das Recht unabhängig
+-- von jedem GRANT behält. Ein `grep` über beide Apps und alle Edge Functions
+-- findet **keinen** Client-Aufruf.
+--
+-- Der Push-Weg (Trigger → fn_send_push_on_notification → send_push_to_user →
+-- send_expo_push) bleibt damit unberührt.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+REVOKE ALL ON FUNCTION public.send_expo_push(text, text, text, jsonb)
+  FROM PUBLIC, anon, authenticated;
+
+-- service_role behält es: Das ist der Betreiber, und ein Notweg für einen
+-- manuellen Versand soll bleiben.
+GRANT EXECUTE ON FUNCTION public.send_expo_push(text, text, text, jsonb) TO service_role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- GEGENPROBEN
+--
+-- 1. ⚠️ Von aussen, mit dem oeffentlichen Schluessel — NICHT am Abzug:
+--      POST /rest/v1/rpc/send_expo_push
+--        {"token":"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+--         "title":"Probe","body":"Probe"}
+--      -- erwartet: 401 / 42501
+--      -- Das Token ist absichtlich erfunden: Selbst wenn der Aufruf noch
+--      --   durchginge, stellt Expo an eine unbekannte Kennung nichts zu.
+--
+-- 2. Der Push-Weg muss weiter funktionieren. Der ehrliche Test ist eine echte
+--    Meldung — Zuschlag oder Termin-Erinnerung — auf einem Geraet.
+--    Der billige Vorabtest:
+--      SELECT has_function_privilege('postgres',
+--             'public.send_expo_push(text,text,text,jsonb)', 'EXECUTE');
+--      -- erwartet: true (Eigentuemer, unabhaengig von GRANTs)
+--
+-- 3. Und die Liste, die dieser Durchgang eroeffnet hat und die NICHT
+--    abgearbeitet ist:
+--      SELECT p.proname, pg_get_function_identity_arguments(p.oid), p.prosecdef
+--        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--       WHERE n.nspname = 'public'
+--         AND has_function_privilege('anon', p.oid, 'EXECUTE')
+--       ORDER BY p.prosecdef DESC, 1;
+--      -- 47 offene, 38 davon SECURITY DEFINER. Geprueft und fuer richtig
+--      -- befunden sind die 27 mit Waechter und die 10 oeffentlichen
+--      -- Web-Endpunkte. Wer hier etwas aendert, faengt mit dieser Abfrage an.
+-- ─────────────────────────────────────────────────────────────────────────────
