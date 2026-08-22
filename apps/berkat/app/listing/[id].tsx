@@ -287,12 +287,16 @@ export default function ListingScreen() {
     }
   }, [actions.buy, listing, needsLogin]);
 
+  // ⚠️ Der Artikel geht MIT (`20260822140000`). Vorher stand sein Titel nur im
+  // Entwurfstext — und mehr kam beim Verkäufer nicht an: kein Bild, kein Preis,
+  // kein Weg zum Angebot. Bei dreißig Angeboten, von denen mehrere ähnlich
+  // heißen, ist ein Titel im Fließtext keine Auskunft.
   const onContact = useCallback(() => {
     if (!listing || needsLogin()) return;
     router.push(
       `/messages/${listing.seller_id}?draft=${encodeURIComponent(
         `Hallo! Ist „${listing.title}" noch da?`,
-      )}`,
+      )}&listing=${listing.id}`,
     );
   }, [listing, needsLogin]);
 

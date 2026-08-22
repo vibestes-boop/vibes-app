@@ -31,6 +31,7 @@ import {
   MoreHorizontal,
   SendHorizontal,
   TriangleAlert,
+  X,
 } from 'lucide-react-native';
 
 import { useSession } from '../../lib/session';
@@ -47,6 +48,8 @@ import { Avatar } from '../../components/Avatar';
 import { pickAndUpload } from '../../lib/uploadImage';
 import { REPORT_REASONS, useMyBlocks, useSellerActions } from '../../lib/useSellerActions';
 import { disputeReasonLabel, orderRef, useDisputeWith } from '../../lib/useDispute';
+import { useListing, useListingsByIds } from '../../lib/useListings';
+import { formatEuro } from '../../lib/useAuction';
 import { formatCents } from '../../lib/useShipping';
 import { radius, ratio, space, ui } from '../../theme/tokens';
 
@@ -102,7 +105,11 @@ function dayLabel(iso: string): string {
 }
 
 export default function ConversationScreen() {
-  const { id: otherId, draft: presetDraft } = useLocalSearchParams<{
+  const {
+    id: otherId,
+    draft: presetDraft,
+    listing: presetListing,
+  } = useLocalSearchParams<{
     id: string;
     /**
      * Vorformulierter erster Satz, z. B. aus einem Angebot heraus.
@@ -113,6 +120,14 @@ export default function ConversationScreen() {
      * Käufer inzwischen selbst getippt hat.
      */
     draft?: string;
+    /**
+     * Das Angebot, aus dem heraus geschrieben wird (`20260822140000`).
+     *
+     * ⚠️ Es hängt an der EINEN Nachricht, mit der man es anspricht — danach
+     * wird der Anhang gelöst. Alles Weitere ist ein normales Gespräch, und ein
+     * Artikel unter jeder Zeile wäre kein Bezug mehr, sondern Rauschen.
+     */
+    listing?: string;
   }>();
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
@@ -128,6 +143,26 @@ export default function ConversationScreen() {
   const [draft, setDraft] = useState(() => presetDraft ?? '');
   const [notice, setNotice] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  /**
+   * Der Artikel, der an der NÄCHSTEN Nachricht hängt.
+   *
+   * Als Anfangswert, nicht als Effekt — dieselbe Begründung wie beim Entwurf
+   * darüber: Ein Effekt hängte ihn wieder an, nachdem der Käufer ihn bewusst
+   * abgenommen hat.
+   */
+  const [attached, setAttached] = useState<string | null>(() => presetListing ?? null);
+  const { data: attachedListing } = useListing(attached ?? undefined);
+
+  /**
+   * Die Artikel für die Karten im Verlauf — EINE Abfrage für die ganze
+   * Unterhaltung, nicht eine je Blase (HANDOFF 4, Kostenhygiene).
+   */
+  const listingIds = useMemo(
+    () => [...new Set(messages.map((m) => m.listing_id).filter(Boolean) as string[])],
+    [messages],
+  );
+  const { data: listingsById } = useListingsByIds(listingIds);
 
   /**
    * ⚠️ Melden und Sperren GEHÖREN HIERHER, nicht nur aufs Profil.
@@ -226,13 +261,19 @@ export default function ConversationScreen() {
   const onSend = useCallback(async () => {
     const text = draft;
     if (!text.trim()) return;
+    // ⚠️ Der Anhang wird VOR dem Senden gelöst, nicht danach. Geht die Zeile
+    // nicht raus, kommt er mit dem Text zurück — sonst hinge er an der
+    // nächsten Nachricht, die davon nichts weiß.
+    const withListing = attached;
     setDraft('');
-    const res = await send(text);
+    setAttached(null);
+    const res = await send(text, null, withListing);
     if (!res.ok) {
       setDraft(text);
+      setAttached(withListing);
       setNotice(res.message);
     }
-  }, [draft, send]);
+  }, [draft, attached, send]);
 
   /**
    * Foto wählen und sofort senden.
@@ -267,10 +308,13 @@ export default function ConversationScreen() {
       const url = await pickAndUpload('cover', 'portrait');
       if (!url) return;
       const text = draft;
+      const withListing = attached;
       setDraft('');
-      const res = await send(text, url);
+      setAttached(null);
+      const res = await send(text, url, withListing);
       if (!res.ok) {
         setDraft(text);
+        setAttached(withListing);
         setNotice(res.message);
       }
     } catch {
@@ -278,7 +322,7 @@ export default function ConversationScreen() {
     } finally {
       setUploading(false);
     }
-  }, [draft, send, uploading]);
+  }, [draft, attached, send, uploading]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -457,6 +501,56 @@ export default function ConversationScreen() {
                           ) : null}
                         </Pressable>
                       ) : null}
+                      {/* ⚠️ Die Produktkarte — der Grund, warum es
+                          `messages.listing_id` gibt (20260822140000).
+
+                          Sie steht ÜBER dem Text, nicht darunter: Der Satz
+                          („Ist das noch da?") bezieht sich auf sie, und man
+                          liest von oben nach unten. Ein Bezug, der erst nach
+                          der Frage kommt, ist eine Fußnote.
+
+                          Fehlt der Artikel in der Antwort — gelöscht, oder
+                          Frauen-Only ohne Freigabe —, rendert sie NICHTS und
+                          der Text bleibt stehen. Kein Platzhalter, keine
+                          Meldung: dieselbe Sprache wie auf der Artikelseite
+                          (HANDOFF 21), damit die Existenz nicht durchsickert. */}
+                      {item.listing_id && listingsById?.get(item.listing_id) ? (
+                        (() => {
+                          const l = listingsById.get(item.listing_id)!;
+                          return (
+                            <Pressable
+                              style={[styles.prod, mine && styles.prodMine]}
+                              onPress={() => router.push(`/listing/${l.id}`)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${l.title}, ${formatEuro(
+                                l.buy_now_cents,
+                              )} — Angebot ansehen`}
+                            >
+                              {l.image_url ? (
+                                <Image
+                                  source={{ uri: l.image_url }}
+                                  style={styles.prodThumb}
+                                  contentFit="cover"
+                                  transition={120}
+                                />
+                              ) : (
+                                <View style={styles.prodThumb} />
+                              )}
+                              <View style={styles.prodBody}>
+                                <Text
+                                  numberOfLines={2}
+                                  style={[styles.prodTitle, mine && styles.prodTitleMine]}
+                                >
+                                  {l.title}
+                                </Text>
+                                <Text style={[styles.prodPrice, mine && styles.prodPriceMine]}>
+                                  {formatEuro(l.buy_now_cents)}
+                                </Text>
+                              </View>
+                            </Pressable>
+                          );
+                        })()
+                      ) : null}
                       {text ? (
                         <Text
                           style={[
@@ -491,6 +585,41 @@ export default function ConversationScreen() {
           <Pressable style={styles.notice} onPress={() => setNotice(null)}>
             <Text style={styles.noticeText}>{notice}</Text>
           </Pressable>
+        ) : null}
+
+        {/* ⚠️ Der Anhang ist SICHTBAR, bevor er rausgeht.
+            Ein Bezug, den nur der Empfänger sieht, ist eine Überraschung — und
+            wer aus dem Angebot heraus schreibt, soll erkennen, dass der Artikel
+            mitgeht, statt ihn im Text noch einmal zu beschreiben. Das ✕ ist
+            kein Beiwerk: Man kommt manchmal über ein Angebot in einen Chat und
+            will dann etwas ganz anderes fragen. */}
+        {attachedListing ? (
+          <View style={styles.attach}>
+            {attachedListing.image_url ? (
+              <Image
+                source={{ uri: attachedListing.image_url }}
+                style={styles.attachThumb}
+                contentFit="cover"
+                transition={120}
+              />
+            ) : (
+              <View style={styles.attachThumb} />
+            )}
+            <View style={styles.attachBody}>
+              <Text style={styles.attachLabel}>Zu diesem Angebot</Text>
+              <Text numberOfLines={1} style={styles.attachTitle}>
+                {attachedListing.title}
+              </Text>
+            </View>
+            <Pressable
+              hitSlop={10}
+              onPress={() => setAttached(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Angebot nicht mitschicken"
+            >
+              <X size={18} color={ui.textMuted} />
+            </Pressable>
+          </View>
         ) : null}
 
         <View style={[styles.inputRow, { paddingBottom: keyboardUp ? space.sm : insets.bottom || space.sm }]}>
@@ -636,6 +765,51 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 15, color: ui.text, lineHeight: 20 },
   bubbleTextMine: { color: '#FFFFFF' },
   bubbleTime: { fontSize: 10, color: ui.textMuted, marginTop: 3, alignSelf: 'flex-end' },
+
+  // ── Produktkarte in der Blase ─────────────────────────────────────────────
+  // Sie liegt IN der Blase und trägt deshalb keine eigene Farbe, sondern eine
+  // Aufhellung der Blasenfläche: Ein weißer Kasten in einer dunkelgrünen Blase
+  // wäre ein Fremdkörper, und zwei Kartenfarben nebeneinander (meine/ihre)
+  // lesen sich als zwei verschiedene Dinge.
+  prod: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    padding: 6,
+    marginBottom: 6,
+    borderRadius: radius.md,
+    backgroundColor: ui.sunken,
+  },
+  prodMine: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  prodThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+  },
+  prodBody: { flex: 1, minWidth: 0, gap: 1 },
+  prodTitle: { fontSize: 13, fontWeight: '600', color: ui.text, lineHeight: 17 },
+  prodTitleMine: { color: '#FFFFFF' },
+  prodPrice: { fontSize: 13, fontWeight: '700', color: ui.text },
+  prodPriceMine: { color: '#FFFFFF' },
+
+  // ── Anhang über dem Eingabefeld ───────────────────────────────────────────
+  attach: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginHorizontal: space.md,
+    marginBottom: space.xs,
+    padding: 6,
+    borderRadius: radius.md,
+    backgroundColor: ui.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ui.line,
+  },
+  attachThumb: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: ui.sunken },
+  attachBody: { flex: 1, minWidth: 0 },
+  attachLabel: { fontSize: 10, color: ui.textMuted, fontWeight: '600' },
+  attachTitle: { fontSize: 13, fontWeight: '600', color: ui.text },
 
   // ── Tagestrenner ──────────────────────────────────────────────────────────
   // Mittig, klein, gedämpft — die übliche Form, weil sie keine Nachricht ist,

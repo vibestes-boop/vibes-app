@@ -261,6 +261,42 @@ export function useListing(id: string | undefined) {
 }
 
 /**
+ * Mehrere Angebote auf einmal — für die Produktkarten in einem Chat-Verlauf.
+ *
+ * ⚠️ EINE Abfrage für die ganze Unterhaltung, nicht eine je Nachricht. In der
+ * Regel ist es genau ein Artikel; bei einem Menschen, der über Wochen nach
+ * fünf Sachen fragt, sind es fünf. Ein `useListing()` je Blase wären so viele
+ * Abfragen wie Nachrichten — die Kostenhygiene-Sünde aus HANDOFF 4.
+ *
+ * `session_id IS NULL` wie überall im Regal-Pfad: Ein Artikel, der inzwischen
+ * in einer Show liegt, gehört dort und nicht in eine Chat-Karte.
+ *
+ * Ein geschütztes (Frauen-Only) oder gelöschtes Angebot fehlt in der Antwort
+ * einfach — die Karte rendert dann nichts, der Text der Nachricht bleibt.
+ */
+export function useListingsByIds(ids: string[]) {
+  const key = [...new Set(ids)].sort().join(',');
+  return useQuery({
+    queryKey: ['berkat', 'listings-by-ids', key],
+    enabled: key.length > 0,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Map<string, Listing>> => {
+      const unique = key.split(',');
+      const { data, error } = await supabase
+        .from('live_auctions')
+        .select(LISTING_COLUMNS)
+        .in('id', unique)
+        .is('session_id', null);
+      // Fällt sie aus, fehlen Karten — der Verlauf bleibt vollständig.
+      if (error) return new Map();
+      const map = new Map<string, Listing>();
+      for (const row of (data ?? []) as unknown as Listing[]) map.set(row.id, row);
+      return map;
+    },
+  });
+}
+
+/**
  * Die Bild-Liste eines Angebots — mit Netz für Zeilen von vor dem Backfill.
  * Eine leere Liste heißt wirklich „kein Bild", nie „Liste vergessen".
  */

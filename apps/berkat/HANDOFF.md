@@ -135,7 +135,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–71; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–72; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -8596,3 +8596,92 @@ danach unverändert. `tsc` und `expo export` fehlerfrei (3724 Module).
 
 ⚠️ **Offen bleibt aus der Liste:** die zwölf freigestellten Fotos (Zaurs Handgriff, „Schuhe" trägt
 bis dahin ein Paket-Symbol) und der leere Fuß der Startseite.
+
+---
+
+## 72. Eine Nachricht kann sich auf ein Angebot beziehen (22.08.2026, Abend)
+
+Zaur, mit Bildschirmfoto aus dem Chat: *„wenn man einen produkt anschreibt sollte das bild auch
+mit geliefert werden oder am besten das text sollte anklickbar sein um zum produkt zu gelangen."*
+
+Beides stimmt, und das Zweite ist das Richtigere.
+
+### Was ankam — und was nicht
+
+Der „Nachricht schreiben"-Knopf am Angebot füllte den Entwurf mit
+**„Hallo! Ist „Abaya, schwarz mit Stickerei" noch da?"**. Das ist alles, was beim Verkäufer
+ankommt: kein Bild, kein Preis, kein Weg zum Artikel. Bei dreißig Angeboten, von denen mehrere
+ähnlich heißen, ist ein Titel im Fließtext keine Auskunft — und der Käufer kann seine eigene Frage
+zwei Wochen später auch nicht mehr zuordnen.
+
+Kleinanzeigen, Vinted und Whatnot hängen an genau diese erste Nachricht eine Produktkarte.
+
+### ⚠️ `messages` hatte kein Feld dafür — zum ersten Mal seit Wochen
+
+Der Reflex dieses Projekts ist inzwischen „die Serverseite ist schon da" (Abschnitt 68, viermal an
+einem Tag). Diesmal nicht: `messages` trägt `post_id` (Serlos Video-Beitrag), `reply_to_id`,
+`image_url`, `story_media_url`, `story_author` — **nichts für ein Angebot**. Am Schema-Abzug
+nachgesehen, nicht vermutet.
+
+Also `20260822140000`: eine additive, nullable Spalte `listing_id` mit Fremdschlüssel auf
+`live_auctions`.
+
+**Warum an der NACHRICHT und nicht an der Unterhaltung:** Über Wochen fragt derselbe Mensch nach
+mehreren Artikeln. Hängt der Bezug an der Unterhaltung, überschreibt die zweite Frage die erste. An
+der Nachricht behält er seinen Platz in der Zeit — dieselbe Entscheidung wie bei der Streit-Karte
+im Verlauf (Abschnitt 68).
+
+### ⚠️ DIE REIHENFOLGE IST HIER PFLICHT: ERST DIE MIGRATION, DANN DER OTA
+
+`useMessages` holt `listing_id` in seiner **festen Spaltenliste**. Läuft der Client, bevor die
+Spalte existiert, antwortet PostgREST mit `42703` — und dann ist nicht die Karte weg, sondern
+**der ganze Verlauf**.
+
+> Wer diesen Stand veröffentlicht, ohne `20260822140000` eingespielt zu haben, macht die
+> Nachrichten für alle dunkel. Dieselbe Reihenfolge-Regel wie bei der App-Trennung am 14.08.
+> („Berkat musste vor Serlo dran sein", Abschnitt 8) — nur andersherum: hier muss die **Datenbank**
+> vor dem Client dran sein.
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Der Anhang ist sichtbar, bevor er rausgeht.** Über dem Eingabefeld steht „Zu diesem Angebot"
+  mit Bild und Titel. Ein Bezug, den nur der Empfänger sieht, ist eine Überraschung — und wer aus
+  dem Angebot heraus schreibt, soll erkennen, dass der Artikel mitgeht, statt ihn im Text noch
+  einmal zu beschreiben.
+- **Mit einem ✕ zum Abnehmen.** Man kommt manchmal über ein Angebot in einen Chat und will dann
+  etwas ganz anderes fragen.
+- **Er hängt an EINER Nachricht, nicht an jeder.** Nach dem Senden ist er gelöst. Ein Artikel unter
+  jeder Zeile wäre kein Bezug mehr, sondern Rauschen.
+- **Gelöst wird VOR dem Senden, zurückgegeben bei Fehlschlag.** Sonst hinge er an der nächsten
+  Nachricht, die davon nichts weiß — dieselbe Sorgfalt wie beim optimistischen Text (Abschnitt 66).
+- **Die Karte steht ÜBER dem Text.** Der Satz („Ist das noch da?") bezieht sich auf sie, und man
+  liest von oben nach unten. Ein Bezug, der erst nach der Frage kommt, ist eine Fußnote.
+- **In der Blase, nicht daneben** — und deshalb ohne eigene Farbe, sondern als Aufhellung der
+  Blasenfläche. Ein weißer Kasten in einer dunkelgrünen Blase wäre ein Fremdkörper.
+- **⚠️ Eine Abfrage für den ganzen Verlauf** (`useListingsByIds`), nicht eine je Blase. In der
+  Regel ist es ein Artikel; ein `useListing()` je Nachricht wären so viele Abfragen wie Zeilen —
+  die Kostenhygiene-Sünde aus Abschnitt 4.
+- **Keine RLS-Änderung, und das ist der Punkt.** Wer die Nachricht lesen darf, entscheidet
+  unverändert die Policy auf `messages`. Ob er den ARTIKEL sehen darf, entscheidet
+  `live_auctions_select_standing` beim separaten Lesen — samt Frauen-Only-Schranke. Ein geschütztes
+  Angebot fehlt in der Antwort, die Karte rendert dann **nichts**, der Text bleibt stehen. Dieselbe
+  Sprache wie auf der Artikelseite: „gibt es nicht" statt „keine Berechtigung".
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` fehlerfrei.
+
+⚠️ **Am Gerät NICHT geprüft, und zwar zwangsläufig:** Ohne die Spalte scheitert schon das Laden des
+Verlaufs. Die Probe gehört in denselben Handgriff wie das Einspielen — Angebot öffnen, „Nachricht
+schreiben", Anhang muss über dem Feld stehen, senden, Karte muss in der Blase erscheinen und auf
+Tipp zum Angebot führen. Gegenprobe 3 am Ende der Migration.
+
+⚠️ **Und die eine Frage, die die Migration selbst stellt:** Ist die Spaltenliste von `messages`
+eingefroren? Sie steht nicht auf der Liste der drei Tabellen (CLAUDE.md Regel 11), aber Gegenprobe
+2 misst es, statt es zu glauben — genau der Fehler, der am 16.08. bei `profiles.banner_url`
+zugeschlagen hat.
+
+### Nebenbei, damit es niemand für einen Fehler hält
+
+Im Bildschirmfoto steht hinter „Schreib … die erste Nachricht" ein leeres Kästchen. Das ist das
+Emoji 👋 — **dem Simulator fehlt die Emoji-Schrift** (Abschnitt 2). Am Gerät ist es in Ordnung.

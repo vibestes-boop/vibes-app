@@ -26,6 +26,20 @@ export type DirectMessage = {
   image_url: string | null;
   created_at: string;
   read: boolean;
+  /**
+   * Das Angebot, um das es in dieser Nachricht geht (`20260822140000`).
+   *
+   * ⚠️ Der Bezug hängt an der NACHRICHT, nicht an der Unterhaltung: Über
+   * Wochen fragt derselbe Mensch nach mehreren Artikeln, und an der
+   * Unterhaltung überschriebe die zweite Frage die erste. Dieselbe
+   * Entscheidung wie bei der Streit-Karte im Verlauf (HANDOFF 68).
+   *
+   * Ob der Leser den Artikel SEHEN darf, entscheidet nicht diese Spalte,
+   * sondern `live_auctions_select_standing` beim separaten Lesen — ein
+   * geschütztes Angebot kommt als `null` zurück, die Karte rendert dann
+   * nichts, und der Text bleibt stehen.
+   */
+  listing_id: string | null;
 };
 
 export type Conversation = {
@@ -145,7 +159,10 @@ export function useMessages(conversationId: string | null | undefined) {
        */
       const { data, error } = await supabase
         .from('messages')
-        .select('id, conversation_id, sender_id, content, image_url, created_at, read')
+        // ⚠️ Feste Spaltenliste: Wer `listing_id` anzeigen will, muss sie HIER
+        // ergänzen. Genau so blieb `description` zwei Tage unsichtbar — Spalte
+        // da, Abfrage holt sie nicht, niemand sieht sie (HANDOFF 3).
+        .select('id, conversation_id, sender_id, content, image_url, listing_id, created_at, read')
         .eq('conversation_id', conversationId!)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -200,7 +217,15 @@ export function useSendMessage(
      * als leere Blase — in einer ausgelieferten App, die wir nicht anfassen.
      * Am 21.08.2026 vor dem Bau gegengeprüft, nicht angenommen.
      */
-    async (text: string, imageUrl?: string | null): Promise<SendResult> => {
+    async (
+      text: string,
+      imageUrl?: string | null,
+      /**
+       * Das Angebot, um das es geht (`20260822140000`). Wird nur an die EINE
+       * Nachricht gehängt, mit der man es anspricht — nicht an jede weitere.
+       */
+      listingId?: string | null,
+    ): Promise<SendResult> => {
       const content = text.trim();
       if (!content && !imageUrl) return { ok: false, message: 'Da steht noch nichts.' };
       if (!myUserId || !otherId) {
@@ -232,6 +257,7 @@ export function useSendMessage(
         sender_id: myUserId,
         content,
         image_url: imageUrl ?? null,
+        listing_id: listingId ?? null,
         created_at: new Date().toISOString(),
         read: false,
       };
@@ -243,6 +269,10 @@ export function useSendMessage(
         sender_id: myUserId,
         content,
         image_url: imageUrl ?? null,
+        // ⚠️ Nur mitschicken, wenn wirklich etwas dranhängt. Ein `listing_id`
+        // auf JEDER Nachricht wäre kein Bezug mehr, sondern Rauschen — und die
+        // Karte im Verlauf würde sich unter jeder Zeile wiederholen.
+        ...(listingId ? { listing_id: listingId } : {}),
       });
       if (error) {
         // Zurücknehmen, sonst steht eine Nachricht da, die es nicht gibt — die
