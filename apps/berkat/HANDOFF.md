@@ -135,7 +135,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–72; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–73; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -8713,3 +8713,183 @@ Testware; für den TestFlight-Start ist das folgenlos, vor echten Nutzern gehör
 von rund 840 Punkten in der Zone des Home-Indikators landen und verschluckt werden. Mit dem Daumen
 trifft man die Fläche darüber; beim Steuern über Koordinaten kostet es drei Versuche. Wer die
 Eingabezeile je anfasst, weiß damit, warum sie nicht noch tiefer darf.
+
+---
+
+## 73. Der Sicherheits-Audit — und vier Löcher, die seit Monaten offen standen (22.08.2026, Abend)
+
+Zaur: *„analysiere sicherheitsfehler."*
+
+Gemessen wurde gegen einen **frischen Abzug der Produktions-Datenbank mit Rechten** (29.455 Zeilen,
+1241 GRANT-Zeilen, 238 Policies, 314 Funktionen), nicht gegen Migrationsdateien. Sechs unabhängige
+Blickwinkel, 54 Rohfunde, dazu eigene Proben mit dem öffentlichen Schlüssel.
+
+> **Der Befund in einem Satz: Berkats eigene Migrationen sind sauber — die schweren Löcher liegen
+> alle in der geerbten Serlo-Schicht, und Serlo ist im App Store.**
+
+### ⚠️ Fund 1: Jeder angemeldete Nutzer konnte sich selbst zum Admin machen
+
+Drei Zeilen, jede für sich richtig aussehend:
+
+```
+GRANT INSERT,…,UPDATE ON TABLE public.profiles TO authenticated;   ← Tabellen-Ebene = ALLE Spalten
+CREATE POLICY "User kann eigenes Profil bearbeiten" … USING (auth.uid() = id);
+trg_guard_women_only_verified                                       ← schützt genau EINE Spalte
+```
+
+`PATCH /rest/v1/profiles?id=eq.<eigene-id>` mit `{"is_admin": true}` genügte. `is_admin()` liest
+genau diese Spalte, und 25 Stellen hängen daran — Auszahlungsverwaltung, Streitfall-Auflösung,
+Admin-Konsole. Ungeschützt waren auch `is_moderator`, `is_operator`, `is_creator_ops`,
+`is_verified`, `is_banned`, `is_shadow_banned`, `verification_level`.
+
+**Das Bittere:** Der Trigger daneben beweist, dass das Muster im Haus bekannt war. Es wurde nur nie
+auf die übrigen Rechte-Spalten angewandt.
+
+Behoben mit `20260822150000` — Wächter-Trigger, BEFORE INSERT **und** UPDATE.
+
+⚠️ **Warum ein Trigger und nicht `REVOKE UPDATE` + Spalten-GRANTs:** Das wäre exakt Regel 11
+gewesen und hätte die Spaltenliste von `profiles` eingefroren — jede künftige Profilspalte wäre für
+zwei ausgelieferte Apps lautlos nicht mehr schreibbar. Der Trigger ändert kein einziges Recht.
+
+⚠️ **Und warum die Rollenprüfung statt eines Bypass-Schalters:** Geprüft wird, WER schreibt —
+`anon`/`authenticated` blocken, `SECURITY DEFINER` (läuft als `postgres`) und `service_role` kommen
+durch. Am Abzug gegengeprüft: **jeder** legitime Schreibweg auf eine Rechte-Spalte ist SECURITY
+DEFINER, und `is_admin` wird von keiner Funktion gesetzt, nur gelesen.
+
+### ⚠️ Fund 2: Eine Alt-Policy hebelte die Frauen-Only-Grenze auf `posts` aus
+
+Auf `posts` lagen **drei** permissive SELECT-Policies. Die neue prüft `women_only`. Die alte
+(`posts_visibility_policy`, aus `20260507110000`, also von VOR der Schranke) kennt die Spalte
+nicht — und permissive Policies verknüpft Postgres mit ODER. Jeder Frauen-Only-Beitrag mit
+`privacy='public'` war für jeden lesbar, auch ohne Konto.
+
+Das ist wörtlich der WOZ-Live-Leak vom 16.07.2026, eine Tabelle weiter. **Die Lehre stand seit
+einem Monat in Abschnitt 5 — auf der Tabelle, auf der sie schon behoben war.**
+
+Behoben mit `20260822160000` (`DROP POLICY`). Vorher Zeile für Zeile verglichen: Die alte war eine
+echte Teilmenge der neuen, bis auf genau diese eine Lücke.
+
+### ⚠️ Fund 3: Fünf Creator-Auswertungen ohne Anmeldung
+
+`get_creator_top_posts`, `_earnings`, `_gift_history`, `_overview`, `_follower_growth` — alle
+`SECURITY DEFINER`, alle mit einer fremden Nutzer-ID als Parameter, alle für `anon` ausführbar. Der
+schwerste ist `get_creator_top_posts`: Sein einziges Prädikat im ganzen Rumpf lautet
+`WHERE p.author_id = p_user_id`. Kein `privacy`, kein `women_only`. **Bildpfad und Text privater
+und Frauen-Only-Beiträge jedes Nutzers, ohne Konto** — die IDs dazu liefert
+`get_public_discover_people_web`, ebenfalls offen.
+
+### ⚠️ Fund 4: Frauen-Only-Termine und -Aufzeichnungen waren öffentlich
+
+`scheduled_lives_select_public` und `live_recordings_select_public` kannten `women_only` nicht.
+Für Berkat ist das nicht theoretisch: Der „Demnächst"-Streifen liest `scheduled_lives` **ohne
+Konto**. Eine Verkäuferin, die eine Frauen-Only-Auktion ankündigt, stand mit Namen, Bild und
+Uhrzeit auf einer öffentlichen Fläche. Behoben mit `20260822180000`.
+
+### ⚠️ Der Fehler, den ich beim Beheben selbst gemacht habe
+
+`20260822170000` schrieb `REVOKE ALL … FROM anon` für die fünf Funktionen. Die Gegenprobe von
+aussen sagte danach:
+
+```
+get_creator_earnings        → 401 / 42501   ✅
+get_creator_gift_history    → 401 / 42501   ✅
+get_creator_top_posts       → 400 / 42702   ❌ lief durch
+get_creator_overview        → 200           ❌
+get_creator_follower_growth → 200           ❌
+```
+
+Keine Überladung, die Signaturen stimmten zeichengenau. Die Ursache ist die **Spiegelseite der
+Warnung, die in derselben Datei steht**: Ein `REVOKE … FROM anon` löscht nur den anon-Eintrag und
+lässt den **PUBLIC**-Eintrag stehen — und bei Funktionen hat `PUBLIC` von Haus aus `EXECUTE`.
+`pg_dump` schreibt das nicht aus, weil es der Standard ist.
+
+> **Ein Recht, das im Abzug nicht steht, ist deshalb nicht abwesend.**
+>
+> **Die Regel aus beiden Hälften: Ein Recht auf einer Funktion ist erst weg, wenn PUBLIC *und*
+> anon es verloren haben. Und geprüft wird das nicht am Abzug, sondern mit einem Aufruf von aussen.**
+
+Nachgetragen mit `20260822190000`. Danach alle fünf: **401 / 42501**.
+
+Ich habe diese Falle eine Stunde vorher selbst aufgeschrieben und bin in ihre andere Hälfte
+gelaufen. Aufgefallen ist es nur, weil die Gegenprobe nicht „steht das REVOKE in der Datei" fragte,
+sondern „antwortet der Server jetzt mit 401".
+
+⚠️ **Folge für den nächsten Durchgang:** Der Audit hat nach `TO "anon"` im Abzug gesucht. Funktionen,
+die nur über `PUBLIC` erreichbar sind, fallen durch dieses Raster. Die vollständige Liste liefert
+nur `has_function_privilege('anon', p.oid, 'EXECUTE')` — die Abfrage steht am Ende von
+`20260822190000`.
+
+### Was ich gemessen habe, bevor und nachdem
+
+| | vorher | nachher |
+|---|---|---|
+| `posts` für anon sichtbar | 15 | **15** |
+| `scheduled_lives` für anon | 1 | **1** |
+| `live_auctions` für anon | 95 | **95** |
+| die fünf Creator-RPCs | 200 / 400 | **401 · 42501** (alle fünf) |
+| Profil speichern in der App | ✅ | **✅ „Gespeichert."** |
+
+Nichts Legitimes ist gebrochen. Der Wächter-Trigger steht im Live-Schema
+(`trg_guard_profile_privileges`, BEFORE INSERT OR UPDATE), `posts` hat nur noch zwei
+SELECT-Policies, und beide neuen WOZ-Policies tragen `is_women_only_verified()`.
+
+⚠️ **Was NICHT gemessen ist:** dass der Wächter einen echten Angriff abweist. Dafür braucht es eine
+**angemeldete** Sitzung, und sich für einen Menschen anzumelden ist nichts, was ein Assistent tut.
+Die Probe steht als Gegenprobe 1 in `20260822150000` und ist ein Handgriff: aus der App heraus ein
+`PATCH … {"is_admin": true}` — erwartet wird `insufficient_privilege`.
+
+⚠️ **Und die Frage, die keine Migration beantwortet:** Der Weg war offen, solange die Datenbank
+steht. Gemessen habe ich nur, dass heute **genau ein** Konto `is_admin` trägt — es gibt keinen
+Hinweis, dass ihn jemand gegangen ist. Die Bestandsaufnahme steht als Gegenprobe 5 in derselben
+Datei.
+
+### Was BEWUSST nicht behoben wurde
+
+**Die `notifications`-INSERT-Policy.** `notif_insert_own_sender` prüft nur `sender_id = auth.uid()`
+— Empfänger, Typ und Text sind frei, und der Trigger schickt daraufhin einen echten Push. **Das
+untergräbt genau die Warnzeile aus Abschnitt 64** („Berkat schreibt dir nie hier"): Der Angreifer
+braucht den Chat nicht, er nimmt den offiziellen Meldungskanal.
+
+Die Policy zu verschärfen bricht **Serlos ausgelieferte App**: Fünf Stellen schreiben direkt in die
+Tabelle (`lib/useLiveSession.ts:422`, `lib/useComments.ts:279`, `lib/useFollowRequest.ts:82` und
+`:147`, `apps/web/app/actions/profile.ts:458`). Der Weg dahin führt über RPCs für diese fünf, dann
+die Policy — eine eigene Runde, keine Zeile im Vorbeigehen.
+
+### Was hält — der entlastende Teil
+
+- **Berkats eigene Migrationen sind sauber.** Alle 2026081x–2026082x schreiben
+  `REVOKE … FROM PUBLIC, anon`; keine trägt in der Live-DB ein anon-Recht.
+- **Die `credit_coins`-Falle ist zu** — alle 11 REVOKEs vom 14.08. stehen wirklich drin.
+- **Kein Geld-Schreibweg ist für anon offen.**
+- **Alle 108 Tabellen haben RLS aktiv.** Die vier Nachzügler vom 19.08. tragen das Session-Erbe
+  ohne zweite permissive Policy daneben.
+- **Gemessen:** `berkat_saved_searches`, `_auction_reminders`, `_saved_listings`, `berkat_offers`,
+  `order_disputes`, `auction_carts`, `live_auto_bids` antworten `anon` mit **401**.
+  `profiles.push_token` und `live_sessions.ingress_stream_key` mit **42501**.
+- **`notify_saved_searches` schreibt die Frauen-Only-Schranke GANZ mit.**
+
+### ⚠️ Was offen bleibt — und das ist der grössere Teil
+
+Von 54 Funden wurden acht gegengeprüft; neun Prüf-Agenten liefen ins Nutzungslimit. **46 Funde sind
+behauptet und nicht belegt** — darunter 22 mittlere. Die, die ich beim Durchsehen für am
+wahrscheinlichsten halte:
+
+1. **`profiles` ist für anon durchzählbar und filterbar.** Selbst gemessen:
+   `is_admin=eq.true` → 1, `women_only_verified=eq.true` → 1, `gender=eq.female` → 3. Kein Zugriff,
+   aber die Zielliste — und bei einer App mit geschützten Frauenräumen die falsche Liste.
+   Abschnitt 43 nannte „0 heikle Spalten"; die Prüfung suchte nach Kontaktdaten.
+2. **Der Go-Live-Push meldet Berkat-Sendungen in Serlo.** Zwei Trigger auf `live_sessions`, beide
+   feuern beim INSERT, **keiner setzt `app`**.
+3. **Die ZAG-Schranke steht an einem von vier Geldwegen.** `checkout_enabled` wird genau einmal
+   gelesen — im Sofortkauf. Live-Zuschlag und Trinkgeld prüfen sie nicht.
+4. `orders_update_seller` ohne `WITH CHECK`, `message_reactions`/`story_views` mit `USING(true)`,
+   die Edge Function `delete-account`, die weiterhin hart löscht.
+
+### Die Lehre
+
+> **Ein Audit, der Migrationen liest, liest Absichten. Erst der Abzug sagt, was gilt — und erst ein
+> Aufruf von aussen sagt, ob der Fix wirkt.**
+
+Drei der vier behobenen Löcher standen seit Monaten offen und sind bei sechs früheren Audits nicht
+aufgefallen. Der Unterschied war diesmal nicht die Gründlichkeit, sondern die Quelle: gegen die
+**Rechte** des Produktivsystems geprüft statt gegen den Quelltext.

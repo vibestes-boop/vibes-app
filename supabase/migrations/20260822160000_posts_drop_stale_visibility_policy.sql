@@ -1,0 +1,70 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ⚠️ KRITISCH: Eine Alt-Policy hebelt die Frauen-Only-Grenze auf `posts` aus
+--
+-- GEFUNDEN am 22.08.2026 im Sicherheits-Audit. Auf `posts` liegen DREI
+-- permissive SELECT-Policies, und Postgres verknüpft permissive Policies mit
+-- ODER — es genügt also, dass EINE durchlässt.
+--
+--   posts_select_own                    author_id = auth.uid()
+--   posts_select_public_friends_private eigen ODER (public UND (nicht women_only
+--                                       ODER is_women_only_verified())) ODER
+--                                       (friends UND angemeldet UND folgt UND
+--                                       (nicht women_only ODER verifiziert))
+--   posts_visibility_policy             eigen ODER privacy='public' ODER
+--                                       (friends UND folgt)          ← HIER
+--
+-- Die dritte kennt die Spalte `women_only` nicht. Sie stammt aus
+-- `20260507110000_posts_privacy_select_policy.sql`, also aus der Zeit VOR der
+-- Frauen-Only-Schranke, und ist beim Nachziehen stehengeblieben.
+--
+-- Folge: **Jeder Frauen-Only-Beitrag mit `privacy = 'public'` ist für jeden
+-- lesbar — auch ohne Anmeldung.** Die neuere Policy daneben tut genau nichts
+-- dagegen; sie kann nur zusätzlich erlauben, nie einschränken.
+--
+-- Das ist wörtlich dieselbe Falle wie der WOZ-Live-Leak vom 16.07.2026 auf
+-- `live_sessions` (Übergabe, Abschnitt 5: „Nie USING(true) … eine einzige
+-- hebelt die Frauen-Only-Grenze aus"). Die Lehre stand seit einem Monat
+-- aufgeschrieben — auf einer anderen Tabelle als der, auf der sie noch galt.
+--
+-- ⚠️ WAS DIESER DROP NICHT WEGNIMMT — Zeile für Zeile verglichen:
+--
+--   | Fall                    | alte Policy        | neue Policy                     |
+--   |-------------------------|--------------------|---------------------------------|
+--   | eigener Beitrag         | ja                 | ja                              |
+--   | privacy = 'public'      | ja                 | ja (COALESCE, also auch NULL)   |
+--   | privacy = 'friends'     | ja, wenn er folgt  | ja, wenn er folgt UND angemeldet|
+--   | women_only = true       | **ja** ← das Loch  | nur für geprüfte Frauen         |
+--
+-- Die alte ist damit eine echte Teilmenge der neuen — bis auf genau die eine
+-- Zeile, um die es geht. Die neue ist sogar robuster: `COALESCE(privacy,
+-- 'public')` deckt Zeilen mit NULL ab, die die alte durchfallen liess.
+--
+-- ⚠️ Deshalb wird die alte GELÖSCHT und nicht umgeschrieben: Sie trägt nichts,
+-- was die neue nicht schon trägt. Eine vierte Fassung derselben Aussage wäre
+-- die nächste, die beim nächsten Nachziehen vergessen wird.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "posts_visibility_policy" ON public.posts;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- GEGENPROBEN
+--
+-- 1. Es müssen genau ZWEI SELECT-Policies übrig sein:
+--      SELECT policyname, cmd FROM pg_policies
+--       WHERE schemaname='public' AND tablename='posts' AND cmd='SELECT'
+--       ORDER BY policyname;
+--      -- erwartet: posts_select_own, posts_select_public_friends_private
+--
+-- 2. ⚠️ DIE EIGENTLICHE PROBE, und sie braucht echte Daten:
+--    Ein Frauen-Only-Beitrag darf für `anon` nicht mehr auftauchen.
+--      SELECT count(*) FROM posts WHERE women_only = true;   -- als postgres
+--    Dann dieselbe Zählung über REST mit dem oeffentlichen Schluessel:
+--      GET /rest/v1/posts?select=id&women_only=eq.true
+--      -- erwartet: 0 Zeilen. Vor dieser Migration: alle oeffentlichen davon.
+--    ⚠️ Steht die erste Zahl auf 0, beweist die Probe NICHTS — dann gibt es
+--       schlicht keine Frauen-Only-Beiträge. Genau daran ist die WOZ-Probe vom
+--       19.08. schon einmal ins Leere gelaufen (Abschnitt 44).
+--
+-- 3. Der Normalfall muss weiter gehen: Ein oeffentlicher Beitrag bleibt fuer
+--    anon lesbar, ein 'friends'-Beitrag nur fuer Folgende.
+-- ─────────────────────────────────────────────────────────────────────────────
