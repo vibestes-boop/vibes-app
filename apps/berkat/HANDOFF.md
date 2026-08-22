@@ -9014,3 +9014,65 @@ es gibt gerade keine unarchivierten Stories, und die beiden vorhandenen sind kor
 > **Eine Null im Ergebnis beweist nichts, solange man nicht weiss, ob sie „nichts da" oder
 > „nichts mehr sichtbar" heisst.** Der Unterschied steht in der Spaltendefinition, nicht in der
 > Messung.
+
+### Nachtrag: die App-Trennung, dritte Runde (22.08.2026, nachts)
+
+Aus den bestätigten Funden des Audits. Migration `20260822220000` — die Rümpfe **maschinell** aus
+einem frischen Abzug übernommen und je genau einmal gepatcht; das Skript bricht ab, wenn eine
+Ersetzung nicht exakt einmal trifft, und zählt danach die `CREATE`-Zeilen (die awk-Falle aus
+Abschnitt 51).
+
+**⚠️ Der teuerste Teil war nicht das fehlende `app`, sondern ein Wettlauf.**
+
+Auf `live_sessions` hingen ZWEI Trigger für dieselbe Meldung:
+
+```
+on_live_session_active          → notify_followers_on_live      (alt, ein blanker INSERT)
+trg_notify_followers_on_go_live → notify_followers_on_go_live   (neu, mit Stummschalt-Respekt,
+                                                                 Rückstau-Deckel, Anti-Spam)
+```
+
+Die neue Fassung führt eine Anti-Spam-Sperre: *„gab es in den letzten 30 Minuten schon eine
+`type = 'live'`-Meldung dieses Gastgebers? Dann raus."* Trigger feuern alphabetisch —
+`on_live_session_active` kommt vor `trg_notify_…`. Die alte, dümmere Fassung schrieb also zuerst,
+und die neue sah eine Millisekunde später ihre eigene Vorgängerin, hielt sie für eine Wiederholung
+und stieg aus.
+
+**Ergebnis seit dem 19.05.2026: Die Fassung mit Stummschalt-Respekt war eingebaut, deployt,
+dokumentiert — und lief nie.**
+
+> **Zwei Trigger auf demselben Ereignis sind kein doppelter Boden, sondern ein Wettlauf. Wer einen
+> zweiten hinzufügt, ohne den ersten abzuschalten, baut die Ablösung und lässt sie liegen.**
+
+Behoben: alter Trigger abgehängt, der neue auf `AFTER INSERT OR UPDATE OF status` erweitert (damit
+er den Fall trägt, den bisher nur der alte abdeckte), und `app` aus `NEW.app` mitgeschrieben. Die
+alte **Funktion** bleibt stehen — nur der Trigger geht.
+
+**Dazu zwei Bestell-Wege**, beide mit derselben Weiche wie `report_order_dispute` am 21.08.
+(`cart_id IS NOT NULL` → Berkat): `resolve_order_dispute` (die Meldung des Falls war repariert, die
+**Antwort** darauf nicht) und `submit_order_review`.
+
+**Und die Gegenrichtung, im Client:**
+
+- `lib/useNotifications.ts` — Serlos Glocke filtert jetzt an **drei** Stellen auf `app = 'serlo'`:
+  Liste, Ungelesen-Zähler und „alles als gelesen markieren". Der dritte ist der, den man übersieht:
+  Ohne ihn hätte Serlos „alle gelesen" stillschweigend auch Berkats Meldungen abgeräumt.
+- `lib/authStore.ts` — Serlos Abmelden löscht `push_tokens` jetzt nur noch mit `app = 'serlo'`.
+  Vorher nahm es dem Nutzer den Berkat-Token mit, also seine Zuschlag- und Zahlungserinnerungen in
+  einer App, in der er sich gar nicht abgemeldet hatte.
+
+Am Live-Schema gegengeprüft: `on_live_session_active` ist weg, `trg_notify_followers_on_go_live`
+trägt `AFTER INSERT OR UPDATE OF status`, alle drei Rümpfe stempeln `app`. `tsc` in beiden Apps
+fehlerfrei.
+
+⚠️ **Die zwei Client-Änderungen sind NICHT veröffentlicht.** Sie liegen in Serlos ausgelieferter
+App und brauchen einen eigenen OTA mit der Zwei-Runtime-Regel aus Abschnitt 8 (Nutzer auf 1.30.0
+**und** 1.31.0) — und `eas update` aus dem falschen Ordner trifft Serlos Produktion (Abschnitt 3).
+Das ist eine Freigabe-Entscheidung, kein Nebenprodukt.
+
+⚠️ **Offen geblieben: `notify_on_dm`.** Der Trigger feuert bei **jedem** `messages`-INSERT, und eine
+Direktnachricht gehört keiner App — dieselbe Unterhaltung wird von beiden geführt. Eine Weiche über
+`messages.listing_id` (seit heute) träfe nur die Nachrichten, die aus einem Angebot heraus
+entstehen, und liesse den Rest raten. Solange Serlos Glocke jetzt filtert, ist der Schaden auf
+„eine DM-Meldung erscheint nicht in Berkats Glocke" begrenzt — Berkats Posteingang zählt ungelesene
+Nachrichten ohnehin selbst. **Das gehört entschieden, nicht geraten.**

@@ -108,7 +108,12 @@ export const useAuthStore = create<AuthStore>()(
         if (uid) {
           try {
             await supabase.from('profiles').update({ push_token: null }).eq('id', uid);
-            await supabase.from('push_tokens').delete().eq('user_id', uid);
+            // ⚠️ NUR die Serlo-Registrierung. Ohne `app`-Filter löschte dieses
+            // Abmelden auch den Token des BERKAT-Geräts mit — der Nutzer verlor
+            // damit still seine Zuschlag- und Zahlungserinnerungen in einer
+            // anderen App, ohne sich dort abgemeldet zu haben.
+            // Gefunden im Sicherheits-Audit vom 22.08.2026.
+            await supabase.from('push_tokens').delete().eq('user_id', uid).eq('app', 'serlo');
           } catch { /* Logout darf nie an der Token-Bereinigung scheitern */ }
         }
         await supabase.auth.signOut();

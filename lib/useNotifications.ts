@@ -44,6 +44,12 @@ export function useNotifications() {
           post:post_id ( media_url )
         `)
         .eq('recipient_id', userId)
+        // ⚠️ Serlos Glocke zeigt nur Serlo-Meldungen. Ohne diesen Filter stand
+        // hier alles, was Berkat korrekt als `app = 'berkat'` gestempelt hat —
+        // Zuschlag, Zahlungsfrist, Streitfall, Suchtreffer — in einer App, in
+        // der es weder einen Zielbildschirm noch einen Sinn hat.
+        // Gefunden im Sicherheits-Audit vom 22.08.2026.
+        .eq('app', 'serlo')
         .order('created_at', { ascending: false })
         .limit(60);
 
@@ -82,6 +88,8 @@ export function useUnreadCount() {
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('recipient_id', userId)
+        // Siehe oben: Serlos Zaehler zaehlt nur Serlo-Meldungen.
+        .eq('app', 'serlo')
         .eq('read', false);
       if (error) return 0;
       return count ?? 0;
@@ -103,6 +111,8 @@ export function useMarkAllRead() {
         .from('notifications')
         .update({ read: true })
         .eq('recipient_id', userId)
+        // Siehe oben: Serlos Zaehler zaehlt nur Serlo-Meldungen.
+        .eq('app', 'serlo')
         .eq('read', false);
     },
     onSuccess: () => {
