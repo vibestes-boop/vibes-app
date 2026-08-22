@@ -8685,3 +8685,31 @@ zugeschlagen hat.
 
 Im Bildschirmfoto steht hinter „Schreib … die erste Nachricht" ein leeres Kästchen. Das ist das
 Emoji 👋 — **dem Simulator fehlt die Emoji-Schrift** (Abschnitt 2). Am Gerät ist es in Ordnung.
+
+### ✅ Eingespielt und am Gerät belegt (22.08.2026, 17:4x)
+
+`supabase db push` trug genau diese eine Datei nach — `migration list` zeigte sie davor als
+einzige offene, danach in beiden Spalten. Am frischen Abzug (mit Rechten, nach `/tmp`, sofort
+gelöscht) gegengeprüft:
+
+| Prüfung | Befund |
+|---|---|
+| Spalte | `"listing_id" "uuid"` steht in der Live-Tabelle |
+| ⚠️ Gegenprobe 2 — eingefrorene Spaltenliste? | **Keine einzige** spaltenweise `GRANT`-Zeile auf `messages`; es gilt `GRANT ALL ON TABLE … TO anon, authenticated, service_role`. Die neue Spalte ist mitgedeckt, ein eigenes `GRANT SELECT` war nicht nötig — **gemessen, nicht geglaubt** |
+| Fremdschlüssel | `messages_listing_id_fkey → live_auctions(id) ON DELETE SET NULL` |
+| Index | `idx_messages_listing … WHERE listing_id IS NOT NULL` |
+
+**Danach die ganze Kette am Simulator, am echten Datenstand:** Angebot geöffnet → „Nachricht
+schreiben" → über dem Feld stand **„Zu diesem Angebot"** mit Bild und Titel → gesendet → in der
+Blase erschien die **Produktkarte** (Vorschaubild, „Abaya, schwarz mit Stickerei", „69 €") über dem
+Text, der Anhang war danach gelöst → Tipp auf die Karte führte **auf das Angebot**.
+
+⚠️ **Was dabei liegen bleibt:** eine echte Unterhaltung zwischen `berkattest` und dem Seed-Profil
+`9sjjj85fgz` mit einer Nachricht. Sie lässt sich über die App nicht löschen — es gibt keinen Weg
+dafür, und das ist hier zum ersten Mal aufgefallen. Beide Konten sind Testkonten, der Artikel ist
+Testware; für den TestFlight-Start ist das folgenlos, vor echten Nutzern gehört es weg.
+
+⚠️ **Und eine Beobachtung, kein Fehler:** Der Senden-Knopf sitzt so tief, dass Tipps unterhalb
+von rund 840 Punkten in der Zone des Home-Indikators landen und verschluckt werden. Mit dem Daumen
+trifft man die Fläche darüber; beim Steuern über Koordinaten kostet es drei Versuche. Wer die
+Eingabezeile je anfasst, weiß damit, warum sie nicht noch tiefer darf.
