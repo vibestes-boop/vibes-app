@@ -8298,8 +8298,8 @@ Käuferschutz-Frage ist damit NICHT gemeint — die ist entschieden.
 
 ### Danach, nach Nutzen sortiert
 
-1. **Markenname in den Such-Platzhalter** („Berkat durchsuchen") — ein Wort, holt die Marke auf die
-   Startseite zurück, die das Wortzeichen heute verloren hat
+1. ~~**Markenname in den Such-Platzhalter**~~ ✅ erledigt am 22.08.2026, Abschnitt 71 — und dabei
+   kam heraus, dass „Show oder Verkäufer" seit dem 18.08. auch inhaltlich falsch war
 2. **Versand in Stufen** — Brief ab 1,19 €; `berkat_shipping_rates` hat `label` und `sort_index`
    schon, es sind Zeilen, kein Umbau
 3. **Kein Bildschirm für die eigenen Versandsätze** — ein Verkäufer kann seine Pauschalen nirgends
@@ -8309,8 +8309,8 @@ Käuferschutz-Frage ist damit NICHT gemeint — die ist entschieden.
 5. ⏳ **Die zwölf freigestellten Kategorie-Fotos** — kein Code, Zaurs Handgriff. Seit Abschnitt 71
    ist der Weg dafür frei: `photo` in `theme/categoryArt.ts` füllen, beide Flächen ziehen mit.
    ⚠️ „Schuhe" trägt bis dahin ein **Paket**-Symbol
-6. ⏳ **Gefüllter statt umrandeter Knopf auf der Artikelseite** — eine Entscheidung über eine
-   Farbe, kein Umbau (Abschnitt 71)
+6. ~~**Gefüllter statt umrandeter Knopf auf der Artikelseite**~~ ✅ erledigt am 22.08.2026,
+   Abschnitt 71 — Markengrün gefüllt, Gold bleibt dem Kaufweg
 7. **Vacation Mode** — ab etwa zwanzig Verkäufern; heute müsste man zwanzig Angebote einzeln
    zurückziehen
 8. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren, der leere Fuß
@@ -8550,3 +8550,49 @@ gekürzt, das ist Absicht.
 
 Dieselbe Lehre wie am 19.08. („wer wählen muss, prüft mit Menschen, nicht mit Skripten",
 Abschnitt 54) — nur für Gestaltung statt für Abläufe.
+
+### Nachtrag am selben Abend: drei aus „was bleibt" sind gebaut — und ein vierter Fund
+
+Punkt 2 und 3 der Liste oben, dazu Punkt 1 aus Abschnitt 69. Alle drei ohne Migration und ohne
+Build, alle drei am Simulator gesehen.
+
+**1. Der Knopf auf der Artikelseite ist gefüllt.** Markengrün (`ui.brand`), Text in Sand. Gold
+bleibt dem Kaufweg vorbehalten — aber *ungefüllt* ist in dieser App die Form für „zweitrangig"
+(Abmelden, „Alle Angebote ansehen"), und hier ist es bei 30 von 32 Angeboten die **einzige**
+Handlung der Seite. Dieselbe Fläche trägt schon die aktive Sortier-Kachel im Kategorien-Reiter, es
+ist also keine neue Sprache.
+
+**2. Der Platzhalter im Suchfeld heißt „Berkat durchsuchen".** Zwei Gründe, und der zweite wiegt
+schwerer: Seit die Kopfzeile mit dem Suchfeld in einer Zeile liegt, ist das Wortzeichen weg
+(Abschnitt 68) — die Marke stand auf der Startseite nirgends mehr. **Und „Show oder Verkäufer" war
+seit dem 18.08. schlicht falsch:** Die Suche findet seit Abschnitt 23 auch Artikel, zählte also
+zwei von drei Dingen auf und ließ das häufigste weg.
+
+**3. ⚠️ Der Fund: Die Startseite war das EINZIGE Raster ohne Merken-Herz.**
+
+`/shop` und `/category/[slug]` verkabeln es seit dem 17.08., die Startseite nie. Und sie ist der
+Bildschirm, den jeder als Ersten sieht — wer im Ruhezustand stöbert (rund 94 % der Zeit), konnte
+sich nichts merken, ohne vorher zwei Bildschirme weiterzugehen.
+
+Es fiel nicht auf, weil `ListingCard` das Herz nur zeigt, wenn sie `onToggleSaved` bekommt: Ohne
+das Prop fehlt es **lautlos**. Der Kommentar am Regal-Zweig sagte derweil seit dem 18.08.
+„dieselbe Karte wie im Marktplatz und in der Kategorie" — was für den Aufbau stimmte und für die
+Handlungen nicht.
+
+> **Ein Prop, dessen Fehlen ein Merkmal abschaltet, ist kein Standardwert, sondern eine stille
+> Abweichung.** Wer eine Komponente an einer dritten Stelle einsetzt, vergleicht nicht ihr
+> Aussehen, sondern ihre **Aufrufe**.
+
+**4. Und ein Anschluss-Fund beim Prüfen:** `useToggleSaved` verwarf `saved-ids` und
+`saved-listings`, aber **nicht `saved-counts`**. Das Herz füllte sich also sofort, die Zahl daneben
+blieb bis zu eine Minute stehen — und beides ist **dasselbe Element** (Abschnitt 68: Zustand und
+Zahl in einer Pille). Genau das liest sich als kaputt. Die Entscheidung an `useSavedCounts` bleibt
+unberührt: kein Realtime, kein kurzer Takt; die Zahl darf für **fremde** Merkungen alt sein, nur
+auf die eigene Handlung muss sie reagieren.
+
+**Am Gerät belegt** (Simulator, Konto `berkattest`, echter Datenstand): Herz getippt → grün gefüllt
+und die Pille zeigt **„1"**, ohne Neuladen; noch einmal getippt → wieder leer. Der Datenstand ist
+danach unverändert. `tsc` und `expo export` fehlerfrei (3724 Module).
+
+⚠️ **Offen bleibt aus der Liste:** die zwölf freigestellten Fotos (Zaurs Handgriff, „Schuhe" trägt
+bis dahin ein Paket-Symbol) und der leere Fuß der Startseite.

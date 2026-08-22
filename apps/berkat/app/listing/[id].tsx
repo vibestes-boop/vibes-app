@@ -952,7 +952,7 @@ export default function ListingScreen() {
             accessibilityRole="button"
             accessibilityLabel={`${listing.title} — Verkäufer anschreiben`}
           >
-            <MessageCircle size={17} color={ui.text} />
+            <MessageCircle size={17} color={ui.bg} />
             <Text style={styles.contactText}>Nachricht schreiben</Text>
           </Pressable>
         )}
@@ -1159,6 +1159,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buyText: { fontSize: 16, fontWeight: '700', color: ui.goldInk },
+  // ⚠️ GEFÜLLT, nicht umrandet — seit dem 22.08.2026 (Analyse 14).
+  //
+  // Vorher: weiße Pille mit dünnem Rand. Gold gehört zu Recht dem Kaufweg
+  // (Abschnitt 20), und das bleibt so — aber *ungefüllt* ist in dieser App die
+  // Form für „zweitrangig" (Abmelden, „Alle Angebote ansehen"). Hier ist es die
+  // EINZIGE Handlung der Seite, und bei 30 von 32 Angeboten die einzige
+  // überhaupt, weil ohne Kassen-Freigabe kein Kaufknopf erscheint.
+  //
+  // Markengrün ist der Mittelweg: gefüllt wie ein Knopf, aber nicht der Kauf.
+  // Dieselbe Fläche trägt schon die aktive Sortier-Kachel im Kategorien-Reiter,
+  // es ist also keine neue Sprache. Whatnots Handlungsknopf ist ausnahmslos
+  // gefüllt — auch der graue (Analyse 4).
   contact: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1166,10 +1178,9 @@ const styles = StyleSheet.create({
     gap: space.sm,
     height: 52,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: ui.lineStrong,
+    backgroundColor: ui.brand,
   },
-  contactText: { fontSize: 15, fontWeight: '700', color: ui.text },
+  contactText: { fontSize: 15, fontWeight: '700', color: ui.bg },
   ghost: {
     height: 52,
     borderRadius: radius.pill,

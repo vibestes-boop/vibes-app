@@ -110,6 +110,16 @@ export function useToggleSaved(userId: string | null) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'saved-ids'] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'saved-listings'] });
+      // ⚠️ Die ZAHL gehört dazu, seit sie auf der Karte steht (22.08.2026).
+      // Ohne diese Zeile blieb sie nach dem eigenen Tipp bis zu einer Minute
+      // stehen: Das Herz füllt sich, die Zahl daneben nicht — und genau das
+      // liest sich als kaputt, weil beides dasselbe Element ist.
+      //
+      // Das hebt die Entscheidung an `useSavedCounts` NICHT auf: kein Realtime,
+      // kein kurzer Takt, die Zahl darf für FREMDE Merkungen eine Minute alt
+      // sein. Sie soll nur auf die eigene Handlung reagieren, und das ist der
+      // einzige Moment, in dem der Nutzer sie überhaupt beobachtet.
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'saved-counts'] });
     },
   });
 }

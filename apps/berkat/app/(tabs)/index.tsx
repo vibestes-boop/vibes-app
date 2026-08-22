@@ -43,6 +43,7 @@ import {
 } from '../../lib/useListings';
 import { ListingResults } from '../../components/ListingResults';
 import { ListingCard } from '../../components/ListingCard';
+import { useSavedCounts, useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { ui, radius, ratio, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
@@ -331,6 +332,24 @@ export default function HomeScreen() {
   // bei leerem Regal fragt dieser hier gar nicht erst (`enabled`).
   const shelfProfiles = useProfiles(shelf.map((l) => l.seller_id));
 
+  // ⚠️ Merken direkt von der Karte — hier fehlte es, und zwar als EINZIGES der
+  // drei Raster. Der Kommentar am Regal-Zweig unten sagt seit dem 18.08.
+  // „dieselbe Karte wie im Marktplatz und in der Kategorie"; dort ist das Herz
+  // seit dem 17.08. verkabelt, hier nie. Die Karte zeigt es nur, wenn sie
+  // `onToggleSaved` bekommt — es fiel also nicht als Fehler auf, sondern als
+  // gar nichts.
+  //
+  // Das trifft ausgerechnet den Bildschirm, den jeder als Ersten sieht: Wer im
+  // Ruhezustand stöbert (rund 94 % der Zeit), konnte sich nichts merken, ohne
+  // vorher zwei Bildschirme weiter zu gehen.
+  //
+  // Beide Abfragen laufen nur über die höchstens acht gezeigten Zeilen und
+  // teilen sich den Zwischenspeicher mit `/shop` — dort stehen dieselben
+  // Angebote unter demselben Schlüssel.
+  const { data: savedIds } = useSavedIds(userId);
+  const toggleSaved = useToggleSaved(userId);
+  const { data: saveCounts } = useSavedCounts(shelf.map((l) => l.id));
+
   // Zwei Spalten, jede Karte `flex: 1`: Bleibt in der letzten Reihe ein Platz
   // frei, zieht sich die einzelne Karte über die volle Breite — samt Vorschau.
   // Ein leerer Platzhalter besetzt die zweite Spalte und hält die Karte halb.
@@ -359,16 +378,27 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <BerkatMark size={26} color={ui.brand} />
 
-        {/* ⚠️ Der Platzhalter ist kürzer als vorher („Show oder Verkäufer
-            suchen"). Das Lupensymbol daneben sagt „suchen" bereits, und in der
-            schmalen Zeile wäre der lange Satz abgeschnitten — ein
-            abgeschnittener Hinweis erklärt nichts. */}
+        {/* ⚠️ Der Platzhalter trägt seit dem 22.08.2026 den MARKENNAMEN.
+            Zwei Gründe, und der zweite wiegt schwerer als der erste:
+
+            1. Seit die Kopfzeile mit dem Suchfeld in einer Zeile liegt, ist das
+               Wortzeichen „berkat" weg (Abschnitt 68) — die Marke stand auf der
+               Startseite nirgends mehr. Whatnot löst genau das genauso: „Whatnot
+               durchsuchen" (Analyse 13).
+            2. „Show oder Verkäufer" war seit dem 18.08. schlicht FALSCH. Die
+               Suche findet seit Abschnitt 23 auch Artikel — sie zählte also zwei
+               von drei Dingen auf, die sie kann, und ausgerechnet das häufigste
+               fehlte.
+
+            Das Lupensymbol daneben sagt „suchen" bereits; der Platzhalter darf
+            deshalb den Namen tragen statt einer Aufzählung, die nie vollständig
+            wird. */}
         <View style={styles.searchWrap}>
           <Search size={17} color={ui.textMuted} />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Show oder Verkäufer"
+            placeholder="Berkat durchsuchen"
             placeholderTextColor={ui.textMuted}
             style={styles.searchInput}
             returnKeyType="search"
@@ -629,12 +659,29 @@ export default function HomeScreen() {
           // ihr, und eine zweite Abschrift wäre genau der Fehler, für den es
           // `ListingCard` überhaupt gibt.
           if ('shelf' in item) {
+            const mine = item.shelf.seller_id === userId;
+            const saved = Boolean(savedIds?.has(item.shelf.id));
             return (
               <ListingCard
                 listing={item.shelf}
                 sellerName={shelfProfiles[item.shelf.seller_id]?.username}
                 layout="grid"
-                mine={item.shelf.seller_id === userId}
+                mine={mine}
+                saved={saved}
+                saveCount={saveCounts?.get(item.shelf.id)}
+                // Am eigenen Artikel kein Herz — dort steht „Deins", und
+                // gemerkt wird, was einem nicht gehört. Ohne Anmeldung führt
+                // der Tipp zur Anmeldung statt ins Leere: Dieselbe Antwort wie
+                // auf der Artikelseite, wo ein grauer Knopf ohne Erklärung
+                // schon einmal eine Sackgasse war (HANDOFF 22).
+                onToggleSaved={
+                  mine
+                    ? undefined
+                    : () =>
+                        userId
+                          ? toggleSaved.mutate({ auctionId: item.shelf.id, saved })
+                          : router.push('/login')
+                }
                 onPress={() => router.push(`/listing/${item.shelf.id}`)}
               />
             );
