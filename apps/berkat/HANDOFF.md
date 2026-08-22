@@ -135,7 +135,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–69; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–70; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -757,6 +757,40 @@ Der Befund ist beruhigend, die Lehre bleibt: **In einem Monorepo mit zwei Expo-P
 Arbeitsordner ein Produktions-Schalter.** Dieselbe Familie wie Babel, das sich sein Preset aus
 Serlos `node_modules` holte (nächster Eintrag) — nur trifft dieser Fehler nicht den Build, sondern
 die Nutzer.
+
+### Ein OTA wirkt erst beim ÜBERNÄCHSTEN Start
+
+Am 22.08.2026 aufgeklärt, nachdem er einen ganzen Fund unentscheidbar gemacht hatte (Abschnitt 70).
+
+`app.json` setzt kein `fallbackToCacheTimeout`, und die Voreinstellung ist **0** — nachgelesen in
+`@expo/config-plugins/build/utils/Updates.js:183`, `config.updates?.fallbackToCacheTimeout ?? 0`.
+In der erzeugten `Expo.plist` steht entsprechend `EXUpdatesLaunchWaitMs = 0`. Das heißt wörtlich:
+
+> **Die App wartet beim Start NIE auf ein neues Bündel.** Sie läuft sofort aus dem
+> Zwischenspeicher, lädt eine neue Fassung im Hintergrund und nimmt sie erst beim **nächsten**
+> Start in Betrieb.
+
+Ein `eas update` ist damit nach dem Veröffentlichen **noch nirgends**. Der erste Start danach lädt,
+der zweite führt aus. Wer einmal schließt und wieder öffnet, prüft weiterhin den alten Stand — und
+zwar ohne jeden Hinweis darauf.
+
+⚠️ **Das ist keine Randnotiz, sondern trifft die Arbeitsweise dieses Projekts im Kern.** Am 22.08.
+gingen fünfzehn Veröffentlichungen an einem Nachmittag raus. In so einer Sitzung läuft auf dem
+Telefon fast immer der **vorletzte** Stand, und jedes „am Gerät geprüft" prüft in Wahrheit die
+Änderung davor. Genau daraus entstand der offene Widerspruch am Ende von Abschnitt 68.
+
+Zwei Dinge folgen daraus, und beide kosten nichts:
+
+- **Nach jedem `eas update` die App zweimal schließen und öffnen.** Einmal reicht nur, wenn der
+  Ladevorgang im ersten Start fertig wurde — das weiß man nicht.
+- **Der Konto-Reiter sagt unten, welcher Stand läuft** (`lib/buildInfo.ts`, seit dem 22.08.):
+  `Berkat 1.0.0 (1) · Stand 22.08. 15:12 · 56f80d93`. Die acht Zeichen sind der Anfang der
+  Gruppen-Kennung aus `npx eas update:list --branch production`. Damit ist eine Meldung vom Gerät
+  ohne Rückfrage einer Veröffentlichung zuzuordnen.
+
+Das Gegenmittel „warten lassen" (`fallbackToCacheTimeout` auf ein paar Sekunden) ist bewusst
+**nicht** gewählt: Es verzögert jeden Kaltstart für alle Nutzer, um ein Problem zu lösen, das nur
+beim Prüfen besteht — und es wäre eine `app.json`-Änderung, also ein nativer Build (Abschnitt 12).
 
 ### EAS-Build-Logs holen, statt aus der Fehlermeldung zu raten
 
@@ -6564,6 +6598,11 @@ die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abr
 und OTA aktiv — das ist die Fassung, die Verkäufer bekommen, und einige Fehlerklassen zeigen sich
 nur dort.
 
+⚠️ **Und davor: die App zweimal schließen und öffnen.** Ein OTA wirkt erst beim übernächsten Start
+(Abschnitt 3) — der erste lädt, der zweite führt aus. Wer das überspringt, prüft die Änderung
+davor und hält den Rückstand für einen Fehler; genau so entstand der offene Punkt am Ende von
+Abschnitt 68. **A15 sagt, welcher Stand tatsächlich läuft** — im Zweifel zuerst dort nachsehen.
+
 ### A — nur dein iPhone. Kein zweites Konto, keine Sendung.
 
 Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
@@ -6584,6 +6623,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A12 | **Foto im Verlauf**: senden — erscheint in der Blase, im Posteingang als „📷 Foto", getippter Satz geht mit. Dazu Tagestrenner („Gestern") und der Ungelesen-Filter | 65 |
 | A13 | **Benachrichtigungen einstellen** (Konto → Benachrichtigungen): einen Anlass ausschalten, App neu starten — der Schalter muss aus bleiben. Die Liste zeigt sechs Anlässe, „Zuschlag" darf NICHT dabei sein | 68 |
 | A14 | **Startseite**: Suchfeld und die zwei Knöpfe in EINER Zeile, Kategorie-Leiste folgt beim Scrollen ohne Springen — und die Kopfzeile bleibt dabei sichtbar | 68 |
+| A15 | **Welcher Stand läuft?** Unten im Konto-Reiter muss `Berkat 1.0.0 (1) · Stand <Datum> <Uhrzeit> · <8 Zeichen>` stehen. Ein heutiger Zeitpunkt heißt: Der OTA ist angekommen. Steht dort „Werksstand", hat das Gerät seit dem Build **kein einziges** übernommen | 70 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -8201,6 +8241,10 @@ Profil IST der Standard-Zweig — es passt also nur zusammen, wenn das Gerät de
 Fall hatte. **Ungeklärt.** Die Frage, die es entscheidet: Steht in der Glocke „Problem mit einer
 Bestellung" oder „Neu bei Berkat"? Symbol, Titel und Ziel kommen aus derselben Kennung.
 
+✅ **Aufgelöst am 22.08.2026 — Abschnitt 70.** Der Code kann die gemeldete Kombination nicht
+erzeugen, und der Mechanismus, der den alten Stand erklärt, ist gefunden und belegt: Ein OTA läuft
+erst beim übernächsten Start (Abschnitt 3).
+
 ---
 
 ## 69. Anschlusspunkt für den nächsten Chat (Stand 22.08.2026, Nachmittag)
@@ -8214,14 +8258,15 @@ die Prüfliste ist weiterhin der Motor, nicht die Feature-Liste.
 |---|---|
 | Migrationen | **60 Berkat-eigene, alle eingespielt** · im Tracking 283, keine Lücke |
 | `tsc` / `expo export` | fehlerfrei |
-| Git | ⚠️ **43 Dateien geändert und NICHT committet** — siehe unten |
+| Git | ✅ sauber und gepusht — `e2d50ec` trägt die 43 Dateien (22.08.) |
 | TestFlight | `1.0.0 (1)` · Beta App Review, Gruppe „Verkäufer" hat **0 Tester** |
 | OTA | rund fünfzehn seit gestern Abend, zuletzt „Benachrichtigungen einstellen" |
 | Käuferschutz | **Fassung A entschieden** (Strategie, Abschnitt 8) |
 
-⚠️ **Der Arbeitsstand ist nicht committet.** 43 Dateien, drei Migrationen, zwei neue Analysen. Alles
-ist per OTA draußen und eingespielt — aber nichts davon steht in git. **Das ist das Erste, was zu
-tun ist**, bevor irgendjemand `git checkout` tippt.
+✅ **Erledigt: der Arbeitsstand ist committet und gepusht.** `e2d50ec feat(berkat): der
+Whatnot-Tag …` trägt alle 43 Dateien, drei Migrationen und zwei Analysen; `berkat` ist mit
+`origin/berkat` synchron. Hier stand bis zum 22.08. nachmittags das Gegenteil — der Kopf-Drift,
+vor dem dieses Dokument in Abschnitt 0 selbst warnt.
 
 ⚠️ **Ein nativer Eintrag steht weiter in der Warteschlange** (Abschnitt 12): `expo-image-manipulator`.
 Bis zum nächsten Build kann ein 48-MP-Foto die 8-MB-Grenze reißen — jetzt an mehr Stellen als
@@ -8229,14 +8274,16 @@ gestern, weil Fotos inzwischen auch in Nachrichten und an Streitfällen hängen.
 
 ### Das Erste, was zu tun ist
 
-1. **Committen und pushen.** 43 Dateien, siehe oben.
-2. **Die eine offene Frage klären:** Steht in der Glocke bei einer Streit-Meldung „Problem mit einer
-   Bestellung" (rot, Warndreieck) oder „Neu bei Berkat" (graue Glocke)? Das eine Wort entscheidet,
-   ob der Sprung ins Profil ein alter Stand war oder ein echter Fehler (Abschnitt 68, Ende).
+1. ~~**Committen und pushen.**~~ ✅ erledigt, `e2d50ec`.
+2. ~~**Die eine offene Frage klären**~~ ✅ aufgelöst am 22.08.2026, Abschnitt 70. Der Sprung ins
+   Konto war ein alter Stand, kein Fehler im Ziel — **und die Ursache trifft jede weitere Prüfung
+   am Gerät:** Ein OTA läuft erst beim übernächsten Start (Abschnitt 3). Wer ab jetzt am Gerät
+   prüft, sieht unten im Konto-Reiter, welcher Stand läuft.
 3. **Die Beta App Review abwarten — und danach Tester eintragen.** Unverändert seit gestern: Die
    Gruppe hat 0 Tester, die Freigabe allein bringt die App zu niemandem.
 4. **Gruppe A der Prüfliste zu Ende** — A5, A7, A8, A9, A10 stehen noch aus, dazu die neuen
-   **A11** (Posteingang) und **A12** (Foto im Verlauf).
+   **A11** (Posteingang) und **A12** (Foto im Verlauf). ⚠️ **Vorher zweimal schließen und
+   öffnen**, sonst prüft der Durchlauf den Stand von gestern.
 
 ### Was auf eine Entscheidung wartet, nicht auf Code
 
@@ -8286,3 +8333,112 @@ genau null davon bringt jemanden dazu, Samstagabend eine Stunde vor die Kamera z
 > `messages.image_url`, `order_disputes`, die Kategorie-Farben, die Zustände in `live_auctions` —
 > jedes Mal fehlte nur der letzte Bildschirm. Wer in diesem Projekt etwas vermisst, sucht zuerst in
 > der Datenbank, ob es das nicht längst gibt.
+
+---
+
+## 70. Der Widerspruch war kein falsches Ziel — die App wusste nur nicht, welchen Stand sie fährt (22.08.2026, Nachmittag)
+
+Abschnitt 68 endete mit einem offenen Punkt: Ein Tipp auf die Streit-Meldung in der Glocke führte
+ins Konto statt zu den Bestellungen. Er stand als **Punkt 2 im Anschlusspunkt** — und war der
+einzige Posten dort, der ohne Gerät, ohne Apple-Anmeldung und ohne zweite Person zu klären war.
+
+### Der Code kann das gar nicht
+
+Beide Entscheidungen — **wie die Zeile aussieht** und **wohin sie führt** — hängen an derselben
+Zeichenkette:
+
+| | |
+|---|---|
+| `present(item.type)` in `app/notifications.tsx:48` | Symbol, Titel, Farbe |
+| `notificationTarget({ type: item.type, … }, 'list')` in `lib/useNotifications.ts:101` | das Ziel |
+
+`present('order_dispute')` gibt Warndreieck, „Problem mit einer Bestellung" und Rot;
+`notificationTarget` gibt `/orders`. **Es gibt keinen Weg, bei dem das eine greift und das andere
+nicht** — die beiden `switch` lesen dasselbe Feld derselben Zeile. Die Kombination „richtiger Titel,
+falsches Ziel" ist im heutigen Bündel ausgeschlossen.
+
+Auch die Serverseite hält: `20260821170000` schreibt beide Meldungen mit `type = 'order_dispute'`
+und leitet `app` aus `product_orders.cart_id` ab. Und `/orders` existiert als Route
+(`app/orders.tsx`) und leitet nirgends um. Damit blieb genau eine Erklärung übrig — **auf dem
+Telefon lief ein älteres Bündel** —, und die ließ sich nicht belegen, weil die App nirgends sagt,
+welches.
+
+### ⚠️ Der Mechanismus, und er ist größer als dieser eine Fund
+
+Nachgelesen statt vermutet, in `@expo/config-plugins/build/utils/Updates.js:183`:
+
+```js
+return config.updates?.fallbackToCacheTimeout ?? 0;
+```
+
+`app.json` setzt den Wert nicht, also ist er **0**, und die erzeugte `Expo.plist` trägt
+`EXUpdatesLaunchWaitMs = 0`. Die App wartet beim Start also **nie** auf ein neues Bündel: Sie läuft
+sofort aus dem Zwischenspeicher, lädt im Hintergrund und nimmt die neue Fassung erst beim
+**nächsten** Start in Betrieb.
+
+Am 22.08. gingen **fünfzehn** Veröffentlichungen an einem Nachmittag raus (`eas update:list`
+nachgezählt). In so einer Sitzung läuft auf dem Telefon fast immer der vorletzte Stand.
+
+> **Die Lehre, und sie ist unbequem: In einer Sitzung mit vielen OTAs prüft „am Gerät" die
+> Änderung DAVOR.** Nicht die, um die es gerade geht. Das erklärt diesen Fund — und es steht als
+> Fragezeichen hinter jedem „am Gerät geprüft", das an einem solchen Tag entstanden ist.
+
+Der ganze Eintrag steht als Falle in Abschnitt 3, weil er sich sonst wiederholt.
+
+### Was gebaut ist
+
+`lib/buildInfo.ts` und eine leise Zeile unten im Konto-Reiter:
+
+```
+Berkat 1.0.0 (1) · Stand 22.08. 15:12 · 56f80d93
+```
+
+Die acht Zeichen sind der Anfang der Gruppen-Kennung aus
+`npx eas update:list --branch production`. Damit ist eine Meldung vom Gerät ohne Rückfrage einer
+Veröffentlichung zuzuordnen — die Frage „hattest du den Stand schon?" ist ab jetzt eine Zeile und
+kein Gespräch.
+
+**Entscheidungen, die nicht offensichtlich sind:**
+
+- **Drei Sonderfälle, drei verschiedene Wörter.** „Entwicklung" in Metro, „Werksstand" für das
+  eingebackene Bündel, „kein OTA-Stand", wenn Updates an ist und trotzdem keinen Zeitpunkt meldet.
+  Ein gemeinsames Wort für alle drei wäre wieder eine Auskunft, die nichts unterscheidet — dieselbe
+  Lehre wie „Eine Fehlermeldung für alles ist keine Fehlermeldung" (Abschnitt 3).
+- **`expo-updates` und `expo-constants` per `require` in `try/catch`.** Beide sind nativ; ein
+  statischer Import würde in Expo Go den Konto-Reiter beim Laden der Datei mitreißen — dieselbe
+  Bauform wie LiveKit, `expo-web-browser` und `expo-image-manipulator`.
+- **Kein Knopf, `selectable`.** Es gibt nichts zu tun, nur etwas zu wissen; und aus einer Nachricht
+  heraus muss die Zeile lesbar sein — dieselbe Überlegung wie bei der Versandadresse in den
+  Bestellungen (Abschnitt 18).
+- **⚠️ `fallbackToCacheTimeout` bleibt bei 0.** Die App warten zu lassen würde jeden Kaltstart für
+  **alle** Nutzer verzögern, um ein Problem zu lösen, das nur beim **Prüfen** besteht. Und es wäre
+  eine `app.json`-Änderung, also ein nativer Build (Abschnitt 12) für eine Zeile Bequemlichkeit.
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` und `expo export --platform ios` fehlerfrei. Keine Migration, kein Build, keine neue
+Abfrage.
+
+⚠️ **Am Gerät ungeprüft — aber die Zeile prüft sich selbst.** Neu in der Prüfliste als **A15**:
+Nach dem OTA die App zweimal schließen und öffnen, dann unten im Konto-Reiter nachsehen. Steht dort
+ein heutiger Zeitpunkt, ist der Stand aktuell **und** die Zeile funktioniert. Steht dort
+„Werksstand", hat das Gerät seit dem TestFlight-Build noch kein einziges OTA übernommen — und das
+wäre der wichtigere Befund.
+
+⚠️ **Was ausdrücklich NICHT bewiesen ist:** dass Zaurs Telefon in genau diesem Moment einen alten
+Stand fuhr. Bewiesen ist, dass der Code die gemeldete Kombination nicht erzeugen kann, und dass ein
+Mechanismus existiert, der den alten Stand zum Normalfall macht. Der letzte Schritt — nachsehen, was
+in der Glocke stand — ist damit **nicht mehr nötig**, aber er wäre auch nicht mehr aussagekräftig:
+Das Gerät hat seither mehrere OTAs bekommen.
+
+### Was dieser Nachmittag gelehrt hat
+
+Abschnitt 61 schrieb: *„Der teuerste Fehler des Tages war kein falscher Code, sondern eine Zahl, die
+einmal gestimmt hat."* Hier ist es eine Stufe davor:
+
+> **Der teuerste Fehler war eine Beobachtung, die niemand einem Stand zuordnen konnte.** Ein Fund
+> ohne Versionsangabe ist keine Messung, sondern eine Anekdote — und er kostet den nächsten Chat
+> einen Absatz Beunruhigung, genau wie die `index.ts`-Frage in Abschnitt 18.
+>
+> **Wer eine Prüfliste zum Motor macht, braucht am Gerät eine Antwort auf „welcher Stand ist das?"**
+> Sonst prüft die Liste einen Zustand, den niemand benennen kann.

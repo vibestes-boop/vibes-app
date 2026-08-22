@@ -39,6 +39,7 @@ import { useUnreadMessageCount } from '../../lib/useDirectMessages';
 import { missingBusinessFields, useBerkatSeller } from '../../lib/useBerkatSeller';
 import { useMyRewards } from '../../lib/useRewards';
 import { useMyReviews } from '../../lib/useOrderReview';
+import { buildLabel } from '../../lib/buildInfo';
 import { RatingStars } from '../../components/RatingStars';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -641,6 +642,20 @@ export default function AccountScreen() {
         <Text style={styles.deleteText}>Konto löschen</Text>
       </Pressable>
 
+      {/* ⚠️ Welcher Stand läuft hier gerade? Am 22.08.2026 blieb ein Fund
+          unentscheidbar, weil genau das niemand beantworten konnte (Abschnitt
+          68). `expo-updates` startet immer aus dem Zwischenspeicher und nimmt
+          eine neue Fassung erst beim NÄCHSTEN Start in Betrieb — an einem Tag
+          mit fünfzehn Veröffentlichungen prüft man am Gerät also fast immer den
+          vorletzten Stand. Begründung ausführlich in `lib/buildInfo.ts`.
+
+          `selectable`, damit die Zeile aus einer Nachricht heraus lesbar ist —
+          dieselbe Überlegung wie bei der Versandadresse in den Bestellungen.
+          Kein Knopf: Es gibt nichts zu tun, nur etwas zu wissen. */}
+      <Text selectable style={styles.buildLine}>
+        {buildLabel()}
+      </Text>
+
     </ScrollView>
   );
 }
@@ -799,6 +814,9 @@ const styles = StyleSheet.create({
   // Der Ernst gehört auf den Bildschirm dahinter, nicht auf den Weg dorthin.
   deleteRow: { marginTop: space.md, alignItems: 'center', paddingVertical: space.sm },
   deleteText: { fontSize: 13, color: ui.textMuted, textDecorationLine: 'underline' },
+  // Leiser als alles andere auf dem Bildschirm: Die Zeile ist eine Auskunft für
+  // den Fall, dass jemand fragt — nicht etwas, das man beim Scrollen liest.
+  buildLine: { marginTop: space.sm, fontSize: 11, color: ui.textMuted, textAlign: 'center' },
   signOut: {
     marginTop: space.lg,
     height: 46,
