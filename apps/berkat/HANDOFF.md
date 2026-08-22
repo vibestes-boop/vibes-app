@@ -9076,3 +9076,61 @@ Direktnachricht gehört keiner App — dieselbe Unterhaltung wird von beiden gef
 entstehen, und liesse den Rest raten. Solange Serlos Glocke jetzt filtert, ist der Schaden auf
 „eine DM-Meldung erscheint nicht in Berkats Glocke" begrenzt — Berkats Posteingang zählt ungelesene
 Nachrichten ohnehin selbst. **Das gehört entschieden, nicht geraten.**
+
+### Die Preisvorschlag-Entscheidung ist gefallen: nur vor dem Start (22.08.2026)
+
+Zaur hatte sie mir überlassen: *„Ich weiß nicht, was zu tun ist. Schau, was whatnot macht. und
+denkst du was besser ist?"*
+
+**Was Whatnot tut — nachgesehen, nicht vermutet** (Help Center, 22.08.2026):
+
+> **„Auctions don't support offers."**
+
+Vorschläge gibt es dort **nur** auf Buy-It-Now-Artikeln, und ein „Accept" belastet die Karte
+**sofort** — es gibt gar keine Zusage, die herumliegt und später eingelöst wird. Die Lage kann bei
+Whatnot strukturell nicht entstehen.
+
+Berkat hat sie, weil eine angenommene Zusage hier bewusst *„eine Einladung zum Kauf, kein
+geschlossener Vertrag"* ist (Abschnitt 24) — der Käufer darf sie sogar zurückziehen. Das ist eine
+gute Entscheidung; sie brauchte nur eine Grenze.
+
+**Die Grenze ist der Start der Auktion** (`20260822230000`). Begründung, und sie kommt aus Berkats
+eigenem Regelwerk: Ein Gebot ist eine **bindende Willenserklärung** (Abschnitt 19). Eine Zusage,
+die ein bindendes Gebot schlägt, nimmt dem Gebot seine Bedeutung — und wenn Bieter merken, dass
+ihnen der Artikel zu einem vorher ausgehandelten Preis weggenommen werden kann, hören sie auf zu
+bieten. **Die Glaubwürdigkeit der Auktion IST das Produkt.**
+
+⚠️ **Was sich NICHT ändert:** Der Sofortkauf zum **Listenpreis** bleibt während der laufenden
+Auktion erlaubt — das ist gewolltes Abkürzen und war nie das Problem. Weg ist nur der Rabatt. Vor
+dem Start und danach im Regal gilt die Zusage unverändert. Der Käufer liest das auch so:
+*„Der Artikel wird gerade versteigert — solange die Uhr läuft, zählt nur das Gebot. Deine Zusage
+gilt danach wieder."*
+
+⚠️ **Eine Falle beim Bauen, die fast durchgerutscht wäre.** Der erste Entwurf setzte den Riegel
+zwischen `SELECT * INTO o` und das `IF NOT FOUND` darunter. `FOUND` gilt in PL/pgSQL für die
+**zuletzt ausgeführte** Anweisung — der Einschub hätte die Gültigkeitsprüfung der Zusage still
+ausgehebelt, und zwar auf dem Geldweg. Der Riegel steht jetzt **vor** dem SELECT.
+
+Der Rumpf ist maschinell aus dem Abzug übernommen; der Generator bricht ab, wenn der Anker nicht
+genau einmal trifft, und zählt danach nach, dass es weiterhin genau eine `CREATE`-Zeile und genau
+ein `SELECT INTO o` gibt. `buy_now_live_auction` hat bei einer Neufassung schon einmal
+`buy_now_gone`, den Eintrag in `live_bids`, `bid_count`, `ends_at` und den Rückgabewert verloren.
+
+**Ungeprüft:** die Probe selbst — sie braucht zwei Konten, eine Zusage und eine laufende Auktion.
+Sie steht als Gegenprobe 3 am Ende der Migration.
+
+### Und der Serlo-OTA ist raus (22.08.2026, nachts)
+
+Die zwei Client-Änderungen aus der App-Trennung sind veröffentlicht — **beide Runtimes**, nach der
+Regel aus Abschnitt 8:
+
+| Runtime | Gruppen-ID |
+|---|---|
+| 1.31.0 | `d7f1814e-24a3-442c-a422-172a1a89839c` |
+| 1.30.0 | `ba0380b5-fe1f-45b9-9b61-9e7b60b37dff` |
+
+Vorflug-Proben, alle drei vor dem ersten Aufruf: Projekt ist **`@zaurhat/vibes`** (hier gewollt —
+das ist der eine Fall, in dem der Wurzelordner richtig ist), seit dem letzten Serlo-OTA haben sich
+in Serlos Bündel **genau zwei Dateien** geändert (`lib/authStore.ts`, `lib/useNotifications.ts`),
+und `package.json` ist unberührt — der Sprung auf die ältere Runtime 1.30.0 ist damit sicher.
+`app.json` steht danach wieder auf 1.31.0.

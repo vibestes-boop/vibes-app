@@ -183,6 +183,12 @@ export function offerErrorText(message: string): string {
     return 'Auf den vollen Preis zu kontern heißt „nein" — dann sag lieber ab.';
   if (message.includes('offer_not_valid'))
     return 'Diese Zusage gilt nicht mehr.';
+  // ⚠️ Der Satz sagt, was gilt UND was geht — nicht nur „nein" (Design-Gesetz 2).
+  // Die Zusage ist nicht weg: Sie gilt wieder, sobald der Artikel nicht mehr
+  // versteigert wird. Nur während der laufenden Auktion zählt allein das Gebot
+  // (`20260822230000`).
+  if (message.includes('offer_auction_running'))
+    return 'Der Artikel wird gerade versteigert — solange die Uhr läuft, zählt nur das Gebot. Deine Zusage gilt danach wieder.';
   if (message.includes('offer_closed') || message.includes('offer_not_found'))
     return 'Dieser Vorschlag ist schon erledigt.';
   if (message.includes('price_too_low'))
