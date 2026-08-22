@@ -135,7 +135,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–70; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–71; **56 ist die Prüfliste**, **69 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -8304,10 +8304,17 @@ Käuferschutz-Frage ist damit NICHT gemeint — die ist entschieden.
    schon, es sind Zeilen, kein Umbau
 3. **Kein Bildschirm für die eigenen Versandsätze** — ein Verkäufer kann seine Pauschalen nirgends
    ansehen. Trifft heute niemanden außer Zaur, ab dem zweiten Verkäufer sofort
-4. **Farbtönung je Kategorie-Pille** — die `tint`-Werte liegen ungenutzt in `theme/categoryArt.ts`
-5. **Vacation Mode** — ab etwa zwanzig Verkäufern; heute müsste man zwanzig Angebote einzeln
+4. ~~**Farbtönung je Kategorie-Pille**~~ ✅ erledigt am 22.08.2026, Abschnitt 71 — zusammen mit dem
+   Fund, dass der Kategorien-Reiter `categoryArt.ts` gar nicht gelesen hat
+5. ⏳ **Die zwölf freigestellten Kategorie-Fotos** — kein Code, Zaurs Handgriff. Seit Abschnitt 71
+   ist der Weg dafür frei: `photo` in `theme/categoryArt.ts` füllen, beide Flächen ziehen mit.
+   ⚠️ „Schuhe" trägt bis dahin ein **Paket**-Symbol
+6. ⏳ **Gefüllter statt umrandeter Knopf auf der Artikelseite** — eine Entscheidung über eine
+   Farbe, kein Umbau (Abschnitt 71)
+7. **Vacation Mode** — ab etwa zwanzig Verkäufern; heute müsste man zwanzig Angebote einzeln
    zurückziehen
-6. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren
+8. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren, der leere Fuß
+   der Startseite
 
 ### Nicht neu diskutieren
 
@@ -8442,3 +8449,104 @@ einmal gestimmt hat."* Hier ist es eine Stufe davor:
 >
 > **Wer eine Prüfliste zum Motor macht, braucht am Gerät eine Antwort auf „welcher Stand ist das?"**
 > Sonst prüft die Liste einen Zustand, den niemand benennen kann.
+
+---
+
+## 71. Warum die App unfertig aussah — zwei Ursachen, beide im Code (22.08.2026, Abend)
+
+Zaur: *„analysiere whatnot, meine app sieht immer noch unvollständig aus."* Das ist eine andere
+Frage als alle dreizehn Analysen davor — die verglichen Funktionen und Abläufe. Die
+**vierzehnte Analyse** (`WHATNOT-ANALYSE.md`) vergleicht Fertigkeit, und sie ist die erste, die
+Whatnots Bilder nicht gegen Berkats Quelltext hält, sondern gegen **Berkats Bildschirm**: die App
+lief dabei im Simulator am echten Datenstand.
+
+> Der Abstand liegt nicht bei den Funktionen und kaum bei der Gestaltung der einzelnen Fläche. Er
+> liegt darin, dass **nichts miteinander fluchtet** — und dass an einer Stelle ein Bild vorgesehen
+> ist, wo ein Strichsymbol steht.
+
+### ⚠️ Ursache 1: Das Raster war kein Raster
+
+`ListingCard` ließ den Titel frei wachsen (`numberOfLines={2}` ohne feste Höhe), und Byline wie
+Meta-Zeile erschienen nur mit Inhalt. Zwei Karten nebeneinander waren damit **verschieden hoch** —
+am echten Datenstand gemessen standen auf `/shop` „85 €" und „54 €" mit **42 Punkten**
+Höhenunterschied nebeneinander.
+
+Das Auge sucht auf einer Rasterseite Spalten. Findet es keine, liest es „unfertig", auch wenn jede
+einzelne Karte für sich richtig gebaut ist.
+
+Behoben: Titel fest auf zwei Zeilen, Byline und Meta stehen immer — auch leer.
+
+⚠️ **`lineHeight` muss dabeistehen.** Ohne ihn rechnet iOS die Zeilenhöhe aus der Schrift, und eine
+feste `height` schneidet die zweite Zeile an, statt sie zu tragen.
+
+Dieselbe Ursache hatten die Kategorie-Kacheln: „Mode" ist einzeilig, „Taschen & Accessoires"
+zweizeilig — die Bildflächen darunter standen in derselben Reihe auf zwei Höhen.
+
+### ⚠️ Ursache 2: Zwei Quellen für dasselbe Kategoriebild
+
+Der Kopf von `theme/categoryArt.ts` versprach wörtlich *„wer die Fotos einsetzt, ändert nur diese
+Datei … beide Flächen lesen es über `categoryArt()`"*. Das stimmte für die Entdeckungs-Leiste auf
+der Startseite. Der **Kategorien-Reiter** hatte eine eigene `ICONS`-Tabelle und kannte weder
+`tint` noch `photo`.
+
+**Die Folge wäre erst aufgefallen, wenn es wehtut:** Zaur legt seine zwölf freigestellten Bilder in
+`categoryArt.ts` — und ausgerechnet die Fläche, die fast nur aus diesen Kacheln besteht, bleibt
+unverändert.
+
+Familie aus Abschnitt 21 (die viermal abgeschriebene Angebots-Karte), eine Ebene höher: **Zwei
+Quellen für dieselbe Auskunft laufen auseinander, und man merkt es erst in dem Moment, in dem eine
+von beiden gepflegt wird.** Ein Kommentar, der Einheit behauptet, ist kein Riegel — er ist der
+Grund, warum niemand nachsieht.
+
+Behoben: Der Reiter liest `categoryArt()`, die zweite Tabelle ist weg, `photo` wird gezeigt, sobald
+es eines gibt.
+
+### Der Farbton, der seit dem 18.08. ungenutzt dalag
+
+Die zwölf `tint`-Werte sind jetzt in Gebrauch (Punkt 4 der Liste in Abschnitt 69). Sie schließen
+die Lücke nicht, sie machen sie erträglich: Das Raster hat wieder Flächen statt Umrisse.
+
+⚠️ **Der Einwand im Code war für Grau richtig und für diese Töne falsch.** Dort stand: „bewusst
+keine eigene Farbe — ein grauer Kasten hinter einem Symbol sähe aus wie ein Bild, das nicht geladen
+hat." Die Töne in `categoryArt.ts` sind gedeckte Verwandte der Sandfläche und lesen sich als
+Fläche, nicht als Fehler. Rückgängig ist es eine Zeile, und die steht als Kommentar daneben.
+
+### Was bleibt — und keines davon ist Code
+
+1. **Die zwölf freigestellten Fotos.** Der ganze verbleibende Abstand auf dieser Fläche. Whatnots
+   Kachel füllt ~60 % mit einem echten Objekt, Berkats ~15 % mit einer Linie.
+   ⚠️ **„Schuhe" trägt ein Paket-Symbol** — selbst als Platzhalter falsch, es liest sich als „hier
+   hat jemand kein Symbol gefunden".
+2. **Der einzige Knopf auf der Artikelseite ist eine Kontur.** Bei 30 von 32 Angeboten heißt er
+   „Nachricht schreiben". Gold gehört zu Recht dem Kauf (Abschnitt 20) — aber *ungefüllt* ist die
+   Form für „zweitrangig", und hier ist es die einzige Handlung der Seite. Gefülltes Dunkelgrün
+   wäre der Mittelweg. **Entscheidung, kein Bau.**
+3. **Die Startseite endet in einer handbreiten leeren Sandfläche** unter dem Fuß-Knopf.
+
+### Nebenbefund aus der Quelle
+
+Whatnot hat seine deutsche Store-Seite zwischen dem 20. und 22.08.2026 umsortiert: Der
+**Käuferschutz sitzt jetzt auf Platz 2 von 5**. Zweite unabhängige Bestätigung der Entscheidung für
+Fassung A (Abschnitt 68).
+
+### Geprüft und ungeprüft
+
+`tsc --noEmit` fehlerfrei, `expo export --platform ios` fehlerfrei (**3724 Module**). Keine
+Migration, kein Build.
+
+✅ **Am Bildschirm gesehen, nicht nur gebaut:** Startseite, Kategorien-Reiter, `/shop` und
+Artikelseite vor und nach der Änderung im Simulator verglichen. Preis und Meta-Zeile fluchten
+jetzt über beide Spalten, die Kacheln sind gleich hoch und tragen ihre Fläche.
+
+⚠️ **Auf dem iPhone ungeprüft.** Der Simulator zeichnet 402 Punkte breit; ein längerer Titel bricht
+auf einem schmaleren Gerät früher um. Die feste Höhe trägt genau zwei Zeilen — bei drei wird
+gekürzt, das ist Absicht.
+
+### Die Lehre
+
+> **Wer wissen will, warum etwas unfertig aussieht, muss es ansehen.** Eine fehlende `height` und
+> eine Tabelle, die es zweimal gibt, überstehen jede Code-Prüfung. Nebeneinander gelegt fallen sie
+> in zehn Sekunden auf.
+
+Dieselbe Lehre wie am 19.08. („wer wählen muss, prüft mit Menschen, nicht mit Skripten",
+Abschnitt 54) — nur für Gestaltung statt für Abläufe.

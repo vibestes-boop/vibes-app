@@ -32,24 +32,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Baby,
-  BookOpen,
-  ChevronRight,
-  Coins,
-  Gem,
-  House,
-  Moon,
-  Package,
-  Shirt,
-  ShoppingBag,
-  Sparkles,
-  Watch,
-  type LucideIcon,
-} from 'lucide-react-native';
+import { ChevronRight, ShoppingBag } from 'lucide-react-native';
+import { Image } from 'expo-image';
 
 import { useCategoryTree, type Category, type CategoryNode } from '../../lib/useCategories';
 import { BerkatMark } from '../../components/BerkatMark';
+import { categoryArt } from '../../theme/categoryArt';
 import { radius, space, ui } from '../../theme/tokens';
 
 // Auf Android muss die Layout-Animation einmalig freigeschaltet werden. Unter
@@ -61,30 +49,19 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const COLUMNS = 3;
 
-// Ein Symbol je Oberkategorie, groß in der Bildfläche der Kachel.
+// ⚠️ SYMBOL, FARBTON UND FOTO KOMMEN AUS `theme/categoryArt.ts` — EINE STELLE.
 //
-// ÜBERGANGSZUSTAND, bewusst so: Whatnot trägt dort je Kategorie ein gerendertes
-// 3D-Objekt. Zaur erzeugt die noch; bis dahin steht an genau derselben Stelle
-// das Symbol. Kommen die Bilder, wird nur der Inhalt von `tileArt` getauscht —
-// Kachelgröße, Raster und Textanordnung bleiben, wie sie sind.
+// Bis zum 22.08.2026 stand hier eine ZWEITE Zuordnung: eine eigene
+// `ICONS`-Tabelle, die weder den Farbton noch das Foto kannte. Der Kopf von
+// `categoryArt.ts` versprach derweil wörtlich „wer die Fotos einsetzt, ändert
+// nur diese Datei" — das stimmte für die Entdeckungs-Leiste auf der Startseite
+// und war für dieses Raster falsch. Zaurs zwölf freigestellte Bilder wären
+// also ausgerechnet auf der Fläche nicht angekommen, auf der sie am meisten
+// fehlen: Der Kategorien-Reiter besteht fast nur aus diesen Kacheln.
 //
-// Zwischenzeitlich stand hier das neueste Produktfoto der Kategorie. Das ist
-// wieder raus: Ein echtes Foto neben einem 3D-Objekt hätte zwei Bildsprachen
-// auf derselben Fläche gemischt, sobald die ersten Renderings da sind.
-const ICONS: Record<string, LucideIcon> = {
-  mode: Shirt,
-  schuhe: Package,
-  taschen: ShoppingBag,
-  schmuck: Gem,
-  beauty: Sparkles,
-  uhren: Watch,
-  haus: House,
-  islamica: Moon,
-  buecher: BookOpen,
-  kinder: Baby,
-  sammeln: Coins,
-  sonstiges: Package,
-};
+// Dieselbe Familie wie die viermal abgeschriebene Angebots-Karte (HANDOFF 21):
+// Zwei Quellen für dieselbe Auskunft laufen auseinander, und man merkt es erst
+// in dem Moment, in dem eine von beiden gepflegt wird.
 
 type SortMode = 'empfohlen' | 'beliebt' | 'az';
 
@@ -258,7 +235,8 @@ export default function CategoriesScreen() {
             <View>
               <View style={styles.row}>
                 {row.tiles.map((tile) => {
-                  const Icon = ICONS[tile.slug] ?? Package;
+                  const art = categoryArt(tile.slug);
+                  const Icon = art.icon;
                   const { text, live } = countLine(tile);
                   const isOpen = tile.slug === open;
                   const children = tile.children.length;
@@ -288,8 +266,38 @@ export default function CategoriesScreen() {
                         {tile.name}
                       </Text>
 
-                      <View style={styles.tileArt}>
-                        <Icon size={44} color={isOpen ? ui.goldInk : ui.brand} />
+                      {/* ⚠️ Die Bildfläche trägt jetzt den Farbton der
+                          Kategorie. Hier stand „bewusst keine eigene Farbe —
+                          ein grauer Kasten hinter einem Symbol sähe aus wie ein
+                          Bild, das nicht geladen hat." Der Einwand gilt für
+                          GRAU; die Töne in `categoryArt.ts` sind gedeckte
+                          Verwandte der Sandfläche und lesen sich als Fläche,
+                          nicht als Fehler.
+
+                          Ohne sie bestand das Raster aus zwölf weißen Kästen
+                          mit dünnen Strichsymbolen — der Grund, warum es neben
+                          Whatnots Kachelwand wie ein Einstellungs-Menü wirkte
+                          (Analyse 14). Rückgängig: `backgroundColor` streichen.
+
+                          Auf der aufgeklappten Kachel bleibt sie durchsichtig:
+                          Dort trägt schon die goldene Fläche die Aussage, und
+                          ein zweiter Ton darin wäre ein Fleck. */}
+                      <View
+                        style={[
+                          styles.tileArt,
+                          { backgroundColor: isOpen ? 'transparent' : art.tint },
+                        ]}
+                      >
+                        {art.photo ? (
+                          <Image
+                            source={art.photo}
+                            style={styles.tilePhoto}
+                            contentFit="contain"
+                            transition={140}
+                          />
+                        ) : (
+                          <Icon size={52} color={isOpen ? ui.goldInk : ui.brand} />
+                        )}
                       </View>
 
                       {text ? (
@@ -444,13 +452,22 @@ const styles = StyleSheet.create({
   tileArt: {
     flex: 1,
     minHeight: 56,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  // Das freigestellte Foto füllt die Fläche, ohne zu beschneiden — bei einem
+  // freigestellten Objekt ist der Rand die Form, ein `cover` würde sie kappen.
+  tilePhoto: { width: '100%', height: '100%' },
   // Gold ist in Berkat der Kauf — hier ist es das Äquivalent zu Whatnots
   // gelber Kachel: der eine Ort, an dem man gerade steht.
   tileOpen: { backgroundColor: ui.gold, borderColor: ui.brand },
-  tileName: { fontSize: 13, fontWeight: '700', color: ui.text },
+  // ⚠️ Zwei Zeilen fest, auch bei einem Wort. Ohne das beginnt die Bildfläche
+  // in jeder Kachel woanders: „Mode" ist einzeilig, „Taschen & Accessoires"
+  // zweizeilig — und in derselben Reihe standen die Symbole dann auf zwei
+  // Höhen. Dieselbe Ursache wie beim zerrissenen Angebots-Raster (Analyse 14).
+  tileName: { fontSize: 13, lineHeight: 17, height: 34, fontWeight: '700', color: ui.text },
   tileNameOpen: { color: ui.goldInk },
   countRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   countSpacer: { height: 15 },

@@ -2638,3 +2638,165 @@ Nachricht 👋"), Whatnots Reiter zeigt bei einem Eintrag einfach weiße Fläche
 4. **ⓘ als System** — zuerst an der Umsatz-Zahl, weil dort Entscheidungen dranhängen.
 5. **Eine eigene Farbe für Verweise**, damit `ui.brand` nicht gleichzeitig „aktiv" und „hier
    entlang" bedeutet.
+
+---
+
+## Vierzehnte Analyse: warum die App „unfertig" aussieht (22.08.2026)
+
+Zaurs Satz war nicht „mir fehlt eine Funktion", sondern **„meine App sieht immer noch unvollständig
+aus"**. Das ist eine andere Frage als alle dreizehn Analysen davor — die haben Funktionen und
+Abläufe verglichen. Diese vergleicht **Fertigkeit**.
+
+### 0. Der Befund in einem Satz
+
+> Der Abstand liegt nicht bei den Funktionen und kaum bei der Gestaltung der einzelnen Fläche.
+> Er liegt darin, dass **nichts miteinander fluchtet** — und dass an drei Stellen ein Bild
+> vorgesehen ist, wo heute ein Strichsymbol steht.
+
+Zwei der drei Ursachen waren Code und sind am selben Tag behoben. Die dritte ist ein Auftrag an
+Zaur, kein Bau.
+
+### 1. Die Quelle
+
+Whatnots **aktuelle** fünf Store-Bilder für Deutschland, Fassung `26.34.5` vom **20.08.2026** —
+also zwei Tage neuer als die der achten Analyse. Geholt über die iTunes-Search-Schnittstelle, wie
+in HANDOFF 28 beschrieben, und diesmal in 900 px statt als Vorschaubild.
+
+⚠️ **Bild 2 ist neu.** Wo am 21.08. noch der Käuferschutz-Kasten an anderer Stelle stand, liegt
+jetzt ein eigener Screenshot dafür an **Position 2 von 5**. Der Marktführer hat seine deutsche
+Store-Seite in diesen zwei Tagen umsortiert und Sicherheit noch weiter nach vorn gezogen. Das ist
+die zweite unabhängige Bestätigung der Käuferschutz-Entscheidung (Fassung A, HANDOFF 68).
+
+**Und zum ersten Mal die eigene App daneben, nicht aus der Erinnerung:** Berkat lief während der
+Analyse im Simulator (`berkattest`, echter Datenstand, 32 Angebote). Startseite, Kategorien-Reiter,
+Marktplatz und Artikelseite als Bildschirmfotos. Das ist der Unterschied zu allen dreizehn
+Analysen davor — sie verglichen Whatnots Bilder gegen **Berkats Quelltext**.
+
+### 2. ⚠️ Ursache 1: Das Raster war kein Raster
+
+Der teuerste Befund, und er ist in jedem Bildschirmfoto sichtbar, sobald man einmal darauf zeigt.
+
+`ListingCard` ließ den Titel frei wachsen (`numberOfLines={2}`, keine feste Höhe), und Byline wie
+Meta-Zeile erschienen nur, wenn sie Inhalt hatten. In einer zweispaltigen Liste heißt das:
+
+```
+links:  Byline · Titel (2 Zeilen) · Preis · Meta
+rechts: Byline · Titel (1 Zeile)  · Preis · Meta
+```
+
+Die beiden Karten sind **verschieden hoch**. Der Preis der linken steht damit 18 Punkte tiefer als
+der der rechten, die Meta-Zeilen ebenso — und weil die Reihe so hoch ist wie ihre höchste Karte,
+klafft unter der kürzeren eine Lücke, die es unter der anderen nicht gibt. Am echten Datenstand
+gemessen: Auf `/shop` standen „85 €" und „54 €" nebeneinander mit **42 Punkten Höhenunterschied**.
+
+Das Auge sucht auf einer Rasterseite Spalten. Findet es keine, liest es „unfertig" — auch wenn
+jede einzelne Karte für sich richtig gebaut ist. **Genau das war der Eindruck, um den es ging.**
+
+**Behoben:** Titel auf feste zwei Zeilen (`lineHeight: 18, height: 36`), Byline und Meta-Zeile
+stehen immer, auch leer. Kostet bei einem einzeiligen Titel eine Leerzeile; das ist der Preis
+dafür, dass ein Raster ein Raster ist.
+
+⚠️ **`lineHeight` MUSS dabeistehen.** Ohne ihn rechnet iOS die Zeilenhöhe aus der Schrift, und die
+feste `height` schneidet die zweite Zeile an, statt sie zu tragen.
+
+Dieselbe Krankheit hatte der Kategorien-Reiter: „Mode" ist einzeilig, „Taschen & Accessoires"
+zweizeilig — die Bildflächen darunter standen in derselben Reihe auf zwei Höhen. Ebenfalls behoben.
+
+### 3. ⚠️ Ursache 2: Zwei Quellen für dasselbe Kategoriebild
+
+Der Kopf von `theme/categoryArt.ts` verspricht wörtlich:
+
+> „WER DIE FOTOS EINSETZT, ÄNDERT NUR DIESE DATEI … Beide Flächen lesen es über `categoryArt()`."
+
+**Das stimmte für eine der beiden Flächen.** `CategoryRail` auf der Startseite liest sie; der
+Kategorien-Reiter hatte eine **eigene `ICONS`-Tabelle**, die weder den Farbton noch das Foto
+kannte.
+
+Die Folge wäre erst in dem Moment aufgefallen, in dem es wehtut: Zaur legt seine zwölf
+freigestellten Bilder in `categoryArt.ts` — und der **Kategorien-Reiter bleibt, wie er ist**. Also
+genau die Fläche, die fast nur aus diesen Kacheln besteht und die neben Whatnots Kachelwand am
+deutlichsten abfällt.
+
+Das ist die Familie aus HANDOFF 21 (die viermal abgeschriebene Angebots-Karte), eine Ebene höher:
+**Zwei Quellen für dieselbe Auskunft laufen auseinander, und man merkt es erst, wenn eine von
+beiden gepflegt wird.** Ein Kommentar, der Einheit behauptet, ist kein Riegel — er ist die
+Erklärung dafür, warum niemand nachgesehen hat.
+
+**Behoben:** Der Reiter liest `categoryArt()`, die `ICONS`-Tabelle ist weg, und die Bildfläche
+zeigt `photo`, sobald es eines gibt.
+
+### 4. Der Vergleich, den man nicht wegdiskutieren kann
+
+Whatnots Kategorie-Kachel und Berkats, nebeneinander:
+
+| | Whatnot | Berkat (vorher) | Berkat (jetzt) |
+|---|---|---|---|
+| Fläche | graue Karte | weiße Karte | weiße Karte |
+| Bild | **freigestelltes Produktfoto**, füllt ~60 % | Strichsymbol, 44 px, ~15 % | Strichsymbol 52 px auf **getöntem Feld** |
+| Zahl | „98 Zuschauer" mit rotem Punkt | „7 kaufbar" | „7 kaufbar" |
+| Anordnung | Name oben, Bild Mitte, Zahl unten | gleich | gleich |
+
+**Die Anordnung war nie das Problem — sie ist seit dem 18.08. identisch zu Whatnots.** Es fehlt
+genau eine Zutat: das Bild. Zwölf weiße Kästen mit dünnen Strichsymbolen lesen sich als
+Einstellungs-Menü, dieselbe Anordnung mit Objekten darin liest sich als Laden.
+
+Der Farbton (`tint`) lag seit dem 18.08. ungenutzt in der Datei und ist jetzt in Gebrauch. Er
+schließt die Lücke nicht, er macht sie erträglich: Das Raster hat wieder Flächen statt Umrisse.
+
+⚠️ **Der Einwand, der im Code stand, war für Grau richtig und für diese Töne falsch:** „Ein grauer
+Kasten hinter einem Symbol sähe aus wie ein Bild, das nicht geladen hat." Die zwölf Töne in
+`categoryArt.ts` sind gedeckte Verwandte der Sandfläche; sie lesen sich als Fläche, nicht als
+Fehler. Rückgängig ist es eine Zeile.
+
+### 5. Was die Bildschirmfotos sonst gezeigt haben
+
+**Berkat ist reicher, nicht ärmer.** Auf der Marktplatz-Karte steht, was Whatnot dort nicht hat:
+Verkäufername, Anbietertyp (Pflicht nach Art. 246d § 1 EGBGB), Größe, Zustand, Ort, Bilderzähler,
+Merken-Herz mit Zahl. Whatnots Kachel trägt Titel, Bild, Zuschauerzahl.
+
+**Der Ton ist besser.** „Gerade ist niemand live · Aus dem Regal — rund um die Uhr kaufbar, auch
+ohne Sendung" ist ein Satz, der weiterhilft. Whatnots Leerzustände sind weiße Flächen.
+
+**Zwei Dinge, die auffielen und NICHT behoben sind:**
+
+1. ⚠️ **Der einzige Knopf auf der Artikelseite ist eine Kontur.** Bei 30 der 32 Angebote heißt er
+   „Nachricht schreiben" und ist eine weiße Pille mit dünnem Rand. Gold ist zu Recht dem Kauf
+   vorbehalten (HANDOFF 20) — aber *ungefüllt* ist die Form für „zweitrangig", und hier ist es die
+   einzige Handlung der Seite. Whatnots CTA ist immer **gefüllt**, auch der graue. Ein gefülltes
+   Dunkelgrün wäre der Mittelweg: nicht der Kaufweg, aber auch keine Skizze. **Entscheidung, kein
+   Bau.**
+2. **Die Startseite endet in Leere.** Nach acht Angeboten kommt „Alle 32 Angebote ansehen" und
+   darunter eine handbreite leere Sandfläche bis zur Leiste. Ein Fußbereich, der nichts trägt,
+   ist der letzte Eindruck des Bildschirms.
+
+### 6. Was daraus folgt — nach Nutzen sortiert
+
+1. ✅ **Feste Kartenhöhe** (erledigt) — die größte Wirkung pro Zeile Code, die diese App je hatte.
+2. ✅ **Eine Quelle fürs Kategoriebild** (erledigt) — ohne das wären die zwölf Fotos verpufft.
+3. ⏳ **Die zwölf freigestellten Fotos.** Das ist jetzt der ganze verbleibende Abstand auf dieser
+   Fläche, und er ist kein Code. Anforderungen unverändert (HANDOFF 41, Punkt 5): freigestellt,
+   PNG mit Transparenz, quadratisch, min. 400 × 400, ein Gegenstand, gleiche Blickrichtung.
+   ⚠️ Und: **„Schuhe" trägt heute ein Paket-Symbol.** Selbst als Platzhalter ist das falsch — es
+   liest sich als „hier hat jemand kein Symbol gefunden".
+4. ⏳ **Gefüllter CTA auf der Artikelseite** — eine Entscheidung über eine Farbe, kein Umbau.
+5. ⏳ **Der Fuß der Startseite.**
+
+### 7. Die Lehre
+
+Dreizehn Analysen haben Whatnots Bilder gegen Berkats **Quelltext** gehalten. Diese hat sie gegen
+Berkats **Bildschirm** gehalten — und die zwei teuersten Funde des Tages waren beide von der Sorte,
+die man im Quelltext nicht sieht: Eine fehlende `height` und eine Tabelle, die es zweimal gibt.
+
+> **Wer wissen will, warum etwas unfertig aussieht, muss es ansehen.** Ein Kommentar, der Einheit
+> behauptet, und eine Karte, die für sich richtig gebaut ist, überstehen jede Code-Prüfung —
+> nebeneinander gelegt fallen sie in zehn Sekunden auf.
+
+Das ist dieselbe Lehre wie am 19.08. („wer wählen muss, prüft mit Menschen, nicht mit Skripten",
+HANDOFF 54), nur für Gestaltung statt für Abläufe.
+
+### Quellen
+
+- `itunes.apple.com/search?term=whatnot&entity=software&country=de` — Whatnot `26.34.5`,
+  Stand 20.08.2026, fünf deutsche Store-Bilder in 900 px
+- Berkat im iOS-Simulator (iPhone 17, iOS 26.3), Konto `berkattest`, echter Datenstand mit
+  32 Angeboten: Startseite, Kategorien, `/shop`, Artikelseite

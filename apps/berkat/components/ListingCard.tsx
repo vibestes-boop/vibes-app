@@ -235,17 +235,27 @@ export function ListingCard({
           also selbst, statt die Angabe abzuschneiden, die die Rechtsfolge
           trägt (Art. 246d § 1 EGBGB). Dieselbe Regel wie im Posteingang, wo
           der Name schrumpft und die Uhrzeit stehen bleibt. */}
-      {sellerName || kind ? (
-        <View style={s.byline}>
-          {sellerName ? (
-            <Text numberOfLines={1} style={s.seller}>
-              {sellerName}
-            </Text>
-          ) : null}
-          {sellerName && kind ? <Text style={s.bylineDot}>·</Text> : null}
-          {kind ? <Text style={s.kind}>{kind}</Text> : null}
-        </View>
-      ) : null}
+      {/* ⚠️ Diese drei Zeilen stehen IMMER, auch wenn sie leer bleiben.
+          Bis zum 22.08.2026 waren Byline und Meta-Zeile an ihren Inhalt
+          gebunden und der Titel wuchs frei auf ein oder zwei Zeilen. In einem
+          zweispaltigen Raster heißt das: Zwei Karten nebeneinander sind
+          verschieden hoch, und damit stehen Preis und Meta-Zeile der linken
+          Karte auf einer anderen Höhe als die der rechten. Nichts fluchtet,
+          und der Abstand zur nächsten Reihe ist links ein anderer als rechts.
+
+          Genau das ist der Grund, warum das Raster „unfertig" aussieht — nicht
+          die Gestaltung der einzelnen Karte, sondern dass keine zwei gleich
+          sind (Analyse 14). Eine feste Höhe kostet bei einzeiligen Titeln eine
+          Leerzeile; sie ist der Preis dafür, dass das Raster ein Raster ist. */}
+      <View style={s.byline}>
+        {sellerName ? (
+          <Text numberOfLines={1} style={s.seller}>
+            {sellerName}
+          </Text>
+        ) : null}
+        {sellerName && kind ? <Text style={s.bylineDot}>·</Text> : null}
+        {kind ? <Text style={s.kind}>{kind}</Text> : null}
+      </View>
       <Text numberOfLines={2} style={s.title}>
         {listing.title}
       </Text>
@@ -259,11 +269,9 @@ export function ListingCard({
           Auflage (Abschnitt 8); hier steht er dunkel auf Sand. Für das Merkmal,
           das die meisten Käufe entscheidet, ist das die bessere Fläche. */}
       <Text style={s.price}>{formatEuro(listing.buy_now_cents)}</Text>
-      {meta ? (
-        <Text numberOfLines={1} style={s.meta}>
-          {meta}
-        </Text>
-      ) : null}
+      <Text numberOfLines={1} style={s.meta}>
+        {meta ?? ' '}
+      </Text>
     </Pressable>
   );
 }
@@ -338,10 +346,26 @@ const s = StyleSheet.create({
   },
   countPillText: { fontSize: 10, fontWeight: '700', color: ui.overlayMuted },
 
-  byline: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 6 },
+  // Feste Höhen — siehe die Begründung am JSX. `lineHeight` MUSS dabei stehen:
+  // Ohne ihn rechnet iOS die Zeilenhöhe aus der Schrift, und `height` schneidet
+  // dann die zweite Zeile an, statt sie zu tragen.
+  byline: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    marginTop: 6,
+    minHeight: 14,
+  },
   seller: { flexShrink: 1, fontSize: 11, color: ui.textMuted },
   bylineDot: { fontSize: 11, color: ui.textMuted },
-  title: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 1 },
+  title: {
+    fontSize: 14,
+    lineHeight: 18,
+    height: 36,
+    fontWeight: '600',
+    color: ui.text,
+    marginTop: 1,
+  },
   price: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
 
   // ── Zeile ────────────────────────────────────────────────────────────────
