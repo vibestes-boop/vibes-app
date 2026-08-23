@@ -32,14 +32,23 @@ was gilt.
 > 18.08. belegt hatte. Der Rumpf war jedes Mal aktuell, nur der Kopf nicht. **Wer unten etwas
 > abhakt, hakt es oben mit ab** — sonst liest der nächste Chat den falschen Zustand zuerst.
 >
-> **Neu am 23.08.2026** — vier Arbeitspakete, **und alles ist draussen**: sieben Migrationen
-> (Tracking 300), `r2-sign` auf 42, `bunny-ingest` auf 13, Berkat-OTA `fc13bade…`. Der JWT-Fix ist
-> durch einen echten Upload belegt, nicht nur durch ausbleibende Fehler. ⏳ Offen bleibt allein der
-> Serlo-OTA für den `recipient_id`-Fix ist nach Freigabe ebenfalls raus (beide Runtimes). Die siebte ist ein Fix nach vorn: `ON CONFLICT DO NOTHING` **ohne Ziel**
-> hatte drei neue Versandsätze lautlos verschluckt, weil eine Eindeutigkeit aus dem August
-> dagegenstand. Zwei offene Entscheidungen sind gefallen: **der Faden entscheidet** über die App einer
-> Direktnachricht, und die **Kassen-Freigabe für die Testware** wird eingeschaltet (im
-> Stripe-Testbetrieb berührt sie keine Rechtsfrage — der Blocker war ein Scheinblocker).
+> **Neu am 23.08.2026** — vier Arbeitspakete gebaut, **alles ausgerollt**, danach zwei
+> Fehler-Analysen. Acht Migrationen (Tracking 301), `r2-sign` auf 42, `bunny-ingest` auf 13, vier
+> Berkat-OTAs (zuletzt `44a7d954…`), und der Serlo-OTA für den `recipient_id`-Fix auf **beiden**
+> Runtimes.
+>
+> Zwei offene Entscheidungen sind gefallen: **der Faden entscheidet** über die App einer
+> Direktnachricht, und beim Kaufknopf kam beim Messen heraus, dass die **Kassen-Freigabe längst
+> gelaufen** war — der Blocker war ein Scheinblocker.
+>
+> ⚠️ **Und einmal Serlos Produktion versehentlich getroffen**: ein `cd` in die Repo-Wurzel im
+> selben Befehl machte aus dem Berkat-OTA einen Serlo-OTA. Gemessen (genau eine Datei),
+> zurückgestellt, und die Regel in Abschnitt 3 so geschärft, dass die Probe jetzt ein Riegel ist
+> statt einer Erinnerung.
+>
+> ⏳ **Der nächste Bauschritt steht fertig beschrieben in Abschnitt 75:** das Verkäufer-Profil
+> umsortieren. Vier Schritte, ein OTA — und die Begründung kommt aus Berkats eigener Strategie,
+> nicht von Whatnot.
 >
 > ⚠️ **Drei Behauptungen dieses Dokuments waren falsch**, alle am Abzug gemessen: Es sind
 > **sechs** Schreibstellen auf `notifications`, nicht fünf · „Versand in Stufen: Zeilen, kein
@@ -211,7 +220,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | **77 Berkat-eigene, alle eingespielt**; im Tracking 300 ohne Lücke (23.08.2026) — Abschnitt 5, zuletzt 75 |
+| Migrationen | **78 Berkat-eigene, alle eingespielt**; im Tracking 301 ohne Lücke (23.08.2026) — Abschnitt 5, zuletzt 75 |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -9350,7 +9359,7 @@ gebracht. Das kommt über den TestFlight-Link — und danach über Telefonate, n
 
 ### ✅ Sieben Migrationen, eingespielt und von aussen gegengeprüft
 
-`migration list` zeigt **300 Einträge, keine Lücke.** Eingespielt wurde **einzeln, mit Messung
+`migration list` zeigt **301 Einträge, keine Lücke** (die achte kam mit der Versandzeit-Kachel dazu). Eingespielt wurde **einzeln, mit Messung
 dazwischen** — die Hausform in diesem Projekt.
 
 | Datei | Was | Gegenprobe von aussen |
@@ -9467,7 +9476,7 @@ kaputten Upload nicht zwei Verdächtige im Raum stehen.
 
 | | Stand |
 |---|---|
-| **7 Migrationen** | ✅ eingespielt, Tracking 300, keine Lücke |
+| **8 Migrationen** | ✅ eingespielt, Tracking 301, keine Lücke |
 | **`r2-sign`** | ✅ Version **42** (vorher 41 vom 13.06.) |
 | **`bunny-ingest`** | ✅ Version **13** (vorher 12 vom 17.06.) |
 | **Berkat-OTA** | ✅ Gruppe `fc13bade-33ad-4949-9f9b-5601bb34fb86`, Runtime 1.0.0 |
@@ -9746,26 +9755,84 @@ Alles ungeprüft; nichts davon lief je auf einem Gerät.
 | **B11** | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` — erwartet **403 / 42501**. Und die Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen und Teilen müssen in **Serlo** weiter ankommen | zweites Konto |
 | **C6** | **DM-Faden**: aus einem Angebot schreiben (`app='berkat'`), der andere **antwortet** — die Antwort muss **weiterhin** `'berkat'` tragen. Das ist der ganze Punkt der Entscheidung | zweites Konto |
 
+### ⏳ DER NÄCHSTE BAUSCHRITT: das Verkäufer-Profil umsortieren (23.08.2026, entschieden, nicht gebaut)
+
+Zaur mit einem Bildschirmfoto von Whatnots Verkäufer-Profil (`emd_livedeals`, EMD Trading):
+*„analysiere das Profil, Anordnung usw. — die ist besser als unsere oder?"*
+
+**Verglichen gegen `app/seller/[id].tsx`, nicht gegen die Erinnerung.** Befund: Beide zeigen
+**dieselben drei Kennzahlen** (Bewertung, Versandzeit, Verkauft/Zuschläge). Der Unterschied ist
+reine **Anordnung** — und in drei Punkten ist ihre besser.
+
+| | Whatnot | Berkat heute |
+|---|---|---|
+| **Banner** | randlos bis unter die Statusleiste, ~250 pt, trägt Logo, Claim und Social-Handles | `height: 116`, `borderRadius`, Rand ringsum — eine Kachel |
+| **Avatar** | ~180 pt, **überlappt** den Banner, mit Live-Abzeichen | `size={64}`, in einer Zeile neben dem Namen |
+| **Kennzahlen** | direkt unter dem Namen | nach Bio, Follower, Folgen-Knopf, Nachricht/Trinkgeld **und** dem Live-Slot |
+
+Die heutige Reihenfolge in `app/seller/[id].tsx` (ab Z. 514):
+Banner → Name/Avatar → Bio → Follower → Folgen → Nachricht+Trinkgeld → Live-/Termin-Slot →
+**Kacheln** → **Bürgen** → Impressum → Reiter.
+
+#### ⚠️ Der Punkt, der am meisten kostet — und er steht nicht im Bildschirmfoto
+
+**Die Bürgen liegen bei uns noch UNTER den Kacheln.** Die Ausgangsanalyse § B5 sagt wörtlich:
+
+> „Vertrauen ist personal, nicht institutionell. Ein 5-Sterne-Durchschnitt bedeutet weniger als
+> ‚mein Cousin kennt ihn.' … etwas, das Whatnot strukturell nicht bauen kann."
+
+Wir haben also den **einen** Vorteil, den sie nicht nachbauen können, und begraben ihn unter dem,
+was jede Plattform hat. **Das ist exakt derselbe Fehler, der am 21.08. im Live-Kopf behoben wurde**
+(Abschnitt 58): Dort stand die Zuschlagszahl oben, und `vouchSummary()` lag einen Tipp tief im
+Sheet. Auf dem Profil steht er noch.
+
+#### Was unseres BESSER hat — damit es beim Umbau nicht wegfällt
+
+Bürgen · Impressumsblock (§ 5 DDG) · der **„Demnächst"-Slot** mit dem nächsten Termin, den Whatnot
+auf dem Profil gar nicht hat (Hebel Nr. 1 der Analyse) · Zurück, Teilen und Melden im Kopf.
+
+> **Die Substanz ist unsere, die Reihenfolge ihre.**
+
+#### Der Bauplan — vier Schritte, kein Server, keine Migration
+
+1. **Bürgen-Zeile direkt unter den Namen**, VOR die Kacheln. Die Begründung steht in Berkats
+   eigener Strategie, nicht bei Whatnot.
+2. **Kacheln danach**, vor Bio und Knöpfe.
+3. **Avatar auf ~96–120 pt**, den Banner überlappend.
+4. **Banner randlos** und höher (~180 pt).
+
+1 und 2 sind eine Verschiebung im JSX, 3 und 4 sind Stile (`styles.banner`, `styles.identity`).
+Ein OTA, kein Build.
+
+⚠️ **Die Entscheidung, die vor Schritt 4 fällt:** Ein randloser Banner läuft unter die Statusleiste,
+und Berkat setzt sie global auf `dark` (Abschnitt 4). Über einem dunklen Bannerbild sind dunkle
+Symbole unlesbar. Entweder bekommt der Banner einen Verlauf nach oben, oder dieser Bildschirm wird
+die zweite Ausnahme neben dem Live-Raum.
+
+
 ### Danach, nach Nutzen sortiert
 
-0. ~~**Den Berkat-OTA veröffentlichen**~~ ✅ erledigt, Gruppe `fc13bade…`, am Gerät angekommen
+1. ~~**Den Berkat-OTA veröffentlichen**~~ ✅ erledigt, Gruppe `fc13bade…`, am Gerät angekommen
    (`01a02ebb`, Stand 23.08. 15:07). ⚠️ **Ich hatte hier `fc13bade` als Kontrolle genannt — das
    war falsch.** Das Gerät zeigt die plattformeigene Update-Kennung, nicht die Gruppe; siehe die
    Richtigstellung in Abschnitt 70.
-1. **Die Tester eintragen.** Die Review ist durch, die Gruppe hat 0. Das ist der einzige Punkt auf
+2. **Die Tester eintragen.** Die Review ist durch, die Gruppe hat 0. Das ist der einzige Punkt auf
    dieser Liste, der einen Verkäufer bringt.
-2. **Die zwölf freigestellten Kategorie-Fotos** — Zaurs Handgriff, grösster sichtbarer Abstand.
+3. **Das Verkäufer-Profil umsortieren** — der Abschnitt direkt darüber. Vier Schritte, ein
+   OTA; Schritt 1 und 2 haben ihre Begründung in Berkats eigener Strategie, nicht bei Whatnot.
+4. **Die zwölf freigestellten Kategorie-Fotos** — Zaurs Handgriff, grösster sichtbarer Abstand.
    ⚠️ „Schuhe" trägt bis dahin ein Paket-Symbol.
-3. **Die verbleibenden Audit-Funde**: die vier Bestell-Lesepfade auf `product_orders` (alle
-   policy-gedeckt, aber sie verlassen sich stillschweigend darauf — `.eq('seller_id', sellerId)`
-   mit einem PARAMETER statt `auth.uid()`), Belegfotos aus dem Altbestand im öffentlichen Eimer
-   (zwei Testfälle; **vor echten Nutzern umziehen oder löschen**).
-4. **`comment_reply` freischalten** — Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
+5. **Die verbleibenden Audit-Funde.** ⚠️ Die „vier Bestell-Lesepfade auf `product_orders`" sind
+   **abgearbeitet**: sechs geprüft, **fünf widerlegt** (alle auth-abgeleitet), einer echt — die
+   Versandzeit-Kachel, behoben mit `20260823170000`. Offen bleibt nur noch: Belegfotos aus dem
+   Altbestand im öffentlichen Eimer (zwei Testfälle; **vor echten Nutzern umziehen oder löschen**)
+   und die URL-Prüfung ist seit `20260823110000` erledigt.
+6. **`comment_reply` freischalten** — Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
    „Neue Aktivität auf Serlo".
-5. ~~**Serlo-OTA** für den `recipient_id`-Fix~~ ✅ am 23.08. nach Freigabe raus, beide Runtimes.
+7. ~~**Serlo-OTA** für den `recipient_id`-Fix~~ ✅ am 23.08. nach Freigabe raus, beide Runtimes.
    Delta vorher gemessen: **genau eine Datei** (`lib/useFollowRequest.ts`), `package.json`
    unberührt — damit war der Sprung auf die ältere Runtime 1.30.0 sicher (Abschnitt 8).
-6. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren, der leere Fuss
+8. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren, der leere Fuss
    der Startseite.
 
 ### Nicht neu diskutieren
