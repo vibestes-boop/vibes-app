@@ -35,7 +35,7 @@ was gilt.
 > **Neu am 23.08.2026** — vier Arbeitspakete, **und alles ist draussen**: sieben Migrationen
 > (Tracking 300), `r2-sign` auf 42, `bunny-ingest` auf 13, Berkat-OTA `fc13bade…`. Der JWT-Fix ist
 > durch einen echten Upload belegt, nicht nur durch ausbleibende Fehler. ⏳ Offen bleibt allein der
-> **Serlo**-OTA für den `recipient_id`-Fix (eigene Freigabe, Zwei-Runtime-Regel). Die siebte ist ein Fix nach vorn: `ON CONFLICT DO NOTHING` **ohne Ziel**
+> Serlo-OTA für den `recipient_id`-Fix ist nach Freigabe ebenfalls raus (beide Runtimes). Die siebte ist ein Fix nach vorn: `ON CONFLICT DO NOTHING` **ohne Ziel**
 > hatte drei neue Versandsätze lautlos verschluckt, weil eine Eindeutigkeit aus dem August
 > dagegenstand. Zwei offene Entscheidungen sind gefallen: **der Faden entscheidet** über die App einer
 > Direktnachricht, und die **Kassen-Freigabe für die Testware** wird eingeschaltet (im
@@ -9471,7 +9471,7 @@ kaputten Upload nicht zwei Verdächtige im Raum stehen.
 | **`r2-sign`** | ✅ Version **42** (vorher 41 vom 13.06.) |
 | **`bunny-ingest`** | ✅ Version **13** (vorher 12 vom 17.06.) |
 | **Berkat-OTA** | ✅ Gruppe `fc13bade-33ad-4949-9f9b-5601bb34fb86`, Runtime 1.0.0 |
-| **Serlo-OTA** (`recipient_id`-Fix) | ⏳ **offen** — eigene Freigabe, Zwei-Runtime-Regel (Abschnitt 8) |
+| **Serlo-OTA** (`recipient_id`-Fix) | ✅ nach Freigabe raus — **beide** Runtimes (`aee89b04…` / `fa8e4bc5…`) |
 
 ⚠️ **Der Rückweg für die Functions war vorher belegt, nicht angenommen:** Beide Deploy-Daten
 deckten sich zeichengenau mit ihrem letzten Commit (r2-sign 13.06., bunny-ingest 17.06.) — die
@@ -9530,7 +9530,7 @@ Keiner davon war gesucht; alle vier lagen auf dem Weg.
 |---|---|
 | **`r2-sign` prüfte das JWT nicht** — es dekodierte `sub` und glaubte ihm. Ein selbst getipptes Token hätte eine presigned PUT-URL im Ordner eines **fremden** Nutzers ergeben: Profilbild überschreiben, Artikelfotos ersetzen | ✅ behoben (`_shared/auth.ts`) |
 | **`bunny-ingest` hatte dieselbe Abkürzung** — und der Kommentar dort behauptet ausdrücklich „Caller-JWT (sub) muss Autor des Posts sein" | ✅ behoben, gemeinsames Modul |
-| **Serlos Follow-Anfragen melden nie.** `lib/useFollowRequest.ts:82` und `:147` schreiben `user_id` — die Spalte heisst `recipient_id` und ist `NOT NULL`. Der INSERT scheitert IMMER, `error` wird nirgends geprüft. Die **Web**-Fassung macht es richtig; nur die App ist betroffen | ✅ Client korrigiert, wirkt mit dem nächsten Serlo-OTA |
+| **Serlos Follow-Anfragen melden nie.** `lib/useFollowRequest.ts:82` und `:147` schreiben `user_id` — die Spalte heisst `recipient_id` und ist `NOT NULL`. Der INSERT scheitert IMMER, `error` wird nirgends geprüft. Die **Web**-Fassung macht es richtig; nur die App ist betroffen | ✅ Client korrigiert **und am 23.08. ausgerollt** (beide Runtimes) |
 | **`lib/useComments.ts:248` schreibt `type: 'comment_reply'`** — steht nicht im `notifications_type_check`, scheitert ebenfalls immer | ⚠️ **bewusst NICHT behoben**: Den Typ freizuschalten hiesse, ihn auch in `fn_send_push_on_notification` aufzunehmen, sonst kommt „Neue Aktivität auf Serlo" (Abschnitt 9). Eigene Runde |
 
 > **Was die vier verbindet:** Alle vier sind Ketten, die an jedem Glied vollständig aussehen und
@@ -9662,7 +9662,9 @@ Alles ungeprüft; nichts davon lief je auf einem Gerät.
    (zwei Testfälle; **vor echten Nutzern umziehen oder löschen**).
 4. **`comment_reply` freischalten** — Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
    „Neue Aktivität auf Serlo".
-5. **Serlo-OTA** für den `recipient_id`-Fix (beide Runtimes, Abschnitt 8) — Freigabe-Entscheidung.
+5. ~~**Serlo-OTA** für den `recipient_id`-Fix~~ ✅ am 23.08. nach Freigabe raus, beide Runtimes.
+   Delta vorher gemessen: **genau eine Datei** (`lib/useFollowRequest.ts`), `package.json`
+   unberührt — damit war der Sprung auf die ältere Runtime 1.30.0 sicher (Abschnitt 8).
 6. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren, der leere Fuss
    der Startseite.
 
