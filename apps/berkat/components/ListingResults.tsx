@@ -19,9 +19,22 @@ import { ListingCard } from './ListingCard';
 type Props = {
   listings: Listing[];
   onSelect: (auctionId: string) => void;
+  /**
+   * ⚠️ Ohne diese zwei erscheint KEIN Merken-Herz — `ListingCard` zeigt es nur,
+   * wenn `onToggleSaved` ankommt (Zeile 189 dort).
+   *
+   * Bis zum 23.08.2026 fehlten sie hier, und die Folge war eine stille
+   * Uneinheitlichkeit: Wer auf der Startseite scrollte, konnte merken; wer dort
+   * SUCHTE, nicht — obwohl beides dieselbe Karte auf demselben Bildschirm ist.
+   * Dieselbe Klasse wie der Fund vom 22.08. (Übergabe 71, Fund 3), nur eine
+   * Fläche weiter: **Ein Prop, dessen Fehlen ein Merkmal abschaltet, ist kein
+   * Standardwert, sondern eine stille Abweichung.**
+   */
+  savedIds?: Set<string>;
+  onToggleSaved?: (auctionId: string, saved: boolean) => void;
 };
 
-export function ListingResults({ listings, onSelect }: Props) {
+export function ListingResults({ listings, onSelect, savedIds, onToggleSaved }: Props) {
   if (listings.length === 0) return null;
 
   return (
@@ -32,14 +45,21 @@ export function ListingResults({ listings, onSelect }: Props) {
         <Text style={s.count}>{listings.length}</Text>
       </View>
 
-      {listings.map((listing) => (
-        <ListingCard
-          key={listing.id}
-          listing={listing}
-          layout="row"
-          onPress={() => onSelect(listing.id)}
-        />
-      ))}
+      {listings.map((listing) => {
+        const saved = Boolean(savedIds?.has(listing.id));
+        return (
+          <ListingCard
+            key={listing.id}
+            listing={listing}
+            layout="row"
+            saved={saved}
+            onPress={() => onSelect(listing.id)}
+            // Am eigenen Artikel bleibt das Herz weg — das entscheidet
+            // `ListingCard` über `mine`, hier wird nur durchgereicht.
+            onToggleSaved={onToggleSaved ? () => onToggleSaved(listing.id, saved) : undefined}
+          />
+        );
+      })}
     </View>
   );
 }

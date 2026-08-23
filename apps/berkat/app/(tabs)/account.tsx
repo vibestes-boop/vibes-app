@@ -51,6 +51,8 @@ type OpenCart = {
   id: string;
   seller_id: string;
   closes_at: string;
+  /** Höchste Versandstufe im Paket — bestimmt, was der Käufer an Versand zahlt. */
+  shippingTier: number;
   /**
    * `open` sammelt weiter, `checkout_pending` ist eingefroren.
    *
@@ -145,7 +147,12 @@ function useMyCarts(userId: string | null) {
 
       const { data: won, error: wonError } = await supabase
         .from('live_auctions')
-        .select('cart_id, current_bid_cents, title, image_url')
+        // ⚠️ `shipping_tier` MUSS mit — aus demselben Grund wie `status` oben.
+        // Ohne sie kennt der Bildschirm die Versandstufe des Pakets nicht und
+        // zeigt den teuersten Satz („ab 4,90 €"), während die Kasse bei einem
+        // Brief 1,19 € verlangt. Eine zu HOHE Angabe schreckt ab, und bei
+        // 6-€-Ware entscheidet genau sie über den Kauf (`20260823140000`).
+        .select('cart_id, current_bid_cents, title, image_url, shipping_tier')
         .in(
           'cart_id',
           rows.map((c) => c.id),
@@ -158,6 +165,7 @@ function useMyCarts(userId: string | null) {
         current_bid_cents: number | null;
         title: string;
         image_url: string | null;
+        shipping_tier: number | null;
       }[];
       return rows.map((cart) => {
         const mine = items.filter((item) => item.cart_id === cart.id);
@@ -167,6 +175,12 @@ function useMyCarts(userId: string | null) {
           totalCents: mine.reduce((sum, item) => sum + (item.current_bid_cents ?? 0), 0),
           // Was drin liegt — vorher war ein offenes Paket nur eine Zahl.
           items: mine.map((item) => ({ title: item.title, image_url: item.image_url })),
+          // Die Stufe eines PAKETS ist die höchste seiner Artikel — alles geht
+          // in dieselbe Sendung. `?? 4` innen: Ein Artikel ohne Angabe muss die
+          // teuerste Stufe erzwingen, sonst verbilligt eine Lücke den Satz.
+          shippingTier: mine.length
+            ? Math.max(...mine.map((item) => item.shipping_tier ?? 4))
+            : 4,
         };
       });
     },
@@ -534,7 +548,7 @@ export default function AccountScreen() {
               )}
             </Pressable>
             <Text style={styles.payHint}>
-              {[shippingHint(shippingFor(cart.seller_id)), 'Adresse gibst du auf der Bezahlseite ein.']
+              {[shippingHint(shippingFor(cart.seller_id, cart.shippingTier)), 'Adresse gibst du auf der Bezahlseite ein.']
                 .filter(Boolean)
                 .join(' · ')}
             </Text>

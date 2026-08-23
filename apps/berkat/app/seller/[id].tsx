@@ -43,6 +43,7 @@ import {
 
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
+import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { useFollow, useFollowCounts } from '../../lib/useFollow';
 import { formatEuro } from '../../lib/useAuction';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
@@ -266,6 +267,10 @@ export default function SellerScreen() {
   const { data: counts, refetch: refetchCounts } = useFollowCounts(id);
   const vouch = useVouchActions(id, myUserId);
   const [vouchNotice, setVouchNotice] = useState<string | null>(null);
+
+  const { data: savedIds } = useSavedIds(myUserId);
+
+  const toggleSaved = useToggleSaved(myUserId);
 
   const { data: standing = [], refetch: refetchStanding } = useSellerListings(id);
   const standingActions = useStandingActions(id, myUserId);
@@ -806,6 +811,15 @@ export default function SellerScreen() {
               <StandingShelf
                 listings={standing}
                 isOwner={isSelf}
+                // ⚠️ Bis zum 23.08.2026 war dieses Regal die einzige
+                // Stöber-Fläche OHNE Merken-Herz — dieselben Artikel tragen
+                // eines auf `/shop`, in der Kategorie und auf der Startseite.
+                // Ausgerechnet auf dem Weg, den der „Demnächst"-Streifen und
+                // die Verkäufer-Suche nehmen, konnte man sich nichts merken.
+                savedIds={savedIds}
+                onToggleSaved={(auctionId, saved) =>
+                  myUserId ? toggleSaved.mutate({ auctionId, saved }) : router.push('/login')
+                }
                 // Auf dem Profil wird gestöbert, nicht verwaltet — hier trägt
                 // das Bild. Unter `/shelf` bleibt es die kompakte Liste.
                 layout="grid"

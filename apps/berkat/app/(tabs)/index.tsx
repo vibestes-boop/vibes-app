@@ -512,6 +512,13 @@ export default function HomeScreen() {
               <ListingResults
                 listings={foundListings}
                 onSelect={(auctionId) => router.push(`/listing/${auctionId}`)}
+                // ⚠️ Dieselbe Verkabelung wie beim Regal-Raster weiter unten.
+                // Ohne sie konnte man auf DIESEM Bildschirm merken, wenn man
+                // scrollte — aber nicht, wenn man suchte.
+                savedIds={savedIds}
+                onToggleSaved={(auctionId, saved) =>
+                  userId ? toggleSaved.mutate({ auctionId, saved }) : router.push('/login')
+                }
               />
             </View>
           ) : search ? null : (

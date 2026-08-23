@@ -9632,6 +9632,57 @@ Damit ist der Audit-Punkt geschlossen: fünf widerlegt, einer echt und behoben.
 | `r2-sign` / `bunny-ingest` | Version 42 / 13 |
 | ⚠️ Serlo-Produktion | **einmal versehentlich getroffen und zurückgestellt** — siehe Abschnitt 3 |
 
+### Fehler-Analyse der App — vier Sweeps, drei Funde (23.08.2026, spät)
+
+Zaur: *„analysiere den berkat app auf fehler."* Gemessen gegen die Live-DB, nicht gegen Vermutungen
+— und jeder Fund musste einen Skeptiker überleben.
+
+**Was NICHTS ergeben hat** (und das ist der wertvollere Teil des Berichts):
+
+| Sweep | Ergebnis |
+|---|---|
+| **55 RPC-Aufruf-Formen** gegen die Live-DB, mit den Parameternamen, die der Client schickt | ✅ alle lösen auf — kein `PGRST202`, keine Mehrdeutigkeit |
+| **65 Spaltenlisten** gegen die Live-DB | ✅ keine unbekannte Spalte, kein unauflösbares Embed (auch `profiles!host_id` löst auf) |
+| **Fauler Erzeuger** (`void supabase.rpc` ohne `.then()`) | ✅ nichts — zwei Treffer waren Grep auf Kommentare |
+| **Partei-beschränkte Tabellen mit Parameter-Filter** | ✅ bis auf den einen unten alle auth-abgeleitet oder per `.or()` gedeckt |
+| **Tote Exporte** | ✅ keine tote Funktion — die vier Studio-Hooks sind intern über `useStudioActions` verkabelt, nur unnötig exportiert |
+
+⚠️ **Zwei der Sweeps hatten erst Fehler in SICH SELBST**, und beide sind lehrreich:
+
+- Die RPC-Probe mit `{}` meldete 49 von 55 als fehlend — `{}` trifft nur keine Signatur.
+  **Eine Probe, die fast alles beanstandet, misst sich selbst.**
+- Die Spalten-Probe sammelte Konstanten global, und `COLUMNS` gibt es in `useBerkatSeller.ts`
+  **und** `useSchedule.ts`. Die zweite überschrieb die erste, und die Probe prüfte eine
+  Spaltenliste gegen die falsche Tabelle — **genau die Fehlerklasse, die sie finden sollte.**
+
+**Die drei Funde:**
+
+**1 · Das Merken-Herz fehlte an zwei weiteren Flächen.** Am 22.08. wurde die Startseite repariert
+(Übergabe 71, Fund 3) — der Fix deckte aber nur ihr Regal-Raster ab. Weiterhin ohne Herz:
+
+- **Die Artikel-Treffer der Suche** (`ListingResults`) — auf DEMSELBEN Bildschirm wie das Raster
+  mit Herz. Wer scrollte, konnte merken; wer suchte, nicht.
+- **Das Regal auf einem FREMDEN Profil** (`StandingShelf`, `layout="grid"`) — dieselben Artikel
+  tragen auf `/shop`, in der Kategorie und auf der Startseite ein Herz. Ausgerechnet der Weg, den
+  der „Demnächst"-Streifen und die Verkäufer-Suche nehmen, hatte keines.
+
+Beide Komponenten reichten `onToggleSaved` gar nicht durch. Behoben; die Probe dafür steht als
+`/tmp/propprobe.mjs`-Muster im Commit.
+
+> **Der Fix vom 22.08. war zu schmal, weil er an der gemeldeten Stelle aufhörte.** Wer ein Prop
+> findet, dessen Fehlen ein Merkmal abschaltet, sucht **alle** Aufrufstellen der Komponente — nicht
+> die eine, über die jemand gestolpert ist.
+
+**2 · Der Sammelkorb versprach den falschen Versand — ein Fehler in meiner eigenen Arbeit von
+heute.** `shippingFor(cart.seller_id)` bekam keine Stufe und fiel auf 4 zurück: Das Konto sagte
+**immer** „zzgl. Versand ab 4,90 €", auch bei einem Paket, das die Kasse mit 1,19 € abrechnet.
+
+Eine zu HOHE Angabe ist hier die teurere Richtung: Bei 6-€-Ware entscheidet der Versandpreis über
+den Kauf — und genau dieser Wert war der Zweck der ganzen Stufen-Arbeit. Behoben, indem `useMyCarts`
+die Stufe wie `useSellerOrders` mitlädt (höchste im Paket).
+
+**3 · Die Versandzeit-Kachel** — siehe den Nachtrag oben.
+
 ### Was am Gerät zu prüfen ist — neu in der Prüfliste
 
 Alles ungeprüft; nichts davon lief je auf einem Gerät.

@@ -46,6 +46,22 @@ type Props = {
    */
   emptyText?: string | null;
   /**
+   * ⚠️ Ohne diese zwei erscheint KEIN Merken-Herz — `ListingCard` zeigt es nur,
+   * wenn `onToggleSaved` ankommt.
+   *
+   * Bis zum 23.08.2026 fehlten sie hier, und damit war das Regal auf einem
+   * FREMDEN Profil die einzige Stöber-Fläche ohne Herz: Dieselben Artikel
+   * tragen auf `/shop`, in der Kategorie und auf der Startseite eines. Wer
+   * einen Verkäufer über sein Profil entdeckt — also auf dem Weg, den der
+   * „Demnächst"-Streifen und die Verkäufer-Suche nehmen — konnte sich nichts
+   * merken.
+   *
+   * Im EIGENEN Regal bleibt das Herz weg, und das entscheidet `ListingCard`
+   * selbst über `mine`: Gemerkt wird, was einem nicht gehört.
+   */
+  savedIds?: Set<string>;
+  onToggleSaved?: (auctionId: string, saved: boolean) => void;
+  /**
    * `grid` zeigt große quadratische Bilder in zwei Spalten, `list` die
    * kompakten Zeilen.
    *
@@ -70,6 +86,8 @@ export function StandingShelf({
   onCancel,
   emptyText,
   layout = 'list',
+  savedIds,
+  onToggleSaved,
 }: Props) {
   const head = (
     <View style={s.head}>
@@ -102,7 +120,17 @@ export function StandingShelf({
             // `flex: 1` eine einzelne Karte in der letzten Zeile auf volle
             // Breite ziehen.
             <View key={item.id} style={s.cell}>
-              <ListingCard listing={item} mine={isOwner} onPress={() => open(item)} />
+              <ListingCard
+                listing={item}
+                mine={isOwner}
+                saved={Boolean(savedIds?.has(item.id))}
+                onPress={() => open(item)}
+                onToggleSaved={
+                  onToggleSaved
+                    ? () => onToggleSaved(item.id, Boolean(savedIds?.has(item.id)))
+                    : undefined
+                }
+              />
             </View>
           ))}
           {/* Hält die letzte Spalte offen, wenn die Anzahl ungerade ist. */}
@@ -115,7 +143,13 @@ export function StandingShelf({
             listing={item}
             layout="row"
             mine={isOwner}
+            saved={Boolean(savedIds?.has(item.id))}
             onPress={() => open(item)}
+            onToggleSaved={
+              onToggleSaved
+                ? () => onToggleSaved(item.id, Boolean(savedIds?.has(item.id)))
+                : undefined
+            }
             // Der Knopf sitzt NEBEN der Fläche, die zum Artikel führt. Im
             // eigenen Regal ist Zurückziehen der häufige Handgriff — ihn erst
             // eine Seite tiefer anzubieten hieße, fünf Artikel fünfmal zu
