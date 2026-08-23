@@ -269,6 +269,21 @@ export function useSendMessage(
         sender_id: myUserId,
         content,
         image_url: imageUrl ?? null,
+        // ⚠️ IMMER mitschicken — anders als `listing_id` darunter.
+        //
+        // Bis zum 23.08.2026 entschied allein `listing_id`, ob eine Meldung in
+        // Berkats oder Serlos Glocke landet. Wer hier einfach jemanden
+        // anschrieb — vom Profil, aus dem Posteingang, als Antwort —, hängte
+        // an keinem Angebot: Die Meldung ging nach SERLO. Von Zaur am Gerät
+        // gefunden.
+        //
+        // `listing_id IS NOT NULL` hiess nie „kommt aus Berkat", es hiess
+        // „hängt an einem Angebot". Solange es nur einen Weg in den Chat gab,
+        // war das dasselbe — und genau bis zum zweiten Weg.
+        //
+        // Siehe `20260823200000`; dort entscheidet `notify_on_dm` jetzt über
+        // BEIDE Merkmale.
+        app: 'berkat',
         // ⚠️ Nur mitschicken, wenn wirklich etwas dranhängt. Ein `listing_id`
         // auf JEDER Nachricht wäre kein Bezug mehr, sondern Rauschen — und die
         // Karte im Verlauf würde sich unter jeder Zeile wiederholen.

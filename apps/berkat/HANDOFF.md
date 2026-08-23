@@ -10258,6 +10258,79 @@ der Meldungszeile behalten.
 Eine Nachricht **ohne** Angebots-Bezug darf nur in Serlo ankommen, eine **aus einem Angebot** nur
 in Berkat. Und in Berkat muss der Tipp jetzt den Chat öffnen.
 
+### ⚠️ Nachtrag am selben Abend: der Fix war richtig und trotzdem zu klein
+
+Zaur, direkt danach:
+
+> *„das ist trotzdem falsch, wenn man einfach nachricht in berkat schreibt dann geht die meldung
+> ins serlo nicht berkat, da fehlt was"*
+
+**Und wieder hatte er recht.** `20260823190000` schickte den Push dorthin, wo die Meldung landet —
+aber die Meldung landete am falschen Ort. Der Fehler lag eine Ebene tiefer, in der Regel selbst.
+
+**Das Merkmal war nur ein Stellvertreter.** „Der Faden entscheidet" (`20260823130000`) fragte:
+
+```sql
+EXISTS (… WHERE m.conversation_id = NEW.conversation_id AND m.listing_id IS NOT NULL)
+```
+
+Das ist richtig für den Weg, für den es gebaut wurde — „schreib dem Verkäufer zu diesem Angebot".
+Es war auch das **einzige**, was `messages` unterscheiden konnte: `listing_id` war das einzige
+Berkat-Merkmal an der Tabelle. Berkat hat aber mehr Wege in einen Chat — vom Verkäufer-Profil, aus
+dem Posteingang, als Antwort. Keiner hängt an einem Angebot.
+
+> **Ein Stellvertreter-Merkmal beantwortet die Frage, die man ihm stellt, nicht die, die man meint.**
+> `listing_id IS NOT NULL` heisst „hängt an einem Angebot", nicht „kommt aus Berkat". Solange es
+> nur einen Weg gab, war das dasselbe — und blieb es genau bis zum zweiten Weg.
+
+**Behoben mit `20260823200000`:** neue Spalte `messages.app`, vom Client gesetzt, und
+`notify_on_dm` entscheidet über **beide** Merkmale. `listing_id` bleibt als ODER stehen — die Fäden
+von vorher tragen keinen Stempel, und ausgelieferte Fassungen ohne den OTA schicken ihn nicht.
+Serlo schreibt die Spalte nicht; `NULL` fällt in den `ELSE`-Zweig, also unverändert `'serlo'`.
+
+#### ⚠️ Und die Gegenprobe aus `20260822140000` stellt die FALSCHE Frage
+
+Der Wächter in dieser Migration schlug an und brach den Lauf ab — zu Recht misstrauisch, aber aus
+dem falschen Grund. Er kam aus `20260822140000`:
+
+```sql
+SELECT … FROM information_schema.column_privileges
+ WHERE table_name = 'messages' AND grantee IN ('anon','authenticated');
+-- ERWARTET: LEER
+```
+
+**Diese Sicht kann für eine Tabelle mit `GRANT ALL` niemals leer sein.** Sie fächert auch Rechte
+auf, die aus dem TABELLEN-Recht folgen — und meldet damit jede normale Tabelle als eingefroren. Die
+richtige Frage ist `pg_attribute.attacl`: gesetzt genau dann, wenn jemand ein Recht **spaltenweise**
+vergeben oder entzogen hat.
+
+⚠️ **Am echten Abzug gemessen, und CLAUDE.md Regel 11 ist an beiden Enden falsch.** Tabellen mit
+Spalten-Rechten sind:
+
+| | |
+|---|---|
+| gemessen (23.08.2026) | `live_auctions` · `live_sessions` · `product_orders` · `profiles` · `scheduled_lives` |
+| CLAUDE.md nennt | `live_sessions` · `user_whip_ingresses` |
+
+**Drei Tabellen fehlen** — darunter `profiles` und `product_orders`, an denen regelmässig gearbeitet
+wird. Und `user_whip_ingresses` steht seit `20260823100000` gar nicht mehr darauf. Wer diesen fünf
+Tabellen eine Spalte hinzufügt, hängt ein `GRANT` an; bei allen anderen ist es unnötig.
+
+> **Eine Probe, die immer anschlägt, ist so wertlos wie eine, die nie anschlägt** — nur teurer,
+> weil sie wie Gründlichkeit aussieht. Vierte Selbstmess-Panne an einem Tag (Übergabe 75 zählt drei).
+
+#### ✅ Ausgerollt
+
+| | |
+|---|---|
+| Migration `20260823200000` | ✅ Tracking **304**, Spalte + CHECK + Teil-Index |
+| Berkat-OTA | ✅ Gruppe `00f32df7…`, iOS-Update `01a02f93…` |
+| Serlo | — unberührt, schreibt die Spalte nicht |
+
+Am frischen Abzug gegengeprüft: Spalte da · `notify_on_dm` kennt `m.app`, fragt `NEW` direkt und
+hat die `listing_id`-Hälfte behalten · `p_app`, `conversationId`, Push-Titel und der `app`-Stempel
+der Meldungszeile stehen alle noch · genau eine Signatur.
+
 ### Die Lehre
 
 > **Ein Parameter mit Vorgabewert `NULL` ist eine Abschaltung, die wie eine Auslassung aussieht.**
