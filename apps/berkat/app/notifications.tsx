@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   Gavel,
   Hourglass,
+  MessageSquare,
   PackageCheck,
   PartyPopper,
   Radio,
@@ -82,6 +83,12 @@ function present(type: string): { Icon: typeof Bell; title: string; tint: string
     // nichts zu feiern.
     case 'order_dispute':
       return { Icon: TriangleAlert, title: 'Problem mit einer Bestellung', tint: ui.live };
+    // ⚠️ Fehlte, seit `notify_on_dm` am 23.08.2026 den Faden stempelt: Eine
+    // Nachricht aus einem Angebot heraus trägt seither `app = 'berkat'` und
+    // steht damit in DIESER Glocke — sie hieß dort „Neu bei Berkat".
+    // Gedämpft, nicht gold: Eine Nachricht ist kein Kauf und keine Frist.
+    case 'dm':
+      return { Icon: MessageSquare, title: 'Neue Nachricht', tint: ui.text };
     default:
       return { Icon: Bell, title: 'Neu bei Berkat', tint: ui.textMuted };
   }

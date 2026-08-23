@@ -10166,6 +10166,107 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -
 
 ---
 
+## 78. Der Push ging an beide Apps und führte ins Leere (23.08.2026, nachts)
+
+Von Zaur **am Gerät** gefunden, nicht im Code — wie fast alles Wichtige in diesem Projekt:
+
+> *„der push kommt ins serlo app und berkat app und heißt Neue Nachricht, wenn man es anklickt
+> gelangt man ins ‚Meldungen'-Seite, dort ist nicht der chat — also wird man in die falsche Seite
+> geleitet?!"*
+
+**Zwei getrennte Fehler in einer Beobachtung**, und beide in Bereichen, die als erledigt galten.
+
+### ⚠️ Fehler 1: Der Filter war nicht lax, er war AUS
+
+`send_push_to_user` kann seit dem 14.08.2026 nach App filtern (`20260814190000`, Parameter
+`p_app`). Der Weg über die Meldungs-Tabelle nutzt das: `fn_send_push_on_notification` übergibt
+`p_app := COALESCE(NEW.app, 'serlo')`.
+
+**Die vier DIREKT-Push-Wege übergaben ihn nicht.** Und bei `p_app IS NULL` ist die Bedingung
+`(p_app IS NULL OR … app = p_app)` für **jede** Zeile wahr — der Filter ist damit nicht großzügig,
+sondern vollständig abgeschaltet.
+
+Am frischen Abzug gemessen, alle Aufrufer von `send_push_to_user`:
+
+| Funktion | `p_app` |
+|---|---|
+| `fn_send_push_on_notification` | ✅ |
+| `notify_scheduled_post_failure` | ✅ |
+| `notify_on_dm` | ❌ |
+| `notify_on_like` | ❌ |
+| `notify_on_comment` | ❌ |
+| `notify_on_follow` | ❌ |
+
+Genau diese vier stehen in der Überspring-Liste von `fn_send_push_on_notification` („Typen mit
+eigenem Direkt-Push hier überspringen → sonst Doppel-Push"). **Sie sind damit die einzigen, die den
+Filter selbst setzen müssten — und die einzigen, die es nicht taten.**
+
+> **Gemeldet war nur die DM.** Die drei Nachbarn hatten denselben Fehler und sind im selben Zug
+> behoben — die Lehre aus der Versandzeit-Kachel (Abschnitt 75): *Wer eine Falle für einen Aufruf
+> findet, prüft die Aufrufe daneben, bevor er sie für Einzelfälle hält.*
+
+**Welche App je Funktion**, und die Regel ist nicht Geschmack: **Der Push geht dorthin, wo auch die
+Meldung landet.**
+
+- `notify_on_dm` → **`v_app`**, also der Faden. Die Zeile daneben schreibt seit `20260823130000`
+  schon `app => v_app`; jetzt benutzen beide Zustellwege denselben Wert.
+- `notify_on_like` / `notify_on_comment` → `'serlo'`. Beide hängen an `posts`; Berkat hat keinen
+  Feed. Ein Push dorthin führte ins Leere.
+- `notify_on_follow` → `'serlo'`. ⚠️ **Der einzige unsaubere Fall: Berkat HAT Follower.** Die
+  Meldungszeile fällt heute aber auch auf `'serlo'`, weil `follows` keinen App-Stempel trägt. Der
+  Push zieht nur nach, was die Glocke ohnehin tut. **Wer das richtigstellt, stempelt `follows` und
+  beide Wege gemeinsam** — eigene Runde, keine Zeile hier.
+
+⚠️ **Risikoarm in beide Richtungen** wegen des bewussten Rückfalls: Findet sich kein Gerät der
+Ziel-App (`v_count = 0`), gehen die Meldungen weiterhin an alle Geräte. Ein Nutzer mit altem Token
+ohne `app`-Wert verliert also nichts.
+
+### ⚠️ Fehler 2: Dieselbe Adresse, zwei Bedeutungen
+
+Berkats `notificationTarget` kannte **keinen `dm`-Fall**. Der Typ fiel in den `default`, und der
+lautet aus einem Push heraus `/notifications`. Also: eine Meldung über eine Nachricht führte auf
+eine **Liste von Meldungen**. Der Chat war nirgends.
+
+> ⚠️ **Und die Falle beim Beheben: `/messages/[id]` bedeutet in den zwei Apps NICHT dasselbe.**
+> Serlos Route nimmt die `conversationId`, **Berkats nimmt die Gegenseite** und löst die
+> Unterhaltung selbst auf (`useConversationWith`). Der Push trägt beide Felder. Wer die Nutzlast
+> aus Serlos Router übernimmt — der naheliegendste Weg —, öffnet in Berkat einen fremden Chat oder
+> gar keinen.
+>
+> **Zwei Apps, ein Repo, gleiche Routennamen: Der Pfad beweist nicht, dass die Bedeutung dieselbe
+> ist.** Dieselbe Klasse wie die Ordner-Falle bei `eas update`, nur im Client.
+
+Serlos Antippen war übrigens **schon in Ordnung** — dort gibt es den `dm`-Zweig samt
+`conversationId`. Kein Serlo-OTA nötig.
+
+**Nebenbefund im selben Zug:** Auch Berkats Glocke kannte `dm` nicht. Seit `notify_on_dm` am
+23.08. den Faden stempelt, stehen Angebots-Nachrichten dort — und hießen „Neu bei Berkat".
+
+### ✅ Ausgerollt
+
+| | |
+|---|---|
+| Migration `20260823190000` | ✅ Tracking **303** |
+| Berkat-OTA | ✅ Gruppe `bd624198…`, iOS-Update `01a02f85…` |
+| Serlo | — nicht nötig, sein Router war korrekt |
+
+Nach dem Einspielen am **frischen Abzug** gemessen: alle vier tragen `p_app` (`v_app` / `'serlo'`
+×3), je genau **eine** Signatur, und `notify_on_dm` hat seine Faden-Logik **und** den `app`-Stempel
+der Meldungszeile behalten.
+
+⚠️ **Ungeprüft und nur am Gerät zu klären** — gehört zu **E8** (beide Apps auf demselben Telefon):
+Eine Nachricht **ohne** Angebots-Bezug darf nur in Serlo ankommen, eine **aus einem Angebot** nur
+in Berkat. Und in Berkat muss der Tipp jetzt den Chat öffnen.
+
+### Die Lehre
+
+> **Ein Parameter mit Vorgabewert `NULL` ist eine Abschaltung, die wie eine Auslassung aussieht.**
+> `send_push_to_user(…)` ohne `p_app` liest sich wie „App egal" und bedeutet „Filter aus". Vier
+> Aufrufer haben ihn seit dem 14.08. weggelassen, und neun Tage lang ist es niemandem aufgefallen
+> — weil ein Push, der zu oft kommt, aussieht wie einer, der funktioniert.
+
+---
+
 ## 77. `comment_reply` — freigeschaltet und ausgerollt (23.08.2026, abends)
 
 Punkt 6 der Liste aus Abschnitt 75. **Das ist Serlos Fläche, nicht Berkats — und Serlo ist im

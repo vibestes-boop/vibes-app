@@ -135,6 +135,19 @@ export function notificationTarget(
     // steht der Vorgang, um den es geht, eine Zeile weit entfernt.
     case 'order_dispute':
       return '/orders';
+    // ⚠️ Fehlte bis zum 23.08.2026 — von Zaur am Gerät gefunden: Der Push
+    // „✉️ Neue Nachricht" landete im `default` und führte damit auf
+    // `/notifications`. Also von einer Meldung über eine Nachricht auf eine
+    // Liste von Meldungen — der Chat war nirgends.
+    //
+    // ⚠️ UND HIER STEHT DER GESPRÄCHSPARTNER, NICHT DIE UNTERHALTUNG.
+    // Berkats `/messages/[id]` nimmt die Gegenseite und löst die Unterhaltung
+    // selbst auf (`useConversationWith`); SERLOS gleichnamige Route nimmt die
+    // `conversationId`. Dieselbe Adresse, zwei Bedeutungen — wer die Nutzlast
+    // von dort übernimmt, öffnet einen fremden Chat oder gar keinen. Der Push
+    // trägt beides, `senderId` ist das richtige Feld.
+    case 'dm':
+      return n.senderId ? `/messages/${n.senderId}` : '/messages';
     // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
     // Siehe die Regel im Kopf: von außen in die Liste, aus der Liste ins Konto.
     default:
