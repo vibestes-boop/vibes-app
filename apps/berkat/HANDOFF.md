@@ -1985,6 +1985,17 @@ für die Plattform, um die es geht (`--platform ios`, nicht `all`).
 
 Nach jedem Build geleert.
 
+⏳ **Beide Einträge sind im Build `3979faca…` vom 23.08.2026** (Profil `development`). Sobald der
+durch ist und auf dem Gerät liegt, gehört diese Liste geleert — und `A21` bzw. die 8-MB-Probe aus
+Abschnitt 60 sind dann erst prüfbar.
+
+- **`react-native-keyboard-controller`** (23.08.2026) — die Tastatur auf dem UI-Thread.
+  ⚠️ **Kein Komfort, sondern der einzige Weg:** `KeyboardAvoidingView` animiert nur über
+  `LayoutAnimation`, und das ist auf iOS + neuer Architektur laut React Natives eigenem Quelltext
+  „conditionally enabled … a temporary state" (Abschnitt 79). Bringt `react-native-reanimated` und
+  `react-native-worklets` mit; `babel.config.js` trägt jetzt `react-native-worklets/plugin`.
+  Bedingt geladen über `lib/keyboardKit.ts`, bis der Build liegt.
+
 - **`expo-image-manipulator`** (21.08.2026) — verkleinert Bilder vor dem Hochladen.
   ⚠️ **Das ist kein Komfort, sondern ein Fehler-Fix:** Seit dem Wegfall des Zuschnitt-Rahmens am
   18.08. kommen Fotos in voller Auflösung, und ein 48-MP-Bild riss mit **11,6 MB** die 8-MB-Grenze
@@ -10240,19 +10251,88 @@ wer nach oben gescrollt hat, darf beim Tippen nicht nach unten gerissen werden.
 > verloren. **Wer einen Bildschirm aus einem anderen ableitet, vergleicht ihn danach mit dem
 > Original** — was fehlt, fehlt lautlos.
 
-### Was das NICHT ist: der saubere Weg
+### ⚠️ Und das reichte NICHT — der eigentliche Grund kam erst danach heraus
 
-Perfekt synchron wird es mit JavaScript nicht. Die richtige Lösung verfolgt die Tastatur auf dem
-**UI-Thread** — `useAnimatedKeyboard` (Reanimated 3) oder `react-native-keyboard-controller`. Dann
-gibt es überhaupt keine Brücke mehr, über die etwas zu spät kommen könnte.
+Zaur nach dem OTA, mit `Stand 23.08. 19:17 · 01a02fa0` im Konto-Reiter, also nachweislich auf dem
+Fix: *„warum ist das problem mit kommentarfeld nicht weg"*.
 
-⚠️ **Berkat hat beides nicht** — weder Reanimated noch keyboard-controller stehen in der
-`package.json`. Das wäre eine native Abhängigkeit und damit ein **EAS-Build**, kein OTA. Gehört in
-die Warteschlange offener nativer Änderungen (Abschnitt 12), zusammen mit
-`expo-image-manipulator`.
+Der Grund steht im Quelltext von React Native selbst,
+`node_modules/react-native/Libraries/LayoutAnimation/LayoutAnimation.js`, Zeile 92:
 
-**Was hier gebaut ist, ist die beste Fassung ohne neue Abhängigkeit:** ein bewegter Wert statt
-zwei, auf der Tastatur-Kurve, plus ein Auslöser, der das Ende wieder sichtbar macht.
+> „In Fabric, LayoutAnimations are unconditionally enabled for Android, and **conditionally enabled
+> on iOS (pending fully shipping; this is a temporary state)**."
+
+**`KeyboardAvoidingView` animiert AUSSCHLIESSLICH über `LayoutAnimation.configureNext`.** Berkat
+läuft mit `newArchEnabled: true` (RN 0.81.5). Auf iOS wird die Polsterung damit nicht verlässlich
+animiert — sie **springt**, während die Tastatur gleitet.
+
+> Die erste Runde hat eine von zwei Uhren beseitigt. **Die verbliebene war die Komponente selbst,
+> und sie ist mit JavaScript nicht zu erreichen.** Ich hätte das VOR dem OTA nachsehen müssen, nicht
+> danach — die Antwort lag die ganze Zeit zwei Verzeichnisse weiter in derselben Datei, in die ich
+> für den ersten Fix schon geschaut hatte.
+
+### ✅ Der richtige Weg, gebaut am 23.08.2026
+
+`react-native-keyboard-controller` hängt sich an die nativen Tastatur-Rückrufe und bewegt die
+Fläche per Worklet auf dem **UI-Thread**. Kein `LayoutAnimation`, keine Brücke, nichts, was zu spät
+kommen kann.
+
+| | |
+|---|---|
+| `react-native-keyboard-controller` | 1.18.5 |
+| `react-native-reanimated` | ~4.1.1 (Peer) |
+| `react-native-worklets` | 0.5.1 |
+
+⚠️ **Zwei Fallen beim Einbauen, beide würden sich wiederholen:**
+
+1. **In Reanimated 4 heisst das Babel-Plugin anders.** Es liegt nicht mehr unter
+   `react-native-reanimated/plugin`, sondern in einem eigenen Paket: `react-native-worklets/plugin`.
+   `react-native-worklets` ist eine **harte** Peer-Abhängigkeit (`0.5 - 0.8`), die
+   `expo install react-native-reanimated` **nicht** mitbringt — sie muss ausdrücklich nachinstalliert
+   werden. Und das Plugin muss das **letzte** in der Liste sein.
+2. **`babel.config.js` sagte bis heute das Gegenteil:** „Kein reanimated-Plugin: Berkat benutzt
+   Reanimated nicht." Das stimmte — bis der Chat eine Tastatur brauchte. Die Begründung steht jetzt
+   in der Datei, damit der nächste den Eintrag nicht als Versehen entfernt.
+
+### ⚠️ Bedingt geladen — sonst hätte es alles Laufende mitgerissen
+
+Es ist ein NATIVES Modul, also erst nach einem Build im Binary. Bis dahin laufen TestFlight
+`1.0.0 (1)` und Zaurs Dev-Build weiter. Ein harter Import hätte beide beim nächsten Neuladen
+zerlegt — ausgerechnet den Stand, auf dem gerade geprüft wird.
+
+`lib/keyboardKit.ts` lädt wie LiveKit bedingt. **Aber `require` allein taugt als Probe nicht:** Der
+JavaScript-Teil liegt nach `npm install` in jedem Fall in `node_modules`, der Aufruf gelingt also
+auch ohne natives Gegenstück — auffallen würde es erst als Absturz. Gefragt wird deshalb die native
+Seite, und zwar so, wie die Bibliothek es selbst tut:
+
+```ts
+TurboModuleRegistry.get('KeyboardController') != null   // `get` liefert null, `getEnforcing` wirft
+```
+
+Der Modulname ist abgeschrieben aus
+`node_modules/react-native-keyboard-controller/lib/commonjs/specs/NativeKeyboardController.js`,
+nicht aus der Dokumentation und nicht geraten.
+
+`KeyboardProvider` liegt im Root-Layout (ohne ihn tut die Bibliothek **stillschweigend nichts**),
+`KeyboardBody` im Chat. Beide fallen ohne natives Modul auf den bisherigen Weg zurück, und die
+Offset-Rechnung von oben gilt für **beide** — die Bibliothek übernimmt `behavior` und
+`keyboardVerticalOffset` mit derselben Bedeutung.
+
+**Belegt, bevor irgendetwas rausging:** Der **alte** Simulator-Build — gebaut, bevor es diese Pakete
+gab — läuft mit dem neuen Bündel weiter; Startseite und Chat gerendert. Damit ist gezeigt, dass der
+Riegel hält und weder TestFlight noch der Dev-Build vor dem Build brechen.
+
+### Der Build
+
+| | |
+|---|---|
+| Build | `3979faca-e3cd-43e3-9e6c-c5ac03c4e56a`, Profil `development` (Ad-hoc, registrierte Geräte) |
+| Nimmt mit | **`expo-image-manipulator`** — stand seit dem 21.08. in der Warteschlange (8-MB-Bilder-Fix, Abschnitt 60). Ein Build, zwei Sachen |
+| ⚠️ `buildNumber` | **EAS hat sie selbst von 1 auf 2 hochgezählt** und `app.json` geändert. Die Übergabe sagte bisher „beim zweiten von Hand hochzählen" — das erledigt EAS. Die OTA-Laufzeit bleibt **1.0.0** (sie folgt `version`, nicht `buildNumber`), veröffentlichte Updates gelten also weiter |
+
+⚠️ **Der Bündel-Prüfwert ändert sich mit:** 9,63 MB → **10,8 MB**, weil Reanimated und
+keyboard-controller jetzt im Bündel liegen. Wer künftig „Berkat ≈ 9,6 MB, Serlo ≈ 35 MB" als
+Ordner-Gegenprobe benutzt (Abschnitt 76), rechnet ab hier mit **10,8**.
 
 ### Nebenbefund: Serlos Chat hat das umgekehrte Problem
 
@@ -10275,6 +10355,14 @@ Software-Tastatur, solange die Mac-Tastatur verbunden ist. Belegt ist nur der Zu
 Tastatur (unverändert) sowie die Geometrie — am Quelltext der Bibliothek nachgerechnet, nicht
 angesehen. **Ein Bildschirmfoto kann ohnehin nicht zeigen, dass sich zwei Dinge verschieden schnell
 bewegen.** Gehört als **A21** in die Prüfliste.
+
+> **Und genau daran ist der erste Anlauf gescheitert.** „Nicht prüfbar" hat mich dazu gebracht,
+> die Änderung trotzdem auszurollen, statt vorher die Frage zu stellen, die man **ohne** Gerät
+> beantworten kann: *Animiert diese Komponente auf dieser Architektur überhaupt?* Die Antwort stand
+> in derselben Datei, in die ich für die Geometrie schon geschaut hatte.
+>
+> **Wenn eine Änderung nicht prüfbar ist, ist das ein Grund, gründlicher zu LESEN — nicht, sie
+> schneller auszuliefern.**
 
 ---
 
