@@ -6652,10 +6652,10 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A12 | **Foto im Verlauf**: senden — erscheint in der Blase, im Posteingang als „📷 Foto", getippter Satz geht mit. Dazu Tagestrenner („Gestern") und der Ungelesen-Filter | 65 |
 | A13 | **Benachrichtigungen einstellen** (Konto → Benachrichtigungen): einen Anlass ausschalten, App neu starten — der Schalter muss aus bleiben. Die Liste zeigt sechs Anlässe, „Zuschlag" darf NICHT dabei sein | 68 |
 | A14 | **Startseite**: Suchfeld und die zwei Knöpfe in EINER Zeile, Kategorie-Leiste folgt beim Scrollen ohne Springen — und die Kopfzeile bleibt dabei sichtbar | 68 |
-| A15 | **Welcher Stand läuft?** Unten im Konto-Reiter muss `Berkat 1.0.0 (1) · Stand <Datum> <Uhrzeit> · <8 Zeichen>` stehen. Ein heutiger Zeitpunkt heißt: Der OTA ist angekommen. Steht dort „Werksstand", hat das Gerät seit dem Build **kein einziges** übernommen | 70 |
+| A15 | ~~**Welcher Stand läuft?**~~ ✅ 23.08.: „Stand 23.08. 15:07 · `01a02ebb`". ⚠️ Verglichen wird mit der **Update-Kennung der Plattform**, nicht der Gruppen-ID (Abschnitt 70). **Welcher Stand läuft?** Unten im Konto-Reiter muss `Berkat 1.0.0 (1) · Stand <Datum> <Uhrzeit> · <8 Zeichen>` stehen. Ein heutiger Zeitpunkt heißt: Der OTA ist angekommen. Steht dort „Werksstand", hat das Gerät seit dem Build **kein einziges** übernommen | 70 |
 | A16 | **Versandart im Regal-Formular** (23.08.): Kacheln stehen, eine wählen, einstellen — auf der Artikelseite muss „zzgl. Versand ab **1,19 €**“ statt 4,90 € stehen. Ohne Wahl bleibt es bei 4,90 € | 75 |
-| A17 | **Versand-Bildschirm** (Konto → Versand): vier DE-Stufen mit Beträgen, AT/CH mit je einer plus dem Satz „nur ein Satz“ | 75 |
-| A18 | **Urlaub**: „eine Woche“ tippen → die Zeile im Konto trägt „im Urlaub“, das eigene Regal bleibt sichtbar. „Ich bin zurück“ macht es rückgängig | 75 |
+| A17 | ~~**Versand-Bildschirm**~~ ✅ 23.08. am Gerät: DE mit **vier** Stufen (1,19 / 2,25 / 4,10 / 4,90), AT und CH mit je einer plus dem Hinweis | 75 |
+| A18 | ~~**Urlaub, die Oberfläche**~~ ✅ 23.08.: „Eingetragen“, grüne Karte „wieder da am 30. August“, Kacheln, „Ich bin zurück“. ⚠️ Die **Wirkung** ist damit NICHT belegt — siehe B9 | 75 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -6669,7 +6669,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | B7 | **Keine Geister-Unterhaltung**: Chat des anderen öffnen, nichts schreiben, zurück — beim anderen darf KEINE Unterhaltung erscheinen. Dann schreiben: sie muss auf beiden Seiten stehen. Dazu „Melden/Sperren" aus der Kopfzeile des Verlaufs | 66 |
 | B8 | **Merken-Zahl**: vom zweiten Konto ein Angebot merken — auf der Marktplatz-Karte muss aus dem Herz-Kreis eine Pille mit „1" werden. Beim eigenen Konto ändert sich nichts | 68 |
 | B5 | **Regal ↔ Show, der Weg ohne Sendung**: Termin anlegen → im Vorbereiten-Blatt „Aus dem Regal holen" → Artikel muss aus dem Regal **verschwinden** und als „bereit" am Termin stehen. Dann im eigenen Regal unter „Aus deinen Sendungen übrig" zurückholen | 62 |
-| B9 | **Urlaub aus fremder Sicht**: Vom zweiten Konto muss das Regal des Verreisten **leer** sein — und ein gespeicherter Artikel-Link `seller_on_vacation` liefern statt zu kaufen | 75 |
+| B9 | ⚠️ **Urlaub aus fremder Sicht — der erste Versuch am 23.08. war LEER.** Der Urlaub stand auf `zaur` (46c70dfb), und der hat **0 Regal-Angebote**: Die anon-Zahl blieb bei 32, weil nichts wegzunehmen war. Dasselbe Muster wie die WOZ-Probe in Abschnitt 44. **Richtig geht es so:** als `berkattest` (7760a71b, 2 Angebote) oder einem Seed-Verkäufer (je 6) einschalten — die anon-Zahl muss dann von 32 auf 30 bzw. 26 fallen. Dazu: ein gespeicherter Artikel-Link muss `seller_on_vacation` liefern statt zu kaufen | 75 |
 | B10 | **Belegfoto im privaten Eimer**: Problem mit Foto melden, beim Verkäufer die Fall-Karte öffnen — das Bild muss erscheinen. Erscheint es nicht, ist der Lesepfad kaputt und der Beleg wertlos | 75 |
 | B11 | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` → erwartet **403 / 42501**. Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen, Teilen müssen in **Serlo** weiter ankommen | 75 |
 
@@ -8436,10 +8436,25 @@ Der ganze Eintrag steht als Falle in Abschnitt 3, weil er sich sonst wiederholt.
 Berkat 1.0.0 (1) · Stand 22.08. 15:12 · 56f80d93
 ```
 
-Die acht Zeichen sind der Anfang der Gruppen-Kennung aus
-`npx eas update:list --branch production`. Damit ist eine Meldung vom Gerät ohne Rückfrage einer
-Veröffentlichung zuzuordnen — die Frage „hattest du den Stand schon?" ist ab jetzt eine Zeile und
-kein Gespräch.
+⚠️ **RICHTIGSTELLUNG 23.08.2026: Es ist NICHT die Gruppen-Kennung.** Hier stand „der Anfang der
+Gruppen-Kennung aus `npx eas update:list`" — falsch. `buildInfo.ts:75` liest `Updates.updateId`,
+also die **plattformeigene Update-Kennung**. Eine Veröffentlichung hat drei Nummern:
+
+```
+Update group ID    fc13bade-33ad-4949-9f9b-5601bb34fb86   ← eas update:list zeigt DIESE
+iOS update ID      01a02ebb-cc83-77a7-a789-4f4dc195a2bc   ← das Gerät zeigt DIESE
+Android update ID  01a02ebb-cc83-7ccc-9949-a6d12636a26b
+```
+
+Wer nach der Gruppen-ID sucht, findet sie am Gerät **nie** — und hält den Stand für veraltet,
+obwohl er aktuell ist. Genau der Fehlalarm, den diese Zeile verhindern sollte. Am 23.08. beim
+ersten echten Gebrauch aufgefallen: Das Gerät zeigte `01a02ebb`, meine Anweisung nannte
+`fc13bade`.
+
+**Die Zuordnung geht so:** Die plattformeigenen IDs stehen in der Ausgabe von `eas update` direkt
+nach dem Veröffentlichen, später über `npx eas update:view <gruppen-id>`. Der **Zeitstempel**
+daneben ist ohnehin die schnellere Antwort auf „hattest du den Stand schon?" — er braucht keinen
+Abgleich.
 
 **Entscheidungen, die nicht offensichtlich sind:**
 
@@ -9568,10 +9583,10 @@ Alles ungeprüft; nichts davon lief je auf einem Gerät.
 
 ### Danach, nach Nutzen sortiert
 
-0. ~~**Den Berkat-OTA veröffentlichen**~~ ✅ erledigt, Gruppe `fc13bade…`. ⚠️ **Vor der ersten
-   Prüfung am Gerät die App zweimal schliessen und öffnen** — ein OTA wirkt erst beim
-   übernächsten Start (Abschnitt 3). `A15` sagt, ob er angekommen ist: Unten im Konto-Reiter
-   müssen die acht Zeichen `fc13bade` stehen.
+0. ~~**Den Berkat-OTA veröffentlichen**~~ ✅ erledigt, Gruppe `fc13bade…`, am Gerät angekommen
+   (`01a02ebb`, Stand 23.08. 15:07). ⚠️ **Ich hatte hier `fc13bade` als Kontrolle genannt — das
+   war falsch.** Das Gerät zeigt die plattformeigene Update-Kennung, nicht die Gruppe; siehe die
+   Richtigstellung in Abschnitt 70.
 1. **Die Tester eintragen.** Die Review ist durch, die Gruppe hat 0. Das ist der einzige Punkt auf
    dieser Liste, der einen Verkäufer bringt.
 2. **Die zwölf freigestellten Kategorie-Fotos** — Zaurs Handgriff, grösster sichtbarer Abstand.
