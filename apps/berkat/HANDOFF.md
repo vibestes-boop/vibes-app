@@ -754,16 +754,40 @@ Runtime version    1.31.0                              ← Berkat ist 1.0.0
 EAS Dashboard      …/projects/vibes/updates/…          ← Berkat ist /projects/berkat/
 ```
 
-**Die Probe, die eine Sekunde kostet und vor jedem `eas update` gehört:**
+⚠️ **AM 23.08.2026 ZUM ZWEITEN MAL PASSIERT — und die Regel unten hat es nicht verhindert.**
+
+Sie lautete: „Nie `eas update` ohne vorangestelltes `cd` in den App-Ordner aufrufen." Ich hatte
+ein `cd` — es zeigte nur auf die **Wurzel**:
 
 ```bash
-cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info
+npx expo export … && cd /Users/zaurhatuev/vibes-app && npx eas update --branch production …
 ```
 
-Steht dort `@zaurhat/berkat` / `fb4e0381-…`, ist es richtig. Steht dort `@zaurhat/vibes` /
-`02ab536a-…`, ist der Ordner falsch. **Nie `eas update` ohne vorangestelltes `cd` in den App-Ordner
-aufrufen** — auch nicht, wenn man „gerade eben schon dort war": Die Arbeitsverzeichnisse einzelner
-Aufrufe halten nicht.
+Der `cd` war Gewohnheit („zurück ins Repo-Wurzelverzeichnis"), stand im selben Befehl, und machte
+aus dem Berkat-OTA einen **Serlo**-OTA. Zwanzig Minuten vorher hatte ich die Warnung selbst zitiert.
+
+> **Die geschärfte Regel: Ein `cd` im selben Befehl vor `eas update` IST der Produktions-Schalter.**
+> Nicht sein Fehlen ist die Gefahr, sondern sein Ziel. Ein `cd`, der nach getaner Arbeit
+> „aufräumt", ist genauso gefährlich wie gar keiner.
+
+**Die Form, die trägt** — Probe und Befehl in EINEM Aufruf, mit hartem Riegel dazwischen:
+
+```bash
+cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -q "@zaurhat/berkat" && npx eas update --branch production --message "…" --non-interactive
+```
+
+Der `grep -q` bricht die Kette ab, wenn das Projekt nicht stimmt. **Eine Probe, deren Ergebnis man
+selbst lesen und beherzigen muss, ist keine Probe** — sie ist eine Erinnerung, und Erinnerungen
+versagen genau dann, wenn man in Eile ist.
+
+Steht dort `@zaurhat/berkat` / `fb4e0381-…`, ist es richtig; `@zaurhat/vibes` / `02ab536a-…` ist
+der falsche Ordner. Die Arbeitsverzeichnisse einzelner Aufrufe halten ohnehin nicht.
+
+**Der Schaden vom 23.08., gemessen:** Genau **eine** Datei lag anders als im freigegebenen Stand —
+`lib/useFollowRequest.ts`, der `recipient_id`-Fix, also ausgerechnet die Änderung, die ich als
+freigabepflichtig markiert hatte. Runtime **1.30.0 blieb unberührt.** Fenster rund zwei Minuten,
+und weil ein OTA erst beim übernächsten Start wirkt, hat ihn mit hoher Wahrscheinlichkeit niemand
+ausgeführt. Zurückgestellt per `update:republish` auf `d7f1814e`.
 
 **Zurückgestellt wird per `update:republish`**, nicht per Löschen — eine Veröffentlichung lässt sich
 nicht zurücknehmen, nur überholen:
@@ -9566,6 +9590,47 @@ Sonderfall.
 ⚠️ **Show-Artikel tragen keine Stufe.** `create_live_auction` kennt sie nicht, also gilt dort
 weiterhin der teuerste Satz — und der Live-Raum sagt „ab 4,90 €", was damit die **wahre**
 Untergrenze ist. Wer dem Studio eine Stufenwahl gibt, reicht sie in `useShippingFrom` durch.
+
+### ⚠️ Nachtrag: die Versandzeit-Kachel war für JEDEN Fremden tot
+
+Beim Abarbeiten des Audit-Punkts „die vier Bestell-Lesepfade auf `product_orders`" (73, „noch
+offen, ehrlich") herausgekommen. **Fünf der sechs Pfade sind ein Fehlalarm** — sie filtern auf
+`auth.uid()` oder eine daraus abgeleitete ID. Der sechste nicht:
+
+    apps/berkat/lib/useSellerStats.ts:66
+      .eq('seller_id', sellerId!)      ← ein PARAMETER
+
+`product_orders_party_read` lautet `auth.uid() = buyer_id OR auth.uid() = seller_id`. Ein Besucher
+auf einem fremden Profil ist keins von beidem und bekam **null Zeilen bei HTTP 200**. Als anon
+gemessen: `[]`.
+
+**Die Versandzeit stand damit bei jedem Fremden auf „—"** — nur der Verkäufer selbst sah seine
+eigene Zahl, also genau die Person, die sie nicht braucht. Und sie ist eine der drei Kacheln, an
+denen laut Abschnitt 10 „ein Fremder entscheidet, ob er diesem Menschen Geld schickt"; Abschnitt 55
+begründet sogar den Urlaubsmodus damit, dass sie öffentlich steht. **Sie stand dort nie.**
+
+Behoben mit `20260823170000` als Aggregat-RPC — dieselbe Form wie `get_seller_rating`. Gemessen
+nach dem Einspielen, als anon: `berkattest` **19,72 Stunden aus 1 Sendung** statt `[]`. Die Daten
+waren die ganze Zeit da.
+
+> ⚠️ **Und das ist der Teil, der wehtut:** Der Kommentar DREI ZEILEN ÜBER der kaputten Abfrage
+> erklärt exakt dieselbe Falle — für die Nachbar-Kachel: *„Ein Zuschauer im Live-Raum ist keins von
+> beidem und bekäme null Zeilen — die Kachel stünde dauerhaft auf ‚—'."*
+>
+> Zwei Kacheln, dieselbe Falle, eine erkannt. **Wer eine Falle für eine Abfrage dokumentiert, prüft
+> die Abfragen daneben im selben Zug.** Eine Warnung, die nur ihren eigenen Fall abdeckt, sieht aus
+> wie Gründlichkeit und ist Zufall.
+
+Damit ist der Audit-Punkt geschlossen: fünf widerlegt, einer echt und behoben.
+
+### Ausgerollt (Stand 23.08.2026, Abend)
+
+| | |
+|---|---|
+| Migrationen | **78 Berkat-eigene**, Tracking 301, keine Lücke |
+| Berkat-OTA | `fc13bade…` (Hauptrunde), dann `3be147d1…` (Versandzeit-Fix) |
+| `r2-sign` / `bunny-ingest` | Version 42 / 13 |
+| ⚠️ Serlo-Produktion | **einmal versehentlich getroffen und zurückgestellt** — siehe Abschnitt 3 |
 
 ### Was am Gerät zu prüfen ist — neu in der Prüfliste
 

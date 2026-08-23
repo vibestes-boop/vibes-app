@@ -60,20 +60,27 @@ export function useSellerStats(sellerId: string | undefined) {
         // Schnitt und Anzahl heraus, die einzelnen Bewertungen bleiben privat
         // (Migration 20260814310000).
         supabase.rpc('get_seller_rating', { p_seller_id: sellerId! }),
-        // Versandtempo nur aus Berkat-Bestellungen: `cart_id IS NOT NULL` ist
-        // dieselbe Weiche wie in create-checkout-session. Serlos Shop-Versand
-        // hat andere Wege und würde die Zahl verfälschen.
-        supabase
-          .from('product_orders')
-          .select('paid_at, shipped_at')
-          .eq('seller_id', sellerId!)
-          .not('cart_id', 'is', null)
-          .not('shipped_at', 'is', null)
-          .not('paid_at', 'is', null)
-          .order('shipped_at', { ascending: false })
-          // Die letzten 20 statt aller: Wer vor einem Jahr langsam war und
-          // heute schnell ist, soll heute gemessen werden.
-          .limit(20),
+        // ⚠️ AUCH ÜBER EINE RPC — und bis zum 23.08.2026 war es das NICHT.
+        //
+        // Hier stand eine Abfrage auf `product_orders` mit
+        // `.eq('seller_id', sellerId)`. `product_orders_party_read` lautet aber
+        // `auth.uid() = buyer_id OR auth.uid() = seller_id` — ein Besucher, der
+        // ein fremdes Profil ansieht, ist keins von beidem und bekam **null
+        // Zeilen bei HTTP 200**. Die Versandzeit stand damit bei JEDEM Fremden
+        // auf „—"; nur der Verkäufer selbst sah seine eigene Zahl, also genau
+        // die Person, die sie nicht braucht.
+        //
+        // Das Bittere: Der Kommentar drei Zeilen weiter oben beschreibt exakt
+        // dieselbe Falle für die Nachbar-Kachel. Zwei Kacheln, eine Falle, eine
+        // erkannt. **Wer eine Falle für eine Abfrage dokumentiert, prüft die
+        // Abfragen daneben im selben Zug.**
+        //
+        // Die Auswahl steckt jetzt in `get_seller_ship_stats`
+        // (`20260823170000`) und ist dort zeichengenau dieselbe: nur
+        // Berkat-Bestellungen (`cart_id IS NOT NULL`, dieselbe Weiche wie in
+        // create-checkout-session), nur bezahlt und versendet, negative Spannen
+        // raus, die letzten 20.
+        supabase.rpc('get_seller_ship_stats', { p_seller_id: sellerId! }),
         supabase
           .from('live_auctions')
           .select('id', { count: 'exact', head: true })
@@ -93,22 +100,23 @@ export function useSellerStats(sellerId: string | undefined) {
         ratingRow?.rating == null ? null : Number(ratingRow.rating);
       const ratingCount = ratingRow?.review_count ?? 0;
 
-      const orders = (ordersRes.data ?? []) as { paid_at: string; shipped_at: string }[];
-      const spans = orders
-        .map((o) => new Date(o.shipped_at).getTime() - new Date(o.paid_at).getTime())
-        // Negative Spannen wären Datenmüll (versendet vor bezahlt) — raus,
-        // statt den Schnitt zu verzerren.
-        .filter((ms) => ms >= 0);
+      // Die RPC liefert genau eine Zeile; ohne Sendungen steht dort
+      // `avg_hours: null` und `ship_count: 0` (AVG über die leere Menge).
+      const shipRow = (ordersRes.data ?? [])[0] as
+        | { avg_hours: number | string | null; ship_count: number }
+        | undefined;
+      // `numeric` kommt als String über PostgREST — dieselbe Pflicht wie bei
+      // der Bewertung darüber.
+      const shipHoursRaw =
+        shipRow?.avg_hours == null ? null : Number(shipRow.avg_hours);
 
       return {
         // `numeric` kommt als String über PostgREST — Number() ist Pflicht,
         // sonst rechnet toFixed() auf einem Text.
         rating: Number.isFinite(ratingValue as number) ? (ratingValue as number) : null,
         ratingCount,
-        shipHours: spans.length
-          ? spans.reduce((a, b) => a + b, 0) / spans.length / 3_600_000
-          : null,
-        shipSamples: spans.length,
+        shipHours: Number.isFinite(shipHoursRaw as number) ? (shipHoursRaw as number) : null,
+        shipSamples: shipRow?.ship_count ?? 0,
         sold: soldRes.count ?? 0,
       };
     },
