@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -36,6 +37,7 @@ import {
   Pencil,
   Radio,
   Share2,
+  ShieldCheck,
   Star,
   Tag,
   Truck,
@@ -48,7 +50,7 @@ import { useFollow, useFollowCounts } from '../../lib/useFollow';
 import { formatEuro } from '../../lib/useAuction';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
 import { useBerkatSeller } from '../../lib/useBerkatSeller';
-import { useVouchActions, useVouches, vouchErrorText } from '../../lib/useVouch';
+import { useVouchActions, useVouches, vouchErrorText, vouchSummary } from '../../lib/useVouch';
 import { profileEditErrorText, useUpdateProfile } from '../../lib/useProfileEdit';
 import { pickAndUpload } from '../../lib/uploadImage';
 import { REPORT_REASONS, useMyBlocks, useSellerActions } from '../../lib/useSellerActions';
@@ -66,7 +68,7 @@ import { StandingShelf } from '../../components/StandingShelf';
 import { standingErrorText, useStandingActions } from '../../lib/useStanding';
 import { useSellerListings } from '../../lib/useListings';
 import { BerkatMark } from '../../components/BerkatMark';
-import { radius, ratio, space, ui } from '../../theme/tokens';
+import { radius, ratio, space, stage, ui } from '../../theme/tokens';
 
 type SellerProfile = {
   id: string;
@@ -96,6 +98,40 @@ type SoldItem = {
 const SPACER_ID = '__spacer__';
 type Spacer = { id: string; spacer: true };
 type GridItem = SoldItem | Spacer;
+
+/**
+ * Kopfbild und Avatar (23.08.2026 — vorher 116 und 64).
+ *
+ * Whatnots Profil lässt den Banner randlos bis unter die Statusleiste laufen
+ * (~250 pt) und legt einen großen Avatar darüber. Berkats Kachel mit Rand und
+ * Ecken war daneben eine Beilage. Die Zahlen hier sind bewusst kleiner als
+ * Whatnots: Deren Banner trägt Logo, Claim UND Social-Handles, Berkats trägt
+ * ein Foto — 180 pt reichen dafür, 250 wären eine leere Fläche.
+ *
+ * ⚠️ `BANNER_H` ist die SICHTBARE Höhe unter der Statusleiste. Die tatsächliche
+ * Höhe ist `insets.top + BANNER_H`, sonst frisst die Statusleiste oben ein
+ * Stück des Bildes.
+ */
+/**
+ * Kopfbild und Avatar — am 23.08.2026 an Whatnots **App** nachgemessen.
+ *
+ * ⚠️ Die Web-Fassung von Whatnot ist ANDERS gebaut als ihre App, und der
+ * Unterschied ist genau der Punkt: Im Web steht der Name neben dem Avatar
+ * UNTER dem Banner, in der App liegen Avatar, Name und Untertitel IM Banner.
+ * Wer die Web-Seite misst und danach baut, verschenkt rund hundert Punkte —
+ * genau das ist am 23.08. zweimal passiert.
+ *
+ * Whatnots App, Bildschirm-Koordinaten: Banner endet bei 214, Avatar 128–199,
+ * Name 142–162, Kennzahlen ab 214. Bei `insets.top = 62` sind das
+ * `BANNER_H = 152` sichtbare Punkte.
+ *
+ * ⚠️ 152 ist KÜRZER als die 180 aus dem ersten Entwurf. „Höher" aus dem
+ * Bauplan (Übergabe 75) meinte den Vergleich zur alten 116er-Kachel — gegen
+ * Whatnot gemessen war der erste Entwurf bereits zu hoch, und jeder Punkt
+ * Bannerhöhe schiebt alles darunter mit.
+ */
+const BANNER_H = 152;
+const AVATAR = 80;
 
 /**
  * Die Reiter nach Whatnot-Vorbild.
@@ -241,6 +277,9 @@ export default function SellerScreen() {
   const { data: liveShow, refetch: refetchLive } = useSellerLiveShow(id);
   const { data: items = [], refetch: refetchItems } = useSellerSoldItems(id);
   const { data: vouches = [], refetch: refetchVouches } = useVouches(id, myUserId);
+  // Die Kurzfassung für die Zeile am Namen — dieselbe Funktion wie auf der
+  // Artikelseite, damit „wer bürgt" an beiden Orten gleich klingt.
+  const vouchLine = vouchSummary(vouches);
   // Die Anbieterangaben. Nur bei gewerblichen Verkäufern gefüllt; fehlen sie,
   // rendert der Block gar nicht (siehe Kommentar an der Stelle).
   const { data: sellerRow } = useBerkatSeller(id);
@@ -442,49 +481,13 @@ export default function SellerScreen() {
   const name = profile?.username ?? 'Verkäufer';
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/')} style={styles.back}>
-          <ChevronLeft size={24} color={ui.text} />
-        </Pressable>
-        <Text numberOfLines={1} style={styles.headerTitle}>
-          {isLoading ? '' : name}
-        </Text>
-
-        <Pressable
-          hitSlop={8}
-          onPress={() => void shareProfile()}
-          style={styles.headerBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Profil teilen"
-        >
-          <Share2 size={19} color={ui.text} />
-        </Pressable>
-
-        {/* Bei sich selbst gäbe es nichts zu melden und niemanden zu sperren —
-            dann bleibt der Platz leer statt ein Menü mit einem toten Eintrag
-            zu zeigen. */}
-        {isSelf || !myUserId ? (
-          <View style={styles.headerBtn} />
-        ) : (
-          <Pressable
-            hitSlop={8}
-            onPress={() => setMenuOpen(true)}
-            style={styles.headerBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Mehr"
-          >
-            <MoreHorizontal size={21} color={ui.text} />
-          </Pressable>
-        )}
-      </View>
-
+    <View style={styles.screen}>
       {isLoading ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { paddingTop: insets.top }]}>
           <ActivityIndicator color={ui.brand} />
         </View>
       ) : !profile ? (
-        <View style={styles.center}>
+        <View style={[styles.center, { paddingTop: insets.top }]}>
           <BerkatMark size={40} color={ui.sunken} />
           <Text style={styles.emptyTitle}>Diesen Verkäufer gibt es nicht mehr</Text>
         </View>
@@ -504,14 +507,40 @@ export default function SellerScreen() {
             gap: space.xs,
           }}
           refreshControl={
-            <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={ui.textMuted} />
+            <RefreshControl
+              refreshing={pulling}
+              onRefresh={onPull}
+              tintColor={ui.textMuted}
+              // Die Liste beginnt seit dem Umbau bei y = 0, also UNTER der
+              // Statusleiste. Ohne den Versatz drehte sich der Kreisel dort,
+              // wo die Uhrzeit steht.
+              progressViewOffset={insets.top}
+            />
           }
           ListHeaderComponent={
             <View>
-              {/* Das Kopfbild. Ohne eigenes Bild bleibt eine ruhige Fläche aus
-                  der Palette — ein Platzhalter-Foto für alle sähe aus wie ein
-                  Fehler und wäre für jede zweite Marke das falsche Bild. */}
-              <View style={styles.banner}>
+              {/* ── Kopfbild MIT Avatar und Namen darin ─────────────────────
+                  Whatnots App legt beides in den Banner; die Kennzahlen
+                  beginnen unmittelbar an seiner Unterkante. Das ist der ganze
+                  Unterschied zu den zwei Entwürfen davor, die den Namen erst
+                  unter und dann neben den Avatar UNTER den Banner stellten —
+                  beide Male kostete das die volle Höhe des Identitätsblocks.
+
+                  Ohne eigenes Bild bleibt Berkats Markengrün stehen, nicht
+                  Sand. Zwei Gründe, und der zweite wiegt schwerer:
+
+                    1. 152 Punkte nackter Sand sind eine Leere, an der man
+                       vorbeiscrollt (am 23.08. am Simulator gesehen). Ein
+                       dunkles Markenfeld liest sich als gesetzt.
+                    2. ⚠️ Der Name steht jetzt IM Banner und ist deshalb weiß.
+                       Auf Sand wäre er unsichtbar. Ein heller Rückfall würde
+                       genau den Fehler bauen, den Berkats zwei feste Flächen
+                       ausschließen sollen (Abschnitt 4).
+
+                  In Phase 0 ist der Rückfall der REGELFALL, nicht der
+                  Sonderfall: Fünf frische Verkäufer haben zuerst kein
+                  Kopfbild. ─────────────────────────────────────────────────── */}
+              <View style={[styles.banner, { height: insets.top + BANNER_H }]}>
                 {profile.banner_url ? (
                   <Image
                     source={{ uri: profile.banner_url }}
@@ -520,22 +549,102 @@ export default function SellerScreen() {
                     transition={160}
                   />
                 ) : null}
+
+                {/* ⚠️ Der Verlauf ist NICHT Zierde, er trägt die Lesbarkeit.
+                    Ein Kopfbild ist ein fremdes Foto, das niemand kontrolliert
+                    — weißer Text darauf ist auf dem einen Bild lesbar und auf
+                    dem nächsten weg. Dieselbe Begründung wie bei `ui.overlay`
+                    in `theme/tokens.ts`, nur nach dunkel statt nach hell,
+                    weil hier eine ganze Zone abgedunkelt wird und keine Pille.
+                    Auf dem Markengrün-Rückfall fällt er nicht auf.
+
+                    ⚠️ DREI Stufen, nicht zwei — und `locations` ist der Punkt.
+                    Ein linearer Verlauf von 0 auf 0,82 lässt am Namen nur 0,41
+                    übrig; über einem unten HELLEN Foto (Schnee, weiße Wand,
+                    Sandstrand) ergibt das **2,37 : 1**, also unlesbar. Die
+                    mittlere Stufe zieht die Deckung nach oben, ohne den oberen
+                    Bildrand zuzukleistern.
+
+                    Durchgerechnet gegen reines Weiß, dem schlimmsten Fall:
+                    Name-Oberkante 4,55 : 1 · Name-Mitte 5,63 : 1 · @-Name
+                    7,33 : 1. Wer an diesen Zahlen dreht, rechnet sie nach —
+                    das Auge misst 4,5 : 1 nicht. */}
+                <LinearGradient
+                  colors={['rgba(11,21,18,0)', 'rgba(11,21,18,0.55)', 'rgba(11,21,18,0.95)']}
+                  locations={[0, 0.35, 1]}
+                  style={styles.bannerScrim}
+                  pointerEvents="none"
+                />
+
+                <View style={styles.identity}>
+                  {/* Heller Ring: Ohne ihn verschwimmt der Avatar-Rückfall
+                      (dunkelgrün) auf dem Markengrün-Banner zu einem Loch, und
+                      auf einem dunklen Foto täte er dasselbe. */}
+                  <View style={styles.avatarRing}>
+                    <Avatar uri={profile.avatar_url} name={profile.username} size={AVATAR} />
+                  </View>
+                  <View style={styles.identityText}>
+                    <Text numberOfLines={1} style={styles.name}>
+                      {profile.display_name?.trim() || name}
+                    </Text>
+                    {/* Der @-Name steht klein darunter — aber nur, wenn oben
+                        etwas anderes steht. Sonst stünde er zweimal da. */}
+                    {profile.display_name?.trim() ? (
+                      <Text numberOfLines={1} style={styles.handle}>
+                        {name}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
               </View>
 
-              <View style={styles.identity}>
-                <Avatar uri={profile.avatar_url} name={profile.username} size={64} />
-                <View style={styles.identityText}>
-                  <Text numberOfLines={1} style={styles.name}>
-                    {profile.display_name?.trim() || name}
+              {/* ── Wer bürgt, steht direkt am Namen (23.08.2026) ───────────
+                  Bis hierher lag das Bürgen-Feld GANZ UNTEN, unter den drei
+                  Kacheln. Damit stand oben, was jede Plattform hat (Sterne,
+                  Versandzeit, Zuschläge), und unten das Einzige, was Whatnot
+                  strukturell nicht bauen kann. Die Ausgangsanalyse § B5:
+                  „Ein 5-Sterne-Durchschnitt bedeutet weniger als ‚mein Cousin
+                  kennt ihn.'"
+
+                  Derselbe Fehler wurde am 21.08. im Live-Kopf behoben
+                  (Abschnitt 58) — auf dem Profil stand er noch.
+
+                  Hier die LANGE Fassung `vouchSummary()`, nicht die kurze aus
+                  dem Live-Kopf: Dort teilt sich die Zeile den Platz mit Name
+                  und Zuschauer-Pille, hier hat sie die volle Breite. Das
+                  vollständige Feld mit Namen, Gewicht und Sätzen bleibt weiter
+                  unten — diese Zeile ist die Auskunft, das Feld ist der Beleg. */}
+              {vouchLine ? (
+                <View style={styles.vouchLine}>
+                  <ShieldCheck size={14} color={ui.success} />
+                  <Text numberOfLines={1} style={styles.vouchLineText}>
+                    {vouchLine}
                   </Text>
-                  {/* Der @-Name steht klein darunter — aber nur, wenn oben
-                      etwas anderes steht. Sonst stünde er zweimal da. */}
-                  {profile.display_name?.trim() ? (
-                    <Text numberOfLines={1} style={styles.handle}>
-                      {name}
-                    </Text>
-                  ) : null}
                 </View>
+              ) : null}
+
+              {/* Die Kacheln direkt danach, VOR Bio und Knöpfe: Erst die
+                  Menschen, dann die Institution, dann alles Weitere. */}
+              <View style={styles.tiles}>
+                <Tile
+                  icon={<Star size={17} color={ui.text} />}
+                  value={formatRating(stats?.rating ?? null)}
+                  label={
+                    stats?.ratingCount
+                      ? `${stats.ratingCount} ${stats.ratingCount === 1 ? 'Bewertung' : 'Bewertungen'}`
+                      : 'Noch keine Bewertung'
+                  }
+                />
+                <Tile
+                  icon={<Truck size={17} color={ui.text} />}
+                  value={formatShipTime(stats?.shipHours ?? null)}
+                  label={stats?.shipSamples ? 'Versandzeit' : 'Noch nichts versendet'}
+                />
+                <Tile
+                  icon={<Tag size={17} color={ui.text} />}
+                  value={String(stats?.sold ?? 0)}
+                  label={stats?.sold === 1 ? 'Zuschlag' : 'Zuschläge'}
+                />
               </View>
 
               {/* Die Bio steht unter der Kopfzeile statt daneben: Bis zu 300
@@ -699,30 +808,14 @@ export default function SellerScreen() {
                 </Pressable>
               ) : null}
 
-              <View style={styles.tiles}>
-                <Tile
-                  icon={<Star size={17} color={ui.text} />}
-                  value={formatRating(stats?.rating ?? null)}
-                  label={
-                    stats?.ratingCount
-                      ? `${stats.ratingCount} ${stats.ratingCount === 1 ? 'Bewertung' : 'Bewertungen'}`
-                      : 'Noch keine Bewertung'
-                  }
-                />
-                <Tile
-                  icon={<Truck size={17} color={ui.text} />}
-                  value={formatShipTime(stats?.shipHours ?? null)}
-                  label={stats?.shipSamples ? 'Versandzeit' : 'Noch nichts versendet'}
-                />
-                <Tile
-                  icon={<Tag size={17} color={ui.text} />}
-                  value={String(stats?.sold ?? 0)}
-                  label={stats?.sold === 1 ? 'Zuschlag' : 'Zuschläge'}
-                />
-              </View>
+              {/* Das vollständige Bürgen-Feld: Namen, Gewicht, Sätze — und der
+                  Knopf zum Selbst-Bürgen. Es steht bewusst WEITERHIN hier und
+                  nicht oben: Die Zeile am Namen ist die Auskunft („jemand, den
+                  du kennst, bürgt"), dieses Feld ist der Beleg dazu. Beides
+                  oben wären zweihundert Punkte, bevor irgendjemand die
+                  Kennzahlen sieht.
 
-              {/* Steht ABSICHTLICH über den Reitern: Erst die Institution
-                  (Sterne, Versandzeit, Zuschläge), dann die Menschen. Für diese
+                  Über den Reitern bleibt es aus dem alten Grund: Für diese
                   Community ist das der Teil, der entscheidet — er gehört nicht
                   hinter einen Reiter, den man erst antippen muss. */}
               <VouchPanel
@@ -1003,6 +1096,80 @@ export default function SellerScreen() {
         />
       )}
 
+      {/* ── Die Kopfzeile liegt ÜBER der Liste, nicht davor (23.08.2026) ────
+          Nur so kann das Kopfbild randlos bis unter die Statusleiste laufen.
+          Der Preis dafür sind zwei Dinge, die beide hier gelöst sind:
+
+          1. `pointerEvents="box-none"` — sonst wäre der obere Streifen der
+             Seite tot und man käme am Kopfbild vorbei an nichts mehr heran.
+             Genau die Falle aus Abschnitt 3 („Eine Ebene ohne `box-none` macht
+             das halbe Bild tot").
+
+          2. Der Verlauf. Berkat setzt die Statusleiste global auf `dark`
+             (Abschnitt 4), also dunkle Symbole — über einem dunklen Bannerfoto
+             unlesbar. Statt diesen Bildschirm zur zweiten Ausnahme neben dem
+             Live-Raum zu machen, liegt der Sand als Verlauf über dem oberen
+             Rand des Bildes: Die Symbole des Systems bleiben lesbar, und beim
+             Scrollen sieht es aus wie das übliche Ausblenden unter einer
+             Navigationsleiste.
+
+             ⚠️ Der transparente Endpunkt muss DIESELBE Farbe tragen wie der
+             Anfang (`ui.bg` = rgb(250,247,242)), nur mit Alpha 0. Ein
+             `'transparent'` interpoliert auf iOS über Schwarz und legt einen
+             grauen Schleier über das Bild.
+
+             ⚠️ Der Verlauf deckt NUR die Statusleiste, nicht die Symbolzeile
+             darunter. Am 23.08.2026 nachgemessen statt geschätzt: Auf Höhe der
+             Symbole (~82 pt) wäre vom Sand nur noch rund ein Viertel übrig —
+             über einem dunklen Bannerfoto ergäbe das 1,6:1, also unlesbar. Die
+             drei Symbole tragen deshalb ihre eigene Auflage (siehe unten), und
+             der Verlauf bleibt kurz genug, um das Foto nicht zu vernebeln. ─── */}
+      <View
+        style={[styles.header, { paddingTop: insets.top }]}
+        pointerEvents="box-none"
+      >
+        <LinearGradient
+          colors={[ui.bg, 'rgba(250,247,242,0)']}
+          style={[styles.headerScrim, { height: insets.top + 10 }]}
+          pointerEvents="none"
+        />
+        <Pressable
+          hitSlop={10}
+          onPress={() => goBack('/(tabs)/')}
+          style={[styles.headerBtn, styles.headerBtnOnImage]}
+        >
+          <ChevronLeft size={22} color={ui.text} />
+        </Pressable>
+        {/* Der Name steht seit dem Umbau groß unter dem Avatar. Ihn hier ein
+            zweites Mal zu zeigen, wäre eine Dopplung — die Zeile bleibt leer. */}
+        <View style={styles.headerSpacer} />
+
+        <Pressable
+          hitSlop={8}
+          onPress={() => void shareProfile()}
+          style={[styles.headerBtn, styles.headerBtnOnImage]}
+          accessibilityRole="button"
+          accessibilityLabel="Profil teilen"
+        >
+          <Share2 size={18} color={ui.text} />
+        </Pressable>
+
+        {/* Bei sich selbst gäbe es nichts zu melden und niemanden zu sperren —
+            dann bleibt der Platz leer statt ein Menü mit einem toten Eintrag
+            zu zeigen. */}
+        {isSelf || !myUserId ? null : (
+          <Pressable
+            hitSlop={8}
+            onPress={() => setMenuOpen(true)}
+            style={[styles.headerBtn, styles.headerBtnOnImage]}
+            accessibilityRole="button"
+            accessibilityLabel="Mehr"
+          >
+            <MoreHorizontal size={20} color={ui.text} />
+          </Pressable>
+        )}
+      </View>
+
       {/* Sperren und Melden. Beides gab es schon im Verkäufer-Sheet des
           Live-Raums (`useSellerActions`) — also genau dann NICHT, wenn niemand
           sendet. Auf dem Profil ist es erreichbar, ohne dass jemand live sein
@@ -1151,15 +1318,26 @@ function Tile({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: ui.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
+  // Liegt seit dem 23.08.2026 ÜBER der Liste — Begründung am Aufrufort.
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: space.sm,
+    gap: space.sm,
+    paddingHorizontal: space.md,
     paddingBottom: space.sm,
   },
-  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerBtn: { width: 38, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
+  headerScrim: { position: 'absolute', top: 0, left: 0, right: 0 },
+  headerSpacer: { flex: 1 },
+  headerBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  /* Die dritte registrierte Verwendung von `ui.overlay` — Symbole auf einem
+     FREMDEN Bild, das niemand kontrolliert. Eintrag steht in `theme/tokens.ts`.
+     Ohne sie wären Zurück, Teilen und Mehr über einem dunklen Bannerfoto
+     unsichtbar; ein Verlauf allein reicht auf dieser Höhe nicht (gemessen). */
+  headerBtnOnImage: { borderRadius: radius.pill, backgroundColor: ui.overlay },
 
   tabs: {
     flexDirection: 'row',
@@ -1262,17 +1440,58 @@ const styles = StyleSheet.create({
   },
   menuCancelText: { fontSize: 15, fontWeight: '700', color: ui.text },
 
+  /* Randlos: Die negativen Ränder heben das `paddingHorizontal` des
+     `contentContainerStyle` auf. Keine Ecken, kein Rand — das Bild ist die
+     Fläche, nicht eine Kachel darauf. Die Höhe kommt vom Aufrufort, weil sie
+     die Statusleiste mitträgt.
+
+     `justifyContent: 'flex-end'` schiebt den Identitätsblock an die
+     Unterkante; Bild und Verlauf liegen absolut und zählen dabei nicht mit.
+     Markengrün als Rückfall — Begründung am Aufrufort. */
   banner: {
-    height: 116,
-    borderRadius: radius.md,
-    backgroundColor: ui.sunken,
+    backgroundColor: ui.brand,
     overflow: 'hidden',
+    marginHorizontal: -space.md,
+    justifyContent: 'flex-end',
     marginBottom: space.md,
   },
-  identity: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
+  // 62 % — so hoch, dass der Name tief genug im Verlauf sitzt (Rechnung am
+  // Aufrufort). Darüber bleibt das Bild frei; dort steht nichts, was Kontrast
+  // bräuchte.
+  bannerScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '62%' },
+
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.md,
+    paddingBottom: space.md,
+  },
+  avatarRing: {
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: stage.lead,
+    padding: 2,
+  },
   identityText: { flex: 1, minWidth: 0 },
-  name: { fontSize: 22, fontWeight: '700', color: ui.text },
-  handle: { fontSize: 13, color: ui.textMuted, marginTop: 1 },
+  /* ⚠️ `stage`-Töne auf der hellen Fläche, und das ist kein Verstoß gegen
+     Abschnitt 4, sondern seine Anwendung: Der Banner IST eine dunkle Fläche
+     (Foto oder Markengrün), und `stage` ist die Palette für dunkle Flächen.
+     Wer hier `ui.text` nähme, schriebe Dunkel auf Dunkel. */
+  name: { fontSize: 22, fontWeight: '700', color: stage.text },
+  handle: { fontSize: 13, color: stage.textMuted, marginTop: 1 },
+
+  /* Hellgrün wie auf der Artikelseite und im Live-Kopf — dieselbe Auskunft
+     sieht überall gleich aus. Bewusst nicht gold: Gold trägt in Berkat den
+     Kauf, eine Bürgschaft ist kein Kaufknopf (Abschnitt 15). */
+  vouchLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: space.md,
+  },
+  vouchLineText: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '600', color: ui.success },
+
   bio: { fontSize: 13, color: ui.text, marginBottom: 3, lineHeight: 19 },
   bioMore: { fontSize: 12, fontWeight: '700', color: ui.brand, marginBottom: space.sm },
 
@@ -1350,7 +1569,8 @@ const styles = StyleSheet.create({
   soonText: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '700', color: ui.text },
   soonWhen: { fontSize: 13, fontWeight: '700', color: ui.brand },
 
-  tiles: { flexDirection: 'row', gap: space.sm },
+  // `marginBottom`, seit die Kacheln vor der Bio stehen statt am Ende.
+  tiles: { flexDirection: 'row', gap: space.sm, marginBottom: space.md },
   tile: {
     flex: 1,
     backgroundColor: ui.card,

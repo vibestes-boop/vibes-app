@@ -26,6 +26,11 @@ export const ui = {
    *   2. die Pillen auf der Angebots-Karte — „Deins", Merken-Herz, Bildzahl —
    *      und das „Titelbild"-Etikett im Composer (`ListingCard.tsx`,
    *      `StandingComposer.tsx`, seit 17.08.2026)
+   *   3. Zurück, Teilen und Mehr auf dem Verkäufer-Profil (`app/seller/[id].tsx`,
+   *      seit 23.08.2026). Seit dem randlosen Kopfbild liegen sie auf dem Foto
+   *      des Verkäufers. Der Sand-Verlauf darüber deckt nur die Statusleiste —
+   *      auf Höhe der Symbole wäre von ihm noch rund ein Viertel übrig, über
+   *      einem dunklen Bannerfoto also 1,6:1. Nachgemessen, nicht geschätzt.
    *
    * Wer eine dritte anlegt, trägt sie hier ein — sonst misst der nächste Prüfer
    * eine Fläche nach und glaubt, alle geprüft zu haben.
