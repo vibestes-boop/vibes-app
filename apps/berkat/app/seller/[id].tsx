@@ -59,7 +59,17 @@ import { showWhen, useSellerShows } from '../../lib/useSellerShows';
 import { SITE_URL } from '../../lib/links';
 import { goBack } from '../../lib/nav';
 import { usePreparedByPlan } from '../../lib/usePrepared';
+import {
+  HIGHLIGHT_ITEMS_MAX,
+  highlightErrorText,
+  useCreateHighlight,
+  useHighlights,
+  useMyStoryArchive,
+  type HighlightItem,
+} from '../../lib/useHighlights';
 import { Avatar } from '../../components/Avatar';
+import { HighlightRail } from '../../components/HighlightRail';
+import { HighlightSheet } from '../../components/HighlightSheet';
 import { LineupPreview } from '../../components/LineupPreview';
 import { ProfileEditSheet } from '../../components/ProfileEditSheet';
 import { RatingStars } from '../../components/RatingStars';
@@ -341,6 +351,69 @@ export default function SellerScreen() {
   // Schließen und Wiederöffnen des Blattes überlebt.
   const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
 
+  // ── Highlights ────────────────────────────────────────────────────────────
+  //
+  // Der dauerhafte Teil der Stories: Was hier steht, bleibt stehen. Für ein
+  // frisches Verkäufer-Profil ist das der einzige Weg, heute etwas zu zeigen,
+  // ohne täglich zu posten (Übergabe, Abschnitt 81).
+  const { data: highlights = [], refetch: refetchHighlights } = useHighlights(id);
+  const createHighlight = useCreateHighlight();
+  const [highlightOpen, setHighlightOpen] = useState(false);
+  // Die Auswahl liegt HIER und nicht im Blatt — dieselbe Begründung wie beim
+  // Kopfbild darüber: Der Bild-Wähler blendet die App aus, und ein Blatt, das
+  // sich danach neu aufbaut, hätte die schon gewählten Fotos vergessen.
+  const [highlightItems, setHighlightItems] = useState<HighlightItem[]>([]);
+  const [highlightUploading, setHighlightUploading] = useState(false);
+  const [highlightNotice, setHighlightNotice] = useState<string | null>(null);
+  // ⚠️ Das Archiv wird NUR geladen, wenn das eigene Blatt offen ist. Sonst
+  // kostete jeder Besuch auf einem fremden Profil eine Abfrage nach den eigenen
+  // Stories, die dort niemand je zu sehen bekommt.
+  const { data: storyArchive = [] } = useMyStoryArchive(highlightOpen && isSelf);
+
+  const pickHighlightPhoto = useCallback(async () => {
+    setHighlightNotice(null);
+    setHighlightUploading(true);
+    try {
+      // `cover` = Speicherort (`thumbnails/`), `portrait` = Form. Ein Highlight
+      // wird formatfüllend hochkant gezeigt, wie eine Story.
+      const url = await pickAndUpload('cover', 'portrait');
+      if (!url) return; // abgebrochen — kein Fehler
+      setHighlightItems((prev) =>
+        prev.length >= HIGHLIGHT_ITEMS_MAX || prev.some((i) => i.media_url === url)
+          ? prev
+          : [...prev, { media_url: url, media_type: 'image', thumbnail_url: url }],
+      );
+    } catch (e: unknown) {
+      // ⚠️ Die Meldung des Uploads DURCHREICHEN statt zu ersetzen. Sie nennt bei
+      // der 8-MB-Grenze die tatsächliche Größe — der Verkäufer weiß dann, dass
+      // er ein kleineres Foto nehmen muss, statt es dreimal erneut zu versuchen
+      // (Übergabe, Abschnitt 60, Fund 1).
+      setHighlightNotice(e instanceof Error ? e.message : 'Das Bild ging nicht durch.');
+    } finally {
+      setHighlightUploading(false);
+    }
+  }, []);
+
+  const submitHighlight = useCallback(
+    (title: string) => {
+      setHighlightNotice(null);
+      createHighlight.mutate(
+        { title, items: highlightItems },
+        {
+          onSuccess: () => {
+            setHighlightOpen(false);
+            setHighlightItems([]);
+          },
+          onError: (e: unknown) =>
+            setHighlightNotice(
+              highlightErrorText(e instanceof Error ? e.message : String(e)),
+            ),
+        },
+      );
+    },
+    [createHighlight, highlightItems],
+  );
+
   const { data: reviews = [], refetch: refetchReviews } = useSellerReviews(id);
   const { past: pastShows, announced } = useSellerShows(id);
   const sellerActions = useSellerActions(myUserId);
@@ -394,6 +467,10 @@ export default function SellerScreen() {
         // Ziehen-zum-Aktualisieren rührte die Show-Abfragen gar nicht an.
         announced.refetch(),
         pastShows.refetch(),
+        // Am 24.08.2026 gleich mitgenommen: Wer ein Highlight anlegt und danach
+        // zieht, muss es sehen. Genau die Sorte Auslassung, vor der der Absatz
+        // darüber warnt.
+        refetchHighlights(),
       ]),
     [
       refetchLive,
@@ -405,6 +482,7 @@ export default function SellerScreen() {
       refetchProfile,
       announced.refetch,
       pastShows.refetch,
+      refetchHighlights,
     ],
   );
 
@@ -875,6 +953,31 @@ export default function SellerScreen() {
                 </View>
               ) : null}
 
+              {/* ── Highlights, direkt über den Reitern (24.08.2026) ────────
+                  Die Stelle ist die Konvention, die jeder kennt — Instagram
+                  legt sie genau hier hin, zwischen Identität und Inhalt. Sie
+                  ist ausserdem die einzige, die den am 23.08. gemessenen
+                  Identitätsblock unangetastet lässt: Banner, Kacheln, Bio und
+                  Bürgen-Feld stehen Punkt auf Punkt da, wo sie gegen Whatnots
+                  App abgeglichen wurden (Abschnitt 76).
+
+                  ⚠️ Auf einem FREMDEN Profil ohne Highlights rendert die Reihe
+                  gar nichts — kein leerer Kasten, keine Überschrift. Dieselbe
+                  Regel wie beim Story-Ring: Eine leere Reihe sagt „hier ist
+                  nichts", und das ist das Gegenteil dessen, wofür die Funktion
+                  gebaut ist. Auf dem eigenen Profil steht dagegen immer die
+                  „+"-Scheibe; dort ist sie eine Einladung. ─────────────────── */}
+              <HighlightRail
+                highlights={highlights}
+                isSelf={isSelf}
+                onOpen={(highlightId) => router.push(`/highlight/${highlightId}`)}
+                onCreate={() => {
+                  setHighlightNotice(null);
+                  setHighlightItems([]);
+                  setHighlightOpen(true);
+                }}
+              />
+
               {/* Die Reiter, nach Whatnot-Vorbild. „Clips" fehlt bewusst:
                   Berkat hat kein Replay und keine Clip-Marker — ein Reiter, der
                   nur erklären kann, dass es ihn nicht gibt, ist keiner. */}
@@ -1290,6 +1393,19 @@ export default function SellerScreen() {
               ),
             )
         }
+      />
+
+      <HighlightSheet
+        visible={highlightOpen}
+        archive={storyArchive}
+        items={highlightItems}
+        onChangeItems={setHighlightItems}
+        busy={createHighlight.isPending}
+        uploading={highlightUploading}
+        notice={highlightNotice}
+        onPickPhoto={() => void pickHighlightPhoto()}
+        onCreate={submitHighlight}
+        onClose={() => setHighlightOpen(false)}
       />
     </View>
   );
