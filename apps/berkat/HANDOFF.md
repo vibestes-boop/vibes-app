@@ -10268,6 +10268,54 @@ auf der Bühne, sondern ein tiefer Tinten-Ton — und der ist jetzt **derselbe A
 eines zweiten Farbsystems. Ein dominanter Akzent, streng rationiert. Und: hell und dunkel von
 Anfang an als ein Satz gedacht.
 
+### ⚠️ Nachtrag am selben Abend: die Neutralen sind jetzt REINES GRAU
+
+Zaur: *„das Aubergine gefällt mir nicht, der Ton"* — und beim genauen Messen von Whatnot kam
+heraus, dass er nicht den Anker meinte, sondern den **Schleier über allem**.
+
+**Whatnots Grau-Leiter, an ihren eigenen Token nachgesehen:** `--gray1` bis `--gray12`, alle
+`hsl(0, 0%, x)`. **Buntheit 0,0 in jeder der zwölf Stufen**, auch im dunklen Grund `#111111`.
+
+Berkat dagegen hatte getönte Neutrale — erst kühl-blau, dann aubergine:
+
+| | vorher | Buntheit | jetzt |
+|---|---|---|---|
+| `bg` | `#F7F4F8` | 2,3 | **`#F5F5F5`** |
+| `sunken` | `#EBE5EE` | 5,2 | **`#E7E7E7`** |
+| `text` | `#1F1522` | 10,9 | **`#181818`** |
+| `textMuted` | `#665A6B` | **11,5** | **`#5E5E5E`** |
+
+`textMuted` trägt jede zweite Zeile der App — und hatte einen Lila-Stich. Die Absicht war „alles
+passt zusammen"; das Ergebnis war ein Farbschleier, den man merkt, ohne benennen zu können, woran
+es liegt.
+
+> **Ein Neutral, das eine Farbe hat, ist kein Neutral, sondern eine sehr blasse Farbfläche.**
+
+⚠️ Die **Helligkeiten sind unverändert** — es verschwindet nur der Ton. Alle Kontraste halten
+(Text 16,3:1, `textMuted` 5,95:1). Mitgezogen: Linien, `scrim` und `onImage` sind jetzt neutrales
+Schwarz statt aubergine-abgeleitet, und die zwölf Kategorie-Tönungen tragen nur noch einen Hauch
+(Buntheit ~2 statt ~5).
+
+**Der Anker bleibt eine echte Farbe** — aber nur noch dort, wo er hingehört: Kopfzeilen, gefüllte
+Knöpfe, Symbole, Bühne. Nicht in der Luft zwischen den Karten.
+
+### Whatnots vollständige Palette, gemessen (23.08.2026)
+
+Nicht aus einer Quelle übernommen, sondern an ihrer laufenden Seite abgegriffen.
+
+| | | Buntheit | auf Weiss |
+|---|---|---|---|
+| Gelb (Marke) | `#FFE414` | 88 | 1,28 |
+| Gelb hell (Tint) | `#FFF6AD` | 37 | — |
+| **Blau (zweite Aktion)** | `#0245F6` | **105** | 6,59 |
+| Rot (live) | `#ED2C28` | 87 | 4,21 |
+| Amber (Premier-Shop) | `#E39601` | 75 | 2,43 |
+| dunkler Grund | `#111111` | **0** | — |
+
+Zwei Dinge, die vorher niemand hier wusste: Sie haben ein **zweites Signal in Blau** mit Buntheit
+105 — der buntesten Farbe ihres Systems. Und ihre **Marketing-Startseite ist dunkel**
+(`#111111`), die Produkt-Oberfläche weiss. Zwei Welten, ein Gelb.
+
 ### ⚠️ Der teure Teil war nicht die Palette, sondern was daneben lag
 
 Sechs hartcodierte Farben, die den alten Grünstich in die neue Palette getragen hätten:

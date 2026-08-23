@@ -63,18 +63,36 @@
 /** Helle Fläche — Startseite, Kategorien, Studio, Konto, Anmeldung. */
 export const ui = {
   /**
-   * Kühles Neutral. Der Grundton der App.
+   * ⚠️ REINES GRAU — Buntheit 0. Das ist die wichtigste Zeile dieser Datei.
+   *
+   * Bis zum 23.08.2026 waren die Neutralen leicht eingefärbt, erst kühl-blau,
+   * dann aubergine. Die Absicht war „alles passt zusammen"; das Ergebnis war
+   * ein Farbschleier über jeder Nebenzeile — `textMuted` trug Buntheit 11,5.
+   * Zaur: „das Aubergine gefällt mir nicht, der Ton."
+   *
+   * Whatnot macht ausdrücklich das Gegenteil, und ich habe es an ihren eigenen
+   * Token nachgesehen: `--gray1` bis `--gray12`, ALLE `hsl(0, 0%, x)`.
+   * Buntheit 0,0 in jeder der zwölf Stufen, auch im dunklen Grund `#111111`.
+   *
+   * > **Ein Neutral, das eine Farbe hat, ist kein Neutral, sondern eine sehr
+   * > blasse Farbfläche — und der Nutzer merkt es, ohne benennen zu können,
+   * > woran es liegt.**
+   *
+   * Die Helligkeiten sind gegenüber der getönten Fassung unverändert; es
+   * verschwindet nur der Ton. Alle Kontraste halten (Text 16,3:1).
+   *
+   * Der Grundton der App.
    *
    * ⚠️ Bewusst NICHT reines Weiß: Die aktuelle Empfehlung geht weg vom harten
    * Weiß hin zu „elevated neutrals", und auf einem Handy in der Sonne ist ein
    * leicht abgesenkter Grund angenehmer. Buntheit 0,7 — praktisch farblos,
    * damit der Bernstein alles an Farbe für sich hat.
    */
-  bg: '#F7F4F8',
+  bg: '#F5F5F5',
   /** Karten und Sheets liegen als Weiß auf dem Grund. */
   card: '#FFFFFF',
   /** Chips, Bildplatzhalter, ruhige Flächen. */
-  sunken: '#EBE5EE',
+  sunken: '#E7E7E7',
   /**
    * ⚠️ `bg` mit Alpha 0 — für Verläufe, die im Grund verschwinden sollen.
    *
@@ -84,14 +102,14 @@ export const ui = {
    * nur unsichtbar. Vor dem 23.08.2026 stand dieser Wert hartcodiert im
    * Verkäufer-Profil — und wäre beim Farbwechsel still falsch geworden.
    */
-  bgClear: 'rgba(247,244,248,0)',
+  bgClear: 'rgba(245,245,245,0)',
   /**
    * Verdunkelung hinter Blättern und Menüs. Aus dem Anker abgeleitet, nicht
    * Schwarz — sonst wirkt der Hintergrund tot statt zurückgetreten.
    * ⚠️ Stand bis zum 23.08.2026 an fünf Stellen hartcodiert (`rgba(20,36,30,…)`,
    * das ALTE Grün) und hätte den Grünstich in die neue Palette getragen.
    */
-  scrim: 'rgba(46,27,51,0.38)',
+  scrim: 'rgba(0,0,0,0.38)',
   /**
    * Das dunkle Gegenstück zu `overlay`: eine Pille MIT heller Schrift auf einem
    * fremden Foto — „Titelbild ändern", der Schliessen-Kreis am Bild.
@@ -101,7 +119,7 @@ export const ui = {
    * ALTE Markengrün, hartcodiert — und hätten den Grünstich in diese Palette
    * getragen. Gefunden beim Farbwechsel am 23.08.2026, nicht bei einer Prüfung.
    */
-  onImage: 'rgba(21,12,24,0.72)',
+  onImage: 'rgba(0,0,0,0.72)',
   /**
    * Milchige Auflage für Text auf einem FREMDEN Bild. Berkat tut das an genau
    * ZWEI Stellen, und diese Liste ist der Bestand:
@@ -144,12 +162,12 @@ export const ui = {
    * schon und hielt sie in einem Sonderfall eingesperrt. Beim Umbau sind
    * `textMuted` und `live` entsprechend nachgezogen worden.
    */
-  overlayMuted: '#5F5464',
+  overlayMuted: '#565656',
   overlayUrgent: '#C03A26',
 
-  text: '#1F1522',
+  text: '#181818',
   /** Nachgezogen: hatte auf dem alten Grund 4,05:1, jetzt 5,56:1. */
-  textMuted: '#665A6B',
+  textMuted: '#5E5E5E',
 
   /**
    * Der Avatar-Rückfall — die Scheibe mit den Initialen, wenn jemand kein Bild
@@ -168,8 +186,8 @@ export const ui = {
    */
   avatar: '#4A3352',
 
-  line: 'rgba(31,21,34,0.10)',
-  lineStrong: 'rgba(31,21,34,0.18)',
+  line: 'rgba(24,24,24,0.10)',
+  lineStrong: 'rgba(24,24,24,0.18)',
 
   /** Tinten-Indigo — der Anker. Begründung im Kopf der Datei. */
   brand: '#2E1B33',
