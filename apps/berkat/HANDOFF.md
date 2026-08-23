@@ -1,6 +1,6 @@
 # Berkat — Übergabe
 
-**Stand: 23.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 24.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
@@ -17,8 +17,8 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 75 → 56.** Abschnitt 75 ist der Anschlusspunkt (er löste 74 ab,
-> davor 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
+> **Wer neu einsteigt, liest 0 → 82 → 56.** Abschnitt 82 ist der Anschlusspunkt (er löste 75 ab,
+> davor 74, 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
 > nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
 >
 > ⚠️ **Wer nur EINEN Abschnitt liest, liest 73.** Der Sicherheits-Audit vom 22.08.2026 hat vier
@@ -31,6 +31,15 @@ was gilt.
 > seit dem 21.08. in TestFlight liegt; und drei Punkte als „ungeprüft", die die Testware am
 > 18.08. belegt hatte. Der Rumpf war jedes Mal aktuell, nur der Kopf nicht. **Wer unten etwas
 > abhakt, hakt es oben mit ab** — sonst liest der nächste Chat den falschen Zustand zuerst.
+>
+> **Neu am 23./24.08.2026 (die grosse Runde)** — Verkäufer-Profil umsortiert (76), `comment_reply`
+> freigeschaltet (77), Push-App-Filter an vier Direktwegen (78), Chat-Tastatur auf den UI-Thread
+> samt EAS-Build `1.0.0 (3)` (79), **neue Markenfarben Aubergine + Bernstein mit Neutralen bei
+> Buntheit 0** (80) und **Stories** (81). ⚠️ **Der Anschlusspunkt ist jetzt Abschnitt 82.**
+>
+> ⚠️ **Fünf geteilte Tabellen brauchten an einem Tag einen App-Stempel** — `notifications`,
+> `messages`, `live_sessions`, `scheduled_lives`, `stories`. Das ist kein Zufall mehr, sondern ein
+> Muster (82, Lehre 1).
 >
 > **Neu am 23.08.2026** — vier Arbeitspakete gebaut, **alles ausgerollt**, danach zwei
 > Fehler-Analysen. Acht Migrationen (Tracking 301), `r2-sign` auf 42, `bunny-ingest` auf 13, vier
@@ -192,7 +201,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–76; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **75 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–82; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **82 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -6738,6 +6747,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | B10 | **Belegfoto im privaten Eimer**: Problem mit Foto melden, beim Verkäufer die Fall-Karte öffnen — das Bild muss erscheinen. Erscheint es nicht, ist der Lesepfad kaputt und der Beleg wertlos | 75 |
 | B11 | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` → erwartet **403 / 42501**. Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen, Teilen müssen in **Serlo** weiter ankommen | 75 |
 | B12 | **Antwort auf einen Kommentar** (ausgerollt am 23.08., nur am Gerät ungeprüft): A kommentiert, B antwortet — bei A muss die Meldung stehen UND ein Push mit dem Titel „💬 Antwort auf deinen Kommentar" ankommen, nicht „Neue Aktivität auf Serlo". ⚠️ Gegenprobe: ein normaler Kommentar löst weiterhin **genau einen** Push aus, nicht zwei | 77 |
+| B13 | ⚠️ **Story-Trennung**: In Berkat eine Story aufnehmen — sie darf in **Serlos** Feed NICHT auftauchen, und Serlos Stories nicht in Berkats Ring. Ohne den `app`-Stempel hätte genau das gemischt (81) | zweites Konto bzw. beide Apps |
 
 ### C — laufende Sendung, allein. Kein zweites Konto.
 
@@ -9910,6 +9920,185 @@ gebracht.** Die Review ist jetzt durch — der nächste Schritt ist ein Link an 
 
 ---
 
+## 81. Stories — der Ring über dem Regal (23./24.08.2026, nachts)
+
+Zaur: *„würden stories in den app einbauen mehrwert liefern und einzigartigkeit des apps machen?"*
+Meine erste Antwort war **nein** — und sie war zur Hälfte falsch.
+
+### ⚠️ Der Denkfehler in meinem Einwand
+
+Ich habe gegen Stories argumentiert: Sie brauchen täglichen Inhalt von Verkäufern, die es noch nicht
+gibt; ein leerer Ring ist schlimmer als keiner; Stories sind das meistkopierte Format überhaupt und
+taugen nicht als Alleinstellungsmerkmal; und sie konkurrieren mit dem Format, das Geld verdient.
+
+Alles davon stimmt — **und es beantwortet die falsche Frage.** Zaur:
+
+> *„das app soll vielversprechend sein"*
+
+**Die Zielgruppe ist nicht der Käufer, sondern der Verkäufer, der sich die App ansieht, bevor er
+zusagt.** Ein statisches Regal sieht tot aus. Das Anwerben von Verkäufern ist seit Wochen der
+Engpass — also zahlt genau das auf den Engpass ein, gegen den ich die Funktion verteidigt habe.
+
+> **Ich habe „bringt es Nutzern etwas" geprüft und „überzeugt es Verkäufer" übersehen.** Bei einem
+> Marktplatz ohne Angebotsseite ist das zweite die wichtigere Frage.
+
+### ⚠️ Der teuerste Fund kam vor der ersten Zeile Oberfläche
+
+`stories` und `story_highlights` sind **geerbte Serlo-Tabellen ohne `app`-Spalte**, und ihre
+Lese-Policies sind weit offen:
+
+```
+stories_own_archived_select   USING (auth.uid() = user_id OR archived = false)
+story_highlights_select       USING (true)
+```
+
+Ohne Stempel hätte Berkats Ring **Serlos Stories** gezeigt, und jede Berkat-Story wäre in Serlos
+Feed gelandet. **Das ist am 23.08.2026 die fünfte Tabelle mit genau dieser Lücke** — nach
+`notifications`, `messages`, `live_sessions` und `scheduled_lives`. Diesmal war sie vorher dran
+statt hinterher.
+
+`20260823210000` fügt beide Spalten hinzu (nullable, CHECK, `NULL` = serlo), dazu zwei **partielle**
+Indizes nur auf die Berkat-Zeilen — Serlos Bestand ist um Grössenordnungen grösser und hat darin
+nichts zu suchen. Die Migration trägt beide Selbstproben, die sich heute bewährt haben: den
+Regel-11-Wächter über `pg_attribute.attacl` und eine Zählprobe auf die zwei Spalten.
+
+> **Eine geteilte Tabelle ohne App-Stempel ist keine Tabelle, sondern eine Verwechslung mit
+> Verzögerung.** Fünfmal an einem Tag. Wer in Berkat eine Serlo-Tabelle neu benutzt, stempelt sie,
+> BEVOR die erste Abfrage geschrieben wird.
+
+### Zwei Entwürfe, die bewusst von Serlo abweichen
+
+**1 · Der Ring zeigt ALLE Berkat-Stories, nicht nur die von Gefolgten.** Serlo filtert auf
+Guild-Mitglieder bzw. Follows. Für Berkat wäre das heute fatal: Ein neuer Nutzer folgt niemandem,
+der Ring wäre leer — und **ein leerer Ring sagt „hier ist nichts los"**, also das Gegenteil des
+Zwecks. Dieselbe Regel wie beim „Demnächst"-Streifen (Abschnitt 62, Fund 6).
+
+⚠️ Bei fünf Verkäufern ist „alle" die richtige Menge. Der Auslöser zum Umstellen steht als **Zahl**
+im Code, nicht als Ahnung: Sobald der Ring länger als zwei Bildschirmbreiten wird, scrollt ihn
+niemand mehr zu Ende — das sind rund fünfzig Verkäufer.
+
+**2 · Keine Reaktionen, keine Antworten, keine Umfragen.** Serlo hat alle drei. Berkats These
+bleibt: **der Abend ist das Produkt.** Eine Story darf neugierig machen und auf einen Termin
+zeigen; sie darf kein Ersatz dafür werden, dabei zu sein. Der einzige Weg aus dem Betrachter heraus
+führt deshalb **zum Verkäufer**, nicht in einen Chat.
+
+### Was gebaut ist
+
+| | |
+|---|---|
+| `lib/useStories.ts` | Lesen (nach Verkäufer gruppiert, mit Gesehen-Zustand), Anlegen, Löschen, Sicht-Vermerk |
+| `components/StoryRail.tsx` | Der Ring. ⚠️ Rendert **nichts**, wenn es weder fremde Stories noch ein eigenes Konto gibt |
+| `app/story/[id].tsx` | Vollbild-Betrachter auf der **Bühne** — ein formatfüllendes Foto braucht dunklen Rand, sonst leuchtet der Schirm darum herum |
+| Startseite | Ring über dem „Demnächst"-Streifen, also über allem. Er ist das Einzige, das sich täglich ändert |
+
+Ein paar Entscheidungen im Kleinen, die begründet sind:
+
+- **Der Fortschrittsbalken läuft über `setInterval`, nicht über eine Animation.** Eine Animation
+  wäre flüssiger und müsste ihren Zustand mit dem Weiterblättern abgleichen — das sind zwei
+  Wahrheiten über dieselbe Sache, und genau daran ist am selben Tag die Tastatur gescheitert
+  (Abschnitt 79).
+- **Der Sicht-Vermerk darf scheitern**, ohne das Ansehen zu unterbrechen. Die einzige Stelle dieser
+  Datei, an der Schweigen richtig ist — der Nutzen (ein grauer Ring) ist den Abbruch nicht wert.
+- **`'portrait'` als Zuschnitt.** Bei Abayas ist die Länge das Merkmal; ein quadratischer Rahmen
+  schneidet sie oben und unten ab.
+
+### ⚠️ Ein Fehler beim Bauen, gefunden am Simulator
+
+Die eigene Scheibe zeigte **„?"** statt des Profilbilds. Sie las ihre Daten aus der Story-Liste —
+und wer noch keine Story hat, steht dort gar nicht drin. Das sieht aus wie ein Fehler, nicht wie
+eine Einladung. Das Profil kommt jetzt von aussen, und die Begründung steht am Prop.
+
+### ⏳ Was noch fehlt: die Highlights
+
+Die zweite Hälfte, und der Teil, der **dauerhaft** ist — ein leeres Verkäufer-Profil füllt sich
+damit auch ohne tägliches Posten.
+
+⚠️ **Dort wartet eine Falle, die Serlo schon einmal erwischt hat:** Ein Highlight, das nur die
+`media_url` der Story speichert, wird tot, sobald die Story abläuft, die Zeile gelöscht wird, der
+Trigger die R2-Datei einreiht und der Cleanup sie löscht — leeres Cover, kein Inhalt. Dafür gibt es
+die Edge Function **`highlight-copy-media`**, die beim Anlegen per S3-`CopyObject` nach
+`highlights/{userId}/` kopiert; dieser Pfad steht nicht in den `ALLOWED_ROOTS` des Cleanups. Wer
+Highlights ohne sie baut, baut den Fehler nach.
+
+### Geprüft und ungeprüft
+
+**Geprüft:** Migration eingespielt, beide Selbstproben bestanden · `tsc` und `expo export` sauber
+(10,8 MB) · Ring am Simulator gesehen, eigene Scheibe mit Profilbild und „+".
+
+⚠️ **Ungeprüft:** Es existiert **keine einzige Story** im Datenstand. Betrachter, Fortschrittsbalken,
+Weiterblättern, Sicht-Vermerk und der Ring in seinem eigentlichen Zustand sind damit **nie
+gelaufen** — gesehen ist nur der Leerfall. Als **A23** und **B13** in der Prüfliste.
+
+⚠️ **Nicht ausgerollt.**
+
+---
+
+## 82. Anschlusspunkt für den nächsten Chat (Stand 24.08.2026)
+
+**Hier anfangen.** Löst Abschnitt 75 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt der Motor.
+
+### Der Zustand
+
+- **Migrationen:** 306 im Tracking, keine Lücke. Heute dazu: `…180000` (comment_reply),
+  `…190000` (Push-App-Filter), `…200000` (messages.app), `…210000` (stories.app)
+- **Build:** `1.0.0 (3)` in TestFlight-Qualität als **Ad-hoc**-Build (`3137a3fd…`), mit
+  `react-native-keyboard-controller` und `expo-image-manipulator`. ⚠️ Der TestFlight-Build ist
+  weiterhin **`1.0.0 (1)`** und hat diese zwei nativen Sachen NICHT
+- **Letzter OTA:** `875348d4…` (reines Grau). ⚠️ Stories sind **nicht** darin
+- **Farben:** Aubergine `#2E1B33` + Bernstein `#FFB020`, Neutrale mit **Buntheit 0**
+
+### ⚠️ Das Erste, was zu tun ist
+
+**Die Highlights fertigbauen** — Abschnitt 81, letzter Block. Der Bauplan steht dort samt der
+`highlight-copy-media`-Falle. Danach beides zusammen ausrollen.
+
+⚠️ **Und davor eine Testfalle anlegen:** Ohne eine einzige Story im Bestand ist der halbe Bau
+ungeprüft. Zwei Stories von zwei Konten reichen, um Ring, Betrachter und Gesehen-Zustand zu
+belegen.
+
+### ⚠️ Was diesen Tag über die Zusammenarbeit gelehrt hat
+
+> **1. Fünf geteilte Tabellen an einem Tag ohne App-Stempel.** `notifications`, `messages`,
+> `live_sessions`, `scheduled_lives`, `stories`. Das ist kein Zufall mehr, sondern ein Muster: Wer
+> in Berkat eine geerbte Serlo-Tabelle neu benutzt, stempelt sie, BEVOR die erste Abfrage steht.
+>
+> **2. Ein Parameter mit Vorgabewert `NULL` ist eine Abschaltung, die wie eine Auslassung
+> aussieht.** `send_push_to_user` ohne `p_app` liest sich wie „App egal" und heisst „Filter aus".
+> Neun Tage lang unbemerkt, weil ein Push, der zu oft kommt, aussieht wie einer, der funktioniert.
+>
+> **3. Wenn eine Änderung nicht prüfbar ist, ist das ein Grund gründlicher zu LESEN — nicht, sie
+> schneller auszuliefern.** Der Tastatur-Fix ging raus, obwohl die Ursache (`LayoutAnimation` auf
+> Fabric) in derselben Datei stand, in die ich schon geschaut hatte.
+>
+> **4. Eine Vergleichstabelle beweist nur, was in ihr steht.** Und: **Web und App desselben
+> Anbieters sind zwei Vorlagen, nicht eine.** Das Verkäufer-Profil brauchte drei Anläufe.
+>
+> **5. Ein Neutral, das eine Farbe hat, ist kein Neutral.** Die Palette hatte einen Farbschleier
+> über jeder Nebenzeile, und niemand konnte benennen, woran es lag.
+>
+> **6. Metro braucht man zum Entwickeln, nicht zum Ansehen.** Ein 21-MB-Bündel über einen Tunnel
+> ist 100× langsamer als über LAN. Wer nur sehen will, was gebaut wurde, nimmt den OTA.
+
+### Nicht neu diskutieren
+
+Alles aus Abschnitt 75 gilt weiter. Dazu neu:
+
+- **Stories haben keine Reaktionen, Antworten oder Umfragen** (81) — der Abend ist das Produkt
+- **Der Story-Ring filtert nicht auf Gefolgte**, bis es ~50 sendende Verkäufer gibt (81)
+- **Die Neutralen bleiben bei Buntheit 0** (80)
+- **Der Anker ist Aubergine**, bis Berkat über Mode und Duft hinauswächst (80)
+
+### Die Blocker — unverändert
+
+1. ✅ Beta App Review durch — es fehlen die **Tester**. Build läuft in 88 Tagen ab
+2. **Stripe:** Testbetrieb, Ratenzahlung aus
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass.**
+
+Und der Satz, der über allem steht, ist unverändert: **Keine dieser Änderungen hat einen Verkäufer
+gebracht.** Auch die Stories nicht — sie sollen es nur wahrscheinlicher machen.
+
+---
+
 ## 76. Das Verkäufer-Profil umsortiert (23.08.2026, abends)
 
 Der Bauplan aus Abschnitt 75, ausgeführt. **Alle vier Schritte, kein Server, keine Migration, keine
@@ -10122,6 +10311,7 @@ sauber, 9,63 MB.
 | **A19** | **Ein DUNKLES und ein SEHR HELLES Kopfbild setzen.** Lesbar bleiben müssen: Uhrzeit, die drei Symbole — **und der weisse Name im Banner**. Letzterer hängt allein am dunklen Verlauf; der gefährliche Fall ist ein Foto, das UNTEN hell ist | allein |
 | **A20** | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein | allein, Termin genügt |
 | **A21** | ⚠️ **Chat-Tastatur** (23.08.): Einen Chat öffnen, aufs Eingabefeld tippen. Feld und Tastatur müssen **zusammen** hochkommen, und die **letzte Nachricht muss sichtbar bleiben** statt hinter dem Feld zu verschwinden. Dann wieder schließen: Der Rand unten muss wie vorher sitzen, kein Sprung. ⚠️ Im Simulator NICHT prüfbar — bei verbundener Mac-Tastatur erscheint gar keine Software-Tastatur | allein, echtes Gerät |
+| **A23** | **Story-Ring** (24.08.): Eine Story aufnehmen — sie muss im Ring stehen, der Betrachter muss sie zeigen, der Fortschrittsbalken laufen, Tippen links/rechts blättern. Danach ist der Ring grau. ⚠️ Es existiert bisher **keine einzige Story**; alles davon ist nie gelaufen | allein |
 | **A22** | ⚠️ **Der LIVE-RAUM in den neuen Farben** (23.08.): Beim Farbwechsel nicht angesehen, weil niemand sendete. Er hat die meisten Farbflächen (Gebots-Knopf, Countdown, Geschenke, Chat) und ist der einzige Bildschirm, auf dem der Anker als FLÄCHE trägt. Bernstein muss auf dem Aubergine knallen, das Uhr-Rot davon unterscheidbar bleiben | allein, Sendung nötig |
 
 Dazu unverändert offen: **A5** (das Banner mit `'wide'`-Zuschnitt wählen) — der Bildschirm zeigt
