@@ -47,21 +47,21 @@ export type CategoryArt = {
 };
 
 const ART: Record<string, CategoryArt> = {
-  mode: { icon: Shirt, tint: '#E1E3EC' },
-  schuhe: { icon: Package, tint: '#E1E7EC' },
-  taschen: { icon: ShoppingBag, tint: '#E5E1EC' },
-  schmuck: { icon: Gem, tint: '#E9E1EC' },
-  beauty: { icon: Sparkles, tint: '#ECE1E7' },
-  uhren: { icon: Watch, tint: '#E1E9EC' },
-  haus: { icon: House, tint: '#E1ECE9' },
-  islamica: { icon: Moon, tint: '#E1EAEC' },
-  buecher: { icon: BookOpen, tint: '#E3E1EC' },
-  kinder: { icon: Baby, tint: '#ECE1EA' },
-  sammeln: { icon: Coins, tint: '#ECE9E1' },
-  sonstiges: { icon: Package, tint: '#E9E7E1' },
+  mode: { icon: Shirt, tint: '#EAE2EC' },
+  schuhe: { icon: Package, tint: '#E7E2EC' },
+  taschen: { icon: ShoppingBag, tint: '#ECE2EA' },
+  schmuck: { icon: Gem, tint: '#ECE2E7' },
+  beauty: { icon: Sparkles, tint: '#ECE2E4' },
+  uhren: { icon: Watch, tint: '#E4E2EC' },
+  haus: { icon: House, tint: '#E2E8EC' },
+  islamica: { icon: Moon, tint: '#E2E4EC' },
+  buecher: { icon: BookOpen, tint: '#ECE2EC' },
+  kinder: { icon: Baby, tint: '#ECE2E3' },
+  sammeln: { icon: Coins, tint: '#ECE8E2' },
+  sonstiges: { icon: Package, tint: '#E9E2EC' },
 };
 
-const FALLBACK: CategoryArt = { icon: Package, tint: '#E6E7EC' };
+const FALLBACK: CategoryArt = { icon: Package, tint: '#EBE6EE' };
 
 /** Nie `undefined`: Eine unbekannte Kategorie bekommt das neutrale Paket. */
 export function categoryArt(slug: string): CategoryArt {

@@ -5,11 +5,27 @@
 //
 // ── DIE ZWEI MARKENFARBEN (23.08.2026) ──────────────────────────────────────
 //
-//   Tinten-Indigo  #1B2340   Ton 227°   — der Anker
+//   Aubergine      #2E1B33   Ton 288°   — der Anker
 //   Bernstein      #FFB020   Ton  39°   — der Kauf
 //
-// Abstand 172°, also fast komplementär: die grösstmögliche Trennung, die zwei
-// Farben haben können. Das ist der Zweck, nicht Geschmack — siehe unten.
+// Abstand 119°. Bewusst NICHT die maximale Trennung — Tinten-Indigo mit 172° stand
+// am 23.08.2026 kurz im Code und wurde ersetzt.
+//
+// ⚠️ DER GRUND STEHT IM KATALOG, NICHT IM FARBKREIS. Berkat zeigt schwarze Abayas,
+// Parfümflakons und Schmuck auf hellem Grund — die Ware bringt ihre eigene Farbe
+// mit. Ein bunter Anker konkurriert damit. Auf einem Farbfeld gewinnt jedes laute
+// Paar; auf einer Startseite mit zwölf Produktfotos gewinnt es gegen die Ware.
+// Genau deshalb sind Whatnot, TikTok, Vinted und Depop in der Fläche schwarz oder
+// weiss und legen die Farbe in genau EINEN Knopf.
+//
+// Aubergine ist dunkel wie ein Neutral und hat trotzdem einen Ton: Es tritt hinter
+// die Ware zurück, ohne grau zu sein. Es ist ausserdem in dieser Kategorie frei
+// (Whatnot Gelb, TikTok Schwarz/Pink, Vinted Türkis, Etsy Orange, Depop Rot) und
+// schmeichelt genau diesen Fotos — Mode, Duft, Schmuck.
+//
+// ⚠️ WANN ES FALSCH WIRD: Wächst Berkat über Mode und Duft hinaus — Elektronik,
+// Haushalt, allgemeiner Wiederverkauf —, ist Aubergine zu speziell. Dann ist
+// Indigo #1B2340 der richtige Träger, weil es zu allem passt und zu nichts gehört.
 //
 // ⚠️ WAS VORHER HIER STAND UND WARUM ES WEG IST. Bis heute war es Flaschengrün
 // #0E2A22 auf Sand #FAF7F2 mit Gold #E9A73C. Gemessen hatte das drei Probleme:
@@ -54,11 +70,11 @@ export const ui = {
    * leicht abgesenkter Grund angenehmer. Buntheit 0,7 — praktisch farblos,
    * damit der Bernstein alles an Farbe für sich hat.
    */
-  bg: '#F4F4F6',
+  bg: '#F7F4F8',
   /** Karten und Sheets liegen als Weiß auf dem Grund. */
   card: '#FFFFFF',
   /** Chips, Bildplatzhalter, ruhige Flächen. */
-  sunken: '#E7E8ED',
+  sunken: '#EBE5EE',
   /**
    * ⚠️ `bg` mit Alpha 0 — für Verläufe, die im Grund verschwinden sollen.
    *
@@ -68,14 +84,14 @@ export const ui = {
    * nur unsichtbar. Vor dem 23.08.2026 stand dieser Wert hartcodiert im
    * Verkäufer-Profil — und wäre beim Farbwechsel still falsch geworden.
    */
-  bgClear: 'rgba(244,244,246,0)',
+  bgClear: 'rgba(247,244,248,0)',
   /**
    * Verdunkelung hinter Blättern und Menüs. Aus dem Anker abgeleitet, nicht
    * Schwarz — sonst wirkt der Hintergrund tot statt zurückgetreten.
    * ⚠️ Stand bis zum 23.08.2026 an fünf Stellen hartcodiert (`rgba(20,36,30,…)`,
    * das ALTE Grün) und hätte den Grünstich in die neue Palette getragen.
    */
-  scrim: 'rgba(27,35,64,0.38)',
+  scrim: 'rgba(46,27,51,0.38)',
   /**
    * Das dunkle Gegenstück zu `overlay`: eine Pille MIT heller Schrift auf einem
    * fremden Foto — „Titelbild ändern", der Schliessen-Kreis am Bild.
@@ -85,7 +101,7 @@ export const ui = {
    * ALTE Markengrün, hartcodiert — und hätten den Grünstich in diese Palette
    * getragen. Gefunden beim Farbwechsel am 23.08.2026, nicht bei einer Prüfung.
    */
-  onImage: 'rgba(13,19,34,0.72)',
+  onImage: 'rgba(21,12,24,0.72)',
   /**
    * Milchige Auflage für Text auf einem FREMDEN Bild. Berkat tut das an genau
    * ZWEI Stellen, und diese Liste ist der Bestand:
@@ -128,12 +144,12 @@ export const ui = {
    * schon und hielt sie in einem Sonderfall eingesperrt. Beim Umbau sind
    * `textMuted` und `live` entsprechend nachgezogen worden.
    */
-  overlayMuted: '#565C6B',
+  overlayMuted: '#5F5464',
   overlayUrgent: '#C03A26',
 
-  text: '#161A26',
+  text: '#1F1522',
   /** Nachgezogen: hatte auf dem alten Grund 4,05:1, jetzt 5,56:1. */
-  textMuted: '#5C6270',
+  textMuted: '#665A6B',
 
   /**
    * Der Avatar-Rückfall — die Scheibe mit den Initialen, wenn jemand kein Bild
@@ -150,13 +166,13 @@ export const ui = {
    * Deshalb trägt der Avatar auf dem Verkäufer-Profil zusätzlich einen hellen
    * Ring. Ohne den verschwände er im leeren Banner.
    */
-  avatar: '#3A4463',
+  avatar: '#4A3352',
 
-  line: 'rgba(22,26,38,0.10)',
-  lineStrong: 'rgba(22,26,38,0.18)',
+  line: 'rgba(31,21,34,0.10)',
+  lineStrong: 'rgba(31,21,34,0.18)',
 
   /** Tinten-Indigo — der Anker. Begründung im Kopf der Datei. */
-  brand: '#1B2340',
+  brand: '#2E1B33',
   /**
    * ⚠️ HEISST WEITERHIN `gold`, IST ABER BERNSTEIN (#FFB020, seit 23.08.2026).
    * Kein Umbenennen: Der Name steht an über hundert Stellen, und `gold` ist im
@@ -204,12 +220,12 @@ export const stage = {
    * bzw. Tinten-Tönen. Und dieser hier ist der Anker in dunkel: So trägt der
    * Live-Raum dieselbe Marke wie der Rest, statt ein zweites Farbsystem zu sein.
    */
-  ink: '#0D1322',
+  ink: '#150C18',
   /** Leisten, Karten, Sheets auf der Bühne */
-  surface: '#1A2038',
+  surface: '#241830',
   /** Platzhalter und gefüllte Kacheln */
-  surfaceHigh: '#232B49',
-  brand: '#1B2340',
+  surfaceHigh: '#31213E',
+  brand: '#2E1B33',
 
 
   /** Bernstein ist der Kauf. Nur Gebot, Preis, Zuschlag-Weg. */
@@ -228,12 +244,12 @@ export const stage = {
 
   /** Kühles Off-Weiss statt des warmen — sonst hat die Schrift einen Gelbstich
       auf dem Indigo. */
-  text: '#EEF0F6',
-  textMuted: '#98A0B5',
-  textOnGlass: '#EEF0F6',
+  text: '#F3EEF5',
+  textMuted: '#A99BAE',
+  textOnGlass: '#F3EEF5',
 
-  line: 'rgba(238,240,246,0.12)',
-  lineStrong: 'rgba(238,240,246,0.22)',
+  line: 'rgba(243,238,245,0.12)',
+  lineStrong: 'rgba(243,238,245,0.22)',
   /** Halbtransparente Unterlage für Text auf Video */
   scrim: 'rgba(0,0,0,0.40)',
 } as const;

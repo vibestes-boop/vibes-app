@@ -10122,7 +10122,7 @@ sauber, 9,63 MB.
 | **A19** | **Ein DUNKLES und ein SEHR HELLES Kopfbild setzen.** Lesbar bleiben müssen: Uhrzeit, die drei Symbole — **und der weisse Name im Banner**. Letzterer hängt allein am dunklen Verlauf; der gefährliche Fall ist ein Foto, das UNTEN hell ist | allein |
 | **A20** | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein | allein, Termin genügt |
 | **A21** | ⚠️ **Chat-Tastatur** (23.08.): Einen Chat öffnen, aufs Eingabefeld tippen. Feld und Tastatur müssen **zusammen** hochkommen, und die **letzte Nachricht muss sichtbar bleiben** statt hinter dem Feld zu verschwinden. Dann wieder schließen: Der Rand unten muss wie vorher sitzen, kein Sprung. ⚠️ Im Simulator NICHT prüfbar — bei verbundener Mac-Tastatur erscheint gar keine Software-Tastatur | allein, echtes Gerät |
-| **A22** | ⚠️ **Der LIVE-RAUM in den neuen Farben** (23.08.): Beim Farbwechsel nicht angesehen, weil niemand sendete. Er hat die meisten Farbflächen (Gebots-Knopf, Countdown, Geschenke, Chat) und ist der einzige Bildschirm, auf dem der Anker als FLÄCHE trägt. Bernstein muss auf dem Indigo knallen, das Uhr-Rot davon unterscheidbar bleiben | allein, Sendung nötig |
+| **A22** | ⚠️ **Der LIVE-RAUM in den neuen Farben** (23.08.): Beim Farbwechsel nicht angesehen, weil niemand sendete. Er hat die meisten Farbflächen (Gebots-Knopf, Countdown, Geschenke, Chat) und ist der einzige Bildschirm, auf dem der Anker als FLÄCHE trägt. Bernstein muss auf dem Aubergine knallen, das Uhr-Rot davon unterscheidbar bleiben | allein, Sendung nötig |
 
 Dazu unverändert offen: **A5** (das Banner mit `'wide'`-Zuschnitt wählen) — der Bildschirm zeigt
 das Ergebnis jetzt viel größer, also fällt ein schlechter Ausschnitt auch stärker auf.
@@ -10180,7 +10180,7 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -
 
 ---
 
-## 80. Neue Markenfarben: Tinten-Indigo + Bernstein (23.08.2026, nachts)
+## 80. Neue Markenfarben: Aubergine + Bernstein (23.08.2026, nachts)
 
 Zaur: *„aktuelle farb kombination gefällt mir nicht … suche nach neuen farben, zwei die zueinander
 passen, dazu die aktuellsten tipps beachten."*
@@ -10211,13 +10211,41 @@ genau der Fehler:
 ### Die zwei neuen Farben
 
 ```
-Tinten-Indigo  #1B2340   Ton 227°   — der Anker
-Bernstein      #FFB020   Ton  39°   — der Kauf
+Aubergine   #2E1B33   Ton 288°   — der Anker
+Bernstein   #FFB020   Ton  39°   — der Kauf
 ```
 
-**Abstand 172°**, also fast komplementär: das Maximum an Trennung. Bernstein hat jetzt C\* 78 und
-steht bei **ΔE 81** vom Grund — der Grund selbst ist kühl-neutral (Buntheit 0,7), damit die warme
-Farbe überhaupt etwas hat, wovon sie sich abheben kann.
+**Abstand 119°.** Bernstein hat C\* 78 und steht bei ΔE 80 vom Grund; der Grund ist ein sehr
+schwach aubergine-getöntes Neutral, damit die warme Farbe etwas hat, wovon sie sich abhebt.
+
+⚠️ **Es stand zwischendurch Tinten-Indigo #1B2340 im Code** (172°, also fast komplementär, das
+Maximum an Trennung). Zaur fand die Auswahl zu grau, ich habe daraufhin vierzehn Anker und elf
+Akzente gezeigt — zuletzt maschinell über den ganzen Farbkreis erzeugt — und dann auf Nachfrage
+selbst entschieden.
+
+### ⚠️ Warum ein LEISER Anker richtig ist — und warum „zu grau" ein berechtigter Einwand auf eine richtige Entscheidung war
+
+Der Grund steht im **Katalog**, nicht im Farbkreis: Berkat zeigt schwarze Abayas, Parfümflakons und
+Schmuck auf hellem Grund. **Die Ware bringt ihre eigene Farbe mit.** Ein bunter Anker konkurriert
+damit. Auf einem Farbfeld gewinnt jedes laute Paar; auf einer Startseite mit zwölf Produktfotos
+gewinnt es gegen die Ware, und das ist der falsche Sieg.
+
+Genau deshalb sind Whatnot, TikTok, Vinted und Depop in der Fläche schwarz oder weiss und legen die
+Farbe in **einen** Knopf.
+
+Aubergine löst den Einwand, ohne die Regel zu brechen: dunkel wie ein Neutral, aber mit erkennbarem
+Ton. Dazu ist es in dieser Kategorie frei (Whatnot Gelb, TikTok Schwarz/Pink, Vinted Türkis, Etsy
+Orange, Depop Rot) und schmeichelt genau diesen Fotos.
+
+⚠️ **Wann es falsch wird:** Wächst Berkat über Mode und Duft hinaus — Elektronik, Haushalt,
+allgemeiner Wiederverkauf —, ist Aubergine zu speziell. Dann ist **Indigo #1B2340** der richtige
+Träger, weil es zu allem passt und zu nichts gehört. Der Wechsel wäre eine Handvoll Token.
+
+### Was NICHT gebaut wurde, obwohl es hübsch aussah
+
+Die bunten Doppel-Paare (Violett/Limette, Magenta/Zitrus, Kobalt/Bernstein). **Zwei laute Farben
+heissen zwei Kandidaten für „wo drücke ich?"** — und das gemessene Problem war ausgerechnet, dass
+der Kaufknopf nicht heraussticht.
 
 ### ⚠️ Warum der Akzent warm bleiben MUSSTE
 
