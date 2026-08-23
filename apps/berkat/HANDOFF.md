@@ -1985,9 +1985,10 @@ für die Plattform, um die es geht (`--platform ios`, nicht `all`).
 
 Nach jedem Build geleert.
 
-⏳ **Beide Einträge sind im Build `3979faca…` vom 23.08.2026** (Profil `development`). Sobald der
-durch ist und auf dem Gerät liegt, gehört diese Liste geleert — und `A21` bzw. die 8-MB-Probe aus
-Abschnitt 60 sind dann erst prüfbar.
+✅ **Beide Einträge sind im Build `3137a3fd…` vom 23.08.2026, `1.0.0 (3)`, Profil `development`.**
+Der Build ist durch. ⚠️ **Diese Liste wird erst geleert, wenn er auf dem Gerät LIEGT** — vorher ist
+nichts geprüft, und `A21` sowie die 8-MB-Probe aus Abschnitt 60 werden dadurch überhaupt erst
+prüfbar.
 
 - **`react-native-keyboard-controller`** (23.08.2026) — die Tastatur auf dem UI-Thread.
   ⚠️ **Kein Komfort, sondern der einzige Weg:** `KeyboardAvoidingView` animiert nur über
@@ -10322,13 +10323,50 @@ Offset-Rechnung von oben gilt für **beide** — die Bibliothek übernimmt `beha
 gab — läuft mit dem neuen Bündel weiter; Startseite und Chat gerendert. Damit ist gezeigt, dass der
 Riegel hält und weder TestFlight noch der Dev-Build vor dem Build brechen.
 
-### Der Build
+### ⚠️ Der erste Build scheiterte an Sentry — und die Falle stand schon in der Übergabe
+
+`3979faca…` brach nach **viereinhalb Minuten** in der Xcode-Phase ab:
+
+```
+error: An organization ID or slug is required (provide with --org)
+error: sentry-cli - To disable source maps auto upload, set SENTRY_DISABLE_AUTO_UPLOAD=true
+```
+
+**Nichts davon hat mit der Tastatur zu tun** — Babel, Reanimated und die Worklets waren längst
+durch. Abschnitt 0 nennt den Schalter seit dem 21.08. („Ohne Quellkarten:
+`SENTRY_DISABLE_AUTO_UPLOAD=true`, solange es keinen Sentry-Zugang gibt"). Er stand nur nicht in
+allen Profilen:
+
+| Profil | vorher |
+|---|---|
+| `production` | ✅ hatte ihn — deshalb lief der TestFlight-Build am 21.08. |
+| `preview` | ✅ |
+| `development` | ❌ **fehlte** |
+| `development-simulator` | ❌ **fehlte** |
+
+Der Grund ist banal und deshalb lehrreich: **Der letzte Dev-Build war neun Tage alt, also von VOR
+Sentry.** Das Profil hat den Schalter nie bekommen, weil seither niemand einen Dev-Build gemacht
+hat.
+
+> **Eine Einstellung, die nur in den benutzten Profilen steht, ist keine Einstellung, sondern ein
+> Zufall.** Wer eine native Abhängigkeit einführt, trägt ihre Build-Bedingungen in **alle** Profile
+> ein — sonst schlägt sie beim ersten Profil zu, das lange nicht dran war. Behoben in beiden
+> `development`-Profilen.
+
+⚠️ **Und die CLI-Meldung hilft dabei nicht.** Sie sagt „Run fastlane step failed … Xcode build
+process". Der echte Text lag im Log, und der Weg dorthin steht in Abschnitt 3 („EAS-Build-Logs
+holen, statt aus der Fehlermeldung zu raten"). ⚠️ Kleine Korrektur an diesem Rezept: `logFiles[0]`
+ist bei einem iOS-Build das **Xcode**-Log und reines Plaintext, kein NDJSON — der dort angegebene
+NDJSON-Parser liefert nichts. `grep -nE "error:"` darauf reicht.
+
+### ✅ Der Build
 
 | | |
 |---|---|
-| Build | `3979faca-e3cd-43e3-9e6c-c5ac03c4e56a`, Profil `development` (Ad-hoc, registrierte Geräte) |
+| Build | `3137a3fd-4e00-4c5b-aba8-0b8cf933b6ef` — **FINISHED**, 23.08.2026 20:32 |
+| Fassung | `1.0.0 (3)`, Profil `development` (Ad-hoc, registrierte Geräte) |
 | Nimmt mit | **`expo-image-manipulator`** — stand seit dem 21.08. in der Warteschlange (8-MB-Bilder-Fix, Abschnitt 60). Ein Build, zwei Sachen |
-| ⚠️ `buildNumber` | **EAS hat sie selbst von 1 auf 2 hochgezählt** und `app.json` geändert. Die Übergabe sagte bisher „beim zweiten von Hand hochzählen" — das erledigt EAS. Die OTA-Laufzeit bleibt **1.0.0** (sie folgt `version`, nicht `buildNumber`), veröffentlichte Updates gelten also weiter |
+| ⚠️ `buildNumber` | **EAS zählt sie selbst hoch** und ändert `app.json` dabei: 1 → 2 (gescheitert) → **3**. Die Übergabe sagte bisher „beim zweiten von Hand hochzählen" — das ist erledigt, aber ⚠️ **auch ein Fehlversuch verbraucht eine Nummer**. Die OTA-Laufzeit bleibt **1.0.0** (sie folgt `version`, nicht `buildNumber`), veröffentlichte Updates gelten also weiter |
 
 ⚠️ **Der Bündel-Prüfwert ändert sich mit:** 9,63 MB → **10,8 MB**, weil Reanimated und
 keyboard-controller jetzt im Bündel liegen. Wer künftig „Berkat ≈ 9,6 MB, Serlo ≈ 35 MB" als
