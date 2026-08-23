@@ -35,7 +35,18 @@ was gilt.
 > **Neu am 23./24.08.2026 (die grosse Runde)** — Verkäufer-Profil umsortiert (76), `comment_reply`
 > freigeschaltet (77), Push-App-Filter an vier Direktwegen (78), Chat-Tastatur auf den UI-Thread
 > samt EAS-Build `1.0.0 (3)` (79), **neue Markenfarben Aubergine + Bernstein mit Neutralen bei
-> Buntheit 0** (80) und **Stories** (81). ⚠️ **Der Anschlusspunkt ist jetzt Abschnitt 82.**
+> Buntheit 0** (80), **Stories** (81) und **Highlights** (83). ⚠️ **Der Anschlusspunkt ist jetzt
+> Abschnitt 82.**
+>
+> ✅ **Die Highlights stehen** (83) — ohne Migration, weil die `app`-Spalte am 23.08. vorweggenommen
+> statt nachgereicht wurde. Die R2-Falle ist zu und **gemessen**: Die gespeicherte Adresse zeigt auf
+> `highlights/…`, einen Pfad, den der Cleanup nicht anfassen darf. Story- und Highlight-Betrachter
+> sind jetzt **dieselbe Datei**; dabei fiel ein doppeltes `goBack()` heraus, das nie jemand gesehen
+> hätte.
+>
+> ⚠️ **Stories und Highlights sind NICHT ausgerollt** — beides läuft bisher nur gegen Metro. Und
+> im Bestand liegt **genau eine** Story, die eigene. Für den Ring gibt es jetzt
+> `scripts/seed-berkat-stories.mjs`; **den Schlüssel dafür hat nur Zaur** (Abschnitt 83).
 >
 > ⚠️ **Fünf geteilte Tabellen brauchten an einem Tag einen App-Stempel** — `notifications`,
 > `messages`, `live_sessions`, `scheduled_lives`, `stories`. Das ist kein Zufall mehr, sondern ein
@@ -201,7 +212,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–82; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **82 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–83; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **82 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -6689,7 +6700,8 @@ zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.
 ## 56. Die Prüfliste — alles Ungeprüfte an einer Stelle (21.08.2026)
 
 Im Dokument stehen über **vierzig** Stellen mit „ungeprüft“ oder „nicht geprüft“, verteilt über
-sechsundsiebzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20, B9–B11, C6).
+dreiundachtzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20, B9–B11, C6; vier am
+24.08.: **A21–A24**, Highlights und der Story-Ring).
 
 Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
 die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
@@ -6730,6 +6742,10 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A18 | ~~**Urlaub, die Oberfläche**~~ ✅ 23.08.: „Eingetragen“, grüne Karte „wieder da am 30. August“, Kacheln, „Ich bin zurück“. ⚠️ Die **Wirkung** ist damit NICHT belegt — siehe B9 | 75 |
 | A19 | ⚠️ **Ein DUNKLES und ein SEHR HELLES Kopfbild setzen** und den Kopf ansehen. Drei Dinge müssen beide Male lesbar bleiben: Uhrzeit, die drei Symbole, **und der weisse Name im Banner**. Der Name ist der neue Fall — er hängt allein am dunklen Verlauf. Am hellen Blumenfoto sah er gut aus; ein Foto, das UNTEN hell ist (Schnee, weisse Wand, Sandstrand), ist der Fall, der ihn kippen könnte | 76 |
 | A20 | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein. Er ist durch den Umbau nach OBEN gerückt, sollte also unkritisch sein — einmal ansehen genügt | 76 |
+| A21 | **Highlights, der ganze Weg** (24.08.): auf dem eigenen Profil „+" → Name → einmal „Foto hinzufügen", einmal ein Bild aus den eigenen Stories → Scheibe steht über den Reitern → antippen → Betrachter → Papierkorb löscht das **ganze** Highlight. ⚠️ Am 24.08. am **Entwickler-Build** durchgespielt und in Ordnung; offen ist die Gegenprobe auf **TestFlight** (dort ist `__DEV__` aus) | 83 |
+| A22 | **Die Grenzen des Blattes**: 12 Bilder wählen — der Knopf muss auf „Höchstens 12 Bilder" umschlagen. Und ein Foto über 8 MB: die Meldung muss die **tatsächliche Größe** nennen, nicht „hat nicht geklappt" | 83 |
+| A23 | **Story-Ring mit FREMDEN Stories** — braucht `scripts/seed-berkat-stories.mjs` (Abschnitt 83). Drei Scheiben, die ungesehenen mit Marken-Ring; eine öffnen, durchblättern, schliessen; zurück im Ring muss der Ring dieser Scheibe **blass** sein. ⚠️ Der Einzelfall (eine eigene Story) ist am 24.08. belegt — der Ring selbst nicht | 81, 83 |
+| A24 | **Mehrere Bilder in EINEM Highlight**: drei auswählen, anlegen, öffnen — drei Balken, Tipp rechts blättert weiter, Tipp links zurück, am Ende schliesst es. Angelegt wurden bisher nur Highlights mit **einem** Bild | 83 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -10008,7 +10024,7 @@ Die eigene Scheibe zeigte **„?"** statt des Profilbilds. Sie las ihre Daten au
 und wer noch keine Story hat, steht dort gar nicht drin. Das sieht aus wie ein Fehler, nicht wie
 eine Einladung. Das Profil kommt jetzt von aussen, und die Begründung steht am Prop.
 
-### ⏳ Was noch fehlt: die Highlights
+### ~~⏳ Was noch fehlt: die Highlights~~ — ✅ gebaut am 24.08.2026 (Abschnitt 83)
 
 Die zweite Hälfte, und der Teil, der **dauerhaft** ist — ein leeres Verkäufer-Profil füllt sich
 damit auch ohne tägliches Posten.
@@ -10020,6 +10036,12 @@ die Edge Function **`highlight-copy-media`**, die beim Anlegen per S3-`CopyObjec
 `highlights/{userId}/` kopiert; dieser Pfad steht nicht in den `ALLOWED_ROOTS` des Cleanups. Wer
 Highlights ohne sie baut, baut den Fehler nach.
 
+✅ **Sie ist zu, und zwar gemessen statt behauptet** — die gespeicherte Adresse zeigt auf
+`highlights/…`. Der Bau steht in **Abschnitt 83**, samt zwei Dingen, die beim Bauen dazukamen: dass
+`story_id` bewusst leer bleibt (`ON DELETE CASCADE` hätte das Highlight mit der Story gerissen) und
+dass auch **frisch hochgeladene** Fotos durch die Kopie müssen, weil `pickAndUpload` sie unter
+`thumbnails/` ablegt.
+
 ### Geprüft und ungeprüft
 
 **Geprüft:** Migration eingespielt, beide Selbstproben bestanden · `tsc` und `expo export` sauber
@@ -10028,6 +10050,12 @@ Highlights ohne sie baut, baut den Fehler nach.
 ⚠️ **Ungeprüft:** Es existiert **keine einzige Story** im Datenstand. Betrachter, Fortschrittsbalken,
 Weiterblättern, Sicht-Vermerk und der Ring in seinem eigentlichen Zustand sind damit **nie
 gelaufen** — gesehen ist nur der Leerfall. Als **A23** und **B13** in der Prüfliste.
+
+⚠️ **Nachtrag 24.08.2026:** Der Satz oben stimmt seit dem 23.08. um 22:01 Uhr nicht mehr —
+`berkattest` hat **genau eine** Story. Damit sind **Betrachter, Fortschrittsbalken und das
+Schliessen am Ende belegt** (Abschnitt 83). Was weiterhin fehlt, ist der Ring mit **fremden**
+Stories: Die eigene Scheibe zeigt weder den Marken-Ring noch mehrere Scheiben noch das
+Weiterblättern. Dafür gibt es jetzt `scripts/seed-berkat-stories.mjs`.
 
 ⚠️ **Nicht ausgerollt.**
 
@@ -10049,12 +10077,22 @@ gelaufen** — gesehen ist nur der Leerfall. Als **A23** und **B13** in der Prü
 
 ### ⚠️ Das Erste, was zu tun ist
 
-**Die Highlights fertigbauen** — Abschnitt 81, letzter Block. Der Bauplan steht dort samt der
-`highlight-copy-media`-Falle. Danach beides zusammen ausrollen.
+~~**Die Highlights fertigbauen**~~ — ✅ **gebaut am 24.08.2026, Abschnitt 83.** Keine Migration
+nötig; die `app`-Spalte lag seit `20260823210000` bereit. Die `highlight-copy-media`-Falle ist zu
+und **am echten Datenstand gemessen** (die Adresse zeigt auf `highlights/…`, nicht `thumbnails/`).
 
-⚠️ **Und davor eine Testfalle anlegen:** Ohne eine einzige Story im Bestand ist der halbe Bau
-ungeprüft. Zwei Stories von zwei Konten reichen, um Ring, Betrachter und Gesehen-Zustand zu
-belegen.
+**Jetzt sind es zwei Schritte, in dieser Reihenfolge:**
+
+1. **Die Testware einspielen** — `SERVICE_ROLE_KEY=… node scripts/seed-berkat-stories.mjs`
+   (Abschnitt 83). ⚠️ Der Schlüssel liegt nirgends im Repo, das muss Zaur laufen lassen. Ohne ihn
+   bleibt der Ring in seinem eigentlichen Zustand ungeprüft: Im Bestand liegt **genau eine** Story,
+   und die ist die eigene — sie zeigt weder den Marken-Ring noch mehrere Scheiben noch das
+   Weiterblättern.
+2. **Danach Stories und Highlights zusammen ausrollen.** Beides ist reines JavaScript, also ein
+   OTA und kein Build. ⚠️ Mit dem Riegel aus Abschnitt 3:
+   ```bash
+   cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -q "@zaurhat/berkat" && npx eas update --branch production --message "Stories und Highlights" --non-interactive
+   ```
 
 ### ⚠️ Was diesen Tag über die Zusammenarbeit gelehrt hat
 
@@ -10096,6 +10134,150 @@ Alles aus Abschnitt 75 gilt weiter. Dazu neu:
 
 Und der Satz, der über allem steht, ist unverändert: **Keine dieser Änderungen hat einen Verkäufer
 gebracht.** Auch die Stories nicht — sie sollen es nur wahrscheinlicher machen.
+
+---
+
+## 83. Highlights — der Teil, der stehen bleibt (24.08.2026)
+
+Die zweite Hälfte von Abschnitt 81, gebaut. **Keine Migration** — die `app`-Spalte auf
+`story_highlights` kam schon mit `20260823210000` mit, weil sie damals vorweggenommen wurde statt
+nachgereicht. Das ist der ganze Ertrag jener Entscheidung, und er ist heute eingetreten.
+
+Der Zweck ist der aus 81, nur dauerhaft: Eine Story ist nach 24 Stunden weg. Ein Profil, das nur
+davon lebt, ist an jedem Tag ohne Posten wieder leer — und die Zielgruppe ist nicht der Käufer,
+sondern **der Verkäufer, der sich die App ansieht, bevor er zusagt.** Der schaut auf ein Profil,
+nicht auf einen Ring.
+
+### Was gebaut ist
+
+| | |
+|---|---|
+| `lib/useHighlights.ts` | Lesen je Verkäufer, ein einzelnes lesen, eigenes Story-Archiv, Anlegen (mit Medien-Kopie), Löschen |
+| `components/HighlightRail.tsx` | Die runden Scheiben. ⚠️ Rendert **nichts** auf fremden Profilen ohne Highlights |
+| `components/HighlightSheet.tsx` | Anlegen: Name, Foto hochladen, aus eigenen Stories wählen |
+| `app/highlight/[id].tsx` | Vollbild-Betrachter |
+| `components/StoryStage.tsx` | **Neu, und der eigentliche Umbau** — siehe unten |
+| `app/seller/[id].tsx` | Die Reihe steht direkt über den Reitern |
+
+### ⚠️ Die R2-Falle — gemessen, nicht angenommen
+
+Abschnitt 81 nannte sie als das Hindernis: Ein Highlight, das nur die `media_url` der Story
+speichert, wird tot, sobald die Story abläuft — Zeile gelöscht, Trigger reiht die Datei ein,
+Cleanup löscht sie, leeres Cover.
+
+Der Weg drum herum ist die Edge Function `highlight-copy-media` (**deployed, ACTIVE, Fassung 6 vom
+22.06.2026** — nachgesehen, nicht vermutet). Sie kopiert per S3-`CopyObject` nach
+`highlights/{userId}/`, und dieser Pfad steht in `r2-delete` nicht in `ALLOWED_ROOTS`
+(`posts`, `thumbnails`, `avatars`).
+
+**Belegt am echten Datenstand**, nachdem ein Highlight aus einer Story angelegt wurde:
+
+```
+media_url  …r2.dev/highlights/7760a71b-…/b062be0c-….heic
+                   ^^^^^^^^^^ nicht thumbnails/
+```
+
+⚠️ **Und das gilt auch für frisch hochgeladene Fotos**, obwohl die zu keiner Story gehören:
+`pickAndUpload('cover', …)` legt sie unter `thumbnails/` ab, und das ist einer der drei löschbaren
+Pfade. Deshalb geht **jedes** Medium durch die Kopie, nicht nur das aus einer Story. Wer das je
+abkürzt („das Foto ist doch neu"), baut die Falle zur Hälfte wieder ein.
+
+### Drei Entscheidungen, die nicht offensichtlich sind
+
+**1 · Zuerst „Foto hinzufügen", darunter erst die eigenen Stories.** Instagram macht es
+andersherum, und für Instagram stimmt das — dort hat jeder ein Archiv. Berkats Fall ist der
+umgekehrte: Der Verkäufer, für den die Funktion gebaut ist, hat heute **null** Stories und soll
+sein Profil trotzdem jetzt füllen. Wer ihm zuerst ein leeres Archiv zeigt, hat ihm gesagt, er sei
+zu früh dran. Die Story-Reihe fehlt deshalb ganz, solange es keine Stories gibt.
+
+**2 · `story_id` bleibt leer.** Naheliegend wäre, die Story zu verknüpfen, aus der das Bild kommt.
+Genau das wäre falsch: `story_highlights_story_id_fkey` ist **ON DELETE CASCADE**. Läuft die Story
+ab und wird ihre Zeile gelöscht, risse sie das Highlight mit — die Kopie auf R2 hätte die Datei
+gerettet, und die Zeile wäre trotzdem weg. Ein Berkat-Highlight ist eine eigene Zusammenstellung,
+keine Verknüpfung.
+
+**3 · Kein Bearbeiten, nur Löschen und neu.** Der Papierkorb im Betrachter löscht das **ganze**
+Highlight, nicht das sichtbare Bild — anders als bei der Story, und das ist der einzige Unterschied
+zwischen den zwei Bildschirmen. Bei drei bis zwölf Bildern ist Neuanlegen schneller als jede
+Bearbeitungsoberfläche, die dafür nötig wäre.
+
+### Der Story-Betrachter ist jetzt dieselbe Datei
+
+Story und Highlight sehen identisch aus: formatfüllendes Bild, ein Balken je Foto, zwei
+Tippflächen, Kopfzeile mit Verkäufer. Nur die Quelle ist verschieden. Statt 120 Zeilen zu
+verdoppeln, liegt die Fläche jetzt in `components/StoryStage.tsx`; beide Routen sind dünn.
+
+Dabei ist ein Fehler mit herausgefallen, den der alte Betrachter hatte: Das Weiterblättern hängt am
+Fortschritt, und der bleibt beim letzten Bild auf 1 stehen. Wird die Wirkung noch einmal
+ausgewertet, bevor der Bildschirm weg ist, liefe `goBack()` **zweimal** — die App spränge zwei
+Stufen zurück statt einer. Ein Riegel (`zu.current`) schliesst das jetzt aus. ⚠️ Gesehen wurde der
+Fehler nie; er wäre unter Last aufgetreten und dann nicht mehr erklärbar gewesen.
+
+### Die Testware für den Ring — `scripts/seed-berkat-stories.mjs`
+
+Abschnitt 81 sagte, es gebe **keine einzige Story**. Das stimmt seit dem 23.08. um 22:01 Uhr nicht
+mehr: `berkattest` hat **genau eine**. Damit ist der Betrachter prüfbar (siehe unten) — der Ring in
+seinem eigentlichen Zustand aber nicht, denn eine eigene Story zeigt weder den Marken-Ring
+(ungesehen) noch mehrere Scheiben noch das Weiterblättern.
+
+Das Skript legt deshalb **sechs** Stories bei **drei fremden** Verkäufern an, ungleich verteilt
+(3 / 2 / 1). Drei Bilder prüfen Balken und Weiterblättern, **ein** Bild prüft den Sonderfall, bei
+dem „weiter" sofort schliessen muss — und der ist der wahrscheinlichere Fehler.
+
+```bash
+SERVICE_ROLE_KEY=… node scripts/seed-berkat-stories.mjs
+```
+
+⚠️ **Der Griff zum Aufräumen ist ein anderer als im Regal.** `stories` hat kein Textfeld, es gibt
+also kein `[testware]`. Stattdessen die **Herkunft des Bildes**: Eine echte Story liegt immer auf
+R2, eine geseedete immer auf `images.unsplash.com`. Zusammen mit `app = 'berkat'` ist das eine
+Bedingung, die eine echte Zeile nicht erfüllen kann — und beides muss stimmen, sonst träfe das
+Aufräumen Serlos Bestand.
+
+⚠️ Die Stories laufen nach 24 Stunden aus dem Ring. Vor einem Prüf-Durchgang neu laufen lassen.
+
+### Geprüft — am Simulator, am echten Datenstand (24.08.2026, 00:1x–00:2x)
+
+- `tsc` sauber · `expo export` **3702 Module, 10,8 MB**, unverändert
+- **Eigenes Profil:** „+"-Scheibe steht, direkt über den Reitern
+- **Fremdes Profil ohne Highlights** (`amir32`): Die Reihe rendert **nichts** — Anbieterangaben
+  gehen unmittelbar in die Reiter über
+- **Blatt:** Name, Auswahl, „Titelbild"-Etikett am ersten Bild, Häkchen am Archiv-Bild, „Anlegen"
+  grau bei leerer Auswahl · beim Wiederöffnen zurückgesetzt
+- **Anlegen aus einer Story** → Scheibe „Parfums" steht · **Medium auf `highlights/…`** (oben)
+- **Anlegen aus einem frischen Foto** → Mediathek ohne Zuschnitt-Rahmen, Upload, Scheibe
+  „Highlight" (der Rückfallname bei leerem Feld)
+- **Löschen** aus dem Betrachter → Scheibe verschwindet **ohne Neuladen** (Invalidierung greift)
+- **Betrachter:** Kopfzeile mit Name **und** Highlight-Namen darunter, Balken läuft, schliesst am
+  Ende — **einmal**, nicht zweimal
+- **Story-Betrachter** auf der neuen Bühne: unverändert in Ordnung (damit ist **A23** zur Hälfte
+  erledigt — der Einzelfall läuft)
+
+### ⚠️ Was ungeprüft bleibt
+
+- **Der Ring mit fremden Stories**, der Gesehen-Zustand und das Weiterblättern über mehrere Bilder.
+  Braucht die Testware oben. **A23**, **B13**
+- **Mehrere Bilder in einem Highlight** — angelegt wurden nur einzelne. Damit sind mehrere Balken
+  und das Blättern im Highlight nie gelaufen. Neu als **A24**
+- **Die 12er-Grenze** und die Meldung „Höchstens 12 Bilder"
+- **Ein Fehlschlag der Kopie.** Der Rückfall (Original-Adresse behalten, nicht abbrechen) ist
+  gebaut, aber nie ausgelöst worden — die Function war jedes Mal erreichbar
+- **Android** — nichts davon ist dort gelaufen
+
+### ⚠️ Nebenbefund: R2 räumt Highlights nie auf
+
+Dieselbe Eigenschaft, die die Falle schliesst, öffnet eine kleinere: `r2-delete` **lehnt**
+`highlights/` ab. Wer ein Highlight löscht, löscht die Zeile — die Datei bleibt für immer liegen.
+Beim Prüfen sind so zwei Dateien entstanden, die niemand mehr erreicht.
+
+⚠️ Und das ist nicht auf Highlights beschränkt: `supabase/functions/delete-account/index.ts` nennt
+R2 **an keiner Stelle**. Eine Kontolöschung (Abschnitt 59) entfernt heute **kein einziges** Medium
+aus dem Speicher — auch keine Artikelbilder. Als Kostenfrage klein, als DSGVO-Frage (Art. 17) nicht.
+Gehört auf die Liste, nicht in diesen Abschnitt.
+
+### ⚠️ Nicht ausgerollt
+
+Kein OTA. Alles hier läuft bisher nur gegen Metro im Simulator.
 
 ---
 
