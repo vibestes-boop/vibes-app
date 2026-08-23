@@ -32,8 +32,10 @@ was gilt.
 > 18.08. belegt hatte. Der Rumpf war jedes Mal aktuell, nur der Kopf nicht. **Wer unten etwas
 > abhakt, hakt es oben mit ab** — sonst liest der nächste Chat den falschen Zustand zuerst.
 >
-> **Neu am 23.08.2026** — vier Arbeitspakete, **sieben Migrationen, alle eingespielt und von
-> aussen gegengeprüft.** Die siebte ist ein Fix nach vorn: `ON CONFLICT DO NOTHING` **ohne Ziel**
+> **Neu am 23.08.2026** — vier Arbeitspakete, **und alles ist draussen**: sieben Migrationen
+> (Tracking 300), `r2-sign` auf 42, `bunny-ingest` auf 13, Berkat-OTA `fc13bade…`. Der JWT-Fix ist
+> durch einen echten Upload belegt, nicht nur durch ausbleibende Fehler. ⏳ Offen bleibt allein der
+> **Serlo**-OTA für den `recipient_id`-Fix (eigene Freigabe, Zwei-Runtime-Regel). Die siebte ist ein Fix nach vorn: `ON CONFLICT DO NOTHING` **ohne Ziel**
 > hatte drei neue Versandsätze lautlos verschluckt, weil eine Eindeutigkeit aus dem August
 > dagegenstand. Zwei offene Entscheidungen sind gefallen: **der Faden entscheidet** über die App einer
 > Direktnachricht, und die **Kassen-Freigabe für die Testware** wird eingeschaltet (im
@@ -9418,32 +9420,47 @@ Impressum nennt Kleinunternehmer nach § 19 UStG — Grenze 22.000 €. Fünf Ve
 können sie reissen, und dann greift die Umsatzsteuerpflicht rückwirkend. Dasselbe gilt für
 Gewährleistung und Widerruf: Als Verkäufer haftet Zaur, nicht der Händler.
 
-### ⚠️ Die Datenbank ist jetzt VOR dem Client — der OTA fehlt
+### ✅ Alles ist draussen — Datenbank, Functions, Client
 
-Das ist der eine offene Punkt aus dieser Runde, und er ist bewusst offen: **`eas update` ist eine
-Freigabe-Entscheidung, kein Nebenprodukt** (und aus dem falschen Ordner trifft er Serlos
-Produktion, Abschnitt 3).
+Am 23.08.2026 nacheinander ausgerollt, in dieser Reihenfolge und mit Prüfung dazwischen. Die
+Reihenfolge war Absicht: Die Functions gegen den **unveränderten** Client prüfen, damit bei einem
+kaputten Upload nicht zwei Verdächtige im Raum stehen.
 
-Was das heisst, solange kein OTA raus ist:
-
-| | |
+| | Stand |
 |---|---|
-| **Nichts ist kaputt.** Die ausgelieferte Fassung wählt die alten Spalten und kennt die neuen Funktionen nicht | ✅ |
-| Versandstufen, Urlaub, privater Beleg-Eimer, die drei neuen Fehlersätze | ⏳ unsichtbar bis zum OTA |
-| ⚠️ **Die ZAG-Schranke wirkt ab sofort** — sie steht serverseitig | Ein Käufer bei einem Verkäufer ohne Freigabe bekommt heute den **generischen** Satz („Versuch es noch einmal"), weil der bessere Text erst mit dem OTA kommt |
-| ⚠️ **Belegfotos gehen bis dahin weiter in den ÖFFENTLICHEN Eimer** — die ausgelieferte Fassung ruft `pickAndUpload`. Die verschärfte URL-Prüfung lässt das zu (Altform, Ordner des Melders) | genau dafür ist der Altform-Zweig gebaut |
+| **7 Migrationen** | ✅ eingespielt, Tracking 300, keine Lücke |
+| **`r2-sign`** | ✅ Version **42** (vorher 41 vom 13.06.) |
+| **`bunny-ingest`** | ✅ Version **13** (vorher 12 vom 17.06.) |
+| **Berkat-OTA** | ✅ Gruppe `fc13bade-33ad-4949-9f9b-5601bb34fb86`, Runtime 1.0.0 |
+| **Serlo-OTA** (`recipient_id`-Fix) | ⏳ **offen** — eigene Freigabe, Zwei-Runtime-Regel (Abschnitt 8) |
 
-Befehl, wenn es soweit ist — ⚠️ **zuerst der `cd`, dann die Projekt-Probe**:
+⚠️ **Der Rückweg für die Functions war vorher belegt, nicht angenommen:** Beide Deploy-Daten
+deckten sich zeichengenau mit ihrem letzten Commit (r2-sign 13.06., bunny-ingest 17.06.) — die
+ausgelieferte Fassung WAR HEAD. Damit ist der Rückweg
+`git checkout <commit> -- supabase/functions/r2-sign/ && supabase functions deploy r2-sign`
+in sich geschlossen; die alte Fassung importiert `_shared/auth.ts` nicht.
 
-```bash
-cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info
-```
+### ⚠️ Was die Proben von aussen NICHT beweisen konnten
 
-Steht dort `@zaurhat/berkat`, ist der Ordner richtig. Steht dort `@zaurhat/vibes`, würde der
-nächste Befehl **Serlos Produktion** treffen.
+Drei Negativ-Proben gegen `r2-sign` liefen alle ins Leere — und **zwei davon hätte die alte
+Fassung genauso bestanden:**
 
-⚠️ Und der **Serlo**-OTA für den `recipient_id`-Fix in `lib/useFollowRequest.ts` ist eine eigene
-Entscheidung mit der Zwei-Runtime-Regel aus Abschnitt 8 (Nutzer auf 1.30.0 **und** 1.31.0).
+| Probe | Ergebnis | Wer hat abgelehnt |
+|---|---|---|
+| ohne Token | `401 Not authenticated` | die Function |
+| gebasteltes Token mit fremder `sub` | `401 UNAUTHORIZED_LEGACY_JWT` | ⚠️ **das Gateway**, nicht die Prüfung |
+| anon-Schlüssel als Bearer | `401 Not authenticated` | die Function (kein `sub`) |
+
+Das ist keine Schwäche der Proben, sondern der Befund selbst: **Das Gateway war bisher das
+Einzige, was das Loch zuhielt** — von aussen lassen sich alt und neu deshalb gar nicht
+unterscheiden.
+
+> **Was den Fix belegt hat, war eine POSITIV-Probe.** Zaur hat sein Profilbild geändert, und der
+> Upload lief durch. Wäre die neue Prüfung kaputt (falsche Umgebungsvariable, Netz), hätte sie
+> **fail-closed** abgelehnt — und die alte Fassung hätte funktioniert. Genau diese Asymmetrie
+> macht den erfolgreichen Upload zum Beweis und das ausbleibende Scheitern zum Nichts.
+>
+> **Die Lehre: Bei einem fail-closed-Fix beweist der Erfolgsfall, nicht der Fehlerfall.**
 
 ### ⚠️ Drei Behauptungen dieses Dokuments waren falsch
 
@@ -9551,9 +9568,10 @@ Alles ungeprüft; nichts davon lief je auf einem Gerät.
 
 ### Danach, nach Nutzen sortiert
 
-0. ⏳ **Den Berkat-OTA veröffentlichen** — die Datenbank ist vor dem Client (siehe oben). Ohne ihn
-   sind Versandstufen, Urlaub und die drei neuen Fehlersätze unsichtbar, und A16–A18 der Prüfliste
-   nicht prüfbar. ⚠️ Danach die App **zweimal** schliessen und öffnen (Abschnitt 3).
+0. ~~**Den Berkat-OTA veröffentlichen**~~ ✅ erledigt, Gruppe `fc13bade…`. ⚠️ **Vor der ersten
+   Prüfung am Gerät die App zweimal schliessen und öffnen** — ein OTA wirkt erst beim
+   übernächsten Start (Abschnitt 3). `A15` sagt, ob er angekommen ist: Unten im Konto-Reiter
+   müssen die acht Zeichen `fc13bade` stehen.
 1. **Die Tester eintragen.** Die Review ist durch, die Gruppe hat 0. Das ist der einzige Punkt auf
    dieser Liste, der einen Verkäufer bringt.
 2. **Die zwölf freigestellten Kategorie-Fotos** — Zaurs Handgriff, grösster sichtbarer Abstand.
