@@ -10299,6 +10299,15 @@ Schwarz statt aubergine-abgeleitet, und die zwölf Kategorie-Tönungen tragen nu
 **Der Anker bleibt eine echte Farbe** — aber nur noch dort, wo er hingehört: Kopfzeilen, gefüllte
 Knöpfe, Symbole, Bühne. Nicht in der Luft zwischen den Karten.
 
+✅ **Ausgerollt**, Gruppe `875348d4-d4d7-4a2f-95a5-bb24792c69e0`, iOS-Update `01a0306d…`,
+Laufzeit 1.0.0.
+
+⚠️ **Die Bühne ist noch getönt** (`stage.ink #150C18`) und damit die einzige Fläche, die der
+Entfärbung entgangen ist. Bewusst offen gelassen, nicht vergessen: Sie liegt hinter Video, wo ein
+Farbstich sich anders auswirkt als hinter Text — und angesehen hat sie niemand (A22). Whatnots
+dunkler Grund ist `#111111`, also Buntheit 0; wenn A22 zeigt, dass der Ton stört, ist es eine
+Zeile.
+
 ### Whatnots vollständige Palette, gemessen (23.08.2026)
 
 Nicht aus einer Quelle übernommen, sondern an ihrer laufenden Seite abgegriffen.
