@@ -25,6 +25,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from './supabase';
+import { invalidateShelfSurfaces } from './useStanding';
 
 export type ShippingTier = 1 | 2 | 3 | 4;
 
@@ -74,13 +75,11 @@ export function useSetShippingTier() {
       });
       if (error) throw new Error(shippingTierError(error.message));
     },
-    onSuccess: () => {
-      // Die Stufe steht an der Karte und auf der Artikelseite — beide Flächen
-      // lesen `['berkat','listing']` bzw. die Regal-Abfragen.
-      void qc.invalidateQueries({ queryKey: ['berkat', 'listing'] });
-      void qc.invalidateQueries({ queryKey: ['berkat', 'standing'] });
-      void qc.invalidateQueries({ queryKey: ['berkat', 'shop'] });
-    },
+    // ⚠️ ÜBER DIE GEMEINSAME FUNKTION, nicht mit einer eigenen Liste. Hier
+    // stand bis zum 23.08.2026 eine nachgebaute Aufzählung — und ihr fehlten
+    // `category-listings` und `shop-count`. Die Ware blieb also auf der
+    // Kategorie-Seite und im Zähler der Startseite stehen.
+    onSuccess: () => invalidateShelfSurfaces(qc),
   });
 }
 

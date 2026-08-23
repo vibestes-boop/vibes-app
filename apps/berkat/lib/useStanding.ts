@@ -18,7 +18,7 @@
 // Rastern ist der Kaufknopf verschwunden — siehe Kopf von `ListingCard.tsx`.
 
 import { useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 
 export function standingErrorText(message: string): string {
@@ -57,6 +57,38 @@ export function standingErrorText(message: string): string {
   return message ? `Der Server sagt: ${message}` : 'Das hat nicht geklappt.';
 }
 
+/**
+ * Alle Flächen zurücksetzen, auf denen Regal-Angebote stehen.
+ *
+ * ⚠️ EINE FUNKTION, NICHT SIEBEN AUFRUFE JE MUTATION. Ein Angebot erscheint an
+ * sieben Orten, und „wer etwas an N Orten anzeigt, muss an allen N
+ * zurücksetzen" (Übergabe 18, 21, 23). Als abgeschriebene Liste in jeder
+ * Mutation läuft sie auseinander — genau das war am 23.08.2026 passiert:
+ * `useSetVacation` und `useSetShippingTier` hatten sie NACHGEBAUT und dabei
+ * `category-listings` und `shop-count` vergessen. Ein Verkäufer schaltete
+ * Urlaub ein, und seine Ware stand weiter auf der Kategorie-Seite und im
+ * Zähler „N Angebote ansehen".
+ *
+ * Wer eine achte Fläche baut, trägt sie HIER ein.
+ */
+export function invalidateShelfSurfaces(queryClient: QueryClient): void {
+  // Das Regal eines Verkäufers (Profil, `/shelf`) …
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'standing'] });
+  // … die Kachel-Zähler im Kategorien-Reiter …
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'categories'] });
+  // … die Liste auf der Kategorie-Seite …
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'category-listings'] });
+  // … der Marktplatz und sein Zähler im Leerzustand der Startseite …
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop'] });
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop-count'] });
+  // … die Artikelsuche, die dieselben Zeilen zeigt …
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'listing-search'] });
+  // … und seit dem 17.08.2026 die Artikelseite selbst. Ohne sie stünde nach
+  // einem Kauf weiter „Kaufen · 24 €" auf genau dem Bildschirm, von dem aus
+  // gekauft wurde.
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'listing'] });
+}
+
 export function useStandingActions(sellerId: string | undefined, myUserId: string | null) {
   const queryClient = useQueryClient();
 
@@ -73,19 +105,7 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
    * nächsten Regal-Ort ist es eine Zeile hier und nicht vier vergessene.
    */
   const invalidate = useCallback(() => {
-    // Das Regal eines Verkäufers (Profil, `/shelf`) …
-    void queryClient.invalidateQueries({ queryKey: ['berkat', 'standing'] });
-    // … die Kachel-Zähler im Kategorien-Reiter …
-    void queryClient.invalidateQueries({ queryKey: ['berkat', 'categories'] });
-    // … die Liste auf der Kategorie-Seite …
-    void queryClient.invalidateQueries({ queryKey: ['berkat', 'category-listings'] });
-    // … der Marktplatz und sein Zähler im Leerzustand der Startseite …
-    void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop'] });
-    void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop-count'] });
-    // … und seit dem 17.08.2026 die Artikelseite selbst. Ohne sie stünde nach
-    // einem Kauf weiter „Kaufen · 24 €" auf genau dem Bildschirm, von dem aus
-    // gekauft wurde.
-    void queryClient.invalidateQueries({ queryKey: ['berkat', 'listing'] });
+    invalidateShelfSurfaces(queryClient);
   }, [queryClient]);
 
   const create = useMutation({

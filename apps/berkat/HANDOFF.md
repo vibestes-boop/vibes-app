@@ -9683,6 +9683,55 @@ die Stufe wie `useSellerOrders` mitlädt (höchste im Paket).
 
 **3 · Die Versandzeit-Kachel** — siehe den Nachtrag oben.
 
+### Zweiter Durchgang: die Stellen, wo noch nie jemand geschaut hat (23.08.2026)
+
+Zaur: *„analysiere nach Fehler an Stellen wo du sonst nicht geschaut hast."* Sieben neue Sweeps.
+
+**Ohne Befund — und das ist wieder der grössere Teil:**
+
+| Sweep | Ergebnis |
+|---|---|
+| **Query-Key-Kollisionen** (77 Präfixe) | ✅ gleiche Schlüssel holen überall dieselbe Quelle |
+| **Hook-Regeln** (Hooks nach frühem `return`) | ✅ der einzige Kandidat war eine Funktionsgrenze |
+| **Routen ohne Eingang** | ✅ jede erreichbar; die fünf Reiter über die Leiste |
+| **Realtime-Kanäle** | ✅ alle über `lib/realtime.ts`; Broadcast nutzt den ROHEN Namen (der Vertrag mit Serlo), nur `postgres_changes` bekommt die Generationsnummer |
+| **Tabellen ohne RLS** | ✅ alle 107 haben sie |
+| **Permissive-ODER-Falle** | ✅ 26 Tabellen mit mehreren SELECT-Policies, aber jede „schwächere" ist `= auth.uid()` — die eigene Zeile zu sehen ist per Definition richtig |
+| **`comments`/`likes`/`reposts` mit `USING (true)`** | ⚠️ strukturelle Lücke, **gemessen inert**: Jede preisgegebene `post_id` darf anon ohnehin sehen (0 versteckt). Wie in Abschnitt 44 heisst das aber auch: Die Probe konnte nichts finden. Serlos Fläche, nicht Berkats |
+
+**Drei Funde:**
+
+**1 · `reviewWhen` rechnete in Millisekunden — die Falle zum DRITTEN Mal.**
+`Math.floor((Date.now() - iso) / 86_400_000)` beantwortet „wie viele 24-Stunden-Blöcke", nicht
+„welcher Tag". Eine Bewertung von **gestern 23:00**, morgens um 08:00 gelesen, sind neun Stunden —
+also `days = 0`, also **„heute"**. Behoben mit derselben Mitternachts-Normalisierung, die
+`showWhen` (Übergabe 18) und `listedWhen` schon haben. Beide standen zwei Dateien daneben.
+
+**2 · Zwei Mutationen hatten die Invalidierungs-Liste NACHGEBAUT.** `useSetVacation` und
+`useSetShippingTier` — beide von mir, beide von heute — zählten die Flächen einzeln auf, und beiden
+fehlten `category-listings` und `shop-count`. Ein Verkäufer schaltete Urlaub ein, und seine Ware
+stand weiter auf der Kategorie-Seite und im Zähler „N Angebote ansehen" der Startseite.
+
+Behoben, indem die Liste aus `useStandingActions` zu `invalidateShelfSurfaces()` herausgezogen wurde
+— die Antwort, die Abschnitt 18 für genau dieses Problem schon gegeben hat („deshalb liegt das jetzt
+in EINER Funktion statt an jeder Aufrufstelle einzeln"). Dabei kam `listing-search` als siebte
+Fläche dazu, die auch die Referenz nicht kannte.
+
+**3 · ⚠️ Und beim Zusammenlegen habe ich prompt etwas kassiert.** `useSetVacation` verwarf
+zusätzlich `seller-kind` — dort hängt der Urlaubs-Zustand selbst, also die Zeile „im Urlaub" im
+Konto und die grüne Karte. Beim Umstellen auf die gemeinsame Funktion fiel er heraus; die Karte
+wäre nach dem Umschalten stehengeblieben.
+
+> Das ist die Lehre aus Abschnitt 53, unverändert gültig: **Beim Zusammenlegen zweier Fassungen
+> jede Abweichung erst als ABSICHT lesen, dann als Versehen.** Ein `grep` sieht nur, dass zwei
+> Listen verschieden sind, nicht warum.
+
+**Und zwei Proben hatten wieder Fehler in sich selbst:** Die Query-Key-Probe zählte
+`invalidateQueries` als Abfrage und meldete 26 Kollisionen (alle falsch); die Routen-Probe suchte
+nur einfache Anführungszeichen und übersah jede Route, die per Backtick gebaut wird. **Eine Probe,
+die fast alles beanstandet, misst sich selbst** — das ist heute zum vierten Mal passiert und
+gehört als Regel neben die Sweeps.
+
 ### Was am Gerät zu prüfen ist — neu in der Prüfliste
 
 Alles ungeprüft; nichts davon lief je auf einem Gerät.

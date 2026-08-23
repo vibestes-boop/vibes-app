@@ -48,9 +48,26 @@ export function useSellerReviews(sellerId: string | undefined, limit = 20) {
   });
 }
 
-/** „vor 3 Tagen", sonst das Datum — dieselbe Sprache wie in den Meldungen. */
+/**
+ * „vor 3 Tagen", sonst das Datum — dieselbe Sprache wie in den Meldungen.
+ *
+ * ⚠️ GERECHNET WIRD IN KALENDERTAGEN, NICHT IN MILLISEKUNDEN.
+ *
+ * Bis zum 23.08.2026 stand hier
+ * `Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)`. Das
+ * beantwortet „wie viele 24-Stunden-Blöcke liegen dazwischen" und nicht
+ * „welcher Tag war das" — und die zwei Fragen fallen jeden Abend auseinander:
+ * Eine Bewertung von **gestern 23:00**, morgens um 08:00 gelesen, sind neun
+ * Stunden. Also `days = 0`. Also **„heute"**.
+ *
+ * Dieselbe Falle ist in diesem Projekt schon zweimal aufgeschlagen — bei den
+ * gelaufenen Shows (Übergabe 18, „Eine Show von gestern 23:00 wäre um 08:00
+ * morgens sonst ‚heute'") und beim Einstell-Datum auf der Artikelseite. Beide
+ * normalisieren auf Mitternacht; diese hier tat es als einzige nicht.
+ */
 export function reviewWhen(iso: string): string {
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((midnight(new Date()) - midnight(new Date(iso))) / 86_400_000);
   if (days < 1) return 'heute';
   if (days === 1) return 'gestern';
   if (days < 30) return `vor ${days} Tagen`;

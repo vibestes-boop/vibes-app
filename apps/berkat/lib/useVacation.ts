@@ -20,6 +20,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from './supabase';
+import { invalidateShelfSurfaces } from './useStanding';
 
 /** Läuft der Urlaub gerade? Ein Datum in der Vergangenheit zählt nicht. */
 export function onVacation(until: string | null | undefined): boolean {
@@ -74,12 +75,19 @@ export function useSetVacation() {
       if (error) throw new Error(vacationError(error.message));
       return until;
     },
+    // ⚠️ ÜBER DIE GEMEINSAME FUNKTION, nicht mit einer eigenen Liste. Hier
+    // stand bis zum 23.08.2026 eine nachgebaute Aufzählung — und ihr fehlten
+    // `category-listings` und `shop-count`. Die Ware blieb also auf der
+    // Kategorie-Seite und im Zähler der Startseite stehen.
     onSuccess: () => {
-      // Der Urlaub ändert, WAS andere sehen — alle Regal-Flächen verwerfen.
+      invalidateShelfSurfaces(qc);
+      // ⚠️ PLUS `seller-kind`, und das ist KEIN Duplikat: Dort hängt der
+      // Urlaubs-Zustand selbst — die Zeile „im Urlaub" im Konto und die grüne
+      // Karte auf dem Versand-Bildschirm. Beim Zusammenlegen auf die
+      // gemeinsame Funktion war er mir zuerst herausgefallen; danach blieb die
+      // Karte nach dem Umschalten stehen. „Jede Abweichung erst als Absicht
+      // lesen, dann als Versehen" (Übergabe 53).
       void qc.invalidateQueries({ queryKey: ['berkat', 'seller-kind'] });
-      void qc.invalidateQueries({ queryKey: ['berkat', 'standing'] });
-      void qc.invalidateQueries({ queryKey: ['berkat', 'shop'] });
-      void qc.invalidateQueries({ queryKey: ['berkat', 'listing'] });
     },
   });
 }
