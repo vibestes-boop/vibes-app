@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // an. Module werden in der Reihenfolge ihrer Imports ausgewertet — wer die
 // beiden Zeilen tauscht, verliert alle Abstürze aus der Video-Schicht.
 import '../lib/report';
+import { keyboardKit } from '../lib/keyboardKit';
 import { liveKitAvailable } from '../lib/livekit';
 import { useSessionBootstrap } from '../lib/session';
 import { usePushRegistration } from '../lib/usePush';
@@ -74,6 +75,16 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      {/* ⚠️ `KeyboardProvider` MUSS über allem liegen, was die Tastatur
+          beobachtet — die Bibliothek liest ihre Werte aus diesem Kontext.
+          Fehlt er, tut ihr `KeyboardAvoidingView` schlicht nichts, ohne sich
+          zu beschweren.
+
+          `KeyboardShell` ist bewusst KEIN harter Import: Bis ein Build mit dem
+          nativen Modul gelaufen ist, gibt es die Bibliothek im Binary gar
+          nicht, und die Hülle reicht ihre Kinder dann einfach durch.
+          Begründung in `lib/keyboardKit.ts`. */}
+      <KeyboardShell>
       <SafeAreaProvider>
         <Bootstrap />
         {/* Der Standard ist hell — dunkle Symbole in der Statusleiste.
@@ -104,6 +115,21 @@ export default function RootLayout() {
           <MiniLivePlayer />
         </LiveRoomProvider>
       </SafeAreaProvider>
+      </KeyboardShell>
     </QueryClientProvider>
   );
+}
+
+/**
+ * Reicht die Kinder durch, solange das native Tastatur-Modul fehlt.
+ *
+ * Bis zum nächsten Build ist das der Normalfall — der TestFlight-Build
+ * 1.0.0 (1) und Zaurs Dev-Build kennen es nicht. Danach umschliesst es alles
+ * mit `KeyboardProvider`, und der Chat wechselt automatisch auf den
+ * UI-Thread-Weg (`lib/keyboardKit.ts`).
+ */
+function KeyboardShell({ children }: { children: React.ReactNode }) {
+  const Provider = keyboardKit?.KeyboardProvider;
+  if (!Provider) return <>{children}</>;
+  return <Provider>{children}</Provider>;
 }

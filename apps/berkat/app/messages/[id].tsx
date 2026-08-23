@@ -51,6 +51,7 @@ import { disputeReasonLabel, orderRef, useDisputeWith } from '../../lib/useDispu
 import { useListing, useListingsByIds } from '../../lib/useListings';
 import { formatEuro } from '../../lib/useAuction';
 import { formatCents } from '../../lib/useShipping';
+import { keyboardKit } from '../../lib/keyboardKit';
 import { radius, ratio, space, ui } from '../../theme/tokens';
 
 /** Eine Zeile im Verlauf: eine Nachricht oder der offene Fall. */
@@ -381,8 +382,34 @@ export default function ConversationScreen() {
           ⚠️ Auf Android ist `behavior` undefiniert; die Komponente rendert dort
           eine einfache `View` und benutzt den Offset gar nicht. Deshalb steht
           er ausdrücklich nur für iOS da — sonst liest der nächste ihn als
-          plattformübergreifende Zusage. */}
-      <KeyboardAvoidingView
+          plattformübergreifende Zusage.
+
+          ── ⚠️ UND DAS ALLES REICHTE NICHT (23.08.2026, zweiter Anlauf) ──────
+
+          Zaur nach dem OTA: „warum ist das problem mit kommentarfeld nicht
+          weg". Der Grund steht im Quelltext von React Native selbst
+          (`LayoutAnimation.js`, Zeile 92):
+
+            „In Fabric, LayoutAnimations are unconditionally enabled for
+             Android, and conditionally enabled on iOS (pending fully
+             shipping; this is a temporary state)."
+
+          `KeyboardAvoidingView` animiert AUSSCHLIESSLICH über
+          `LayoutAnimation.configureNext`, und Berkat läuft mit
+          `newArchEnabled: true`. Die Polsterung SPRINGT also auf iOS, statt zu
+          gleiten. Die erste Runde hat eine von zwei Uhren beseitigt — die
+          verbliebene war diese, und sie ist mit JavaScript nicht zu erreichen.
+
+          Deshalb `KeyboardBody`: Steckt das native Modul im Binary, kommt der
+          `KeyboardAvoidingView` von `react-native-keyboard-controller` (nativer
+          Rückruf, Worklet auf dem UI-Thread, kein `LayoutAnimation`). Sonst
+          bleibt es beim bisherigen Weg. Begründung in `lib/keyboardKit.ts`.
+
+          ⚠️ Die Rechnung oben gilt für BEIDE. Die Bibliothek übernimmt
+          `behavior` und `keyboardVerticalOffset` mit derselben Bedeutung — nur
+          die Bewegung dorthin ist eine andere. Deshalb steht der Offset hier
+          einmal und nicht zweimal. */}
+      <KeyboardBody
         style={styles.body}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={
@@ -687,7 +714,7 @@ export default function ConversationScreen() {
             <SendHorizontal size={19} color={ui.goldInk} />
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardBody>
 
       {/* Vollbild. Schwarz, nicht Sand: Ein Foto beurteilt man auf neutralem
           Grund, und Berkats helle Fläche färbt jeden Weißabgleich. Das ist die
@@ -795,6 +822,22 @@ function CaseEvidence({
     </Pressable>
   );
 }
+
+/**
+ * Der `KeyboardAvoidingView` der Bibliothek, wenn das Binary ihn kann — sonst
+ * der aus React Native.
+ *
+ * ⚠️ Die Wahl fällt EINMAL beim Laden des Moduls, nicht bei jedem Rendern:
+ * `keyboardKit` ist eine Konstante. Ein Wechsel zur Laufzeit würde React den
+ * Baum neu aufbauen lassen und die Tastatur mittendrin schliessen.
+ *
+ * Beide nehmen dieselben Eigenschaften (`behavior`, `keyboardVerticalOffset`)
+ * mit derselben Bedeutung — deshalb steht die Rechnung am Aufrufort nur
+ * einmal. Unterschiedlich ist allein, WIE sie sich dorthin bewegen: die eine
+ * über `LayoutAnimation` (auf dieser Architektur ein Sprung), die andere per
+ * Worklet auf dem UI-Thread.
+ */
+const KeyboardBody = keyboardKit?.KeyboardAvoidingView ?? KeyboardAvoidingView;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: ui.bg },
