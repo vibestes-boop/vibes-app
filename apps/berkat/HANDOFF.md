@@ -10301,8 +10301,39 @@ Verkäufer-Profil, Konto.
 mit den meisten Farbflächen (Gebots-Knopf, Countdown, Geschenke, Chat) und der einzige, auf dem der
 Anker als Fläche trägt. Gehört als **A22** in die Prüfliste.
 
-⚠️ **Nicht ausgerollt.** Ein Farbwechsel ist die sichtbarste Änderung, die diese App je hatte —
-das gehört angesehen, bevor es rausgeht.
+### ✅ Ausgerollt (23.08.2026, spät)
+
+| | |
+|---|---|
+| Berkat-OTA | Gruppe `6e3d3ffc-cbce-474f-8e88-022de891410f`, iOS-Update `01a0302d…` |
+| Laufzeit | **1.0.0** — erreicht damit BEIDE Builds: TestFlight `1.0.0 (1)` und den neuen Dev-Build `1.0.0 (3)` |
+
+⚠️ **A22 ist damit ausgerollt, aber NICHT geprüft.** Der Live-Raum wurde in den neuen Farben nie
+gesehen. Das Risiko ist rein optisch — kaputtgehen kann nichts —, aber es kann sein, dass dort
+etwas nachgezogen werden muss.
+
+### ⚠️ Der Umweg, der den OTA nötig gemacht hat: Metro über Tunnel ist unbrauchbar
+
+Zaur wollte die Farben auf dem Gerät sehen und kam nicht an Metro. Ausgeschlossen wurden der Reihe
+nach: Metro lauscht auf allen Schnittstellen (`*:8081`), die macOS-Firewall ist aus. Übrig blieb das
+Netz — **der Mac hängt am Kabel, nicht im WLAN** (`networksetup -getairportnetwork en0` meldet „not
+associated"). Also ein Tunnel (`expo start --tunnel`), und der lief auch. Nur:
+
+| Weg | dasselbe Bündel |
+|---|---|
+| LAN direkt | **0,09 s** |
+| Tunnel | **9,8 s** |
+
+Gemessen vom Mac aus, der direkt neben dem Tunnel-Endpunkt sitzt. Auf dem Handy läuft der
+Dev-Client damit in eine Zeitüberschreitung — die Fehlermeldung nennt ausdrücklich die
+`entry.bundle`-Adresse.
+
+> **Ein Entwicklungsbündel ist 21 MB. Ein Tunnel ist dafür kein Ersatz für ein gemeinsames Netz,
+> sondern ein Notausgang.** Wer nur SEHEN will, was gebaut wurde, nimmt den OTA — der lädt einmal
+> und braucht danach weder Rechner noch Netz. Metro braucht man zum Entwickeln, nicht zum Ansehen.
+
+⚠️ Die Tunnel-Adresse steht nirgends im Log, wenn Metro im Hintergrund läuft. Sie liegt in ngroks
+eigener Schnittstelle: `curl -s http://127.0.0.1:4040/api/tunnels`.
 
 ### ⚠️ Der Bernstein-Knopf hat 1,66:1 gegen den Grund — und das ist Absicht
 
