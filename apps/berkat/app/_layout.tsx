@@ -106,6 +106,8 @@ export default function RootLayout() {
             {/* Alles, was aus dem Verkäufer-Sheet abgeht. Von rechts wie der
                 Rest — nur der Live-Raum und die Anmeldung kommen von unten. */}
             <Stack.Screen name="seller/[id]" />
+            {/* Vollbild wie der Live-Raum, deshalb von unten. */}
+            <Stack.Screen name="story/[id]" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="messages/index" />
             <Stack.Screen name="messages/[id]" />
             <Stack.Screen name="tip/[id]" options={{ animation: 'slide_from_bottom' }} />

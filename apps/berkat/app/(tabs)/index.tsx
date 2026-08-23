@@ -28,6 +28,8 @@ import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAucti
 import { BerkatMark } from '../../components/BerkatMark';
 import { Avatar } from '../../components/Avatar';
 import { CategoryRail, RAIL_SHORT, RAIL_TALL, type RailItem } from '../../components/CategoryRail';
+import { StoryRail } from '../../components/StoryRail';
+import { useBerkatStories, useCreateStory } from '../../lib/useStories';
 import { LivePreview } from '../../components/LivePreview';
 import { UpcomingStrip } from '../../components/UpcomingStrip';
 import { SellerResults } from '../../components/SellerResults';
@@ -117,6 +119,10 @@ export default function HomeScreen() {
   // Abzeichen an der Glocke. Scheitert die Abfrage, liefert der Hook 0 — eine
   // fehlende Zahl darf die Startseite nicht mitreißen.
   const userId = useSession((st) => st.userId);
+  // Stories: der Ring über dem Regal. Begründung in `lib/useStories.ts`.
+  const myProfile = useSession((st) => st.profile);
+  const { data: storyGroups = [] } = useBerkatStories();
+  const createStory = useCreateStory();
   const { data: unread = 0 } = useUnreadCount(userId);
   // Zweites Abzeichen, eigene Quelle: Nachrichten sind keine Meldungen. Wer
   // eine Frage zur Lieferadresse bekommt, findet sie sonst nur, wenn er zufällig
@@ -523,6 +529,25 @@ export default function HomeScreen() {
             </View>
           ) : search ? null : (
             <View>
+              {/* ⚠️ Der Ring steht ÜBER dem Termin-Streifen und über dem Regal.
+                  Er ist das Einzige auf dieser Seite, das sich täglich ändert —
+                  und genau dafür ist er da: Die App soll nicht tot aussehen,
+                  wenn gerade niemand sendet. Er rendert sich selbst weg, wenn
+                  es nichts zu zeigen gibt. */}
+              <StoryRail
+                groups={storyGroups}
+                myUserId={userId ?? null}
+                myAvatarUrl={myProfile?.avatar_url ?? null}
+                myUsername={myProfile?.username ?? null}
+                busy={createStory.isPending}
+                onOpen={(sellerId) => router.push(`/story/${sellerId}`)}
+                onCreate={() =>
+                  userId
+                    ? void createStory.mutateAsync()
+                    : router.push('/login')
+                }
+              />
+
               {/* Ein Termin gehört zu keiner Kategorie — bei gesetztem Filter
                   wäre der Streifen eine Antwort auf eine nicht gestellte
                   Frage. */}
