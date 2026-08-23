@@ -55,6 +55,14 @@ was gilt.
 > nur an Whatnots **Web**-Seite, die anders gebaut ist als ihre App. **Web und App desselben
 > Anbieters sind zwei Vorlagen, nicht eine.**
 >
+> ✅ **Und `comment_reply` ist freigeschaltet** (Abschnitt 77): Wer auf einen Kommentar antwortete,
+> erreichte den anderen seit Monaten nicht — der Typ fehlte im CHECK, der INSERT scheiterte still.
+> Migration **302**, Serlo-OTA auf **beide** Laufzeiten, Web-Deploy. **Es waren fünf Oberflächen,
+> nicht vier** — die TypeScript-Union kam dazu, und sie ist die einzige mit einem Wächter.
+>
+> ⚠️ Der Web-Deploy trug nebenbei zwei liegengebliebene Nachzüge mit: `main` lag 89 Commits
+> zurück, und die Web-Fassung war seit dem 21./22.08. **inkonsistent mit ihrer eigenen Datenbank**.
+>
 > ✅ **Ausgerollt**, Gruppe `f9e486be…`, iOS-Update `01a02f5b…`, Laufzeit 1.0.0. ⚠️ Vor dem
 > Veröffentlichen fiel der weisse Name im Banner beim Nachrechnen durch — **2,37 : 1** über einem
 > unten hellen Foto. Behoben mit einem dreistufigen Verlauf (jetzt 4,55–7,33 : 1), erst dann raus.
@@ -230,7 +238,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | **78 Berkat-eigene, alle eingespielt**; im Tracking 301 ohne Lücke (23.08.2026) — Abschnitt 5, zuletzt 75 |
+| Migrationen | **78 Berkat-eigene, alle eingespielt**; im Tracking **302** ohne Lücke (23.08.2026) — Abschnitt 5, zuletzt 77. ⚠️ Die 302. ist eine **Serlo**-Migration (`comment_reply`), keine Berkat-eigene |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -6717,7 +6725,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | B9 | ⚠️ **Urlaub aus fremder Sicht — der erste Versuch am 23.08. war LEER.** Der Urlaub stand auf `zaur` (46c70dfb), und der hat **0 Regal-Angebote**: Die anon-Zahl blieb bei 32, weil nichts wegzunehmen war. Dasselbe Muster wie die WOZ-Probe in Abschnitt 44. **Richtig geht es so:** als `berkattest` (7760a71b, 2 Angebote) oder einem Seed-Verkäufer (je 6) einschalten — die anon-Zahl muss dann von 32 auf 30 bzw. 26 fallen. Dazu: ein gespeicherter Artikel-Link muss `seller_on_vacation` liefern statt zu kaufen | 75 |
 | B10 | **Belegfoto im privaten Eimer**: Problem mit Foto melden, beim Verkäufer die Fall-Karte öffnen — das Bild muss erscheinen. Erscheint es nicht, ist der Lesepfad kaputt und der Beleg wertlos | 75 |
 | B11 | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` → erwartet **403 / 42501**. Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen, Teilen müssen in **Serlo** weiter ankommen | 75 |
-| B12 | **Antwort auf einen Kommentar** (erst nach dem Ausrollen von 77): A kommentiert, B antwortet — bei A muss die Meldung stehen UND ein Push mit dem Titel „💬 Antwort auf deinen Kommentar" ankommen, nicht „Neue Aktivität auf Serlo". ⚠️ Gegenprobe: ein normaler Kommentar löst weiterhin **genau einen** Push aus, nicht zwei | 77 |
+| B12 | **Antwort auf einen Kommentar** (ausgerollt am 23.08., nur am Gerät ungeprüft): A kommentiert, B antwortet — bei A muss die Meldung stehen UND ein Push mit dem Titel „💬 Antwort auf deinen Kommentar" ankommen, nicht „Neue Aktivität auf Serlo". ⚠️ Gegenprobe: ein normaler Kommentar löst weiterhin **genau einen** Push aus, nicht zwei | 77 |
 
 ### C — laufende Sendung, allein. Kein zweites Konto.
 
@@ -9842,9 +9850,9 @@ die beim Bauen dazukamen, stehen in **Abschnitt 76**.
    Versandzeit-Kachel, behoben mit `20260823170000`. Offen bleibt nur noch: Belegfotos aus dem
    Altbestand im öffentlichen Eimer (zwei Testfälle; **vor echten Nutzern umziehen oder löschen**)
    und die URL-Prüfung ist seit `20260823110000` erledigt.
-6. ⏳ **`comment_reply` freischalten** — **gebaut am 23.08.2026, NICHT eingespielt** (Abschnitt 77).
-   Migration, beide Clients und sechs Übersetzungen stehen; es fehlen `db push`, der Serlo-OTA auf
-   **beide** Laufzeiten und der Web-Deploy. Alter Wortlaut: Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
+6. ~~**`comment_reply` freischalten**~~ ✅ **gebaut UND ausgerollt am 23.08.2026** (Abschnitt 77):
+   Migration `20260823180000`, Serlo-OTA auf **beide** Laufzeiten, Web-Deploy. Am Gerät offen als
+   **B12**. Alter Wortlaut: Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
    „Neue Aktivität auf Serlo".
 7. ~~**Serlo-OTA** für den `recipient_id`-Fix~~ ✅ am 23.08. nach Freigabe raus, beide Runtimes.
    Delta vorher gemessen: **genau eine Datei** (`lib/useFollowRequest.ts`), `package.json`
@@ -10158,10 +10166,11 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -
 
 ---
 
-## 77. `comment_reply` — gebaut, NICHT eingespielt (23.08.2026, abends)
+## 77. `comment_reply` — freigeschaltet und ausgerollt (23.08.2026, abends)
 
 Punkt 6 der Liste aus Abschnitt 75. **Das ist Serlos Fläche, nicht Berkats — und Serlo ist im
-App Store.** Deshalb steht alles fertig und nichts ist draussen; die Freigabe fehlt.
+App Store.** Deshalb erst gebaut, dann vorgelegt, dann nach Zaurs Freigabe („alle drei Schritte")
+in der vorgeschriebenen Reihenfolge ausgerollt.
 
 ### Der Fehler
 
@@ -10224,26 +10233,60 @@ Fehlschlag wie heute, nur mit mehr Code. Dieselbe Regel wie bei `listing_id` (Ab
 Die Migration allein ist **additiv und für sich harmlos**: Sie erlaubt einen Typ zusätzlich und
 ergänzt einen `CASE`-Zweig. Ohne den Client bleibt sie wirkungslos, sie bricht aber auch nichts.
 
-### Geprüft und ungeprüft
+### ✅ Ausgerollt — und von aussen gegengeprüft
 
-**Geprüft:** `npx tsc --noEmit` in der App **und** im Web fehlerfrei · `npm run build` in
-`apps/web` durchgelaufen (die Isolation dort bricht sonst erst auf Vercel) · der Abzug wurde frisch
-gezogen und `/tmp/dump.sh` sofort gelöscht.
+| Schritt | Stand |
+|---|---|
+| `supabase db push` | ✅ `20260823180000`, Tracking **302** ohne Lücke |
+| Serlo-OTA **1.31.0** | ✅ Gruppe `4a638375-7332-4704-b492-04bdbfbbe4c8` |
+| Serlo-OTA **1.30.0** | ✅ Gruppe `1ae64c77-8946-42d2-87c3-b4ea00de1e98`, `app.json` zurückgestellt |
+| Web (Vercel) | ✅ `main` per Fast-Forward auf `0447073`, Build **success** (Projekt `serlo-web`) |
 
-⚠️ **Ungeprüft, weil nichts eingespielt ist.** Die Gegenproben stehen am Ende der Migration. Die
-entscheidende geht nur zu zweit und gehört als **B12** in die Prüfliste:
+⚠️ **Der Vercel-Build wurde nachgesehen, nicht angenommen.** `gh api …/commits/<sha>/status` stand
+erst auf `pending` — ein Push ist kein Deploy. Erst der zweite Blick zeigte `success`.
+
+**Der Delta vor dem OTA wurde gemessen, nicht geschätzt:** genau fünf Bündel-Dateien
+(`app/(tabs)/notifications.tsx`, drei Sprachen, `lib/useNotifications.ts`), `package.json`
+**unberührt** — damit war dasselbe Bündel für beide Laufzeiten sicher (die Regel aus Abschnitt 8).
+
+**Und der Web-Deploy trug mehr als diese Änderung:** `main` lag **89 Commits** zurück. Nachgemessen
+fassen davon aber nur **zwei** `apps/web` an — beide Nachzüge zu DB-Änderungen, die längst live
+waren (anonymisierte Löschung, App-Trennung der geplanten Lives). Die Web-Fassung war seit dem
+21./22.08. **inkonsistent mit ihrer eigenen Datenbank**; dieser Deploy hat das mit erledigt.
+
+Nach dem Einspielen an einem **frisch gezogenen Abzug** gemessen — alle fünf Gegenproben:
+
+| | Erwartet | Gemessen |
+|---|---|---|
+| CHECK enthält `comment_reply` | ja | ✅ **33 Typen** (32 + 1) |
+| kein Bestandstyp verloren | ja | ✅ |
+| Zweig im Live-Code der Funktion | ja | ✅ |
+| Bestand überlebt (`saved_search_hit`, `query`, `auction_up`) | ja | ✅ alle drei |
+| Signaturen (kein HTTP 300) | 1 | ✅ 1 |
+| Push-Titel | — | `💬 Antwort auf deinen Kommentar` |
+
+**Sonst geprüft:** `npx tsc --noEmit` in App und Web fehlerfrei · `npm run build` in `apps/web`
+durchgelaufen (die Isolation dort bricht sonst erst auf Vercel) · `/tmp/dump.sh` mit dem
+kurzlebigen Passwort sofort gelöscht.
+
+⚠️ **Was das NICHT beweist:** dass tatsächlich eine Meldung ankommt. Die Kette ist an jedem Glied
+belegt und am Ganzen nicht — genau die Fehlerklasse, aus der dieser Fund stammt. Die Probe geht nur
+zu zweit und steht als **B12** in der Prüfliste:
 
 > Konto A kommentiert einen Post, Konto B **antwortet** auf diesen Kommentar. Bei A muss eine
 > Meldung stehen („hat auf deinen Kommentar geantwortet") **und** ein Push ankommen, dessen Titel
 > „💬 Antwort auf deinen Kommentar" lautet — nicht „Neue Aktivität auf Serlo". Gegenprobe: ein
 > normaler Kommentar auf einen Post löst weiterhin genau **einen** Push aus.
 
-### ⏳ Was zum Ausrollen fehlt — drei Schritte, in dieser Reihenfolge
+### ⚠️ Die Ordner-Falle ist hier SPIEGELVERKEHRT
 
-1. `supabase db push` (nur diese eine Migration ist offen, Tracking sonst lückenlos bei 301)
-2. **Serlo-OTA auf BEIDE Laufzeiten** (1.30.0 **und** 1.31.0) — sonst sieht die Hälfte der Nutzer
-   den Rückfalltext. ⚠️ Aus `/Users/zaurhatuev/vibes-app`, und dort ist die Ordner-Falle
-   spiegelverkehrt: Hier ist die **Wurzel** richtig und `apps/berkat` falsch
-3. Web-Deploy (Vercel)
+Beim Berkat-OTA ist `apps/berkat` richtig und die Wurzel falsch. Beim Serlo-OTA ist es umgekehrt.
+Dieselbe Riegel-Form, nur die Probe wechselt den Namen:
 
-**Keiner dieser Schritte ist gelaufen.**
+```bash
+cd /Users/zaurhatuev/vibes-app && npx eas project:info 2>&1 | grep -q "@zaurhat/vibes" && EAS_BUILD=1 npx eas update --branch production --message "…" --non-interactive
+```
+
+> **Wer sich merkt „immer in den App-Ordner", macht beim zweiten Projekt denselben Fehler mit
+> umgekehrtem Vorzeichen.** Die Regel ist nicht „welcher Ordner", sondern **„die Probe im selben
+> Aufruf"** — sie stimmt in beide Richtungen und braucht kein Gedächtnis.
