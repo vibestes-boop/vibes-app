@@ -1,7 +1,41 @@
 // Berkat hat zwei Flächen, und jede hat eine feste Helligkeit.
 //
-//   ui    — hell, Sand. Stöbern, verkaufen, verwalten. Der Basar bei Tag.
-//   stage — dunkel. Nur der Live-Raum, wo das Video die Fläche ist.
+//   ui    — hell, kühles Neutral. Stöbern, verkaufen, verwalten.
+//   stage — dunkel, Tinten-Indigo. Nur der Live-Raum, wo das Video die Fläche ist.
+//
+// ── DIE ZWEI MARKENFARBEN (23.08.2026) ──────────────────────────────────────
+//
+//   Tinten-Indigo  #1B2340   Ton 227°   — der Anker
+//   Bernstein      #FFB020   Ton  39°   — der Kauf
+//
+// Abstand 172°, also fast komplementär: die grösstmögliche Trennung, die zwei
+// Farben haben können. Das ist der Zweck, nicht Geschmack — siehe unten.
+//
+// ⚠️ WAS VORHER HIER STAND UND WARUM ES WEG IST. Bis heute war es Flaschengrün
+// #0E2A22 auf Sand #FAF7F2 mit Gold #E9A73C. Gemessen hatte das drei Probleme:
+//
+//   1. **Das Gold war nicht zu dunkel, es war zu WENIG BUNT.** Buntheit C* 64 —
+//      Whatnots Gelb hat 88, TikToks Pink 82. Ein gedämpftes Senfgelb ist kein
+//      Signal, und der Kaufknopf ist das Lauteste, was diese App zu sagen hat.
+//   2. **Der Grund hatte DENSELBEN Ton wie der Akzent** (Sand 38°, Gold 37°).
+//      Als System elegant — für einen Kaufknopf der falsche Ort. Farbabstand
+//      Gold↔Sand: ΔE 66. Bei Whatnot sind es 89.
+//   3. Sehr dunkles, sattes Grün auf warmem Sand liest sich erdig-rustikal.
+//
+// Bernstein hat jetzt C* 78 und steht bei ΔE 81 vom Grund. Der Grund selbst ist
+// kühl-neutral (Buntheit 0,7), damit die warme Farbe überhaupt etwas hat,
+// wovon sie sich abheben kann.
+//
+// ⚠️ WARUM DER AKZENT WARM BLEIBEN MUSSTE — und nicht Kupfer oder Jade wurde.
+// Berkat hat zwei FUNKTIONALE Farben, die gesetzt sind: Rot bei 8° (laufende
+// Uhr, überboten) und Grün bei 160° (bestätigt, gewonnen, Frauen-Only). Kupfer
+// läge bei 23°, also 15 Grad neben dem Uhr-Rot — in einer Auktion sähen „Jetzt
+// bieten" und „Du bist überboten" dann ähnlich aus. Jade bei 162° hätte
+// dasselbe Problem mit Grün. Bernstein steht 31° vom Uhr-Rot UND 27
+// Helligkeitsstufen darüber; beides zusammen macht die Verwechslung unmöglich.
+//
+// ⚠️ Grün ist damit KEINE Markenfarbe mehr, sondern nur noch ein Signal. Das
+// war eine bewusste Entscheidung von Zaur, kein Nebeneffekt.
 //
 // Es gibt bewusst KEINEN Hell-Dunkel-Umschalter. Jede Komponente weiß, auf
 // welcher Fläche sie sitzt, und nimmt genau deren Palette. Damit kann nie ein
@@ -12,12 +46,46 @@
 
 /** Helle Fläche — Startseite, Kategorien, Studio, Konto, Anmeldung. */
 export const ui = {
-  /** Sand. Der Grundton der App. */
-  bg: '#FAF7F2',
-  /** Karten und Sheets liegen als Weiß auf dem Sand. */
+  /**
+   * Kühles Neutral. Der Grundton der App.
+   *
+   * ⚠️ Bewusst NICHT reines Weiß: Die aktuelle Empfehlung geht weg vom harten
+   * Weiß hin zu „elevated neutrals", und auf einem Handy in der Sonne ist ein
+   * leicht abgesenkter Grund angenehmer. Buntheit 0,7 — praktisch farblos,
+   * damit der Bernstein alles an Farbe für sich hat.
+   */
+  bg: '#F4F4F6',
+  /** Karten und Sheets liegen als Weiß auf dem Grund. */
   card: '#FFFFFF',
   /** Chips, Bildplatzhalter, ruhige Flächen. */
-  sunken: '#F0EAE0',
+  sunken: '#E7E8ED',
+  /**
+   * ⚠️ `bg` mit Alpha 0 — für Verläufe, die im Grund verschwinden sollen.
+   *
+   * Das ist kein Luxus, sondern eine Falle, die schon einmal zugeschlagen hat:
+   * Ein `'transparent'` interpoliert auf iOS über Schwarz und legt einen grauen
+   * Schleier über das Bild. Der Endpunkt muss dieselbe Farbe wie `bg` tragen,
+   * nur unsichtbar. Vor dem 23.08.2026 stand dieser Wert hartcodiert im
+   * Verkäufer-Profil — und wäre beim Farbwechsel still falsch geworden.
+   */
+  bgClear: 'rgba(244,244,246,0)',
+  /**
+   * Verdunkelung hinter Blättern und Menüs. Aus dem Anker abgeleitet, nicht
+   * Schwarz — sonst wirkt der Hintergrund tot statt zurückgetreten.
+   * ⚠️ Stand bis zum 23.08.2026 an fünf Stellen hartcodiert (`rgba(20,36,30,…)`,
+   * das ALTE Grün) und hätte den Grünstich in die neue Palette getragen.
+   */
+  scrim: 'rgba(27,35,64,0.38)',
+  /**
+   * Das dunkle Gegenstück zu `overlay`: eine Pille MIT heller Schrift auf einem
+   * fremden Foto — „Titelbild ändern", der Schliessen-Kreis am Bild.
+   *
+   * ⚠️ Es gab dafür nie einen Token, obwohl direkt daneben eine Registratur für
+   * den hellen Fall steht. Beide Stellen trugen `rgba(20,36,30,…)`, also das
+   * ALTE Markengrün, hartcodiert — und hätten den Grünstich in diese Palette
+   * getragen. Gefunden beim Farbwechsel am 23.08.2026, nicht bei einer Prüfung.
+   */
+  onImage: 'rgba(13,19,34,0.72)',
   /**
    * Milchige Auflage für Text auf einem FREMDEN Bild. Berkat tut das an genau
    * ZWEI Stellen, und diese Liste ist der Bestand:
@@ -49,24 +117,56 @@ export const ui = {
    * genau die 94 %). Die Schrift hielt nicht — `textMuted` kam auf 3,84:1 und
    * `live` auf 3,92:1, WCAG verlangt für diese Schriftgrößen 4,5:1.
    *
-   * Diese zwei Töne sind die abgedunkelten Fassungen und erreichen 4,98:1 und
-   * 4,68:1. Sie stehen hier statt in der Komponente, damit sie beim nächsten
-   * „ein bisschen heller wäre hübscher" auffallen.
-   */
-  overlayMuted: '#5C6B62',
-  overlayUrgent: '#C43A25',
-
-  text: '#14241E',
-  textMuted: '#6E7D75',
-
-  line: 'rgba(20,36,30,0.10)',
-  lineStrong: 'rgba(20,36,30,0.18)',
-
-  brand: '#0E2A22',
-  /**
-   * Gold trägt auf hell KEINEN Text — nur Flächen mit dunkler Schrift darauf.
+   * Diese zwei Töne sind die abgedunkelten Fassungen. Sie stehen hier statt in
+   * der Komponente, damit sie beim nächsten „ein bisschen heller wäre hübscher"
+   * auffallen.
    *
-   * ⚠️ UND: Gold gehört an Bildschirme mit GENAU EINEM Kaufweg — Live-Raum,
+   * ⚠️ Am 23.08.2026 kam beim Durchmessen der ganzen Palette heraus, dass diese
+   * zwei Töne das Problem lösen, das `textMuted` und `live` auf der hellen
+   * Fläche HATTEN — sie waren mit 4,05 und 4,14:1 unter der Grenze, während
+   * `overlayMuted` mit 5,26 überall bestand. Die Palette hatte die Lösung also
+   * schon und hielt sie in einem Sonderfall eingesperrt. Beim Umbau sind
+   * `textMuted` und `live` entsprechend nachgezogen worden.
+   */
+  overlayMuted: '#565C6B',
+  overlayUrgent: '#C03A26',
+
+  text: '#161A26',
+  /** Nachgezogen: hatte auf dem alten Grund 4,05:1, jetzt 5,56:1. */
+  textMuted: '#5C6270',
+
+  /**
+   * Der Avatar-Rückfall — die Scheibe mit den Initialen, wenn jemand kein Bild
+   * hat.
+   *
+   * ⚠️ Das war bis zum 23.08.2026 `success`, also GRÜN. Semantisch war das
+   * schon immer falsch — Grün heisst in Berkat „bestätigt, gewonnen,
+   * Frauen-Only", und ein fehlendes Profilbild ist nichts davon. In der alten
+   * Palette fiel es nicht auf, weil ohnehin alles grünlich war. In der neuen
+   * war es sofort der einzige grüne Fleck auf dem Bildschirm.
+   *
+   * Eine Stufe heller als der Anker: 8,4:1 für die Initialen, und 1,6:1 gegen
+   * den Anker selbst — also deutlich zu wenig, um sich vom Banner abzuheben.
+   * Deshalb trägt der Avatar auf dem Verkäufer-Profil zusätzlich einen hellen
+   * Ring. Ohne den verschwände er im leeren Banner.
+   */
+  avatar: '#3A4463',
+
+  line: 'rgba(22,26,38,0.10)',
+  lineStrong: 'rgba(22,26,38,0.18)',
+
+  /** Tinten-Indigo — der Anker. Begründung im Kopf der Datei. */
+  brand: '#1B2340',
+  /**
+   * ⚠️ HEISST WEITERHIN `gold`, IST ABER BERNSTEIN (#FFB020, seit 23.08.2026).
+   * Kein Umbenennen: Der Name steht an über hundert Stellen, und `gold` ist im
+   * Kopf aller Beteiligten die Kauf-Farbe. Umbenennen hiesse, den Begriff zu
+   * ändern, ohne die Bedeutung zu ändern — dieselbe Entscheidung wie bei
+   * `is_live_session_moderator` und `live_polls.host_id`.
+   *
+   * Bernstein trägt auf hell KEINEN Text — nur Flächen mit dunkler Schrift.
+   *
+   * ⚠️ UND: Er gehört an Bildschirme mit GENAU EINEM Kaufweg — Live-Raum,
    * Artikelseite, Kasse. Nicht in Raster.
    *
    * Am 18.08.2026 an Whatnot nachgemessen: Deren Kaufknopf im Regal ist
@@ -82,10 +182,15 @@ export const ui = {
    * vollen Regal keine Auszeichnung mehr. Analyse: `WHATNOT-ANALYSE.md`,
    * vierter Teil, Abschnitt 2.
    */
-  gold: '#E9A73C',
-  goldInk: '#241703',
-  /** Auf hell etwas dunkler als auf der Bühne, sonst reicht der Kontrast nicht. */
-  live: '#D6452F',
+  gold: '#FFB020',
+  goldInk: '#2B1A00',
+  /**
+   * Auf hell etwas dunkler als auf der Bühne, sonst reicht der Kontrast nicht.
+   * ⚠️ Am 23.08.2026 nachgezogen (war `#D6452F`): Als Text kam der alte Wert auf
+   * 4,14:1 und lag damit unter der Grenze — an acht Stellen, unter anderem im
+   * Lösch-Bildschirm und in den „Melden/Sperren"-Menüs.
+   */
+  live: '#C03A26',
   liveInk: '#FFFFFF',
   success: '#1E6E5C',
   successInk: '#FFFFFF',
@@ -93,17 +198,23 @@ export const ui = {
 
 /** Dunkle Fläche — ausschließlich der Live-Raum. */
 export const stage = {
-  /** Tiefster Grund hinter dem Video */
-  ink: '#0B1512',
+  /**
+   * Tiefster Grund hinter dem Video.
+   * ⚠️ Kein reines Schwarz — die aktuelle Empfehlung geht zu tiefen Anthrazit-
+   * bzw. Tinten-Tönen. Und dieser hier ist der Anker in dunkel: So trägt der
+   * Live-Raum dieselbe Marke wie der Rest, statt ein zweites Farbsystem zu sein.
+   */
+  ink: '#0D1322',
   /** Leisten, Karten, Sheets auf der Bühne */
-  surface: '#16241F',
+  surface: '#1A2038',
   /** Platzhalter und gefüllte Kacheln */
-  surfaceHigh: '#17332B',
-  brand: '#0E2A22',
+  surfaceHigh: '#232B49',
+  brand: '#1B2340',
 
-  /** Gold ist der Kauf. Nur Gebot, Preis, Zuschlag-Weg. */
-  gold: '#E9A73C',
-  goldInk: '#241703',
+
+  /** Bernstein ist der Kauf. Nur Gebot, Preis, Zuschlag-Weg. */
+  gold: '#FFB020',
+  goldInk: '#2B1A00',
 
   /** Terrakotta ist Dringlichkeit. Nur live und überboten — nie Fläche. */
   live: '#E4573D',
@@ -115,12 +226,14 @@ export const stage = {
   /** Heller Grünton für "du führst" — Kontur, nie Fläche. */
   lead: '#4FB78E',
 
-  text: '#F5F1E8',
-  textMuted: '#9CA9A2',
-  textOnGlass: '#F5F1E8',
+  /** Kühles Off-Weiss statt des warmen — sonst hat die Schrift einen Gelbstich
+      auf dem Indigo. */
+  text: '#EEF0F6',
+  textMuted: '#98A0B5',
+  textOnGlass: '#EEF0F6',
 
-  line: 'rgba(245,241,232,0.12)',
-  lineStrong: 'rgba(245,241,232,0.22)',
+  line: 'rgba(238,240,246,0.12)',
+  lineStrong: 'rgba(238,240,246,0.22)',
   /** Halbtransparente Unterlage für Text auf Video */
   scrim: 'rgba(0,0,0,0.40)',
 } as const;

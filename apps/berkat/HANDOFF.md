@@ -10122,6 +10122,7 @@ sauber, 9,63 MB.
 | **A19** | **Ein DUNKLES und ein SEHR HELLES Kopfbild setzen.** Lesbar bleiben müssen: Uhrzeit, die drei Symbole — **und der weisse Name im Banner**. Letzterer hängt allein am dunklen Verlauf; der gefährliche Fall ist ein Foto, das UNTEN hell ist | allein |
 | **A20** | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein | allein, Termin genügt |
 | **A21** | ⚠️ **Chat-Tastatur** (23.08.): Einen Chat öffnen, aufs Eingabefeld tippen. Feld und Tastatur müssen **zusammen** hochkommen, und die **letzte Nachricht muss sichtbar bleiben** statt hinter dem Feld zu verschwinden. Dann wieder schließen: Der Rand unten muss wie vorher sitzen, kein Sprung. ⚠️ Im Simulator NICHT prüfbar — bei verbundener Mac-Tastatur erscheint gar keine Software-Tastatur | allein, echtes Gerät |
+| **A22** | ⚠️ **Der LIVE-RAUM in den neuen Farben** (23.08.): Beim Farbwechsel nicht angesehen, weil niemand sendete. Er hat die meisten Farbflächen (Gebots-Knopf, Countdown, Geschenke, Chat) und ist der einzige Bildschirm, auf dem der Anker als FLÄCHE trägt. Bernstein muss auf dem Indigo knallen, das Uhr-Rot davon unterscheidbar bleiben | allein, Sendung nötig |
 
 Dazu unverändert offen: **A5** (das Banner mit `'wide'`-Zuschnitt wählen) — der Bildschirm zeigt
 das Ergebnis jetzt viel größer, also fällt ein schlechter Ausschnitt auch stärker auf.
@@ -10176,6 +10177,111 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -
 
 ⚠️ **Wirkt erst beim ÜBERNÄCHSTEN Start** (Abschnitt 3). Zum Prüfen die App zweimal schließen und
 öffnen, dann unten im Konto-Reiter nachsehen: Steht dort `01a02f5b`, ist dieser Stand aktiv.
+
+---
+
+## 80. Neue Markenfarben: Tinten-Indigo + Bernstein (23.08.2026, nachts)
+
+Zaur: *„aktuelle farb kombination gefällt mir nicht … suche nach neuen farben, zwei die zueinander
+passen, dazu die aktuellsten tipps beachten."*
+
+### ⚠️ Zuerst die Diagnose — und sie widerlegt, was ich Stunden vorher selbst geschrieben hatte
+
+Am Nachmittag hatte ich die alte Palette analysiert und ihr bescheinigt, sie halte gut zusammen:
+Sand 38° und Gold 37° seien „zwei Pigmente in verschiedenen Konzentrationen". Das stimmt — und ist
+genau der Fehler:
+
+| | Helligkeit L\* | **Buntheit C\*** |
+|---|---|---|
+| Whatnot #FFE414 | 90 | **88** |
+| TikTok #FE2C55 | 56 | **82** |
+| **Berkat Gold #E9A73C** | 73 | **64** |
+
+1. **Das Gold war nicht zu dunkel, es war zu WENIG BUNT** — ein Drittel weniger Farbkraft als beide
+   Wettbewerber. Ein gedämpftes Senfgelb ist kein Signal, und der Kaufknopf ist das Lauteste, was
+   diese App zu sagen hat.
+2. **Der Grund trug denselben Ton wie der Akzent.** Farbabstand Gold↔Sand: **ΔE 66**. Bei Whatnot
+   sind es **89**.
+3. Sehr dunkles, sattes Grün auf warmem Sand liest sich erdig-rustikal.
+
+> **Was ich als Stärke des Systems beschrieben hatte, war die Ursache des Problems.** Ein Akzent,
+> der auf der Tapete seiner eigenen Farbe sitzt, kann nicht herausstechen. Die Analyse war richtig
+> gemessen und falsch bewertet.
+
+### Die zwei neuen Farben
+
+```
+Tinten-Indigo  #1B2340   Ton 227°   — der Anker
+Bernstein      #FFB020   Ton  39°   — der Kauf
+```
+
+**Abstand 172°**, also fast komplementär: das Maximum an Trennung. Bernstein hat jetzt C\* 78 und
+steht bei **ΔE 81** vom Grund — der Grund selbst ist kühl-neutral (Buntheit 0,7), damit die warme
+Farbe überhaupt etwas hat, wovon sie sich abheben kann.
+
+### ⚠️ Warum der Akzent warm bleiben MUSSTE
+
+Kupfer (23°) und Jade (162°) waren die naheliegenden „modernen" Kandidaten. Beide fallen aus, und
+zwar nicht aus Geschmack: Berkat hat **funktionale** Farben, die gesetzt sind — Rot bei 8° (laufende
+Uhr, überboten) und Grün bei 160° (bestätigt, gewonnen, Frauen-Only). Kupfer läge **15° neben dem
+Uhr-Rot**; in einer Auktion sähen „Jetzt bieten" und „Du bist überboten" dann ähnlich aus. Jade
+hätte dasselbe Problem mit Grün.
+
+Bernstein steht **31° vom Uhr-Rot und 27 Helligkeitsstufen darüber**. Beides zusammen macht die
+Verwechslung unmöglich.
+
+⚠️ **Grün ist damit keine Markenfarbe mehr, nur noch ein Signal.** Zaurs bewusste Entscheidung nach
+ausdrücklichem Hinweis, nicht ein Nebeneffekt.
+
+### Was die aktuellen Empfehlungen beigetragen haben
+
+Kein reines Weiß, sondern ein leicht abgesenkter Grund („elevated neutrals"). Kein reines Schwarz
+auf der Bühne, sondern ein tiefer Tinten-Ton — und der ist jetzt **derselbe Anker in dunkel**, statt
+eines zweiten Farbsystems. Ein dominanter Akzent, streng rationiert. Und: hell und dunkel von
+Anfang an als ein Satz gedacht.
+
+### ⚠️ Der teure Teil war nicht die Palette, sondern was daneben lag
+
+Sechs hartcodierte Farben, die den alten Grünstich in die neue Palette getragen hätten:
+
+| Fund | |
+|---|---|
+| `rgba(20,36,30,0.35)` an **vier** Stellen | Verdunkelung hinter Blättern → neuer Token `ui.scrim` |
+| `rgba(20,36,30,0.65/0.72)` in `sell.tsx` | dunkle Pillen auf Fotos → neuer Token `ui.onImage`. ⚠️ Für den HELLEN Fall gab es eine gepflegte Registratur (`ui.overlay`), für den dunklen nie einen Token |
+| `rgba(250,247,242,0)` in `seller/[id].tsx` | **mein eigener Banner-Verlauf von heute Nachmittag** — dessen Kommentar wörtlich davor warnt, dass der Endpunkt dieselbe Farbe wie `bg` tragen muss. Jetzt `ui.bgClear` |
+| **12 Kategorie-Tönungen** in `theme/categoryArt.ts` | alle beige, gegen den alten Sand entworfen. Neu berechnet: gleiche Helligkeit (L\* ~91), gleiche Zurückhaltung (C\* ~4,5), kühl gestreut |
+| Avatar-Rückfall = `stage.success` | **Grün für ein fehlendes Profilbild.** Semantisch schon immer falsch; in der alten Palette fiel es nicht auf, in der neuen war es sofort der einzige grüne Fleck. Neuer Token `ui.avatar` |
+
+> **Eine Farbe, die nicht im Token steht, überlebt jeden Palettenwechsel — und niemand sucht sie.**
+> Die Token-Datei sagt seit jeher „NIE eine Farbe direkt in eine Komponente schreiben". Sechs
+> Stellen hielten sich nicht daran, und gefunden hat sie nicht eine Prüfung, sondern der Wechsel.
+
+### Nebenbei behoben, was die Analyse am Nachmittag gefunden hatte
+
+`textMuted` (4,05:1) und `live` als Text (4,14:1) lagen unter der Grenze. Beide sind jetzt
+nachgezogen — 5,56 und 4,93:1. Die dunkleren Fassungen standen als `overlayMuted`/`overlayUrgent`
+bereits in der Palette und waren in einem Sonderfall eingesperrt.
+
+### Geprüft und ungeprüft
+
+**Geprüft:** Jede Paarung durchgerechnet — heller Grund, Karte, `sunken`, Bühne, Schrift auf jeder
+Signalfläche. Alles ≥ 4,5:1 bzw. ≥ 3:1 für Flächen. `tsc` und `expo export` sauber (10,8 MB). Am
+Simulator angesehen: Startseite, Artikelseite (**der Kaufknopf poppt jetzt wirklich**),
+Verkäufer-Profil, Konto.
+
+⚠️ **Der Live-Raum ist NICHT angesehen** — es sendet gerade niemand. Die Bühne ist der Bildschirm
+mit den meisten Farbflächen (Gebots-Knopf, Countdown, Geschenke, Chat) und der einzige, auf dem der
+Anker als Fläche trägt. Gehört als **A22** in die Prüfliste.
+
+⚠️ **Nicht ausgerollt.** Ein Farbwechsel ist die sichtbarste Änderung, die diese App je hatte —
+das gehört angesehen, bevor es rausgeht.
+
+### ⚠️ Der Bernstein-Knopf hat 1,66:1 gegen den Grund — und das ist Absicht
+
+WCAG will 3:1 für die Umrisslinie eines Bedienelements. Ein heller, sehr bunter Akzent auf hellem
+Grund kann das nicht: **Whatnot liegt bei 1,28:1.** Die Trennung entsteht über die Farbe (ΔE 81),
+nicht über die Helligkeit, und die Schrift darauf hat 9,18:1. Wer das sauber will, hängt dem Knopf
+eine dunklere Kontur an — dann ist es aber nicht mehr derselbe Knopf.
 
 ---
 

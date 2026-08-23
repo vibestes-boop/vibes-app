@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
-import { stage } from '../theme/tokens';
+import { stage, ui } from '../theme/tokens';
 
 type Props = {
   uri?: string | null;
@@ -51,6 +51,8 @@ export function Avatar({ uri, name, size = 32, ring }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  fallback: { backgroundColor: stage.success, alignItems: 'center', justifyContent: 'center' },
-  initials: { color: stage.successInk, fontWeight: '600' },
+  // ⚠️ War bis zum 23.08.2026 `stage.success`, also die Bestätigungsfarbe für
+  // ein fehlendes Profilbild — Begründung am Token `ui.avatar`.
+  fallback: { backgroundColor: ui.avatar, alignItems: 'center', justifyContent: 'center' },
+  initials: { color: stage.text, fontWeight: '600' },
 });

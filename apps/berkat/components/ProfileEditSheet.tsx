@@ -232,7 +232,7 @@ export function ProfileEditSheet({
 }
 
 const s = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,36,30,0.35)' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: ui.scrim },
   wrap: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     maxHeight: '88%',

@@ -1129,7 +1129,7 @@ export default function SellerScreen() {
         pointerEvents="box-none"
       >
         <LinearGradient
-          colors={[ui.bg, 'rgba(250,247,242,0)']}
+          colors={[ui.bg, ui.bgClear]}
           style={[styles.headerScrim, { height: insets.top + 10 }]}
           pointerEvents="none"
         />
@@ -1415,7 +1415,7 @@ const styles = StyleSheet.create({
   reviewText: { fontSize: 14, color: ui.text, lineHeight: 20 },
   reviewWhen: { fontSize: 11, color: ui.textMuted },
 
-  menuBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,36,30,0.35)' },
+  menuBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: ui.scrim },
   menuWrap: { flex: 1, justifyContent: 'flex-end', padding: space.md, gap: space.sm },
   menu: { backgroundColor: ui.card, borderRadius: radius.lg, overflow: 'hidden' },
   menuRow: {
@@ -1470,7 +1470,7 @@ const styles = StyleSheet.create({
   avatarRing: {
     borderRadius: radius.pill,
     borderWidth: 2,
-    borderColor: stage.lead,
+    borderColor: ui.card,
     padding: 2,
   },
   identityText: { flex: 1, minWidth: 0 },
