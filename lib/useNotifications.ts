@@ -6,7 +6,12 @@ export type AppNotification = {
   id: string;
   // `auction_won` stammt aus Berkat (gemeinsame notifications-Tabelle) — Serlo
   // zeigt es an, springt aber nicht, siehe app/(tabs)/notifications.tsx.
-  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted' | 'gift' | 'auction_won' | 'new_order' | 'preorder_interest' | 'preorder_round_open' | 'product_saved' | 'order_payment_requested' | 'order_payment_reminder' | 'order_paid' | 'order_shipped' | 'order_cancelled' | 'order_address_updated' | 'order_review' | 'order_dispute' | 'support_reply' | 'support_new';
+  // ⚠️ Diese Union ist die FÜNFTE Stelle, die einen Meldungstyp kennen muss —
+  // neben CHECK, Push-CASE, In-App-Liste und Web-Liste (Übergabe 9). Sie ist
+  // die einzige, die sich von selbst meldet: `tsc` bricht ab, wenn ein `case`
+  // einen Typ nennt, der hier fehlt. Genau so ist `comment_reply` am
+  // 23.08.2026 aufgefallen.
+  type: 'like' | 'comment' | 'comment_reply' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted' | 'gift' | 'auction_won' | 'new_order' | 'preorder_interest' | 'preorder_round_open' | 'product_saved' | 'order_payment_requested' | 'order_payment_reminder' | 'order_paid' | 'order_shipped' | 'order_cancelled' | 'order_address_updated' | 'order_review' | 'order_dispute' | 'support_reply' | 'support_new';
   read: boolean;
   created_at: string;
   comment_text: string | null;

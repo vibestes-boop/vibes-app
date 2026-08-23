@@ -631,6 +631,8 @@ const ruMessages = {
     like: '{name} лайкнул(а) твой пост.',
     commentQuoted: '{name} прокомментировал(а): «{text}»',
     comment: '{name} прокомментировал(а) твой пост.',
+    commentReplyQuoted: '{name} ответил(а) тебе: «{text}»',
+    commentReply: '{name} ответил(а) на твой комментарий.',
     follow: '{name} подписался(ась) на тебя.',
     mentionQuoted: '{name} упомянул(а) тебя: «{text}»',
     mention: '{name} упомянул(а) тебя.',

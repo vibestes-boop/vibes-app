@@ -58,6 +58,7 @@ type NotifMeta = {
 const TYPE_META: Record<NotificationType, NotifMeta> = {
   like:        { icon: Heart,         color: 'text-muted-foreground', bg: 'bg-muted' },
   comment:     { icon: MessageCircle, color: 'text-muted-foreground', bg: 'bg-muted' },
+  comment_reply: { icon: MessageCircle, color: 'text-muted-foreground', bg: 'bg-muted' },
   follow:      { icon: UserPlus,      color: 'text-muted-foreground', bg: 'bg-muted' },
   mention:     { icon: AtSign,        color: 'text-muted-foreground', bg: 'bg-muted' },
   dm:          { icon: MessageCircle, color: 'text-muted-foreground', bg: 'bg-muted' },
@@ -99,6 +100,11 @@ function notifText(n: Notification, t: Tfn): string {
       return n.comment_text
         ? t('notif.commentQuoted', { name, text: n.comment_text })
         : t('notif.comment', { name });
+    // Seit 23.08.2026 überhaupt zustellbar — vorher lehnte der CHECK den Typ ab.
+    case 'comment_reply':
+      return n.comment_text
+        ? t('notif.commentReplyQuoted', { name, text: n.comment_text })
+        : t('notif.commentReply', { name });
     case 'follow':
       return t('notif.follow', { name });
     case 'mention':
@@ -175,6 +181,7 @@ function notifHref(n: Notification): Route {
   switch (n.type) {
     case 'like':
     case 'comment':
+    case 'comment_reply':
     case 'mention':
       return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
     case 'follow':

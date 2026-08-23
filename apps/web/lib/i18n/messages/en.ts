@@ -582,6 +582,8 @@ const enMessages = {
     like: '{name} liked your post.',
     commentQuoted: '{name} commented: “{text}”',
     comment: '{name} commented on your post.',
+    commentReplyQuoted: '{name} replied to you: “{text}”',
+    commentReply: '{name} replied to your comment.',
     follow: '{name} is now following you.',
     mentionQuoted: '{name} mentioned you: “{text}”',
     mention: '{name} mentioned you.',

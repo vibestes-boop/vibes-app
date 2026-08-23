@@ -44,6 +44,8 @@ export const en: DeepPartial<Messages> = {
     follow: 'is now following you',
     commentQuoted: 'commented: "{text}"',
     comment: 'commented on your post',
+    commentReplyQuoted: 'replied to you: "{text}"',
+    commentReply: 'replied to your comment',
     mention: 'mentioned you in a comment',
     dmQuoted: 'wrote to you: "{text}"',
     dm: 'sent you a message',

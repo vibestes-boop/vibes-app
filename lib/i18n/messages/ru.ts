@@ -46,6 +46,8 @@ export const ru: DeepPartial<Messages> = {
     follow: 'подписался(ась) на тебя',
     commentQuoted: 'прокомментировал(а): «{text}»',
     comment: 'прокомментировал(а) твой пост',
+    commentReplyQuoted: 'ответил(а) тебе: «{text}»',
+    commentReply: 'ответил(а) на твой комментарий',
     mention: 'упомянул(а) тебя в комментарии',
     dmQuoted: 'написал(а) тебе: «{text}»',
     dm: 'отправил(а) тебе сообщение',

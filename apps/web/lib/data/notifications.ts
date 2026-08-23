@@ -22,6 +22,10 @@ import { createClient } from '@/lib/supabase/server';
 export type NotificationType =
   | 'like'
   | 'comment'
+  // Seit 23.08.2026 zustellbar. Der Client schrieb den Typ schon immer
+  // (`lib/useComments.ts` in der App), der CHECK lehnte ihn ab — siehe
+  // `20260823180000_comment_reply_notification.sql`.
+  | 'comment_reply'
   | 'follow'
   | 'mention'
   | 'dm'

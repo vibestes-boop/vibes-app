@@ -61,6 +61,12 @@ function actionLabel(n: AppNotification, t: TFn): string {
       return n.comment_text
         ? t('notif.commentQuoted', { text: n.comment_text })
         : t('notif.comment');
+    // Seit 23.08.2026. Der Typ wurde von `useComments.ts` schon immer
+    // geschrieben — er scheiterte nur am CHECK, weshalb hier nie einer ankam.
+    case "comment_reply":
+      return n.comment_text
+        ? t('notif.commentReplyQuoted', { text: n.comment_text })
+        : t('notif.commentReply');
     case "mention":
       return t('notif.mention');
     case "dm":
@@ -283,7 +289,13 @@ function NotifCard({ item }: { item: AppNotification }) {
         pathname: "/post/[id]",
         params: {
           id: item.post_id,
-          openComments: (item.type === 'comment' || item.type === 'mention') ? '1' : '0',
+          // `comment_reply` gehört hierher: Die Antwort steht IN den
+          // Kommentaren, und ohne das Flag landet man auf dem Post und muss
+          // sie selbst suchen.
+          openComments:
+            (item.type === 'comment' || item.type === 'comment_reply' || item.type === 'mention')
+              ? '1'
+              : '0',
         },
       });
     }

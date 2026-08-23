@@ -46,9 +46,19 @@ was gilt.
 > zurückgestellt, und die Regel in Abschnitt 3 so geschärft, dass die Probe jetzt ein Riegel ist
 > statt einer Erinnerung.
 >
-> ⏳ **Der nächste Bauschritt steht fertig beschrieben in Abschnitt 75:** das Verkäufer-Profil
-> umsortieren. Vier Schritte, ein OTA — und die Begründung kommt aus Berkats eigener Strategie,
-> nicht von Whatnot.
+> ✅ **Das Verkäufer-Profil ist umsortiert** (Abschnitt 76) — keine Migration, keine neue Abfrage.
+> Die Bürgen-Zeile steht am Namen statt unter den Kacheln; Avatar und Name liegen **im** Banner,
+> weiss auf einem dunklen Verlauf; ohne Kopfbild trägt Markengrün. Gemessen gegen Whatnots **App**
+> steht Berkat jetzt Punkt auf Punkt: Banner-Unterkante 214 gegen 214, Bio 371 gegen 367.
+>
+> ⚠️ **Es brauchte drei Anläufe, und der Grund gehört gelesen:** Der zweite war sauber gemessen —
+> nur an Whatnots **Web**-Seite, die anders gebaut ist als ihre App. **Web und App desselben
+> Anbieters sind zwei Vorlagen, nicht eine.**
+>
+> ✅ **Ausgerollt**, Gruppe `f9e486be…`, iOS-Update `01a02f5b…`, Laufzeit 1.0.0. ⚠️ Vor dem
+> Veröffentlichen fiel der weisse Name im Banner beim Nachrechnen durch — **2,37 : 1** über einem
+> unten hellen Foto. Behoben mit einem dreistufigen Verlauf (jetzt 4,55–7,33 : 1), erst dann raus.
+> **Das Auge misst 4,5 : 1 nicht.**
 >
 > ⚠️ **Drei Behauptungen dieses Dokuments waren falsch**, alle am Abzug gemessen: Es sind
 > **sechs** Schreibstellen auf `notifications`, nicht fünf · „Versand in Stufen: Zeilen, kein
@@ -174,7 +184,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–74; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **74 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–76; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **75 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -6650,7 +6660,7 @@ zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.
 ## 56. Die Prüfliste — alles Ungeprüfte an einer Stelle (21.08.2026)
 
 Im Dokument stehen über **vierzig** Stellen mit „ungeprüft“ oder „nicht geprüft“, verteilt über
-fünfundsiebzig Abschnitte und zwei Wochen (sieben kamen am 23.08. dazu: A16–A18, B9–B11, C6).
+sechsundsiebzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20, B9–B11, C6).
 
 Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
 die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
@@ -6689,6 +6699,8 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A16 | **Versandart im Regal-Formular** (23.08.): Kacheln stehen, eine wählen, einstellen — auf der Artikelseite muss „zzgl. Versand ab **1,19 €**“ statt 4,90 € stehen. Ohne Wahl bleibt es bei 4,90 € | 75 |
 | A17 | ~~**Versand-Bildschirm**~~ ✅ 23.08. am Gerät: DE mit **vier** Stufen (1,19 / 2,25 / 4,10 / 4,90), AT und CH mit je einer plus dem Hinweis | 75 |
 | A18 | ~~**Urlaub, die Oberfläche**~~ ✅ 23.08.: „Eingetragen“, grüne Karte „wieder da am 30. August“, Kacheln, „Ich bin zurück“. ⚠️ Die **Wirkung** ist damit NICHT belegt — siehe B9 | 75 |
+| A19 | ⚠️ **Ein DUNKLES und ein SEHR HELLES Kopfbild setzen** und den Kopf ansehen. Drei Dinge müssen beide Male lesbar bleiben: Uhrzeit, die drei Symbole, **und der weisse Name im Banner**. Der Name ist der neue Fall — er hängt allein am dunklen Verlauf. Am hellen Blumenfoto sah er gut aus; ein Foto, das UNTEN hell ist (Schnee, weisse Wand, Sandstrand), ist der Fall, der ihn kippen könnte | 76 |
+| A20 | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein. Er ist durch den Umbau nach OBEN gerückt, sollte also unkritisch sein — einmal ansehen genügt | 76 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -6705,6 +6717,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | B9 | ⚠️ **Urlaub aus fremder Sicht — der erste Versuch am 23.08. war LEER.** Der Urlaub stand auf `zaur` (46c70dfb), und der hat **0 Regal-Angebote**: Die anon-Zahl blieb bei 32, weil nichts wegzunehmen war. Dasselbe Muster wie die WOZ-Probe in Abschnitt 44. **Richtig geht es so:** als `berkattest` (7760a71b, 2 Angebote) oder einem Seed-Verkäufer (je 6) einschalten — die anon-Zahl muss dann von 32 auf 30 bzw. 26 fallen. Dazu: ein gespeicherter Artikel-Link muss `seller_on_vacation` liefern statt zu kaufen | 75 |
 | B10 | **Belegfoto im privaten Eimer**: Problem mit Foto melden, beim Verkäufer die Fall-Karte öffnen — das Bild muss erscheinen. Erscheint es nicht, ist der Lesepfad kaputt und der Beleg wertlos | 75 |
 | B11 | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` → erwartet **403 / 42501**. Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen, Teilen müssen in **Serlo** weiter ankommen | 75 |
+| B12 | **Antwort auf einen Kommentar** (erst nach dem Ausrollen von 77): A kommentiert, B antwortet — bei A muss die Meldung stehen UND ein Push mit dem Titel „💬 Antwort auf deinen Kommentar" ankommen, nicht „Neue Aktivität auf Serlo". ⚠️ Gegenprobe: ein normaler Kommentar löst weiterhin **genau einen** Push aus, nicht zwei | 77 |
 
 ### C — laufende Sendung, allein. Kein zweites Konto.
 
@@ -9755,7 +9768,7 @@ Alles ungeprüft; nichts davon lief je auf einem Gerät.
 | **B11** | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` — erwartet **403 / 42501**. Und die Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen und Teilen müssen in **Serlo** weiter ankommen | zweites Konto |
 | **C6** | **DM-Faden**: aus einem Angebot schreiben (`app='berkat'`), der andere **antwortet** — die Antwort muss **weiterhin** `'berkat'` tragen. Das ist der ganze Punkt der Entscheidung | zweites Konto |
 
-### ⏳ DER NÄCHSTE BAUSCHRITT: das Verkäufer-Profil umsortieren (23.08.2026, entschieden, nicht gebaut)
+### ~~⏳ DER NÄCHSTE BAUSCHRITT: das Verkäufer-Profil umsortieren~~ — ✅ gebaut am 23.08.2026 (Abschnitt 76)
 
 Zaur mit einem Bildschirmfoto von Whatnots Verkäufer-Profil (`emd_livedeals`, EMD Trading):
 *„analysiere das Profil, Anordnung usw. — die ist besser als unsere oder?"*
@@ -9809,6 +9822,8 @@ und Berkat setzt sie global auf `dark` (Abschnitt 4). Über einem dunklen Banner
 Symbole unlesbar. Entweder bekommt der Banner einen Verlauf nach oben, oder dieser Bildschirm wird
 die zweite Ausnahme neben dem Live-Raum.
 
+✅ **Entschieden und gebaut: der Verlauf, keine zweite Ausnahme.** Die Begründung und zwei Funde,
+die beim Bauen dazukamen, stehen in **Abschnitt 76**.
 
 ### Danach, nach Nutzen sortiert
 
@@ -9818,8 +9833,8 @@ die zweite Ausnahme neben dem Live-Raum.
    Richtigstellung in Abschnitt 70.
 2. **Die Tester eintragen.** Die Review ist durch, die Gruppe hat 0. Das ist der einzige Punkt auf
    dieser Liste, der einen Verkäufer bringt.
-3. **Das Verkäufer-Profil umsortieren** — der Abschnitt direkt darüber. Vier Schritte, ein
-   OTA; Schritt 1 und 2 haben ihre Begründung in Berkats eigener Strategie, nicht bei Whatnot.
+3. ~~**Das Verkäufer-Profil umsortieren**~~ ✅ gebaut **und ausgerollt** am 23.08.2026
+   (Abschnitt 76), Gruppe `f9e486be…`. Am Gerät bleiben A19/A20 offen.
 4. **Die zwölf freigestellten Kategorie-Fotos** — Zaurs Handgriff, grösster sichtbarer Abstand.
    ⚠️ „Schuhe" trägt bis dahin ein Paket-Symbol.
 5. **Die verbleibenden Audit-Funde.** ⚠️ Die „vier Bestell-Lesepfade auf `product_orders`" sind
@@ -9827,7 +9842,9 @@ die zweite Ausnahme neben dem Live-Raum.
    Versandzeit-Kachel, behoben mit `20260823170000`. Offen bleibt nur noch: Belegfotos aus dem
    Altbestand im öffentlichen Eimer (zwei Testfälle; **vor echten Nutzern umziehen oder löschen**)
    und die URL-Prüfung ist seit `20260823110000` erledigt.
-6. **`comment_reply` freischalten** — Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
+6. ⏳ **`comment_reply` freischalten** — **gebaut am 23.08.2026, NICHT eingespielt** (Abschnitt 77).
+   Migration, beide Clients und sechs Übersetzungen stehen; es fehlen `db push`, der Serlo-OTA auf
+   **beide** Laufzeiten und der Web-Deploy. Alter Wortlaut: Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
    „Neue Aktivität auf Serlo".
 7. ~~**Serlo-OTA** für den `recipient_id`-Fix~~ ✅ am 23.08. nach Freigabe raus, beide Runtimes.
    Delta vorher gemessen: **genau eine Datei** (`lib/useFollowRequest.ts`), `package.json`
@@ -9870,3 +9887,363 @@ unter dem Bild (68) · Käuferschutz Fassung A (68) · Preisvorschlag nur vor de
 
 Und der Satz, der über allem steht, ist unverändert: **Keine dieser Änderungen hat einen Verkäufer
 gebracht.** Die Review ist jetzt durch — der nächste Schritt ist ein Link an fünf Leute, kein Code.
+
+---
+
+## 76. Das Verkäufer-Profil umsortiert (23.08.2026, abends)
+
+Der Bauplan aus Abschnitt 75, ausgeführt. **Alle vier Schritte, kein Server, keine Migration, keine
+neue Abfrage** — zwei Dateien, `app/seller/[id].tsx` und ein Registratur-Eintrag in
+`theme/tokens.ts`.
+
+### Die neue Reihenfolge
+
+| vorher | jetzt |
+|---|---|
+| Banner (116 pt, Ecken, Rand ringsum) | **randlos**, unter die Statusleiste, endet bei 214 — wie Whatnots App |
+| Avatar 64 pt, Name daneben, beides UNTER dem Banner | **80 pt, Name daneben — beides IM Banner**, weiss auf dunklem Verlauf |
+| Ohne Kopfbild: sandfarbene Platzhalter-Kachel | **Markengrün** (`ui.brand`) — der Name darin ist weiss und braucht dunkel |
+| Bio → Follower → Folgen → Nachricht/Trinkgeld → Live-Slot → Kacheln → **Bürgen** | **Bürgen-Zeile** → **Kacheln** → Bio → Follower → Folgen → Nachricht/Trinkgeld → Live-Slot |
+
+Die Begründung für die ersten beiden Punkte kommt aus Berkats eigener Strategie (§ B5), nicht von
+Whatnot: Wir haben den **einen** Vorteil, den sie nicht nachbauen können, und begruben ihn unter dem,
+was jede Plattform hat.
+
+### ⚠️ Es ist eine ZEILE, nicht das Feld — und das ist der ganze Trick
+
+Das vollständige Bürgen-Feld steht **weiterhin unten**. Nach oben gewandert ist nur
+`vouchSummary()`, also „amir32 bürgt — du folgst ihm" als eine grüne Zeile am Namen.
+
+Das ist keine Abschwächung des Bauplans, sondern seine wörtliche Lesart: Punkt 1 sagt
+„Bürgen-**Zeile**", und der Vergleichsfall aus Abschnitt 58 war genau derselbe Eingriff — dort
+wanderte die Kurzfassung in den Live-Kopf, während das Feld im Sheet blieb.
+
+**Gemessen, warum das Feld nicht mit hochkonnte:** `VouchPanel` ist ohne einen einzigen Bürgen rund
+190 Punkte hoch (Kopf, Leersatz, goldener Knopf, Innenabstand), mit drei Bürgen deutlich mehr. Oben
+eingesetzt hätte es die Kennzahlen unter den Falz gedrückt — man hätte den Beleg vor der Auskunft
+gelesen. **Die Zeile ist die Auskunft, das Feld ist der Beleg.**
+
+Die **lange** Fassung, nicht die kurze aus dem Live-Kopf: Auf dem Profil hat die Zeile die volle
+Breite, im Live-Kopf teilt sie sich den Platz mit Name und Zuschauer-Pille (Abschnitt 58).
+
+### ⚠️ Die Statusleisten-Frage: der Verlauf — und er reichte allein NICHT
+
+Abschnitt 75 stellte die Wahl: Verlauf **oder** zweite Ausnahme neben dem Live-Raum. Es wurde der
+Verlauf, weil eine Ausnahme das Problem nur verschiebt: `light` wäre über einem dunklen Bannerfoto
+richtig und über einem hellen unlesbar — und welches Foto ein Verkäufer hochlädt, weiss niemand.
+(Der Rückfall war zu diesem Zeitpunkt noch Sand; seit er Markengrün ist, gilt dasselbe Argument
+für Fotos statt für die leere Fläche.)
+
+**Der Verlauf allein trug aber nur die Statusleiste, nicht die Symbolzeile darunter.** Erst
+nachgerechnet, dann behoben:
+
+| | Verlauf-Rest | über schwarzem Banner | Kontrast |
+|---|---|---|---|
+| Statusleiste (y ≈ 30 pt) | 58 % | `rgb(146,144,141)` | **6,7 : 1** ✅ |
+| Zurück / Teilen / Mehr (y ≈ 82 pt) | 28 % | `rgb(70,69,68)` | **1,6 : 1** ❌ |
+
+Der erste Entwurf ließ den Verlauf über die ganze Kopfzeile laufen. Das bestand die Probe am
+**hellen** Blumenfoto von `berkattest` und wäre über einem dunklen Foto durchgefallen — und
+nebenbei lag ein sichtbarer Sandschleier über dem oberen Drittel des Bildes.
+
+**Behoben in zwei Teilen:** Der Verlauf deckt jetzt nur noch `insets.top + 10` — genug für die
+Systemsymbole, die man nicht selbst zeichnen kann. Die drei eigenen Symbole tragen Kreise aus
+`ui.overlay`, Berkats bestehender Auflage „Text auf einem FREMDEN Bild".
+
+> ⚠️ **Das ist die DRITTE registrierte Verwendung von `ui.overlay`** — Eintrag steht in
+> `theme/tokens.ts`, wie der Kommentar dort es verlangt („Wer eine dritte anlegt, trägt sie hier
+> ein — sonst misst der nächste Prüfer eine Fläche nach und glaubt, alle geprüft zu haben").
+
+Zwei weitere Fallen, die dabei bedient sind:
+
+- **`pointerEvents="box-none"` an der Kopfzeile.** Sie liegt jetzt ÜBER der Liste; ohne das wäre der
+  obere Streifen der Seite tot. Genau die Falle aus Abschnitt 3 („Eine Ebene ohne `box-none` macht
+  das halbe Bild tot").
+- **Der transparente Endpunkt des Verlaufs trägt `rgba(250,247,242,0)`, nicht `'transparent'`.**
+  Letzteres interpoliert auf iOS über Schwarz und legt einen grauen Schleier über das Foto.
+- **`progressViewOffset={insets.top}`** am `RefreshControl`. Die Liste beginnt seit dem Umbau bei
+  y = 0; ohne den Versatz dreht sich der Kreisel dort, wo die Uhrzeit steht.
+
+### ⚠️ ZWEI falsche Entwürfe davor — und der zweite lag an der falschen Vorlage
+
+Zaur, mit Blick auf die gebaute Fassung: *„das profilbild und name und die kacheln sind bei whatnot
+weiter oben, vergleiche."* **Zweimal, und beide Male hatte er recht.**
+
+**Entwurf 1: Name UNTER dem Avatar.** Abschnitt 75 notierte „Avatar ~180 pt, überlappt den Banner"
+und „Kennzahlen direkt unter dem Namen"; daraus schloss ich auf eine Spalte. Die Tabelle dort sagt
+über *neben oder darunter* gar nichts — **ich habe sie nicht nachgesehen, sondern ergänzt.**
+
+**Entwurf 2: Name neben dem Avatar, aber UNTER dem Banner.** Korrigiert nach Messung an
+`whatnot.com/user/emd_livedeals` im Browser. Besser, und trotzdem falsch — denn:
+
+> ⚠️ **Whatnots WEB-Seite ist anders gebaut als ihre APP.** Im Web steht der Identitätsblock unter
+> dem Banner. In der App liegt er **im** Banner. Ich habe die eine Fassung gemessen und die andere
+> nachgebaut, ohne zu prüfen, dass es dieselbe ist.
+
+Erst Zaurs Bildschirmfoto **aus der App** brachte es heraus. Alles in Bildschirm-Koordinaten:
+
+| | Whatnot-App | Entwurf 1 | Entwurf 2 | jetzt |
+|---|---|---|---|---|
+| Banner endet | **214** | 242 | 242 | **214** ✅ |
+| Avatar | 128–199, IM Banner | 190–294, darunter | 190–294 | **125–199, im Banner** ✅ |
+| Name | **142 — IM Banner, weiss** | ~254, darunter | ~196, daneben | **~145, im Banner** ✅ |
+| Kennzahlen | **214** | ~386 | ~330 | **253** |
+| Bio | 367 | 499 | 447 | **371** ✅ |
+| Reiter | 564 | ~790 | ~738 | ~661 |
+
+**Drei Dinge zusammen kosteten die 170 Punkte:** der Identitätsblock unter statt im Banner (~100),
+ein zu hoher Banner (28 — „höher" aus dem Bauplan meinte die alte 116er-Kachel, gegen Whatnot
+gemessen war 180 bereits zu viel), und der Name unter statt neben dem Avatar (~60 in Entwurf 1).
+
+> **Und der Rest ist kein Rückstand, sondern unsere Zeile:** Die Kennzahlen stehen bei 253 statt
+> 214, weil dazwischen die Bürgen-Zeile liegt — genau die Zeile, für die dieser ganze Umbau da war.
+> Ab der Bio (371 gegen 367) laufen beide Profile wieder gleich.
+
+**Nebenbefund, den es festzuhalten lohnt: Whatnots App HAT Kacheln.** Drei Stück, seitlich
+scrollbar, mit Symbol, Zahl und Beschriftung — praktisch Berkats Bauform. Nur die Web-Seite zeigt
+statt dessen zwei Textzeilen. Eine frühere Fassung dieses Abschnitts behauptete „Whatnot hat gar
+keine Kacheln"; das galt für die Web-Seite und ist für die App falsch. **Berkats Kacheln bleiben,
+und sie waren nie das Problem.**
+
+**Die Lehre, und sie ist unangenehm:**
+
+> **1. Eine Vergleichstabelle beweist nur, was in ihr steht.** Abschnitt 75 stimmte in jeder Zahl,
+> die er nannte, und schwieg zu der einen, die den Unterschied machte. Die Lücken darin sind keine
+> Übereinstimmung.
+>
+> **2. Web und App desselben Anbieters sind zwei Vorlagen, nicht eine.** Eine Messung ist nur für
+> die Oberfläche gültig, an der sie genommen wurde. **Wer die App nachbaut, misst die App** — sonst
+> misst man sauber und baut trotzdem das Falsche. Dieselbe Klasse wie „eine Prüfung im falschen
+> Ordner meldet Erfolg für die falsche App" (unten), nur mit der Vorlage statt dem Werkzeug.
+
+### ⚠️ Der Rückfall ohne Kopfbild ist jetzt MARKENGRÜN, nicht Sand
+
+`amir32` hat kein Kopfbild. Randlos wurde aus der ruhigen Platzhalter-Kachel zuerst eine **leere
+Sandfläche**, an der man vorbeiscrollt, bevor der erste Buchstabe kommt — die alte 116er-Kachel mit
+Ecken war als Platzhalter *lesbar*, dieselbe Farbe ohne Rand ist nur noch Leere.
+
+Der erste Versuch war, den leeren Banner zu **verkürzen**. Das trägt nicht mehr, seit der Name im
+Banner steht: Er ist weiss und wäre auf Sand unsichtbar. Also der Rückfall selbst:
+**`ui.brand`, Berkats Dunkelgrün.**
+
+- Ein dunkles Markenfeld liest sich als gesetzt, nicht als Loch.
+- Der weisse Name funktioniert in **beiden** Fällen ohne Fallunterscheidung.
+- Ein heller Rückfall würde genau den Fehler bauen, den Berkats zwei feste Flächen ausschliessen
+  sollen (Abschnitt 4): heller Text auf heller Fläche.
+
+⚠️ **Der Avatar brauchte danach einen Ring.** Sein Rückfall ist `stage.success` — dunkelgrün auf
+dunkelgrün, also ein Loch im Banner. Zwei Punkte `stage.lead` als Kontur, und auf einem dunklen
+Foto hilft dieselbe Kontur genauso.
+
+⚠️ **`stage`-Töne auf der hellen Fläche, und das ist KEIN Verstoss gegen Abschnitt 4, sondern
+seine Anwendung.** Der Banner *ist* eine dunkle Fläche — Foto oder Markengrün —, und `stage` ist
+die Palette dafür. Wer dort `ui.text` nähme, schriebe Dunkel auf Dunkel.
+
+> **In Phase 0 ist der Rückfall der REGELFALL, nicht der Sonderfall.** Fünf frische Verkäufer haben
+> zuerst kein Kopfbild. Eine Gestaltung, die nur mit gepflegtem Bildmaterial funktioniert, ist für
+> den Zustand entworfen, den Berkat noch nicht hat.
+
+### Was aus dem Bestand ausdrücklich NICHT weggefallen ist
+
+Bürgen · Impressumsblock (§ 5 DDG) · der „Demnächst"-Slot mit dem nächsten Termin · Zurück, Teilen
+und Melden im Kopf. **Die Substanz ist unsere, die Reihenfolge ihre** — und die Substanz steht noch.
+
+Der Live-/Termin-Slot bleibt bewusst dort, wo er war: direkt unter dem Folgen-Knopf. Der Grund
+aus Abschnitt 18 gilt unverändert („der Folgen-Knopf direkt darüber ist die einzige Handlung, die
+daraus etwas macht"). Er ist durch den Umbau **nach oben** gerückt, nicht nach unten — die Frage
+nach dem Falz hat sich damit erledigt.
+
+Der Name in der Kopfzeile ist weg. Er steht seit dem Umbau groß unter dem Avatar; zweimal wäre
+Dopplung.
+
+### ⚠️ Und ich bin selbst in die Ordner-Falle gelaufen
+
+Nach der Verlauf-Änderung meldeten `tsc` und `expo export` „sauber". **Beide liefen in
+`/Users/zaurhatuev/vibes-app`, also gegen SERLO** — ein `cd /tmp` für einen Bildschirmabzug hatte
+das Arbeitsverzeichnis der Shell zurückgesetzt.
+
+Aufgefallen ist es nur an einer Zahl: Das Bündel sprang von **9,63 MB auf 35,5 MB**, und der
+Dateiname wechselte von `entry-…` zu `index-…`. Danach mit explizitem Pfad wiederholt — Berkat ist
+sauber, 9,63 MB.
+
+> **Das ist dieselbe Falle wie der versehentliche Serlo-OTA vom selben Tag (Abschnitt 3), nur die
+> harmlose Hälfte davon.** `expo export` schreibt nach `/tmp` und trifft niemanden. Der Schaden ist
+> ein anderer: **Eine Prüfung im falschen Ordner meldet Erfolg für eine App, die man gar nicht
+> geändert hat.** Sie sieht aus wie Absicherung und ist keine — dieselbe Klasse wie „eine Prüfung,
+> die eine Prüfung nur nachahmt" (Abschnitt 75, Lehre 4).
+>
+> **Die Regel: jeder Prüfbefehl trägt sein `cd` im selben Aufruf, und die Bundle-Größe ist die
+> Gegenprobe.** Berkat ≈ 9,6 MB, Serlo ≈ 35 MB. Wer den falschen Wert sieht, hat die falsche App
+> geprüft.
+
+### Geprüft und ungeprüft
+
+**Geprüft**, im Simulator am echten Datenstand:
+
+- `npx tsc --noEmit` und `npx expo export --platform ios` fehlerfrei — **im Berkat-Ordner**,
+  9,63 MB, nachdem der erste Durchgang danebenlag (siehe oben)
+- **Eigenes Profil** (`berkattest`, mit Kopfbild): Banner randlos bis unter die Statusleiste,
+  Avatar und Name **darin**, weiss auf dem Verlauf lesbar; Bürgen-Zeile darunter, Kacheln danach
+- **Fremdes Profil ohne Kopfbild** (`amir32`): Markengrün-Rückfall, Avatar mit Kontur, Name weiss —
+  liest sich als gesetzte Fläche, nicht als Leere
+- **Die Endstände**, am Bildabzug gemessen: Banner-Unterkante **214** (Whatnot: 214) ·
+  Bürgen-Zeile 229 · Kacheln 253 (Whatnot: 214) · Bio **371** (Whatnot: 367). Die beiden Entwürfe
+  davor lagen bei 354/386/499 bzw. 305/330/447
+- **Fremdes Profil** (`amir32`, ohne Kopfbild): drei Kreis-Symbole im Kopf, kurzer Banner,
+  „berkattest bürgt", Folgen / Nachricht / Trinkgeld, Bürgen-Feld, Anbieterangaben
+- **Gescrollt**: Die Kopfzeile schwebt über dem Inhalt, der Verlauf blendet ihn unter der
+  Statusleiste aus — das übliche iOS-Bild, kein Überlappungsfehler
+- Statusleisten-Kontrast am hellen Foto gemessen: **9,7–13,6 : 1**
+
+⚠️ **Ungeprüft — neu in der Prüfliste als A19/A20:**
+
+| | Was | Voraussetzung |
+|---|---|---|
+| **A19** | **Ein DUNKLES und ein SEHR HELLES Kopfbild setzen.** Lesbar bleiben müssen: Uhrzeit, die drei Symbole — **und der weisse Name im Banner**. Letzterer hängt allein am dunklen Verlauf; der gefährliche Fall ist ein Foto, das UNTEN hell ist | allein |
+| **A20** | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein | allein, Termin genügt |
+
+Dazu unverändert offen: **A5** (das Banner mit `'wide'`-Zuschnitt wählen) — der Bildschirm zeigt
+das Ergebnis jetzt viel größer, also fällt ein schlechter Ausschnitt auch stärker auf.
+
+**Nicht zu tun:** Die Kacheln durch Textzeilen ersetzen. Das stand kurz als Idee im Raum, weil
+Whatnots **Web**-Seite es so macht — ihre **App** hat drei Kacheln wie Berkat. Der verbleibende
+Abstand von 39 Punkten ist die Bürgen-Zeile, also Absicht.
+
+### ⚠️ Vor dem Ausrollen durchgerechnet — und der Fall fiel durch
+
+Zaur: *„roll es aus und mach weiter."* Vor dem Veröffentlichen den offenen A19-Fall **gerechnet**
+statt mitgeschickt, und genau das hat sich gelohnt:
+
+Der Verlauf lief zweistufig von 0 auf 0,82 über 55 % der Bannerhöhe. Am Namen bleibt davon
+**0,41** übrig. Über einem unten HELLEN Foto — Schnee, weiße Wand, Sandstrand — ergibt das für den
+weißen Namen **2,37 : 1**. Nötig sind 4,5 : 1.
+
+Behoben mit **drei Stufen statt zwei** (`locations={[0, 0.35, 1]}`, Alpha 0 / 0,55 / 0,95) auf
+62 % Höhe. Die mittlere Stufe zieht die Deckung nach oben, ohne den oberen Bildrand zuzukleistern.
+Gegen reines Weiß nachgerechnet:
+
+| | Alpha | Grund über Weiß | Kontrast |
+|---|---|---|---|
+| Name-Oberkante | 0,62 | `rgb(105,111,109)` | **4,55 : 1** ✅ |
+| Name-Mitte | 0,68 | `rgb(90,97,95)` | **5,63 : 1** ✅ |
+| @-Name | 0,75 | `rgb(73,80,78)` | **7,33 : 1** ✅ |
+
+> **Am hellen Blumenfoto sah der zweistufige Verlauf gut aus.** Er wäre mit 2,37 : 1 ausgerollt
+> worden, und niemand hätte es gemerkt, bis ein Verkäufer ein helles Kopfbild hochlädt. **Das Auge
+> misst 4,5 : 1 nicht** — wer Text auf ein fremdes Foto legt, rechnet den schlimmsten Fall aus,
+> statt den vorhandenen anzusehen.
+
+A19 bleibt trotzdem in der Prüfliste: Gerechnet ist nicht gesehen, und die Rechnung deckt den Namen
+ab, nicht den Gesamteindruck.
+
+### ✅ Ausgerollt (23.08.2026, 18:0x)
+
+| | |
+|---|---|
+| Gruppe | `f9e486be-0beb-472c-a908-7dabdc2be009` |
+| iOS-Update | `01a02f5b-9092-72fb-a31d-c27eb4da51fe` → **A15 muss `01a02f5b` zeigen** |
+| Laufzeit | **1.0.0** ← Berkat. Serlo wäre 1.30.0 / 1.31.0 |
+| Dashboard | `…/projects/**berkat**/updates/…` ← Serlo wäre `/projects/vibes/` |
+
+Veröffentlicht mit der Riegel-Form aus Abschnitt 3, Projektprobe und Befehl in **einer** Kette:
+
+```bash
+cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -q "@zaurhat/berkat" && EAS_BUILD=1 npx eas update --branch production --message "…" --non-interactive
+```
+
+⚠️ `EAS_BUILD=1` ist Pflicht (LEITFADEN § 4) — ohne das landen Expo-Go-Stubs im Produktions-OTA.
+
+⚠️ **Wirkt erst beim ÜBERNÄCHSTEN Start** (Abschnitt 3). Zum Prüfen die App zweimal schließen und
+öffnen, dann unten im Konto-Reiter nachsehen: Steht dort `01a02f5b`, ist dieser Stand aktiv.
+
+---
+
+## 77. `comment_reply` — gebaut, NICHT eingespielt (23.08.2026, abends)
+
+Punkt 6 der Liste aus Abschnitt 75. **Das ist Serlos Fläche, nicht Berkats — und Serlo ist im
+App Store.** Deshalb steht alles fertig und nichts ist draussen; die Freigabe fehlt.
+
+### Der Fehler
+
+`lib/useComments.ts:248` schreibt seit jeher `type: 'comment_reply'`, wenn jemand auf einen
+Kommentar antwortet. Am **frischen Abzug vom 23.08.2026** nachgesehen: Der
+`notifications_type_check` kennt **32 Typen und diesen nicht**. Der INSERT scheitert also immer,
+und `error` wird dort nirgends geprüft.
+
+> **Wer auf einen Kommentar antwortet, erreicht den anderen nicht.** Seit Monaten, lautlos.
+
+### ⚠️ Es sind FÜNF Oberflächen, nicht vier
+
+Die Übergabe zählte bisher vier (CHECK · Expo-Push · In-App-Liste · Web-Liste). Beim Bauen kam eine
+fünfte dazu, und sie ist die einzige, die sich **von selbst meldet**:
+
+| | Wo | Stand |
+|---|---|---|
+| 1 | `notifications_type_check` | `20260823180000` |
+| 2 | Push-`CASE` in `fn_send_push_on_notification` | `20260823180000` |
+| 3 | In-App-Liste `app/(tabs)/notifications.tsx` + de/en/ru | ✅ |
+| 4 | Web-Liste `apps/web/components/notifications/…` + de/en/ru | ✅ |
+| 5 | **die TypeScript-Union** `lib/useNotifications.ts` / `apps/web/lib/data/notifications.ts` | ✅ |
+
+`tsc` brach an beiden Unions ab, sobald ein `case` den neuen Typ nannte — in der App und im Web
+getrennt. **Von den fünf Stellen ist das die einzige mit einem Wächter**; die anderen vier
+schweigen, wenn man sie vergisst. Als Notiz für den nächsten Typ: Wer zuerst den `case` schreibt
+und `tsc` laufen lässt, bekommt die halbe Liste geschenkt.
+
+`ce` braucht nichts — die Datei ist `DeepPartial` und fällt auf Deutsch zurück.
+
+**Web-Push ist unberührt**, und das ist kein Versäumnis: Am Abzug nachgesehen gibt es dort nur
+`notify_web_push_on_dm`, also gar keine Typ-Liste. Für Nicht-DM ist Web-Push ohnehin tot (seit
+1.7.26 feuert der SQL-`CASE`, nicht die Edge Function). Kein Rückschritt, aber auch kein
+Fortschritt — eigene Runde.
+
+### Entscheidungen, die nicht offensichtlich sind
+
+- **Kein Eintrag in die Überspring-Liste.** Ganz oben in `fn_send_push_on_notification` steht
+  `IF NEW.type IN ('like','comment','follow','follow_request','dm') THEN RETURN NEW`. Die stehen
+  dort, weil sie einen eigenen Direkt-Push haben — `notify_on_comment` pusht an den **Autor des
+  Posts**. Eine Antwort erreicht aber den **Kommentierenden**, und für den gibt es keinen zweiten
+  Weg. Also eigener `CASE`-Zweig, kein Doppel-Push. ⚠️ Die Gegenprobe gehört trotzdem gemacht: ein
+  normaler Kommentar darf weiterhin **genau einen** Push auslösen.
+- **`openComments: '1'` auch für `comment_reply`.** Ohne das Flag landet man auf dem Post und muss
+  die Antwort selbst suchen — dieselbe Klasse wie der `query`-Fehler bei `saved_search_hit`
+  (Übergabe 51): Ziel richtig, Nutzlast unvollständig.
+- **Der Funktionsrumpf ist MASCHINELL übernommen** (`/tmp/gen_reply.mjs`), aus einem frisch
+  gezogenen Abzug. Das Skript bricht ab, wenn der Anker nicht genau einmal trifft, zählt danach
+  die `CREATE`-Zeilen **und** prüft, dass ein Bestandszweig (`saved_search_hit`) noch dasteht.
+  Bei genau dieser Funktion sind zweimal spätere Änderungen verlorengegangen.
+- **Die Migration zählt selbst nach.** Ein `DO`-Block liest nach dem `ALTER` das
+  `pg_get_constraintdef` und wirft, wenn `comment_reply` nicht drinsteht. Die Lehre aus
+  `ON CONFLICT DO NOTHING` vom selben Tag (Abschnitt 75): **Erfolgsmeldung ist kein Nachweis.**
+
+### ⚠️ REIHENFOLGE: Datenbank vor Client
+
+Andersherum schriebe der neue Client einen Typ, den der CHECK ablehnt — also derselbe stille
+Fehlschlag wie heute, nur mit mehr Code. Dieselbe Regel wie bei `listing_id` (Abschnitt 72).
+
+Die Migration allein ist **additiv und für sich harmlos**: Sie erlaubt einen Typ zusätzlich und
+ergänzt einen `CASE`-Zweig. Ohne den Client bleibt sie wirkungslos, sie bricht aber auch nichts.
+
+### Geprüft und ungeprüft
+
+**Geprüft:** `npx tsc --noEmit` in der App **und** im Web fehlerfrei · `npm run build` in
+`apps/web` durchgelaufen (die Isolation dort bricht sonst erst auf Vercel) · der Abzug wurde frisch
+gezogen und `/tmp/dump.sh` sofort gelöscht.
+
+⚠️ **Ungeprüft, weil nichts eingespielt ist.** Die Gegenproben stehen am Ende der Migration. Die
+entscheidende geht nur zu zweit und gehört als **B12** in die Prüfliste:
+
+> Konto A kommentiert einen Post, Konto B **antwortet** auf diesen Kommentar. Bei A muss eine
+> Meldung stehen („hat auf deinen Kommentar geantwortet") **und** ein Push ankommen, dessen Titel
+> „💬 Antwort auf deinen Kommentar" lautet — nicht „Neue Aktivität auf Serlo". Gegenprobe: ein
+> normaler Kommentar auf einen Post löst weiterhin genau **einen** Push aus.
+
+### ⏳ Was zum Ausrollen fehlt — drei Schritte, in dieser Reihenfolge
+
+1. `supabase db push` (nur diese eine Migration ist offen, Tracking sonst lückenlos bei 301)
+2. **Serlo-OTA auf BEIDE Laufzeiten** (1.30.0 **und** 1.31.0) — sonst sieht die Hälfte der Nutzer
+   den Rückfalltext. ⚠️ Aus `/Users/zaurhatuev/vibes-app`, und dort ist die Ordner-Falle
+   spiegelverkehrt: Hier ist die **Wurzel** richtig und `apps/berkat` falsch
+3. Web-Deploy (Vercel)
+
+**Keiner dieser Schritte ist gelaufen.**

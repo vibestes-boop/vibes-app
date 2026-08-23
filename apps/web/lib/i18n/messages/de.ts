@@ -639,6 +639,8 @@ const deMessages = {
     like: "{name} hat deinen Post geliked.",
     commentQuoted: "{name} hat kommentiert: „{text}“",
     comment: "{name} hat deinen Post kommentiert.",
+    commentReplyQuoted: "{name} hat dir geantwortet: „{text}“",
+    commentReply: "{name} hat auf deinen Kommentar geantwortet.",
     follow: "{name} folgt dir jetzt.",
     mentionQuoted: "{name} hat dich erwähnt: „{text}“",
     mention: "{name} hat dich erwähnt.",

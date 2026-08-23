@@ -44,6 +44,8 @@ export const de = {
     follow: 'folgt dir jetzt',
     commentQuoted: 'hat kommentiert: "{text}"',
     comment: 'hat deinen Post kommentiert',
+    commentReplyQuoted: 'hat dir geantwortet: "{text}"',
+    commentReply: 'hat auf deinen Kommentar geantwortet',
     mention: 'hat dich in einem Kommentar erwähnt',
     dmQuoted: 'hat dir geschrieben: "{text}"',
     dm: 'hat dir eine Nachricht geschickt',
