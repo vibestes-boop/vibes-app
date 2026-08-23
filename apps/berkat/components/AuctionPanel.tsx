@@ -37,6 +37,15 @@ type Props = {
    * hinterlegt ist. Steht hier nichts, wird auch nichts behauptet.
    */
   shippingFromCents?: number | null;
+  /**
+   * Nimmt dieser Verkäufer Geld über Berkat an (`checkout_enabled`)?
+   *
+   * ⚠️ Kein Riegel — der steht serverseitig an der Kasse (`20260823120000`).
+   * Hier steht die Auskunft VOR dem Gebot. Ohne sie erführe der Käufer erst
+   * nach dem Zuschlag, dass er nicht bezahlen kann; die Übergabe nennt das
+   * „korrekt, aber tödlich".
+   */
+  sellerTakesPayment?: boolean;
 };
 
 export function AuctionPanel({
@@ -54,6 +63,7 @@ export function AuctionPanel({
   onMaxBid,
   myMaxCents,
   shippingFromCents,
+  sellerTakesPayment,
 }: Props) {
   const isSold = auction?.status === 'sold';
   const urgent = secondsLeft <= auctionConfig.urgentSeconds;
@@ -136,6 +146,16 @@ export function AuctionPanel({
                 lieber eine Lücke als eine erfundene Angabe. */}
             {sellerKindNote(auction.seller_kind) ? (
               <Text style={styles.kind}>{sellerKindNote(auction.seller_kind)}</Text>
+            ) : null}
+            {/* ⚠️ Nur wenn ausdrücklich `false` — `undefined` heisst „wird
+                noch geladen", und ein Satz, der eine Zehntelsekunde später
+                verschwindet, ist auf einem Geldweg schlimmer als eine kurze
+                Lücke (dieselbe Regel wie beim Kauf/Kontakt-Knopf auf der
+                Artikelseite, Übergabe 22). */}
+            {sellerTakesPayment === false ? (
+              <Text style={styles.noCheckout}>
+                Bezahlt wird direkt beim Verkäufer — schreib ihm nach dem Zuschlag
+              </Text>
             ) : null}
           </View>
 
@@ -271,6 +291,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', color: stage.text },
   description: { fontSize: 12, color: stage.textMuted, marginTop: 1 },
   shipping: { fontSize: 10, color: stage.textMuted, marginTop: 2, opacity: 0.8 },
+  // Kein Rot: Rot ist auf der Bühne die laufende Uhr. Das hier ist eine
+  // Auskunft, keine Frist — dieselbe Trennung wie bei der Bürgen-Zeile.
+  noCheckout: { fontSize: 10, color: stage.textMuted, marginTop: 2, fontWeight: '600' },
   /* Etwas heller als der Versandhinweis: Der ist ein Preisdetail, dies eine
      Rechtsfolge. Trotzdem ruhig — auf der Bühne trägt Gold den Kauf, und eine
      Pflichtangabe ist keine Werbung. */

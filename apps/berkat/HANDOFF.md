@@ -1,6 +1,6 @@
 # Berkat — Übergabe
 
-**Stand: 22.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 23.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
@@ -12,13 +12,13 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 
 ---
 
-## 0. Wo du gerade stehst — 22.08.2026
+## 0. Wo du gerade stehst — 23.08.2026
 
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 74 → 56.** Abschnitt 74 ist der Anschlusspunkt (er löste 69 ab,
-> davor 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
+> **Wer neu einsteigt, liest 0 → 75 → 56.** Abschnitt 75 ist der Anschlusspunkt (er löste 74 ab,
+> davor 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
 > nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
 >
 > ⚠️ **Wer nur EINEN Abschnitt liest, liest 73.** Der Sicherheits-Audit vom 22.08.2026 hat vier
@@ -31,6 +31,18 @@ was gilt.
 > seit dem 21.08. in TestFlight liegt; und drei Punkte als „ungeprüft", die die Testware am
 > 18.08. belegt hatte. Der Rumpf war jedes Mal aktuell, nur der Kopf nicht. **Wer unten etwas
 > abhakt, hakt es oben mit ab** — sonst liest der nächste Chat den falschen Zustand zuerst.
+>
+> **Neu am 23.08.2026** — vier Arbeitspakete, **sieben Migrationen, alle eingespielt und von
+> aussen gegengeprüft.** Die siebte ist ein Fix nach vorn: `ON CONFLICT DO NOTHING` **ohne Ziel**
+> hatte drei neue Versandsätze lautlos verschluckt, weil eine Eindeutigkeit aus dem August
+> dagegenstand. Zwei offene Entscheidungen sind gefallen: **der Faden entscheidet** über die App einer
+> Direktnachricht, und die **Kassen-Freigabe für die Testware** wird eingeschaltet (im
+> Stripe-Testbetrieb berührt sie keine Rechtsfrage — der Blocker war ein Scheinblocker).
+>
+> ⚠️ **Drei Behauptungen dieses Dokuments waren falsch**, alle am Abzug gemessen: Es sind
+> **sechs** Schreibstellen auf `notifications`, nicht fünf · „Versand in Stufen: Zeilen, kein
+> Umbau" trägt nicht (`DISTINCT ON` und Stripes Grenze von fünf Optionen) · das spaltenweise
+> REVOKE auf `user_whip_ingresses` ist nicht nur weg, es war durch ein `GRANT ALL` überholt.
 >
 > **Neu am 22.08.2026** — der Tag hat zweimal gedreht:
 >
@@ -118,9 +130,12 @@ was gilt.
    Status „Bereit zur Übermittlung". Der Lizenzvertrag ist akzeptiert, Zertifikat und Profil
    stehen, Push ist auf der App-ID freigeschaltet (Abschnitt 54).
 
-   **Was jetzt noch fehlt, ist die Beta App Review** — die externe Gruppe „Verkäufer" ist
-   angelegt, eingereicht wird mit Testinformationen und Demo-Konto. Erst danach können die fünf
-   Verkäufer die App installieren. Bis dahin ist alles Gebaute für genau eine Person erreichbar.
+   ✅ **Stand 23.08.2026: Die Beta App Review ist DURCH.** In App Store Connect steht der Build
+   auf **„Genehmigt"**, Gruppen `IC` + `VE`, Ablauf in 88 Tagen. Damit hat sich dieser Blocker
+   verschoben — es fehlt nicht mehr die Freigabe, sondern **die Tester**: 1 Einladung,
+   1 Installation, und das ist Zaur selbst. Für fünf Leute ist der öffentliche Link praktischer
+   als Einzeleinladungen. **Bis das geschieht, ist alles Gebaute für genau eine Person
+   erreichbar** — daran hat sich nichts geändert.
 
    ⚠️ **Ein TestFlight-Build läuft nach 90 Tagen ab**, Phase 0 dauert 56 — ein Build deckt sie,
    aber ohne viel Luft. Beim zweiten die `buildNumber` in der `app.json` von Hand hochzählen.
@@ -194,7 +209,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | **70 Berkat-eigene, alle eingespielt**; im Tracking 292 ohne Lücke (22.08.2026, nachts) — Abschnitt 5 |
+| Migrationen | **77 Berkat-eigene, alle eingespielt**; im Tracking 300 ohne Lücke (23.08.2026) — Abschnitt 5, zuletzt 75 |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -6599,9 +6614,8 @@ zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.
 
 ## 56. Die Prüfliste — alles Ungeprüfte an einer Stelle (21.08.2026)
 
-Im Dokument stehen **vierzig** Stellen mit „ungeprüft" oder „nicht geprüft", verteilt über
-fünfzig Abschnitte und zwei Wochen. Jede einzelne ist an ihrem Ort richtig aufgehoben — zusammen
-sind sie unbrauchbar, weil niemand sie durchsucht, bevor er ein Gerät in die Hand nimmt.
+Im Dokument stehen über **vierzig** Stellen mit „ungeprüft“ oder „nicht geprüft“, verteilt über
+fünfundsiebzig Abschnitte und zwei Wochen (sieben kamen am 23.08. dazu: A16–A18, B9–B11, C6).
 
 Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
 die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
@@ -6637,6 +6651,9 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A13 | **Benachrichtigungen einstellen** (Konto → Benachrichtigungen): einen Anlass ausschalten, App neu starten — der Schalter muss aus bleiben. Die Liste zeigt sechs Anlässe, „Zuschlag" darf NICHT dabei sein | 68 |
 | A14 | **Startseite**: Suchfeld und die zwei Knöpfe in EINER Zeile, Kategorie-Leiste folgt beim Scrollen ohne Springen — und die Kopfzeile bleibt dabei sichtbar | 68 |
 | A15 | **Welcher Stand läuft?** Unten im Konto-Reiter muss `Berkat 1.0.0 (1) · Stand <Datum> <Uhrzeit> · <8 Zeichen>` stehen. Ein heutiger Zeitpunkt heißt: Der OTA ist angekommen. Steht dort „Werksstand", hat das Gerät seit dem Build **kein einziges** übernommen | 70 |
+| A16 | **Versandart im Regal-Formular** (23.08.): Kacheln stehen, eine wählen, einstellen — auf der Artikelseite muss „zzgl. Versand ab **1,19 €**“ statt 4,90 € stehen. Ohne Wahl bleibt es bei 4,90 € | 75 |
+| A17 | **Versand-Bildschirm** (Konto → Versand): vier DE-Stufen mit Beträgen, AT/CH mit je einer plus dem Satz „nur ein Satz“ | 75 |
+| A18 | **Urlaub**: „eine Woche“ tippen → die Zeile im Konto trägt „im Urlaub“, das eigene Regal bleibt sichtbar. „Ich bin zurück“ macht es rückgängig | 75 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -6650,6 +6667,9 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | B7 | **Keine Geister-Unterhaltung**: Chat des anderen öffnen, nichts schreiben, zurück — beim anderen darf KEINE Unterhaltung erscheinen. Dann schreiben: sie muss auf beiden Seiten stehen. Dazu „Melden/Sperren" aus der Kopfzeile des Verlaufs | 66 |
 | B8 | **Merken-Zahl**: vom zweiten Konto ein Angebot merken — auf der Marktplatz-Karte muss aus dem Herz-Kreis eine Pille mit „1" werden. Beim eigenen Konto ändert sich nichts | 68 |
 | B5 | **Regal ↔ Show, der Weg ohne Sendung**: Termin anlegen → im Vorbereiten-Blatt „Aus dem Regal holen" → Artikel muss aus dem Regal **verschwinden** und als „bereit" am Termin stehen. Dann im eigenen Regal unter „Aus deinen Sendungen übrig" zurückholen | 62 |
+| B9 | **Urlaub aus fremder Sicht**: Vom zweiten Konto muss das Regal des Verreisten **leer** sein — und ein gespeicherter Artikel-Link `seller_on_vacation` liefern statt zu kaufen | 75 |
+| B10 | **Belegfoto im privaten Eimer**: Problem mit Foto melden, beim Verkäufer die Fall-Karte öffnen — das Bild muss erscheinen. Erscheint es nicht, ist der Lesepfad kaputt und der Beleg wertlos | 75 |
+| B11 | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` → erwartet **403 / 42501**. Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen, Teilen müssen in **Serlo** weiter ankommen | 75 |
 
 ### C — laufende Sendung, allein. Kein zweites Konto.
 
@@ -6660,6 +6680,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | C3 | **Live-Raum gegen Whatnots App halten** — was von Punkt 6 der Liste übrig ist | 54, Analyse 8 |
 | C4 | **Bitrate 540p** im echten Stream messen — das Bild kam am 16.08. an, gemessen wurde nie | 0 |
 | C5 | **Regal → laufende Sendung**: im Artikel-Zettel „Aus dem Regal holen" — der Artikel muss sofort in der Warteschlange stehen und startbar sein, mit 1 € Start und dem Regalpreis als Sofortkauf. Danach „Ins Regal legen" an einer Zeile ohne Zuschlag | 62 |
+| C6 | **DM-Faden** (braucht zusätzlich ein zweites Konto): aus einem Angebot schreiben → `app='berkat'`. Der andere **antwortet** — die Antwort muss **weiterhin** `'berkat'` tragen. Das ist der ganze Punkt der Entscheidung vom 23.08. | 75 |
 
 ### D — Sendung **und** zweites Konto. Der große Durchlauf.
 
@@ -9168,9 +9189,10 @@ und `package.json` ist unberührt — der Sprung auf die ältere Runtime 1.30.0 
 
 ---
 
-## 74. Anschlusspunkt für den nächsten Chat (Stand 22.08.2026, Nacht)
+## 74. Anschlusspunkt vom 22.08.2026 (Nacht) — abgelöst von Abschnitt 75
 
-**Hier anfangen.** Löst Abschnitt 69 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste ist weiterhin der Motor.
+⚠️ **Nicht mehr der Einstieg.** Abschnitt 75 löst ihn ab; was hier steht, gilt als Begründung
+weiter, sein Aufgabenteil ist abgearbeitet oder dort neu bewertet. Löste seinerseits 69 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste ist weiterhin der Motor.
 
 ### Der Zustand
 
@@ -9278,3 +9300,306 @@ Vier Lehren, und drei davon sind Fehler von mir:
 
 Und der Satz, der über allem steht, ist unverändert: Keine dieser Änderungen hat einen Verkäufer
 gebracht. Das kommt über den TestFlight-Link — und danach über Telefonate, nicht über Code.
+
+---
+
+## 75. Anschlusspunkt für den nächsten Chat (Stand 23.08.2026)
+
+**Hier anfangen.** Löst Abschnitt 74 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt der Motor.
+
+### ✅ Sieben Migrationen, eingespielt und von aussen gegengeprüft
+
+`migration list` zeigt **300 Einträge, keine Lücke.** Eingespielt wurde **einzeln, mit Messung
+dazwischen** — die Hausform in diesem Projekt.
+
+| Datei | Was | Gegenprobe von aussen |
+|---|---|---|
+| `…100000_whip_ingress_least_privilege` | Tabellenrecht auf `user_whip_ingresses` weg | ✅ `401 / 42501` auf `stream_key` UND auf die Tabelle |
+| `…110000_dispute_evidence_private` | Belegfotos in einen **privaten** Eimer, URL-Prüfung verschärft | ✅ Helfer da und gesperrt, Eimer nicht öffentlich (`400`) |
+| `…120000_cart_race_and_zag_gate` | Sammelkorb-Wettlauf, **ZAG-Schranke an der Kasse** | ✅ alle drei `42501`, je genau eine Signatur |
+| `…130000_notifications_insert_policy` | Meldungs-Policy, `notify_on_dm`-Faden | ✅ genau **eine** INSERT-Policy, ruft `may_notify` |
+| `…140000_berkat_shipping_tiers` | Versand in Stufen | ⚠️ lief durch und tat **nichts** — siehe unten |
+| `…150000_berkat_vacation_mode` | Urlaubsmodus | ✅ genau **eine** Regal-Policy, Regal weiter 32 Zeilen |
+| `…160000_shipping_tier_unique_fix` | Fix nach vorn zu `…140000` | ✅ vier DE-Stufen belegt |
+
+**Nichts Legitimes ist gebrochen** — als `anon` vor und nach dem Einspielen gemessen:
+
+| | vorher | nachher |
+|---|---|---|
+| Regal (`listed`, ohne Session) | 32 | **32** |
+| `posts` | 15 | **15** |
+| `scheduled_lives` | 1 | **1** |
+| `live_cohosts` | 15 | **15** |
+| `berkat_shipping_rates` | 3 | **6** ← der einzige gewollte Unterschied |
+
+Und die Probe, die bei diesem Projekt Pflicht ist: **`buy_now_live_auction` hat seine VIERTE
+Neufassung heil überstanden** — eine Signatur, und `buy_now_gone`, `live_bids`, `bid_count`,
+`ends_at` sowie der jsonb-Rückgabewert stehen alle noch im Live-Code.
+
+### ⚠️ Zwei Fehler beim Einspielen — beide meine, beide lehrreich
+
+**1. `CASE p_type WHEN 'a', 'b' THEN` gibt es im AUSDRUCK nicht.**
+`may_notify` scheiterte mit `42601 syntax error at or near ","`. Eine Kommaliste hinter `WHEN`
+kennt nur die **Anweisungs**-Form von PL/pgSQL (`CASE … WHEN … THEN …; END CASE;`), nicht der
+Ausdruck. Die zwei Formen sehen fast gleich aus. Behoben als gesuchtes CASE
+(`WHEN p_type IN (…)`), bevor irgendetwas eingespielt war — `db push` ist je Migration
+transaktional, es blieb nichts halb liegen.
+
+**2. ⚠️ `ON CONFLICT DO NOTHING` OHNE ZIEL IST EIN SCHALLDÄMPFER.**
+Der teurere Fehler. `…140000` legte drei DE-Versandstufen an und schloss mit `ON CONFLICT DO
+NOTHING`. Die Migration meldete Erfolg, `migration list` zeigte grün — **und die drei Zeilen waren
+nicht da.**
+
+Der Grund lag im August: `20260815180000` trägt
+`UNIQUE INDEX idx_berkat_shipping_platform ON (country) WHERE seller_id IS NULL` — „je Zone genau
+ein Plattform-Satz". Das war richtig, solange es eine Pauschale je Land gab, und es ist genau die
+Annahme, die Stufen aufheben. Mein neuer Index kam **daneben** statt an ihre Stelle.
+
+> **Ohne Ziel fängt `DO NOTHING` auch den Konflikt ab, den man gar nicht erwartet hat — und sagt
+> nicht, welcher es war.** Mit benannten Spalten wäre der Lauf an der fremden Eindeutigkeit
+> *gescheitert*, also sichtbar geworden. Ein `DO NOTHING` ohne Ziel ist kein
+> Idempotenz-Werkzeug, sondern ein Schalldämpfer.
+>
+> **Wer es benutzt, zählt danach die Zeilen nach.** `…160000` tut das jetzt selbst und bricht mit
+> einer Meldung ab, wenn nicht vier DE-Sätze dastehen.
+
+Dieselbe Familie wie „Eine Funktion, die sauber anlegt, ist nicht geprüft" (Abschnitt 42) — nur
+war der erste INSERT hier schon in der Migration selbst.
+
+### ⚠️ Die Kassen-Freigabe war schon gelaufen
+
+Beim Messen vor dem Einspielen herausgekommen, und es ändert die Lage: **Zwei** Verkäufer tragen
+`checkout_enabled = true` — `berkattest` (Bestandsschutz aus `20260817120000`) **und
+`Testhandel Amir e. K.`**, der gewerbliche Seed-Verkäufer. Das SQL aus
+`supabase/_ops/kassen-freigabe-testware.sql` ist also irgendwann gelaufen.
+
+Daraus folgt zweierlei: **B1 der Prüfliste ist prüfbar** (der Kaufknopf steht an der Testware), und
+die neue ZAG-Schranke lässt genau die zwei durch und sperrt die fünf privaten Seed-Verkäufer — die
+ohne Stripe Connect ohnehin kein Geld annehmen dürfen. Das ist der gewollte Zustand.
+
+### Drei Client-Sätze, die zur Schranke gehören
+
+Ein Riegel ohne Text ist eine Sackgasse — die Lehre aus Abschnitt 3 („Eine Fehlermeldung für alles
+ist keine Fehlermeldung"). Beim Nachsehen fehlten zwei:
+
+| Wo | Fehler | vorher | jetzt |
+|---|---|---|---|
+| `useCheckout.ts` | `contact_seller` an der Kasse | „Versuch es noch einmal" — für etwas, das NIE geht | „Dieser Verkäufer kann noch kein Geld über Berkat annehmen — schreib ihm" |
+| `useTip.ts` | `contact_seller` beim Trinkgeld | generischer Satz | „Diesem Verkäufer können wir noch kein Geld weiterleiten" |
+| `useStanding.ts` | `seller_on_vacation` | generischer Satz | „Der Verkäufer ist gerade im Urlaub — sein Regal ist so lange zu" |
+
+`useStanding.ts` kannte `contact_seller` bereits seit dem 16.08.
+
+### Die zwei Entscheidungen sind gefallen
+
+**1 · `notify_on_dm`: der Faden entscheidet.** Trägt irgendeine Nachricht einer Unterhaltung eine
+`listing_id`, gilt der ganze Faden als Berkat — auch die Antworten darauf. Sonst bleibt es bei
+`'serlo'`, also beim heutigen Verhalten.
+
+Verworfen wurden: **die Nachricht fragen** (nur die erste trägt den Bezug, die Antwort läge wieder
+in Serlo — derselbe Faden in zwei Apps) und **beides stempeln** (wer beide Apps hat, bekäme zwei
+Pushes für eine Nachricht).
+
+**2 · Der Kaufknopf: Freigabe jetzt, Rechtsfrage später.** Beim Messen kam heraus, dass das zwei
+Fragen sind — und die dringende ist beantwortet:
+
+> **Im Testlauf fliesst gar kein Geld.** Stripe steht auf Testbetrieb. Die Kassen-Freigabe für den
+> gewerblichen Testverkäufer einzuschalten berührt damit **keine** Rechtsfrage. Der Blocker war
+> ein Scheinblocker.
+
+✅ **Und beim Messen kam heraus, dass sie längst gelaufen ist** — siehe oben. Der Punkt ist damit
+erledigt, ohne dass jemand etwas tun musste. B1 der Prüfliste ist prüfbar.
+
+⚠️ **Für den Echtbetrieb gilt weiter: Kommission, Berkat ist Verkäufer** (Strategie, Abschnitt 8).
+Kein ZAG-Problem, weil kein Geld weitergeleitet, sondern eigener Umsatz eingenommen wird. **Ein
+Punkt daran ist nicht verhandelbar und gehört zu einem Steuerberater, nicht in eine Migration:**
+Bei Kommission zählt der **gesamte** Warenumsatz aller fünf Verkäufer auf Zaurs Umsatz. Das
+Impressum nennt Kleinunternehmer nach § 19 UStG — Grenze 22.000 €. Fünf Verkäufer über acht Wochen
+können sie reissen, und dann greift die Umsatzsteuerpflicht rückwirkend. Dasselbe gilt für
+Gewährleistung und Widerruf: Als Verkäufer haftet Zaur, nicht der Händler.
+
+### ⚠️ Die Datenbank ist jetzt VOR dem Client — der OTA fehlt
+
+Das ist der eine offene Punkt aus dieser Runde, und er ist bewusst offen: **`eas update` ist eine
+Freigabe-Entscheidung, kein Nebenprodukt** (und aus dem falschen Ordner trifft er Serlos
+Produktion, Abschnitt 3).
+
+Was das heisst, solange kein OTA raus ist:
+
+| | |
+|---|---|
+| **Nichts ist kaputt.** Die ausgelieferte Fassung wählt die alten Spalten und kennt die neuen Funktionen nicht | ✅ |
+| Versandstufen, Urlaub, privater Beleg-Eimer, die drei neuen Fehlersätze | ⏳ unsichtbar bis zum OTA |
+| ⚠️ **Die ZAG-Schranke wirkt ab sofort** — sie steht serverseitig | Ein Käufer bei einem Verkäufer ohne Freigabe bekommt heute den **generischen** Satz („Versuch es noch einmal"), weil der bessere Text erst mit dem OTA kommt |
+| ⚠️ **Belegfotos gehen bis dahin weiter in den ÖFFENTLICHEN Eimer** — die ausgelieferte Fassung ruft `pickAndUpload`. Die verschärfte URL-Prüfung lässt das zu (Altform, Ordner des Melders) | genau dafür ist der Altform-Zweig gebaut |
+
+Befehl, wenn es soweit ist — ⚠️ **zuerst der `cd`, dann die Projekt-Probe**:
+
+```bash
+cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info
+```
+
+Steht dort `@zaurhat/berkat`, ist der Ordner richtig. Steht dort `@zaurhat/vibes`, würde der
+nächste Befehl **Serlos Produktion** treffen.
+
+⚠️ Und der **Serlo**-OTA für den `recipient_id`-Fix in `lib/useFollowRequest.ts` ist eine eigene
+Entscheidung mit der Zwei-Runtime-Regel aus Abschnitt 8 (Nutzer auf 1.30.0 **und** 1.31.0).
+
+### ⚠️ Drei Behauptungen dieses Dokuments waren falsch
+
+Alle drei am frischen Abzug gemessen, nicht vermutet.
+
+**1. „Fünf Stellen schreiben direkt in `notifications`" (Abschnitt 73) — es sind sechs.**
+`components/ui/LiveShareSheet.tsx:204` fehlte auf der Liste. Genau die Stelle, die eine verschärfte
+Policy still gebrochen hätte — sie schreibt `live_invite` mit `session_id`, und niemand prüft dort
+`error`.
+
+**2. „Versand in Stufen: `berkat_shipping_rates` hat `label` und `sort_index` schon, es sind
+Zeilen, kein Umbau" (Abschnitt 54, Punkt 6) — trägt nicht.** Zwei Gründe, beide hart:
+`get_cart_shipping_options` wählt mit `DISTINCT ON (r.country)` **genau eine** Zeile je Land —
+zusätzliche Stufen wären eingetragen und unsichtbar. Und **Stripe Checkout erlaubt höchstens FÜNF
+Versandoptionen**; drei Länder mal vier Stufen wären zwölf, die Kasse würde beim Öffnen scheitern.
+
+**3. Das spaltenweise REVOKE auf `user_whip_ingresses` ist nicht nur „verschwunden".** Im Abzug
+steht `GRANT ALL ON TABLE … TO authenticated` — ein Tabellenrecht, das die alten Spaltenzusagen
+überholt. Der Rückweg ist **nicht** das REVOKE zurück (das wäre Regel 11 und würde die Spaltenliste
+einfrieren), sondern das Recht ganz zu entziehen: **kein einziger Client greift auf die Tabelle
+zu**, alles läuft über die Edge Function mit `service_role` und über `get_my_whip_ingress()`.
+
+### Was dabei sonst gefunden wurde — vier tote Pfade
+
+Keiner davon war gesucht; alle vier lagen auf dem Weg.
+
+| Fund | Stand |
+|---|---|
+| **`r2-sign` prüfte das JWT nicht** — es dekodierte `sub` und glaubte ihm. Ein selbst getipptes Token hätte eine presigned PUT-URL im Ordner eines **fremden** Nutzers ergeben: Profilbild überschreiben, Artikelfotos ersetzen | ✅ behoben (`_shared/auth.ts`) |
+| **`bunny-ingest` hatte dieselbe Abkürzung** — und der Kommentar dort behauptet ausdrücklich „Caller-JWT (sub) muss Autor des Posts sein" | ✅ behoben, gemeinsames Modul |
+| **Serlos Follow-Anfragen melden nie.** `lib/useFollowRequest.ts:82` und `:147` schreiben `user_id` — die Spalte heisst `recipient_id` und ist `NOT NULL`. Der INSERT scheitert IMMER, `error` wird nirgends geprüft. Die **Web**-Fassung macht es richtig; nur die App ist betroffen | ✅ Client korrigiert, wirkt mit dem nächsten Serlo-OTA |
+| **`lib/useComments.ts:248` schreibt `type: 'comment_reply'`** — steht nicht im `notifications_type_check`, scheitert ebenfalls immer | ⚠️ **bewusst NICHT behoben**: Den Typ freizuschalten hiesse, ihn auch in `fn_send_push_on_notification` aufzunehmen, sonst kommt „Neue Aktivität auf Serlo" (Abschnitt 9). Eigene Runde |
+
+> **Was die vier verbindet:** Alle vier sind Ketten, die an jedem Glied vollständig aussehen und
+> genau am letzten reissen — und alle vier schweigen dabei. Das ist dieselbe Klasse wie
+> `description` (Abschnitt 3) und `messages.image_url` (65), nur mit Fehlerbehandlung statt ohne
+> Anzeige. **Ein `await supabase…insert()` ohne `error`-Prüfung ist kein Aufruf, sondern eine
+> Hoffnung.**
+
+### Zwei Entwurfs-Entscheidungen, die von der Übergabe abweichen
+
+**Die `notifications`-Policy braucht KEINE RPCs.** Abschnitt 73 erwartete sechs Wrapper plus einen
+Serlo-OTA. Beim Lesen der sechs Stellen fiel auf: Alle schreiben etwas **nachprüfbar Wahres** — es
+gibt einen Kommentar, eine laufende Sendung, eine Follow-Anfrage. Die Policy kann das selbst
+fragen, dann bleiben die Clients unverändert und **es braucht keinen OTA**. Sechs RPCs wären sechs
+neue Oberflächen zum Pflegen gewesen.
+
+⚠️ Geprüft wird über `may_notify()` als `SECURITY DEFINER` und nicht per `EXISTS` in der Policy:
+**Eine Unterabfrage IN einer Policy respektiert die RLS der referenzierten Tabelle.** Wäre
+`comments` enger gefasst als gedacht, lehnte die Policy **still** ab.
+
+**Die ZAG-Schranke gehört an zwei Stellen, nicht an vier.** Die Übergabe sagt „alle vier
+Geldwege". Beim Durchdenken:
+
+- ✅ `checkout_auction_cart` und `create_berkat_tip` — hier entsteht die Stripe-Sitzung. Der letzte
+  Punkt, an dem sich Geld aufhalten lässt.
+- ❌ `settle_live_auction` — ein Zuschlag bewegt kein Geld. Die Schranke dort bestrafte den
+  **Käufer** für ein Versäumnis des Verkäufers: gewonnen, und dann kein Korb.
+- ❌ `create_live_auction` — ein Verkäufer ohne Freigabe DARF senden und versteigern; sein Käufer
+  bekommt „Nachricht" statt „Kaufen". Das ist das gebaute Modell (Abschnitt 20), keine Lücke.
+
+Der Preis dieser Trennung: Ein Käufer kann gewinnen und erst an der Kasse erfahren, dass er nicht
+zahlen kann — „korrekt, aber tödlich". Der Fix dafür ist ein **Hinweis im Live-Raum** über dem
+Gebots-Knopf („Bezahlt wird direkt beim Verkäufer"), kein weiterer Riegel. Er ist gebaut.
+
+### Der Versand-Entwurf in einem Satz
+
+> **Die Stufe gehört zum ARTIKEL, nicht zur Auswahl des Käufers.**
+
+Der Verkäufer wählt beim Einstellen ein Profil (`Brief · Kopftuch, Schmuck` … `Paket gross · Abaya`),
+der Käufer sieht nur einen Preis. Die Stufe eines **Korbs** ist die höchste seiner Artikel — alles
+geht in dieselbe Sendung. Die Kasse zeigt weiter drei Optionen (eine je Land), nur ist ihr Betrag
+jetzt von der Ware abhängig.
+
+Nebenbei entschärft das einen alten Befund: Abschnitt 14 hält fest, dass die **Zone** nicht
+erzwingbar ist. Die **Stufe** ist es sehr wohl — sie steht am Artikel und wird gerechnet, nicht
+angeboten.
+
+⚠️ **Die vier DE-Beträge (1,19 / 2,25 / 4,10 / 4,90 €) sind Whatnots veröffentlichte Sätze, keine
+geprüfte Kalkulation von Berkats Portokosten.** Vor dem Echtbetrieb gegen DHL/Deutsche Post halten.
+Die höchste Stufe steht bewusst auf den heutigen 4,90 € statt Whatnots 6,17 € — ein Versand, der
+über Nacht teurer wird, ist eine Preiserhöhung.
+
+⚠️ **AT und CH behalten EINE Pauschale.** Belastbare Auslandsstufen gibt es nicht, und erfundene
+Portopreise sind schlimmer als gar keine. Die Auswahlregel trägt Länder mit einer Stufe ohne
+Sonderfall.
+
+⚠️ **Show-Artikel tragen keine Stufe.** `create_live_auction` kennt sie nicht, also gilt dort
+weiterhin der teuerste Satz — und der Live-Raum sagt „ab 4,90 €", was damit die **wahre**
+Untergrenze ist. Wer dem Studio eine Stufenwahl gibt, reicht sie in `useShippingFrom` durch.
+
+### Was am Gerät zu prüfen ist — neu in der Prüfliste
+
+Alles ungeprüft; nichts davon lief je auf einem Gerät.
+
+| | Was | Voraussetzung |
+|---|---|---|
+| **A16** | **Versandart im Regal-Formular**: Kacheln stehen, eine wählen, einstellen — auf der Artikelseite muss „zzgl. Versand ab **1,19 €**" statt 4,90 € stehen. Ohne Wahl bleibt es bei 4,90 € | allein |
+| **A17** | **Versand-Bildschirm** (Konto → Versand): vier DE-Stufen mit Beträgen, AT/CH mit je einer plus dem Satz „nur ein Satz" | allein |
+| **A18** | **Urlaub**: „eine Woche" tippen → die Zeile im Konto trägt „im Urlaub", das eigene Regal bleibt sichtbar. „Ich bin zurück" macht es rückgängig | allein |
+| **B9** | **Urlaub aus fremder Sicht**: Vom zweiten Konto darf das Regal des Verreisten **leer** sein — und ein gespeicherter Artikel-Link muss `seller_on_vacation` liefern statt zu kaufen | zweites Konto |
+| **B10** | **Belegfoto im privaten Eimer**: Problem mit Foto melden, dann beim Verkäufer die Fall-Karte öffnen — das Bild muss erscheinen. Erscheint es nicht, ist der Lesepfad kaputt und der Beleg wertlos | zweites Konto |
+| **B11** | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` — erwartet **403 / 42501**. Und die Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen und Teilen müssen in **Serlo** weiter ankommen | zweites Konto |
+| **C6** | **DM-Faden**: aus einem Angebot schreiben (`app='berkat'`), der andere **antwortet** — die Antwort muss **weiterhin** `'berkat'` tragen. Das ist der ganze Punkt der Entscheidung | zweites Konto |
+
+### Danach, nach Nutzen sortiert
+
+0. ⏳ **Den Berkat-OTA veröffentlichen** — die Datenbank ist vor dem Client (siehe oben). Ohne ihn
+   sind Versandstufen, Urlaub und die drei neuen Fehlersätze unsichtbar, und A16–A18 der Prüfliste
+   nicht prüfbar. ⚠️ Danach die App **zweimal** schliessen und öffnen (Abschnitt 3).
+1. **Die Tester eintragen.** Die Review ist durch, die Gruppe hat 0. Das ist der einzige Punkt auf
+   dieser Liste, der einen Verkäufer bringt.
+2. **Die zwölf freigestellten Kategorie-Fotos** — Zaurs Handgriff, grösster sichtbarer Abstand.
+   ⚠️ „Schuhe" trägt bis dahin ein Paket-Symbol.
+3. **Die verbleibenden Audit-Funde**: die vier Bestell-Lesepfade auf `product_orders` (alle
+   policy-gedeckt, aber sie verlassen sich stillschweigend darauf — `.eq('seller_id', sellerId)`
+   mit einem PARAMETER statt `auth.uid()`), Belegfotos aus dem Altbestand im öffentlichen Eimer
+   (zwei Testfälle; **vor echten Nutzern umziehen oder löschen**).
+4. **`comment_reply` freischalten** — Typ-CHECK **und** Push-`CASE` **und** Serlos Liste, sonst
+   „Neue Aktivität auf Serlo".
+5. **Serlo-OTA** für den `recipient_id`-Fix (beide Runtimes, Abschnitt 8) — Freigabe-Entscheidung.
+6. **Kleinkram:** „Entwurf speichern", Anti-Snipe-Zeit wählbar, Bilder umsortieren, der leere Fuss
+   der Startseite.
+
+### Nicht neu diskutieren
+
+Keine Varianten (41) · kein Account Health (40) · keine abgekürzten Zahlen, kein Dunkelmodus (40) ·
+keine Marken-Chips (41) · kein Kaufknopf im Raster (27) · Chat-Kasten bleibt (60) · fester Preis
+unter dem Bild (68) · Käuferschutz Fassung A (68) · Preisvorschlag nur vor dem Start (73) ·
+**Versandsätze sind nicht vom Verkäufer editierbar**, solange Berkat rechtlich der Verkäufer ist
+(75) · **die ZAG-Schranke steht an zwei Geldwegen, nicht an vier** (75).
+
+### Die Blocker
+
+1. ✅ **Beta App Review durch** — es fehlen die **Tester**. Build läuft in 88 Tagen ab.
+2. **Stripe:** Testbetrieb, Ratenzahlung aus.
+3. **Phase 0 nie begonnen.** Fünf Verkäufer, acht Wochen. **Das ist der Engpass.**
+
+### Was dieser Tag gelehrt hat
+
+> **1. Ein Dokument, das seine eigenen Befunde nicht nachmisst, altert wie Code ohne Tests.** Drei
+> Behauptungen aus den letzten vier Tagen hielten dem Abzug nicht stand — „fünf Schreibstellen",
+> „Zeilen, kein Umbau", „das REVOKE ist weg". Jede war beim Schreiben plausibel, keine war gemessen.
+>
+> **2. Ein `await …insert()` ohne `error`-Prüfung ist kein Aufruf, sondern eine Hoffnung.** Zwei
+> tote Meldungspfade in Serlo, beide seit Monaten, beide unsichtbar — weil niemand hinsah, ob es
+> geklappt hat.
+>
+> **3. `ON CONFLICT DO NOTHING` ohne Ziel ist kein Idempotenz-Werkzeug, sondern ein
+> Schalldämpfer.** Drei Versandsätze fehlten nach einer Migration, die Erfolg meldete — verschluckt
+> von einer Eindeutigkeit aus dem August, die niemand genannt hatte. Wer es benutzt, zählt danach
+> die Zeilen nach; `…160000` tut das jetzt selbst.
+>
+> **4. Der teuerste Fund war eine Prüfung, die eine Prüfung nur nachahmt.** `r2-sign` dekodierte
+> das JWT und glaubte ihm. Der Code sah aus wie Authentifizierung, las sich wie Authentifizierung
+> und war keine — aufgehalten hat es allein ein Gateway, von dem nichts im Code wusste.
+
+Und der Satz, der über allem steht, ist unverändert: **Keine dieser Änderungen hat einen Verkäufer
+gebracht.** Die Review ist jetzt durch — der nächste Schritt ist ein Link an fünf Leute, kein Code.

@@ -46,6 +46,10 @@ function tipErrorText(message: string): string {
   if (message.includes('amount_out_of_range'))
     return 'Zwischen 1 € und 500 € — such dir was aus.';
   if (message.includes('recipient_not_found')) return 'Diesen Verkäufer gibt es nicht mehr.';
+  // ⚠️ Seit `20260823120000` gilt die ZAG-Schranke auch für Trinkgeld: Auch das
+  // ist Geld, das über das Konto des Betreibers an einen Dritten fliesst.
+  if (message.includes('contact_seller'))
+    return 'Diesem Verkäufer können wir noch kein Geld weiterleiten. Schreib ihm — er freut sich auch so.';
   if (message.includes('not_authenticated')) return 'Melde dich an, dann geht es weiter.';
   if (message.includes('does not exist') || message.includes('PGRST202'))
     return 'Die Trinkgeld-Funktion fehlt noch in der Datenbank. Migration einspielen.';

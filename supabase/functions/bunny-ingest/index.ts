@@ -8,7 +8,8 @@
  * POST { postId, videoUrl }  (videoUrl = öffentliche R2-URL des Posts)
  *
  * Sicherheit:
- *   • Caller-JWT (sub) muss Autor des Posts sein.
+ *   • Caller-JWT muss Autor des Posts sein — die Identität wird GEPRÜFT,
+ *     nicht aus dem Token gelesen (`_shared/auth.ts`, seit 23.08.2026).
  *   • videoUrl muss eine public *.r2.dev-URL sein (Bunny-Fetch braucht public;
  *     verhindert zugleich SSRF auf interne Ziele).
  *   • API-Key nur server-seitig (Supabase-Secret BUNNY_STREAM_API_KEY).
@@ -20,6 +21,7 @@
 
 // @ts-nocheck — Deno runtime (Supabase Edge Functions)
 import { corsHeaders } from '../_shared/cors.ts';
+import { getVerifiedUserId } from '../_shared/auth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const BUNNY_API_KEY    = Deno.env.get('BUNNY_STREAM_API_KEY')!;
@@ -34,28 +36,11 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function getUserId(req: Request): string | null {
-  const auth = req.headers.get('authorization') ?? '';
-  const m = auth.match(/^Bearer\s+(.+)$/i);
-  const token = m?.[1];
-  if (!token) return null;
-  try {
-    const p = token.split('.')[1];
-    if (!p) return null;
-    const b64 = p.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, '=');
-    const claims = JSON.parse(atob(padded)) as { sub?: unknown };
-    return typeof claims.sub === 'string' && claims.sub ? claims.sub : null;
-  } catch {
-    return null;
-  }
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  const userId = getUserId(req);
+  const userId = await getVerifiedUserId(req);
   if (!userId) return json({ error: 'Not authenticated' }, 401);
 
   let body: { postId?: unknown; videoUrl?: unknown };

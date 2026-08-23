@@ -67,6 +67,7 @@ import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib
 import { stage, radius, space } from '../../theme/tokens';
 import { useCheckoutCart } from '../../lib/useCheckout';
 import { shippingHint, useShippingFrom } from '../../lib/useShipping';
+import { useBerkatSeller } from '../../lib/useBerkatSeller';
 import { useVouches, vouchSummary, vouchSummaryShort } from '../../lib/useVouch';
 import {
   bidErrorText,
@@ -211,7 +212,18 @@ export default function LiveAuctionRoom() {
 
   const { data: soldCount } = useSellerSoldCount(session?.host_id);
   const { data: cart } = useCart(myUserId, session?.host_id);
+  // ⚠️ Ohne Stufe, also mit der teuersten. Show-Artikel entstehen über
+  // `create_live_auction` und tragen heute keine `shipping_tier` — der Satz
+  // „ab 4,90 €" ist damit die WAHRE Untergrenze. Wer dem Live-Studio eine
+  // Stufenwahl gibt, reicht sie hier durch; vorher wäre jede kleinere Zahl
+  // ein Versprechen, das die Kasse nicht hält.
   const { data: shippingFrom } = useShippingFrom(session?.host_id);
+  // ⚠️ Ohne Kassen-Freigabe kann der Zuschlag nicht über Berkat bezahlt
+  // werden (ZAG, `20260823120000`). Der Riegel steht serverseitig an der
+  // Kasse — hier steht nur die Auskunft, VOR dem Gebot. Ohne sie erführe der
+  // Käufer es erst, nachdem er gewonnen hat.
+  const { data: hostSeller } = useBerkatSeller(session?.host_id);
+  const hostTakesPayment = hostSeller?.checkout_enabled === true;
   const { data: vouches = [] } = useVouches(session?.host_id, myUserId);
   // Kurzfassung für den Kopf; die lange bleibt dem Sheet vorbehalten.
   const vouchShort = vouchSummaryShort(vouches);
@@ -1040,6 +1052,7 @@ export default function LiveAuctionRoom() {
             myUserId={myUserId}
             leader={leader}
             shippingFromCents={shippingFrom}
+            sellerTakesPayment={hostTakesPayment}
             busy={busy}
             cartLabel={
               cart && cart.itemCount > 0

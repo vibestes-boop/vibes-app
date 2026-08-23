@@ -35,6 +35,7 @@ import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
 import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
 import { tidySize } from '../lib/useListings';
+import { SHIPPING_TIERS } from '../lib/useShippingTier';
 import { formatSlot, type PlannedShow } from '../lib/useSchedule';
 
 /** Serverseitig als CHECK gespiegelt — wer hier erhöht, erhöht dort mit. */
@@ -56,6 +57,15 @@ export type ListingFormValues = {
   condition: string | null;
   /** Freitext („42", „M", „One Size"). Freiwillig — siehe das Feld unten. */
   size: string | null;
+  /**
+   * Was der Artikel für den Weg braucht (1 Brief … 4 grosses Paket).
+   *
+   * ⚠️ NULL heisst „nicht angegeben" und wird serverseitig als 4 gerechnet.
+   * Der Unterschied zu einer ausdrücklichen 4 ist Absicht: Eine Vorgabe, die
+   * niemand getroffen hat, darf nicht wie eine Entscheidung aussehen
+   * (Übergabe 3, „Eine Vorgabe anzeigen und nicht speichern").
+   */
+  shippingTier: number | null;
   postalCode: string | null;
   city: string | null;
   /**
@@ -134,6 +144,7 @@ export function StandingComposer({
 
   const [condition, setCondition] = useState<string | null>(initial?.condition ?? null);
   const [size, setSize] = useState(initial?.size ?? '');
+  const [shippingTier, setShippingTier] = useState<number | null>(initial?.shippingTier ?? null);
   const [postalCode, setPostalCode] = useState(initial?.postalCode ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -560,6 +571,43 @@ export function StandingComposer({
         </>
       ) : null}
 
+      {/* ⚠️ VERSANDART — die Angabe, die bei 6-€-Ware über verkäuflich oder
+          nicht entscheidet. Zwischen 1,19 € Brief und einer Paketpauschale
+          liegt bei einem Kopftuch der halbe Kaufpreis.
+
+          Beschriftet als GEGENSTAND, nicht als Gramm: „bis 500 g" muss ein
+          Verkäufer erst schätzen — und schätzt falsch. Die Beträge stehen
+          bewusst NICHT hier, sondern in `berkat_shipping_rates`; ein Preis an
+          zwei Orten läuft auseinander, und eigene Sätze des Verkäufers
+          schlagen die Vorgabe ohnehin. */}
+      <Text style={s.label}>Wie verschickst du das?</Text>
+      <View style={s.tierRow}>
+        {SHIPPING_TIERS.map((t) => {
+          const on = shippingTier === t.tier;
+          return (
+            <Pressable
+              key={t.tier}
+              style={[s.tier, on && s.tierOn]}
+              onPress={() => setShippingTier(on ? null : t.tier)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+            >
+              <Text style={[s.tierLabel, on && s.tierLabelOn]}>{t.label}</Text>
+              <Text style={[s.tierEx, on && s.tierExOn]} numberOfLines={1}>
+                {t.examples}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {/* Der Satz erscheint nur, solange nichts gewählt ist — ein Dauerhinweis
+          neben einer getroffenen Entscheidung ist Lärm (Design-Gesetz 3). */}
+      {shippingTier === null ? (
+        <Text style={s.tierHint}>
+          Ohne Angabe rechnen wir mit dem großen Paket — das ist der teuerste Satz.
+        </Text>
+      ) : null}
+
       <Pressable
         style={[s.primary, !canSubmit && s.primaryOff]}
         disabled={!canSubmit}
@@ -573,6 +621,7 @@ export function StandingComposer({
             imageUrls,
             description: description.trim() || null,
             condition,
+            shippingTier,
             size: tidySize(size),
             postalCode: postalCode.trim() || null,
             city: city.trim() || null,
@@ -613,6 +662,22 @@ export function StandingComposer({
 }
 
 const s = StyleSheet.create({
+  tierRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  tier: {
+    flexGrow: 1, flexBasis: '47%',
+    paddingVertical: 8, paddingHorizontal: 10,
+    borderRadius: radius.md,
+    borderWidth: 1, borderColor: ui.line,
+    backgroundColor: ui.sunken,
+  },
+  // Markengrün gefüllt, nicht gold: Gold trägt in Berkat den Kaufweg, und eine
+  // Versandart ist keine Kaufhandlung (`theme/tokens.ts`).
+  tierOn: { backgroundColor: ui.brand, borderColor: ui.brand },
+  tierLabel: { fontSize: 13, fontWeight: '600', color: ui.text },
+  tierLabelOn: { color: ui.bg },
+  tierEx: { fontSize: 11, color: ui.textMuted, marginTop: 1 },
+  tierExOn: { color: ui.bg, opacity: 0.85 },
+  tierHint: { fontSize: 11, color: ui.textMuted, marginBottom: space.xs },
   card: {
     backgroundColor: ui.card,
     borderRadius: radius.lg,

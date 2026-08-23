@@ -37,6 +37,7 @@ import {
 import { useSession } from '../../lib/session';
 import { useProfiles } from '../../lib/useAuction';
 import { goBack } from '../../lib/nav';
+import { useEvidenceUri } from '../../lib/uploadEvidence';
 import {
   useConversationWith,
   useMarkMessagesRead,
@@ -445,20 +446,7 @@ export default function ConversationScreen() {
                           <Text style={styles.caseDetail}>„{dispute.detail}"</Text>
                         ) : null}
 
-                        {dispute.image_url ? (
-                          <Pressable
-                            onPress={() => setZoom(dispute.image_url)}
-                            accessibilityRole="imagebutton"
-                            accessibilityLabel="Belegfoto vergrößern"
-                          >
-                            <Image
-                              source={{ uri: dispute.image_url }}
-                              style={styles.casePhoto}
-                              contentFit="cover"
-                              transition={140}
-                            />
-                          </Pressable>
-                        ) : null}
+                        <CaseEvidence ref_={dispute.image_url} onZoom={setZoom} />
 
                         <Text style={styles.caseTime}>{timeLabel(dispute.created_at)}</Text>
                       </View>
@@ -735,6 +723,37 @@ export default function ConversationScreen() {
         </View>
       </Modal>
     </View>
+  );
+}
+
+/**
+ * Das Belegfoto einer Fall-Karte im Verlauf.
+ *
+ * ⚠️ Eigene Komponente, kein Block in der Schleife: Der Beleg liegt seit dem
+ * 23.08.2026 im privaten Eimer, die anzeigbare Adresse entsteht also erst per
+ * Hook — und ein Hook in einer `.map()` bräche die Reihenfolge, sobald ein
+ * Fall dazukommt oder wegfällt. Dieselbe Bauform wie `PrebidPanel`
+ * (Übergabe 50).
+ *
+ * `ref_` statt `ref`: `ref` ist in React reserviert.
+ */
+function CaseEvidence({
+  ref_,
+  onZoom,
+}: {
+  ref_: string | null;
+  onZoom: (uri: string) => void;
+}) {
+  const uri = useEvidenceUri(ref_);
+  if (!uri) return null;
+  return (
+    <Pressable
+      onPress={() => onZoom(uri)}
+      accessibilityRole="imagebutton"
+      accessibilityLabel="Belegfoto vergrößern"
+    >
+      <Image source={{ uri }} style={styles.casePhoto} contentFit="cover" transition={140} />
+    </Pressable>
   );
 }
 

@@ -78,12 +78,22 @@ export function useSendFollowRequest() {
         .insert({ sender_id: userId, receiver_id: targetUserId });
       if (error) throw error;
 
-      // Notification an Empfänger
-      await supabase.from('notifications').insert({
-        user_id:   targetUserId,
-        sender_id: userId,
-        type:      'follow_request',
+      // ⚠️ `recipient_id`, NICHT `user_id`. Die Spalte hiess hier bis zum
+      // 23.08.2026 `user_id` — die gibt es in `notifications` gar nicht, und
+      // `recipient_id` ist NOT NULL. Der INSERT scheiterte damit IMMER, und
+      // weil `error` nirgends geprüft wird, lautlos: **In Serlos App hat noch
+      // nie jemand eine Meldung über eine Follow-Anfrage bekommen.** Die
+      // Web-Fassung (`apps/web/app/actions/profile.ts`) machte es von Anfang
+      // an richtig — deshalb fiel es nie auf.
+      const { error: notifErr } = await supabase.from('notifications').insert({
+        recipient_id: targetUserId,
+        sender_id:    userId,
+        type:         'follow_request',
       });
+      // Nicht werfen: Die Anfrage selbst ist schon eingetragen und gilt. Aber
+      // auch nicht verschlucken — genau das Schweigen hat den Fehler oben
+      // monatelang getragen.
+      if (notifErr && __DEV__) console.warn('[follow_request] Meldung:', notifErr.message);
     },
     onSuccess: (_data, targetUserId) => {
       queryClient.invalidateQueries({ queryKey: ['follow-request-sent', userId, targetUserId] });
@@ -143,12 +153,13 @@ export function useRespondFollowRequest() {
           .insert({ follower_id: senderId, following_id: userId });
         if (followErr) throw followErr;
 
-        // Notification: Anfrage akzeptiert
-        await supabase.from('notifications').insert({
-          user_id:   senderId,
-          sender_id: userId,
-          type:      'follow_request_accepted',
+        // Notification: Anfrage akzeptiert — `recipient_id`, siehe oben.
+        const { error: notifErr } = await supabase.from('notifications').insert({
+          recipient_id: senderId,
+          sender_id:    userId,
+          type:         'follow_request_accepted',
         });
+        if (notifErr && __DEV__) console.warn('[follow_accepted] Meldung:', notifErr.message);
       }
     },
     onSuccess: () => {

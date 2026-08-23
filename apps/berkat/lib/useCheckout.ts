@@ -33,6 +33,13 @@ function cartErrorText(message: string): string {
   if (message.includes('cart_empty')) return 'In diesem Paket ist noch nichts drin.';
   if (message.includes('cart_closed')) return 'Das Paket ist schon bezahlt oder abgelaufen.';
   if (message.includes('forbidden')) return 'Das ist nicht dein Paket.';
+  // ⚠️ Seit `20260823120000` steht die ZAG-Schranke auch hier, nicht mehr nur
+  // im Sofortkauf. Ohne diese Zeile bekäme der Käufer „Versuch es noch einmal"
+  // für etwas, das NIE funktionieren wird — genau die Sackgasse aus Abschnitt 3
+  // („Eine Fehlermeldung für alles ist keine Fehlermeldung"). Der Satz nennt
+  // deshalb den Weg, der wirklich offen ist.
+  if (message.includes('contact_seller'))
+    return 'Dieser Verkäufer kann noch kein Geld über Berkat annehmen — schreib ihm, ihr klärt die Zahlung direkt.';
   if (message.includes('not_authenticated')) return 'Melde dich an, dann geht es weiter.';
   if (message.includes('does not exist') || message.includes('PGRST202'))
     return 'Die Kassen-Funktion fehlt noch in der Datenbank. Migration einspielen.';

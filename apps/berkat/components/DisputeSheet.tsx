@@ -26,7 +26,7 @@ import { Image } from 'expo-image';
 import { Check, ImagePlus, X } from 'lucide-react-native';
 
 import { BUYER_DISPUTE_REASONS, type DisputeReason } from '../lib/useDispute';
-import { pickAndUpload } from '../lib/uploadImage';
+import { pickAndUploadEvidence, useEvidenceUri } from '../lib/uploadEvidence';
 import { radius, ratio, space, ui } from '../theme/tokens';
 
 type Props = {
@@ -35,7 +35,10 @@ type Props = {
   /** Steht schon ein Fall offen, ist das Blatt eine Änderung, keine Neuanlage. */
   existingReason?: DisputeReason | null;
   existingDetail?: string | null;
+  /** Pfad im privaten Eimer — oder eine `https://`-Adresse aus dem Altbestand. */
   existingImage?: string | null;
+  /** Wird für den Ablageort des Belegs gebraucht (`<melder>/<bestellung>/…`). */
+  orderId: string;
   /** Worum es geht — damit man sieht, was man da meldet. */
   orderTitle?: string | null;
   orderAmount?: string | null;
@@ -49,6 +52,7 @@ export function DisputeSheet({
   existingReason,
   existingDetail,
   existingImage,
+  orderId,
   orderTitle,
   orderAmount,
   onClose,
@@ -57,7 +61,10 @@ export function DisputeSheet({
   const insets = useSafeAreaInsets();
   const [reason, setReason] = useState<DisputeReason | null>(existingReason ?? null);
   const [detail, setDetail] = useState(existingDetail ?? '');
+  // `photo` hält den PFAD, nicht die Adresse — die entsteht erst zum Ansehen
+  // und läuft nach fünf Minuten ab (`lib/uploadEvidence.ts`).
   const [photo, setPhoto] = useState<string | null>(existingImage ?? null);
+  const photoUri = useEvidenceUri(photo);
   const [uploading, setUploading] = useState(false);
 
   /**
@@ -65,13 +72,17 @@ export function DisputeSheet({
    * Ein Beleg ist genau das, was die Kamera gesehen hat; ein quadratischer
    * Rahmen schnitte ein Viertel der Höhe weg, und darin liegt womöglich der
    * Schaden (Übergabe 65, am Gerät gemeldet).
+   *
+   * ⚠️ Und der Weg führt in den PRIVATEN Eimer, nicht nach R2. Bis zum
+   * 23.08.2026 landete ein Beleg im selben öffentlichen Regal wie Show-Cover —
+   * weltweit abrufbar, wer die Adresse hat.
    */
   const addPhoto = async () => {
     if (uploading) return;
     setUploading(true);
     try {
-      const url = await pickAndUpload('cover', 'portrait');
-      if (url) setPhoto(url);
+      const path = await pickAndUploadEvidence(orderId);
+      if (path) setPhoto(path);
     } catch {
       /* Der Wähler meldet sich selbst; hier gibt es nichts zu sagen. */
     } finally {
@@ -153,7 +164,13 @@ export function DisputeSheet({
           <Text style={s.label}>Foto vom Problem (hilft am meisten)</Text>
           {photo ? (
             <View style={s.photoWrap}>
-              <Image source={{ uri: photo }} style={s.photo} contentFit="cover" />
+              {photoUri ? (
+                <Image source={{ uri: photoUri }} style={s.photo} contentFit="cover" />
+              ) : (
+                /* Die Signatur ist noch unterwegs — eine leere Fläche in der
+                   Grösse des Bildes, damit das Blatt nicht springt. */
+                <View style={s.photo} />
+              )}
               <Pressable
                 style={s.photoRemove}
                 onPress={() => setPhoto(null)}

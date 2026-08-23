@@ -10,6 +10,11 @@
  * POST body: { key, contentType, cacheControl?, contentLength? }
  * Response:  { uploadUrl, publicUrl, uploadHeaders }
  *
+ * ⚠️ Die Identität wird GEPRÜFT, nicht gelesen (seit 23.08.2026, siehe
+ * `_shared/auth.ts`). Wer hier etwas ändert, darf nicht zum bequemen
+ * Weg zurück — den `sub`-Anspruch eines JWT ungeprüft zu übernehmen gibt
+ * Schreibrecht im Ordner eines fremden Nutzers.
+ *
  * Hardening (Defense-in-Depth, zusätzlich zu Auth + Owner-Key-Check):
  *   • Content-Type/Extension-Denylist gegen aktive Inhalte (SVG/HTML/XML/JS),
  *     die R2 von der pub-*.r2.dev-Origin als ausführbares Dokument ausliefern
@@ -27,6 +32,7 @@
 /// <reference types="https://deno.land/x/types/index.d.ts" />
 
 import { corsHeaders } from '../_shared/cors.ts';
+import { getVerifiedUserId } from '../_shared/auth.ts';
 
 const R2_ACCOUNT_ID    = Deno.env.get('R2_ACCOUNT_ID')!;
 const R2_ACCESS_KEY_ID = Deno.env.get('R2_ACCESS_KEY_ID')!;
@@ -134,23 +140,9 @@ function isValidKey(key: string): boolean {
   return /^[a-zA-Z0-9/.\-_]+$/.test(key);
 }
 
-function getAuthenticatedUserId(req: Request): string | null {
-  const auth = req.headers.get('authorization') ?? '';
-  const match = auth.match(/^Bearer\s+(.+)$/i);
-  const token = match?.[1];
-  if (!token) return null;
-
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-    const claims = JSON.parse(atob(padded)) as { sub?: unknown };
-    return typeof claims.sub === 'string' && claims.sub ? claims.sub : null;
-  } catch {
-    return null;
-  }
-}
+// Identität: geprüft, nicht gelesen — die Begründung steht in `_shared/auth.ts`.
+// Kurz: Der `sub`-Anspruch eines JWT ist ohne Signaturprüfung frei erfundener
+// Text, und dieselbe Abkürzung stand hier UND in `bunny-ingest`.
 
 function isOwnedUploadKey(key: string, userId: string): boolean {
   return ALLOWED_OWNED_PREFIXES.some((prefix) => key.startsWith(`${prefix}/${userId}/`));
@@ -246,7 +238,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const userId = getAuthenticatedUserId(req);
+    const userId = await getVerifiedUserId(req);
     if (!userId) {
       return new Response(JSON.stringify({ error: 'Not authenticated' }), {
         status: 401,

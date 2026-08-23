@@ -22,6 +22,12 @@ export type SellerOrder = {
   cart_id: string | null;
   /** Was tatsächlich ins Paket gehört — mit Bild. */
   items: CartItem[];
+  /**
+   * Versandstufe des ganzen Pakets — die HÖCHSTE seiner Artikel, weil alles in
+   * dieselbe Sendung geht. Ohne Sammelkorb (Serlo-Produktkauf) und bei
+   * fehlender Angabe: 4, also der teuerste Satz.
+   */
+  shippingTier: number;
   ship_name: string | null;
   ship_street: string | null;
   ship_zip: string | null;
@@ -63,27 +69,40 @@ export function useSellerOrders(userId: string | null) {
       // die Bilder — bis zum 16.08.2026 stand dort nur Text.
       const cartIds = orders.map((o) => o.cart_id).filter((id): id is string => Boolean(id));
       const byCart = new Map<string, CartItem[]>();
+      const tierByCart = new Map<string, number>();
 
       if (cartIds.length > 0) {
         const { data: won } = await supabase
           .from('live_auctions')
-          .select('cart_id, title, image_url')
+          // `shipping_tier` MUSS mit: Ohne sie kann die Unterdeckungs-Prüfung
+          // nicht wissen, welcher Satz für dieses Paket gilt — und würde bei
+          // jedem Brief einen Fehlalarm auslösen (`20260823140000`).
+          .select('cart_id, title, image_url, shipping_tier')
           .in('cart_id', cartIds)
           .eq('status', 'sold');
         for (const row of (won ?? []) as {
           cart_id: string;
           title: string;
           image_url: string | null;
+          shipping_tier: number | null;
         }[]) {
           const list = byCart.get(row.cart_id) ?? [];
           list.push({ title: row.title, image_url: row.image_url });
           byCart.set(row.cart_id, list);
+          // Die Stufe eines PAKETS ist die höchste seiner Artikel — alles geht
+          // in dieselbe Sendung. `?? 4` innen: Ein Artikel ohne Angabe muss die
+          // teuerste Stufe erzwingen, sonst verbilligt eine Lücke den Satz.
+          tierByCart.set(
+            row.cart_id,
+            Math.max(tierByCart.get(row.cart_id) ?? 1, row.shipping_tier ?? 4),
+          );
         }
       }
 
       return orders.map((o) => ({
         ...o,
         items: o.cart_id ? byCart.get(o.cart_id) ?? [] : [],
+        shippingTier: o.cart_id ? tierByCart.get(o.cart_id) ?? 4 : 4,
       }));
     },
   });

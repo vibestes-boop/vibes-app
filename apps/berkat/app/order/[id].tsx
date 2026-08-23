@@ -344,6 +344,7 @@ export default function OrderScreen() {
         existingReason={(dispute?.reason as DisputeReason | undefined) ?? null}
         existingDetail={dispute?.detail ?? null}
         existingImage={dispute?.image_url ?? null}
+        orderId={id}
         orderTitle={order.title ?? 'Bestellung'}
         orderAmount={Number(order.amount_eur).toLocaleString('de-DE', {
           style: 'currency',

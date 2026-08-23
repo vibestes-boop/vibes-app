@@ -39,6 +39,7 @@ import { LeftoverShelf } from '../components/LeftoverShelf';
 import { shelfBridgeErrorText, useShelfBridge } from '../lib/useShelfBridge';
 import { useMyPlannedShows } from '../lib/useSchedule';
 import { StandingComposer } from '../components/StandingComposer';
+import { useSetShippingTier } from '../lib/useShippingTier';
 import { useBerkatSeller, useDeclareSellerKind } from '../lib/useBerkatSeller';
 import { StandingShelf } from '../components/StandingShelf';
 import { radius, space, ui } from '../theme/tokens';
@@ -54,6 +55,7 @@ export default function ShelfScreen() {
   // Für „Wohin damit?" im Formular — die eigenen angekündigten Abende.
   const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
   const bridge = useShelfBridge();
+  const setTier = useSetShippingTier();
   const declareKind = useDeclareSellerKind(myUserId);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -137,6 +139,23 @@ export default function ShelfScreen() {
                 // Scheitert der Umzug, liegt der Artikel im Regal statt am
                 // Termin — das ist der harmlose Ausgang, und der Verkäufer
                 // erfährt ihn. Verloren geht nichts.
+                // ⚠️ DRITTER Ruf, aus demselben Grund wie der zweite: Die
+                // Versandstufe ist kein Parameter von `create_standing_listing`
+                // (Signatur-Änderung unter einer laufenden App). Scheitert er,
+                // liegt der Artikel mit NULL im Regal und wird als grosses
+                // Paket abgerechnet — im Zweifel teurer für den Käufer statt
+                // draufzahlen für den Verkäufer.
+                if (input.shippingTier != null) {
+                  try {
+                    await setTier.mutateAsync({
+                      auctionId: id,
+                      tier: input.shippingTier as 1 | 2 | 3 | 4,
+                    });
+                  } catch {
+                    /* Der Artikel steht; die Stufe lässt sich nachtragen. */
+                  }
+                }
+
                 if (!input.planId) {
                   setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉');
                   return;

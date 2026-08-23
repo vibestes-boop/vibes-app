@@ -80,6 +80,11 @@ export type Listing = {
    * Sache selbst braucht.
    */
   size: string | null;
+  /**
+   * Versandstufe (1 Brief … 4 grosses Paket), NULL = nicht angegeben.
+   * Serverseitig wird NULL als 4 gerechnet — siehe `20260823140000`.
+   */
+  shipping_tier: number | null;
   postal_code: string | null;
   city: string | null;
   /**
@@ -102,7 +107,8 @@ export type Listing = {
  */
 const LISTING_COLUMNS =
   'id, seller_id, title, image_url, image_urls, buy_now_cents, women_only, accepts_offers, ' +
-  'created_at, status, category, description, condition, size, postal_code, city, seller_kind';
+  'created_at, status, category, description, condition, size, postal_code, city, seller_kind, ' +
+  'shipping_tier';
 
 /**
  * Die Regal-Grenze, in jeder Listen-Abfrage dieselbe.

@@ -32,6 +32,12 @@ export function standingErrorText(message: string): string {
   // als Nächstes zu tun ist, statt was schiefging.
   if (message.includes('contact_seller'))
     return 'Diesen Artikel kaufst du direkt beim Verkäufer — schreib ihm kurz.';
+  // ⚠️ Seit `20260823150000`: Der Verkäufer ist im Urlaub. Hier steht bewusst
+  // NICHT „gibt es nicht" — anders als bei Frauen-Only ist der Verkäufer
+  // öffentlich sichtbar und sein Urlaub steht auf seinem Profil. Ein Käufer,
+  // der nichts erfährt, sucht den Fehler bei sich.
+  if (message.includes('seller_on_vacation'))
+    return 'Der Verkäufer ist gerade im Urlaub — sein Regal ist so lange zu.';
   // Frauen-Only meldet sich bewusst als „gibt es nicht" (die Existenz soll
   // nicht über die Fehlermeldung durchsickern), fällt also in `auction_closed`.
   if (message.includes('too_many_images'))

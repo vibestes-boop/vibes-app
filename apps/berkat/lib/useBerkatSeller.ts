@@ -45,11 +45,19 @@ export type BerkatSeller = {
    * nach einer Prüfung, nicht der Verkäufer über ein Häkchen.
    */
   checkout_enabled: boolean;
+
+  /**
+   * Urlaub bis … (`20260823150000`). NULL oder Vergangenheit = kein Urlaub.
+   *
+   * Solange er läuft, blendet `live_auctions_select_standing` die Angebote
+   * dieses Verkäufers für ALLE ANDEREN aus — er selbst sieht sie weiter.
+   */
+  vacation_until: string | null;
 };
 
 const COLUMNS =
   'user_id, kind, legal_name, street, postal_code, city, country, ' +
-  'contact_email, vat_id, lucid_id, checkout_enabled';
+  'contact_email, vat_id, lucid_id, checkout_enabled, vacation_until';
 
 /**
  * Der Anbietertyp eines beliebigen Verkäufers — für die Kennzeichnung am

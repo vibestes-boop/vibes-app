@@ -20,6 +20,7 @@ import { ui, radius, space } from '../theme/tokens';
 import { trackingUrl, type SellerOrder } from '../lib/useSellerOrders';
 import { formatCents, useShippingCheck } from '../lib/useShipping';
 import { useUsernames } from '../lib/useAuction';
+import { useEvidenceUri } from '../lib/uploadEvidence';
 import { useSession } from '../lib/session';
 import {
   disputeReasonLabel,
@@ -113,6 +114,9 @@ function DisputeCard({
   const resolve = useResolveDispute();
   const [note, setNote] = useState('');
   const [zoom, setZoom] = useState<string | null>(null);
+  // Der Beleg liegt seit dem 23.08.2026 im privaten Eimer; die anzeigbare
+  // Adresse entsteht erst hier und läuft nach fünf Minuten ab.
+  const photoUri = useEvidenceUri(dispute.image_url);
   const [help, setHelp] = useState(false);
 
   return (
@@ -159,10 +163,10 @@ function DisputeCard({
 
       {/* Der Beleg, den der Käufer beim Melden angehängt hat. Antippen zeigt
           ihn groß — bei „so kam es an" ist das Ansehen der Zweck. */}
-      {dispute.image_url ? (
-        <Pressable onPress={() => setZoom(dispute.image_url)} accessibilityRole="imagebutton">
+      {photoUri ? (
+        <Pressable onPress={() => setZoom(photoUri)} accessibilityRole="imagebutton">
           <Image
-            source={{ uri: dispute.image_url }}
+            source={{ uri: photoUri }}
             style={styles.disputePhoto}
             contentFit="cover"
             transition={140}
@@ -522,7 +526,7 @@ export function SellerOrders({ orders, busyId, onShip, disputes, onNotice }: Pro
               buyerName={buyerNames[order.buyer_id] ?? '…'}
               busy={busyId === order.id}
               onShip={onShip}
-              shortfall={checkShipping(order.shipping_cents, order.ship_country)}
+              shortfall={checkShipping(order.shipping_cents, order.ship_country, order.shippingTier)}
               defaultCarrier={lastCarrier}
             />
           ))}

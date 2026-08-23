@@ -97,6 +97,7 @@ import { BerkatMark } from '../../components/BerkatMark';
 import { ListingCard } from '../../components/ListingCard';
 import { OfferPanel } from '../../components/OfferPanel';
 import { StandingComposer } from '../../components/StandingComposer';
+import { useSetShippingTier } from '../../lib/useShippingTier';
 import { radius, ratio, space, ui } from '../../theme/tokens';
 
 /** Ein Hinweis, der einen Weg mitbringen kann statt nur einen Rat. */
@@ -164,9 +165,13 @@ export default function ListingScreen() {
   const seller = sellerId ? profiles[sellerId] : undefined;
   const { data: stats } = useSellerStats(sellerId);
   const { data: sellerRow, isLoading: sellerLoading } = useBerkatSeller(sellerId);
-  const { data: shipFrom } = useShippingFrom(sellerId);
+  // ⚠️ MIT der Stufe des Artikels. Ohne sie zeigte die Seite den billigsten
+  // Satz überhaupt (1,19 € Brief), und die Kasse verlangte 4,90 € — zwei
+  // Wahrheiten über denselben Preis, und die teurere gewinnt beim Bezahlen.
+  const { data: shipFrom } = useShippingFrom(sellerId, listing?.shipping_tier);
 
   const actions = useStandingActions(sellerId, myUserId);
+  const setTier = useSetShippingTier();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -1005,6 +1010,13 @@ export default function ListingScreen() {
                 // Feld, das hier fehlt, kommt als `null` am Server an und wird
                 // gelöscht — ohne dass der Verkäufer es angefasst hätte.
                 size: listing.size,
+                // Hier gilt der Satz darüber NICHT ganz: `shipping_tier` wird
+                // von `update_standing_listing` gar nicht angefasst, sondern
+                // von `set_listing_shipping_tier` (eigene RPC, damit die
+                // Signatur unter der laufenden App gleich bleibt). Vorbefüllt
+                // wird sie trotzdem — sonst zeigte das Blatt „nicht angegeben"
+                // an einem Artikel, der eine Stufe hat.
+                shippingTier: listing.shipping_tier,
                 postalCode: listing.postal_code,
                 city: listing.city,
               }}
@@ -1013,6 +1025,23 @@ export default function ListingScreen() {
                 setEditOpen(false);
                 void actions.update
                   .mutateAsync({ id: listing.id, ...input })
+                  // ⚠️ Zweiter Ruf, weil `update_standing_listing` die Stufe
+                  // nicht kennt — sie hat eine eigene RPC, damit die Signatur
+                  // unter der ausgelieferten App gleich bleibt (Übergabe 63).
+                  // Nur wenn sie sich geändert hat: sonst schriebe jedes
+                  // Speichern denselben Wert noch einmal.
+                  .then(async () => {
+                    if (input.shippingTier !== listing.shipping_tier) {
+                      await setTier
+                        .mutateAsync({
+                          auctionId: listing.id,
+                          tier: (input.shippingTier ?? null) as 1 | 2 | 3 | 4 | null,
+                        })
+                        .catch(() => {
+                          /* Der Rest ist gespeichert; die Stufe bleibt, wie sie war. */
+                        });
+                    }
+                  })
                   .then(() => setNotice({ text: 'Gespeichert.' }))
                   .catch((e: unknown) =>
                     setNotice({

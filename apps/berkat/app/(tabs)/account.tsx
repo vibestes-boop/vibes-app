@@ -17,6 +17,7 @@ import {
   Bell,
   ChevronRight,
   FileText,
+  Truck,
   Gift,
   Heart,
   Lock,
@@ -37,6 +38,7 @@ import { useCheckoutCart } from '../../lib/useCheckout';
 import { shippingHint, useShippingLookup } from '../../lib/useShipping';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
 import { missingBusinessFields, useBerkatSeller } from '../../lib/useBerkatSeller';
+import { onVacation } from '../../lib/useVacation';
 import { useMyRewards } from '../../lib/useRewards';
 import { useMyReviews } from '../../lib/useOrderReview';
 import { buildLabel } from '../../lib/buildInfo';
@@ -179,6 +181,7 @@ export default function AccountScreen() {
   // — bei privat ist die Liste leer und es erscheint nichts.
   const { data: sellerRow } = useBerkatSeller(myUserId);
   const sellerMissing = missingBusinessFields(sellerRow ?? null);
+  const sellerAway = onVacation(sellerRow?.vacation_until);
   const profile = useSession((s) => s.profile);
   const { serverNow } = useServerClock();
 
@@ -420,6 +423,26 @@ export default function AccountScreen() {
         {sellerMissing.length > 0 ? (
           <Text style={styles.linkWarn}>unvollständig</Text>
         ) : null}
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
+
+      {/* ── Versand und Urlaub. Beide beantworten dieselbe Frage — wie kommt
+          meine Ware zum Käufer, und kommt sie gerade überhaupt — und stehen
+          deshalb auf EINEM Bildschirm.
+
+          Der Urlaubs-Zustand steht als Zeile und nicht nur dort drin: Ein
+          ausgeblendetes Regal ist der eine Zustand, den man nicht vergessen
+          darf. Gedämpft, nicht rot — Rot ist in Berkat die laufende Uhr, und
+          ein Urlaub ist keine Frist. ──────────────────────────────────── */}
+      <Pressable
+        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        onPress={() => router.push('/shipping')}
+        accessibilityRole="button"
+        accessibilityLabel={sellerAway ? 'Versand — du bist gerade im Urlaub' : 'Versand'}
+      >
+        <Truck size={19} color={ui.text} />
+        <Text style={styles.linkLabel}>Versand</Text>
+        {sellerAway ? <Text style={styles.linkWarn}>im Urlaub</Text> : null}
         <ChevronRight size={18} color={ui.textMuted} />
       </Pressable>
 
