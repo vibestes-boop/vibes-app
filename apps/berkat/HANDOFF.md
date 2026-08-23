@@ -10109,6 +10109,7 @@ sauber, 9,63 MB.
 |---|---|---|
 | **A19** | **Ein DUNKLES und ein SEHR HELLES Kopfbild setzen.** Lesbar bleiben müssen: Uhrzeit, die drei Symbole — **und der weisse Name im Banner**. Letzterer hängt allein am dunklen Verlauf; der gefährliche Fall ist ein Foto, das UNTEN hell ist | allein |
 | **A20** | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein | allein, Termin genügt |
+| **A21** | ⚠️ **Chat-Tastatur** (23.08.): Einen Chat öffnen, aufs Eingabefeld tippen. Feld und Tastatur müssen **zusammen** hochkommen, und die **letzte Nachricht muss sichtbar bleiben** statt hinter dem Feld zu verschwinden. Dann wieder schließen: Der Rand unten muss wie vorher sitzen, kein Sprung. ⚠️ Im Simulator NICHT prüfbar — bei verbundener Mac-Tastatur erscheint gar keine Software-Tastatur | allein, echtes Gerät |
 
 Dazu unverändert offen: **A5** (das Banner mit `'wide'`-Zuschnitt wählen) — der Bildschirm zeigt
 das Ergebnis jetzt viel größer, also fällt ein schlechter Ausschnitt auch stärker auf.
@@ -10163,6 +10164,117 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx eas project:info 2>&1 | grep -
 
 ⚠️ **Wirkt erst beim ÜBERNÄCHSTEN Start** (Abschnitt 3). Zum Prüfen die App zweimal schließen und
 öffnen, dann unten im Konto-Reiter nachsehen: Steht dort `01a02f5b`, ist dieser Stand aktiv.
+
+---
+
+## 79. Tastatur und Eingabefeld liefen auf zwei Uhren (23.08.2026, nachts)
+
+Zaur, am Gerät:
+
+> *„Wenn man in Chat das Kommentarfeld draufdrückt, öffnet sich Tastatur und dann kommt das
+> Kommentarfeld nach oben. Also die kommen nicht zusammen hoch, verschiedene
+> Öffnungsgeschwindigkeiten. … und das letzte Kommentar wird nicht angezeigt, wenn die sich
+> öffnen. Das ist noch dahinter versteckt."*
+
+Zwei Symptome, zwei verschiedene Ursachen — beide im Chat von Berkat.
+
+### ⚠️ Ursache 1: zwei Uhren, und eine davon animiert gar nicht
+
+Der Bildschirm bewegte **zwei** Werte, wenn die Tastatur kam:
+
+1. `KeyboardAvoidingView` mit `behavior="padding"` — auf der Tastatur-Kurve, über `LayoutAnimation`.
+2. Die untere Polsterung der Eingabezeile — per `useState` von `insets.bottom` (34) auf
+   `space.sm` (8). **Ohne jede Animation.** Ein Sprung von 26 Punkten.
+
+Der Zeitpunkt ist der eigentliche Punkt, und er steht im Quelltext der Bibliothek:
+
+```js
+_updateBottomIfNecessary = async () => {          // ← async
+  const height = await this._relativeKeyboardHeight(endCoordinates);
+  …
+  LayoutAnimation.configureNext({ duration, update: { type: easing } });
+}
+```
+
+**Die Animation wird erst NACH einer awaiteten Messung konfiguriert.** Der `Keyboard`-Listener
+dagegen feuert sofort. Das Feld sprang also Frames, bevor die Polsterung sich in Bewegung setzte —
+genau das, was man als „verschiedene Öffnungsgeschwindigkeiten" sieht.
+
+**Behoben, indem es nur noch einen bewegten Wert gibt.** Die Eingabezeile trägt ihren Rand jetzt
+konstant, und ein **negativer** `keyboardVerticalOffset` zieht den Überschuss aus der Rechnung des
+`KeyboardAvoidingView` heraus:
+
+```
+P = max(frame.y + frame.height − (screenY − offset), 0)
+Abstand über der Tastatur = P + Rand − Überlappung
+```
+
+⚠️ **Und da habe ich mich beim ersten Anlauf selbst verrechnet.** Naheliegend war `offset = −Rand`.
+Das ergibt Abstand **0** — das Feld klebt an der Tastatur, und die 34 Punkte Polsterung
+verschwinden dahinter. Richtig ist `offset = −(Rand − 8)`:
+
+| `insets.bottom` | Offset | Abstand über der Tastatur | Rand ohne Tastatur |
+|---|---|---|---|
+| 34 | −26 | **8** ✅ | 34 ✅ |
+| 0 | 0 | **8** ✅ | 8 ✅ |
+
+Beide Male identisch zum bisherigen Aussehen — nur ohne zweite Uhr.
+
+> ⚠️ **Der Kopf dieses Bildschirms warnte bis heute „KEIN `keyboardVerticalOffset`".** Das galt und
+> gilt für **positive** Werte (dort standen mal `insets.top + 52`, dann `insets.top`, beides zu
+> viel). Ein negativer Offset tut etwas anderes: Er nimmt weg statt hinzuzufügen. Die Warnung ist
+> entsprechend geschärft, damit der nächste sie nicht als Verbot jedes Offsets liest.
+
+### ⚠️ Ursache 2: es gab gar keinen Auslöser
+
+`onContentSizeChange` feuert nur, wenn sich der **Inhalt** ändert. Beim Öffnen der Tastatur ändert
+sich aber das **Fenster**: Die Liste wird kürzer, der Scroll-Versatz bleibt stehen — und das untere
+Ende rutscht hinter die Eingabezeile. Es gab also nichts, was neu ans Ende gesprungen wäre.
+
+`onLayout` feuert genau bei dieser Änderung. Beide zusammen decken die zwei Gründe ab, aus denen
+das Ende verrutschen kann: **mehr Inhalt** und **weniger Platz**. Der `atBottom`-Riegel bleibt —
+wer nach oben gescrollt hat, darf beim Tippen nicht nach unten gerissen werden.
+
+> ⚠️ **Und das ist eine Regression gegenüber der eigenen Vorlage.** Serlos Chat hat `onLayout` samt
+> `scrollToEnd` seit jeher; Berkats Fassung wurde davon abgeleitet und hat die Zeile unterwegs
+> verloren. **Wer einen Bildschirm aus einem anderen ableitet, vergleicht ihn danach mit dem
+> Original** — was fehlt, fehlt lautlos.
+
+### Was das NICHT ist: der saubere Weg
+
+Perfekt synchron wird es mit JavaScript nicht. Die richtige Lösung verfolgt die Tastatur auf dem
+**UI-Thread** — `useAnimatedKeyboard` (Reanimated 3) oder `react-native-keyboard-controller`. Dann
+gibt es überhaupt keine Brücke mehr, über die etwas zu spät kommen könnte.
+
+⚠️ **Berkat hat beides nicht** — weder Reanimated noch keyboard-controller stehen in der
+`package.json`. Das wäre eine native Abhängigkeit und damit ein **EAS-Build**, kein OTA. Gehört in
+die Warteschlange offener nativer Änderungen (Abschnitt 12), zusammen mit
+`expo-image-manipulator`.
+
+**Was hier gebaut ist, ist die beste Fassung ohne neue Abhängigkeit:** ein bewegter Wert statt
+zwei, auf der Tastatur-Kurve, plus ein Auslöser, der das Ende wieder sichtbar macht.
+
+### Nebenbefund: Serlos Chat hat das umgekehrte Problem
+
+Serlo setzt `keyboardVerticalOffset={0}` bei konstantem `paddingBottom: insets.bottom + 8`. Nach
+derselben Rechnung sind das **42 Punkte Abstand** über der Tastatur statt 8 — also zu viel Luft
+statt zu wenig. Kein Fehler, nur weit. **Bewusst nicht angefasst:** Serlo ist im App Store, und
+eine 34-Punkte-Verschiebung ist eine Gestaltungsänderung, keine Fehlerbehebung. Nach derselben
+Formel wäre es `offset = −insets.bottom`.
+
+### ✅ Ausgerollt und ungeprüft
+
+| | |
+|---|---|
+| Berkat-OTA | ✅ Gruppe `f09be20c…`, iOS-Update `01a02fa0…` |
+| Migration | — keine |
+| Serlo | — unberührt |
+
+⚠️ **Am Gerät ungeprüft, und diesmal ging es nicht anders:** Im Simulator erscheint gar keine
+Software-Tastatur, solange die Mac-Tastatur verbunden ist. Belegt ist nur der Zustand **ohne**
+Tastatur (unverändert) sowie die Geometrie — am Quelltext der Bibliothek nachgerechnet, nicht
+angesehen. **Ein Bildschirmfoto kann ohnehin nicht zeigen, dass sich zwei Dinge verschieden schnell
+bewegen.** Gehört als **A21** in die Prüfliste.
 
 ---
 

@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -204,29 +203,6 @@ export default function ConversationScreen() {
   const isBlocked = Boolean(otherId && blocked?.has(otherId));
 
   /**
-   * ⚠️ Der sichere Rand unten gilt NUR ohne Tastatur.
-   *
-   * `behavior="padding"` legt die volle Höhe des Tastatur-Rahmens als Polster
-   * an, und dieser Rahmen reicht auf Geräten mit Home-Indikator schon bis zur
-   * Bildschirmkante — der sichere Rand steckt also bereits darin. Wer ihn
-   * zusätzlich addiert, schiebt das Eingabefeld um weitere 34 Punkte hoch.
-   *
-   * Wortgleich zum Live-Raum (Übergabe 62). Dass derselbe Fehler an zwei
-   * Stellen unabhängig entstanden ist, heißt: Er entsteht bei JEDEM
-   * `KeyboardAvoidingView` mit `padding` neu. Wer den nächsten baut, prüft
-   * beides — den Offset oben und den Rand unten.
-   */
-  const [keyboardUp, setKeyboardUp] = useState(false);
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    const show = Keyboard.addListener('keyboardWillShow', () => setKeyboardUp(true));
-    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardUp(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-  /**
    * ⚠️ Der Fall steht IM STROM, nicht über ihm.
    *
    * Erst hing er als fester Kasten unter der Kopfzeile — mit dem Argument, er
@@ -352,27 +328,66 @@ export default function ConversationScreen() {
         </Pressable>
       </View>
 
-      {/* ⚠️ KEIN `keyboardVerticalOffset`. Nicht `insets.top`, nicht `+ 52`.
-          Hier stand erst `insets.top + 52`, dann `insets.top` — beides zu viel,
-          das zweite war MEIN Fehler beim ersten Beheben.
+      {/* ⚠️ KEIN POSITIVER `keyboardVerticalOffset`. Nicht `insets.top`, nicht
+          `+ 52`. Hier stand erst `insets.top + 52`, dann `insets.top` — beides
+          zu viel, das zweite war MEIN Fehler beim ersten Beheben.
 
-          Der Grund, jetzt in der Bibliothek nachgelesen statt hergeleitet:
+          Der Grund, in der Bibliothek nachgelesen statt hergeleitet:
           `KeyboardAvoidingView` merkt sich `event.nativeEvent.layout` und
           rechnet `frame.y + frame.height - keyboardY`. Yoga misst `layout.y`
           eines Kindes ab der Kante des ELTERNTEILS — der Innenabstand des
           Elternteils steckt also bereits DRIN. Die Wurzel dieses Bildschirms
           sitzt am Bildschirmrand, folglich ist `frame.y` schon die echte
-          Bildschirmposition, und es gibt nichts auszugleichen.
+          Bildschirmposition, und es gibt nichts NACH OBEN auszugleichen.
 
-          Jeder angegebene Punkt wird stattdessen zusätzliches Polster unter dem
-          Eingabefeld. Genau das war die Lücke.
+          ── ⚠️ DER NEGATIVE OFFSET IST ETWAS ANDERES (23.08.2026) ────────────
 
-          Die Lehre: Ein Wert, der „plausibel aussieht" (sicherer Rand plus
-          Kopfzeile — beides ist ja da oben), ist keine Herleitung. Der
-          Quelltext der Komponente hat die Frage in zwei Minuten beantwortet. */}
+          Zaur am Gerät: „öffnet sich Tastatur und dann kommt das Kommentarfeld
+          nach oben — die kommen nicht zusammen hoch, verschiedene
+          Öffnungsgeschwindigkeiten."
+
+          Die Ursache waren ZWEI UHREN. Hier lief die Polsterung des
+          `KeyboardAvoidingView` auf der Tastatur-Kurve; gleichzeitig sprang die
+          untere Polsterung der Eingabezeile per `useState` von `insets.bottom`
+          (34) auf `space.sm` (8) — **ohne jede Animation**, und zu einem
+          anderen Zeitpunkt.
+
+          Der Zeitpunkt ist der eigentliche Punkt: `_updateBottomIfNecessary`
+          ist `async` und wartet auf eine Messung, bevor es
+          `LayoutAnimation.configureNext` aufruft. Der `Keyboard`-Listener
+          dagegen feuert sofort. Das Feld sprang also Frames VOR der Polsterung.
+
+          Behoben, indem es nur noch EINEN bewegten Wert gibt: Die Eingabezeile
+          trägt ihren unteren Rand jetzt KONSTANT, und der negative Offset zieht
+          den Überschuss aus der Rechnung des `KeyboardAvoidingView` heraus.
+
+              P = max(frame.y + frame.height − (screenY − offset), 0)
+              Abstand über der Tastatur = P + Rand − Überlappung
+
+          ⚠️ Der Offset ist `−(Rand − 8)`, NICHT `−Rand`. Der erste Entwurf
+          nahm den ganzen Rand, und dann ergibt die Rechnung Abstand 0: Das
+          Feld klebte an der Tastatur, die 34 Punkte Polsterung verschwanden
+          dahinter. Nachgerechnet statt angesehen — auf dem Simulator ist die
+          Software-Tastatur gar nicht zu sehen, solange die Mac-Tastatur
+          verbunden ist.
+
+            Rand 34: Offset −26 → oben Abstand 8 ✅ · unten Rand 34 ✅
+            Rand  8: Offset   0 → oben Abstand 8 ✅ · unten Rand  8 ✅
+
+          Beide Male identisch zu vorher — aber ohne zweite Uhr und ohne
+          Zustands-Änderung. `Math.max(…, 0)` fängt den Sonderfall einer
+          schwebenden/geteilten Tastatur ab: Dann bleibt es beim sicheren Rand.
+
+          ⚠️ Auf Android ist `behavior` undefiniert; die Komponente rendert dort
+          eine einfache `View` und benutzt den Offset gar nicht. Deshalb steht
+          er ausdrücklich nur für iOS da — sonst liest der nächste ihn als
+          plattformübergreifende Zusage. */}
       <KeyboardAvoidingView
         style={styles.body}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={
+          Platform.OS === 'ios' ? -Math.max((insets.bottom || space.sm) - space.sm, 0) : 0
+        }
       >
         {resolving || isLoading ? (
           <View style={styles.center}>
@@ -385,6 +400,27 @@ export default function ConversationScreen() {
             keyExtractor={(r) => (r.kind === 'case' ? `case-${r.at}` : r.msg.id)}
             contentContainerStyle={styles.listContent}
             onContentSizeChange={() => {
+              if (atBottom.current) listRef.current?.scrollToEnd({ animated: false });
+            }}
+            // ⚠️ Und DIESE Zeile ist der zweite Teil von Zaurs Fund am
+            // 23.08.2026: „das letzte Kommentar wird nicht angezeigt, wenn die
+            // sich öffnen — das ist noch dahinter versteckt."
+            //
+            // `onContentSizeChange` feuert nur, wenn sich der INHALT ändert.
+            // Beim Öffnen der Tastatur ändert sich aber nicht der Inhalt,
+            // sondern das FENSTER: Die Liste wird kürzer, der Scroll-Versatz
+            // bleibt stehen — und damit rutscht das untere Ende hinter die
+            // Eingabezeile. Es gab also gar keinen Auslöser, der neu ans Ende
+            // gesprungen wäre.
+            //
+            // `onLayout` feuert genau bei dieser Änderung. Beide zusammen
+            // decken die zwei Gründe ab, aus denen das Ende verrutschen kann:
+            // mehr Inhalt (oben) und weniger Platz (hier).
+            //
+            // Der `atBottom`-Riegel bleibt: Wer nach oben gescrollt hat, um
+            // etwas nachzulesen, darf beim Tippen nicht nach unten gerissen
+            // werden.
+            onLayout={() => {
               if (atBottom.current) listRef.current?.scrollToEnd({ animated: false });
             }}
             onScroll={(e) => {
@@ -610,7 +646,10 @@ export default function ConversationScreen() {
           </View>
         ) : null}
 
-        <View style={[styles.inputRow, { paddingBottom: keyboardUp ? space.sm : insets.bottom || space.sm }]}>
+        {/* ⚠️ KONSTANT, nicht mehr vom Tastatur-Zustand abhängig. Der Wechsel
+            zwischen zwei Werten war die zweite Uhr — Begründung am
+            `KeyboardAvoidingView` oben. */}
+        <View style={[styles.inputRow, { paddingBottom: insets.bottom || space.sm }]}>
           {/* ⚠️ Das Foto ist der Grund, warum es diesen Knopf gibt — nicht die
               Nettigkeit. Wenn Ware kaputt ankommt, ist ein Bild der einzige
               Beleg, den ein Käufer hat; ohne ihn steht Aussage gegen Aussage
