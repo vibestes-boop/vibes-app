@@ -51,6 +51,19 @@ was gilt.
 > Highlights mit CASCADE. Und: Story-Zeilen werden **überhaupt nie** gelöscht, der 24-Stunden-Ablauf
 > ist ein reiner Lesefilter; ein `AFTER DELETE`-Trigger allein hätte fast nichts aufgeräumt.
 >
+> ✅ **Die Kontolöschung ist am Gerät durchgeprüft — und hatte bis dahin NIE funktioniert** (84,
+> Nachtrag vom 24.08. abends). Der erste echte Aufruf brach mit `42883 operator does not exist:
+> character varying = uuid` ab: `auth.refresh_tokens.user_id` ist Text, nicht `uuid`. Weil das die
+> vorletzte Zeile war, rollte alles zurück — nie etwas halb gelöscht, aber auch nie etwas gelöscht,
+> seit dem 21.08. Behoben in `20260824160000` (`v_uid::text`), zusammen mit `20260824140000`
+> eingespielt. Danach zwei Konten gelöscht, **alle** Gegenproben bestanden, auch die entscheidende:
+> ein Chat-Foto an ein FREMDES Konto liefert vorher wie nachher HTTP 200.
+>
+> ⚠️ **Daraus die Regel: „Migration läuft durch" heisst bei Funktionen NICHT „Funktion läuft."**
+> `CREATE FUNCTION` prüft den plpgsql-Rumpf nicht; Typfehler zeigen sich erst beim Aufruf. Und eine
+> Funktion auf `auth.uid()` lässt sich nicht aus dem SQL-Editor testen. Ungeprüft bleibt sie, bis sie
+> einmal echt gerufen wurde.
+>
 > ⚠️ **`db push` liefert die Edge Function NICHT mit** (85). Migration und passende `r2-delete`-Fassung
 > lagen im selben Commit — nach dem Push war die Migration live, die Function aber noch v22 vom
 > 17.05. und kannte `prefix` nicht. Die Warteschlange hätte Ordner-Aufträge **still auf `deleted`
@@ -10484,12 +10497,12 @@ Genau so sind am 24.08. beim Prüfen zwei Dateien entstanden.
 | | |
 |---|---|
 | `deno check supabase/functions/r2-delete/index.ts` | ✅ fehlerfrei |
-| `tsc --noEmit` in `apps/berkat` | ✅ nur die zwei bekannten Modul-Meldungen (`keyboardKit`, `expo-image-manipulator`), beide unberührt |
+| `tsc --noEmit` in `apps/berkat` | ✅ nur die zwei bekannten Modul-Meldungen (`keyboardKit`, `expo-image-manipulator`), beide unberührt — ⚠️ die waren kein Naturgesetz, sondern ein falscher Prüfrahmen: `apps/berkat` fehlte in der `exclude`-Liste der Wurzel-`tsconfig.json`. Seit `25bce22` prüft Berkat sich mit den eigenen Abhängigkeiten, beide Meldungen sind weg |
 | Migration gegen echtes Postgres eingespielt | ✅ läuft durch (Wegwerf-DB, danach verworfen) |
 | Die 6 Constraint-Proben | ✅ `highlights/` allein, `thumbnails/<uuid>/`, `..`-Ausbruch und „Ordner+Adresse zugleich" werden **abgewiesen**; gültiger Ordner und die alte Post-Trigger-Zeile gehen durch |
 | Die 16 Proben an den Wächter-Funktionen | ✅ fremdes Highlight abgewiesen, eigenes durch, `assertAllowedRoot` erreicht `highlights/` weiterhin **nicht** |
 
-### ⚠️ Ungeprüft — und das ist die ehrliche Hälfte
+### ⚠️ Ungeprüft — und das ist die ehrliche Hälfte *(Stand beim Schreiben; erledigt, siehe Nachtrag)*
 
 - **Nichts davon ist gegen echtes R2 gelaufen.** `ListObjectsV2` ist neu signiert (GET mit
   Abfragezeichenkette — die Parameter müssen sortiert und RFC-3986-kodiert sein, sonst
@@ -10501,6 +10514,42 @@ Genau so sind am 24.08. beim Prüfen zwei Dateien entstanden.
 - Die eigentliche Probe ist nicht „ist das Bild weg", sondern **„ist das FALSCHE Bild noch da"** —
   Gegenproben 9 und 10 in der Migration: ein Artikelbild einer Bestellung und ein Chat-Foto an einen
   anderen Menschen müssen nach der Löschung weiterhin HTTP 200 liefern.
+
+### Nachtrag 24.08.2026, abends: durchgeprüft — und der erste echte Durchlauf fand einen Fehler
+
+Die Liste oben ist abgearbeitet. Alles gegen die Produktions-Datenbank und echtes R2, nicht gegen
+eine Wegwerf-Kopie.
+
+| Punkt | Ergebnis |
+|---|---|
+| `ListObjectsV2` gegen echtes R2 | ✅ zweimal gelaufen — einmal auf einen leeren Ordner (`deleted: 0`), einmal beim echten Kontolöschen auf einen gefüllten. Keine `SignatureDoesNotMatch` |
+| Migration eingespielt | ✅ `20260824120000`, `140000`, `160000` |
+| Durchlauf am Gerät | ✅ zwei Konten gelöscht (`berkattest`, `mansurrr`) |
+| Gegenprobe 9 (Artikelbilder) | ✅ alle fünf `products/images/`-Adressen weiterhin **HTTP 200** |
+| Gegenprobe 10 (Chat-Foto an Dritte) | ✅ Foto unter `thumbnails/<uid>/`, das an ein FREMDES Konto ging: **200 vorher, 200 nachher** |
+| Constraint-Schloss | ✅ `INSERT (prefix) VALUES ('highlights/')` scheitert an `r2_delete_queue_prefix_shape` |
+| Warteschlange | ✅ alle Zeilen auf `deleted`, kein `last_error` |
+
+⚠️ **Die Gegenkontrolle gehört dazu, sonst ist die Probe hohl.** Ein „die fremde Datei ist noch da"
+beweist nichts, solange nicht feststeht, dass überhaupt gelöscht wurde. Gemessen wurde deshalb
+beides: `profiles.username = 'geloescht-…'`, `deleted_at` gesetzt, Auftrag in der Warteschlange.
+
+**Und der Satz oben — „der Durchlauf braucht wieder einen Menschen" — hat sich sofort bezahlt
+gemacht.** Der erste echte Aufruf scheiterte in der vorletzten Zeile:
+
+    42883  operator does not exist: character varying = uuid
+
+`auth.refresh_tokens.user_id` ist `character varying`, nicht `uuid` (Altlast im GoTrue-Schema;
+`auth.sessions.user_id` daneben ist `uuid`). Weil der Abbruch am Ende kam, rollte die Transaktion
+alles zurück: **nie etwas halb gelöscht — aber auch nie etwas gelöscht.** Die Funktion stand seit dem
+21.08. in Produktion und hatte bis dahin kein einziges Mal funktioniert. Behoben in
+`20260824160000` mit `v_uid::text`.
+
+⚠️ **Die Lehre, und sie gilt über diesen Abschnitt hinaus:** „Migration läuft durch" heisst bei
+Funktionen **nicht** „Funktion läuft". `CREATE FUNCTION` prüft den plpgsql-Rumpf nicht — Typfehler
+darin zeigen sich erst beim Aufruf. Eine Funktion auf `auth.uid()` lässt sich zudem nicht aus dem
+SQL-Editor testen. Solange sie nicht ein einziges Mal echt gerufen wurde, ist sie ungeprüft, egal wie
+grün die Migration war.
 
 ### ⚠️ Dabei aufgefallen, NICHT behoben: die Warteschlange wiederholt nichts
 
