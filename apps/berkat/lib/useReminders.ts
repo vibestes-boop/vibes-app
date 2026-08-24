@@ -36,6 +36,94 @@ export function useMyReminder(auctionId: string | undefined, userId: string | nu
   });
 }
 
+export type MyReminder = {
+  auctionId: string;
+  title: string;
+  imageUrl: string | null;
+  sellerId: string;
+  /** Wann der Abend ist, für den der Artikel vorbereitet wurde. */
+  scheduledAt: string | null;
+};
+
+/**
+ * Alle meine Vormerkungen — die Liste, die es bis zum 24.08.2026 nicht gab.
+ *
+ * ── ⚠️ WARUM ES SIE BRAUCHT ─────────────────────────────────────────────────
+ *
+ * Vormerken konnte man längst, nachsehen nicht. `useMyReminder` beantwortet
+ * „habe ich DIESEN Artikel vorgemerkt?" — gefragt am Artikel, für einen Artikel.
+ * Wer sich drei Sachen bei drei Verkäufern vormerkte, hatte keinen Ort, an dem
+ * sie stehen.
+ *
+ * Das ist dieselbe Lücke wie bei den Preisvorschlägen am selben Tag: Die
+ * Fähigkeit war da, der Weg zurück fehlte. Nur trifft sie hier das Signal, das
+ * am meisten über Kaufabsicht sagt — der eigene Kopf dieser Datei nennt die
+ * Vormerkung „der leiseste der drei Wege auf einen vorbereiteten Artikel".
+ *
+ * ⚠️ Der Termin gehört dazu, nicht als Zierrat. Eine Vormerkung sagt „ruf mich,
+ * wenn es soweit ist" — ohne das WANN ist die Liste eine Sammlung ohne Aussage.
+ * Deshalb die dritte Abfrage auf `scheduled_lives`.
+ *
+ * Drei Abfragen statt Embeds, wie überall in diesem Projekt: PostgREST-Embeds
+ * sind hier schon einmal still zu einer leeren Liste geworden.
+ */
+export function useMyReminders(userId: string | null) {
+  return useQuery({
+    queryKey: ['berkat', 'my-reminders', userId],
+    enabled: Boolean(userId),
+    staleTime: 30_000,
+    queryFn: async (): Promise<MyReminder[]> => {
+      const { data: rows, error } = await supabase
+        .from('berkat_auction_reminders')
+        .select('auction_id')
+        .eq('user_id', userId!);
+      if (error) throw error;
+
+      const ids = [...new Set(((rows ?? []) as { auction_id: string }[]).map((r) => r.auction_id))];
+      if (ids.length === 0) return [];
+
+      // ⚠️ Kein `status`-Filter. Die Vormerkung wird beim Auktionsstart
+      // verbraucht (siehe Kopf) — was hier noch liegt, ist also per Definition
+      // vorbereitet. Ein Filter wäre bestenfalls wirkungslos und im Zweifel
+      // die Stelle, an der ein Artikel still aus der Liste fällt.
+      const { data: items, error: e2 } = await supabase
+        .from('live_auctions')
+        .select('id, title, image_url, seller_id, planned_for')
+        .in('id', ids);
+      if (e2) throw e2;
+
+      type Row = {
+        id: string;
+        title: string;
+        image_url: string | null;
+        seller_id: string;
+        planned_for: string | null;
+      };
+      const found = (items ?? []) as Row[];
+
+      const planIds = [...new Set(found.map((i) => i.planned_for).filter(Boolean))] as string[];
+      const whenByPlan = new Map<string, string>();
+      if (planIds.length > 0) {
+        const { data: plans } = await supabase
+          .from('scheduled_lives')
+          .select('id, scheduled_at')
+          .in('id', planIds);
+        for (const pl of (plans ?? []) as { id: string; scheduled_at: string }[]) {
+          whenByPlan.set(pl.id, pl.scheduled_at);
+        }
+      }
+
+      return found.map((i) => ({
+        auctionId: i.id,
+        title: i.title,
+        imageUrl: i.image_url,
+        sellerId: i.seller_id,
+        scheduledAt: i.planned_for ? (whenByPlan.get(i.planned_for) ?? null) : null,
+      }));
+    },
+  });
+}
+
 /**
  * Wie viele auf diese Artikel warten — nur für den VERKÄUFER.
  *
