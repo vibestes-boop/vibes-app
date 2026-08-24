@@ -177,6 +177,12 @@ async function fetchHighlightsLegacy(userId: string): Promise<StoryHighlight[]> 
 }
 
 // ── Eigene Stories für den Highlight-Picker (alle — aktive + archivierte) ─────
+//
+// ⚠️ Alle, aber nicht die aufgeräumten: `media_purged_at` muss leer sein. Seit
+// `20260824130000` nimmt ein Cron die Dateien von Stories fort, die älter als 90
+// Tage sind — die Zeile bleibt stehen (daran hängen Kommentare, Umfragen und
+// Highlights mit CASCADE), das Bild aber ist fort. Ohne diesen Filter böte der
+// Picker tote Adressen an.
 export function useMyStoryArchive(options: { enabled?: boolean } = {}) {
   const userId = useAuthStore((s) => s.profile?.id);
   const enabled = options.enabled ?? true;
@@ -192,6 +198,7 @@ export function useMyStoryArchive(options: { enabled?: boolean } = {}) {
         .eq('user_id', userId)
         .not('media_url', 'is', null)
         .neq('media_url', '')
+        .is('media_purged_at', null)
         .order('created_at', { ascending: false })
         .limit(200);
 
