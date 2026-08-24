@@ -174,6 +174,23 @@ export function ListingCard({
             <Lock size={11} color={ui.successInk} />
           </View>
         ) : null}
+        {/* ⚠️ Was WEG ist, muss es sagen — sonst sieht ein verkaufter Artikel
+            aus wie ein kaufbarer. Im Zeilen-Layout trug das bisher der
+            `trailing`-Bereich, den es hier nicht gibt; als die Merkliste am
+            24.08.2026 auf das Gitter umgestellt wurde, wäre die Auskunft sonst
+            stumm verschwunden. Und genau sie ist der Zweck einer Merkliste:
+            „Das, was du wolltest, ist weg."
+
+            Unten links, weil das die einzige freie Ecke ist — Schloss oben
+            links, Herz oben rechts, „Deins" unten rechts. */}
+        {listing.status !== 'listed' ? (
+          <View style={s.gonePill}>
+            <Text style={s.gonePillText}>
+              {listing.status === 'sold' ? 'Verkauft' : 'Weg'}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Auf dem eigenen Artikel: ein stilles Zeichen statt eines Knopfes.
             Verwaltet wird im Regal, nicht beim Stöbern. */}
         {mine ? (
@@ -316,6 +333,19 @@ const s = StyleSheet.create({
   // dunkelsten und 5,62:1 über dem hellsten Bildpunkt, die 4,5:1 für 10 pt/700
   // sind also über die ganze Fläche gehalten. `textMuted` käme auf 3,79:1.
   minePillText: { fontSize: 10, fontWeight: '700', color: ui.overlayMuted },
+  // Gleiche Sprache wie `minePill`: `ui.overlay` als Grund, `overlayMuted` als
+  // Schrift. Das ist die dokumentierte Ausnahme für Text auf fremdem Foto —
+  // hier NICHT durch Theme-Farben ersetzen, die im Hellmodus verschwinden.
+  gonePill: {
+    position: 'absolute',
+    left: space.sm,
+    bottom: space.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: ui.overlay,
+  },
+  gonePillText: { fontSize: 10, fontWeight: '700', color: ui.overlayMuted },
   heart: {
     position: 'absolute',
     top: space.sm,
