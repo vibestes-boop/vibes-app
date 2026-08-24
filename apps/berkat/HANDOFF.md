@@ -17,8 +17,8 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 82 → 56.** Abschnitt 82 ist der Anschlusspunkt (er löste 75 ab,
-> davor 74, 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
+> **Wer neu einsteigt, liest 0 → 87 → 56.** Abschnitt 87 ist der Anschlusspunkt (er löste 82 ab,
+> davor 75, 74, 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
 > nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
 >
 > ⚠️ **Wer nur EINEN Abschnitt liest, liest 73.** Der Sicherheits-Audit vom 22.08.2026 hat vier
@@ -36,7 +36,19 @@ was gilt.
 > freigeschaltet (77), Push-App-Filter an vier Direktwegen (78), Chat-Tastatur auf den UI-Thread
 > samt EAS-Build `1.0.0 (3)` (79), **neue Markenfarben Aubergine + Bernstein mit Neutralen bei
 > Buntheit 0** (80), **Stories** (81) und **Highlights** (83). ⚠️ **Der Anschlusspunkt ist jetzt
-> Abschnitt 82.**
+> Abschnitt 87.**
+>
+> 🔴 **Und dann kam der 24.08. nachmittags (86).** Fünf stille Fehler an einem Tag — nichts davon
+> stürzte ab, nichts meldete sich: Der **R2-Aufräumer war sieben Wochen tot** (ein Deploy ohne
+> `verify_jwt = false`), die **Kontolöschung hatte seit ihrer Auslieferung nie funktioniert**
+> (`42883`, `auth.refresh_tokens.user_id` ist Text), eine **abgebrochene Zahlung sperrte sie
+> dauerhaft**, der **Push aus dem Kaltstart** landete auf der Startseite, und das **CI war rot
+> wegen eines falschen Prüfrahmens**. Alles behoben und eingespielt.
+>
+> ⚠️ **Die Lehre daraus, und sie gilt über Berkat hinaus: „Migration läuft durch" heisst bei
+> Funktionen NICHT „Funktion läuft."** `CREATE FUNCTION` prüft den plpgsql-Rumpf nicht. Solange eine
+> Funktion nicht ein einziges Mal echt gerufen wurde, ist sie ungeprüft — egal wie grün die
+> Migration war.
 >
 > ✅ **Die Highlights stehen** (83) — ohne Migration, weil die `app`-Spalte am 23.08. vorweggenommen
 > statt nachgereicht wurde. Die R2-Falle ist zu und **gemessen**: Die gespeicherte Adresse zeigt auf
@@ -10173,7 +10185,7 @@ Weiterblättern. Dafür gibt es jetzt `scripts/seed-berkat-stories.mjs`.
 
 ---
 
-## 82. Anschlusspunkt für den nächsten Chat (Stand 24.08.2026)
+## 82. Anschlusspunkt vom 24.08.2026 (Mittag) — abgelöst von Abschnitt 87
 
 **Hier anfangen.** Löst Abschnitt 75 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt der Motor.
 
@@ -10710,6 +10722,234 @@ Erste Kontrolle nach dem Lauf zur Minute 23:
 SELECT reason, status, count(*) FROM r2_delete_queue
  WHERE reason IN ('story_expired','story_deleted') GROUP BY reason, status;
 ```
+
+---
+
+## 86. Fünf stille Fehler an einem Tag (24.08.2026, Nachmittag bis Nacht)
+
+Der Tag begann mit einer Vier-Zeilen-Aufgabe — Serlos Highlight-Löschen sollte die R2-Kopie
+mitnehmen, wie Berkats seit Abschnitt 84. Daraus wurden fünfundzwanzig Commits, und die eigentliche
+Aufgabe war der kleinste davon.
+
+**Was die Funde verbindet: Alles war STILL kaputt.** Kein Absturz, keine Fehlermeldung, kein roter
+Balken. Nur Dinge, die einfach nicht passierten. Sieben von neun hat Zaur am Gerät gefunden, nicht
+im Code — und das ist kein Zufall, sondern die Eigenschaft dieser Fehlerklasse.
+
+### ⚠️ Der R2-Aufräumer war sieben Wochen tot (`f802adc`)
+
+Der Cron `r2-delete-queue` schickt seit `20260517153000` **bewusst keinen Authorization-Kopf** — die
+Function behandelt `{processQueue:true}` passend dazu vor jeder Auth-Prüfung, weil `r2_delete_queue`
+selbst die Vertrauensgrenze ist (RLS an, keine Policy, kein Grant).
+
+`r2-delete` stand aber nicht in `supabase/config.toml`. Jeder `functions deploy` schaltete damit das
+JWT-Tor wieder scharf, und das Gateway wies den Cron ab, **bevor** die Function startete.
+
+- Letzte erfolgreiche Löschung: **07.07.2026**. Danach nichts, sieben Wochen lang.
+- Am 24.08. lagen 22 Zeilen im Rückstau — **keine davon auf `error`**, weil der Abbruch vor dem
+  Function-Code passiert und es dort niemanden gibt, der ihn verzeichnet.
+
+⚠️ **Wo so etwas steht:** nicht in den Function-Logs, sondern in `net._http_response`.
+
+```sql
+SELECT id, status_code, left(content,200), created FROM net._http_response ORDER BY id DESC LIMIT 5;
+```
+
+Dort stand alle fünf Minuten `401 UNAUTHORIZED_NO_AUTH_HEADER`. **Merkregel: Ein Cron über
+`net.http_post`, dessen Antwort niemand liest, scheitert für immer still.** Bei jedem pg_net-Cron
+zuerst dort nachsehen.
+
+Dieselbe Falle wie am 27.06. mit `stripe-webhook`. Die Datei warnte oben davor und listete
+`r2-delete` trotzdem nicht — es sind **vier** Functions, nicht drei.
+
+### ⚠️ Die Kontolöschung hatte seit ihrer Auslieferung nie funktioniert
+
+Drei Fehler übereinander, gefunden beim ersten echten Durchlauf:
+
+1. **`3e36c5f` — `42883 operator does not exist: character varying = uuid`.**
+   `auth.refresh_tokens.user_id` ist `character varying`, nicht `uuid` (Altlast im GoTrue-Schema;
+   `auth.sessions.user_id` daneben ist `uuid`). Weil der Abbruch in der vorletzten Zeile kam, rollte
+   die Transaktion alles zurück: **nie etwas halb gelöscht — aber auch nie etwas gelöscht**, seit
+   dem 21.08. Behoben mit `v_uid::text` in `20260824160000`. Ausführlich im Nachtrag zu
+   Abschnitt 84.
+2. **`10a3d9e` — eine abgebrochene Zahlung sperrte die Löschung DAUERHAFT.** Der Blocker zählte
+   `product_orders` in `('paid','payment_requested')`. Bei `payment_requested` ist **kein Geld
+   geflossen** (`20260627150000`: „Kein Geld geflossen → gefahrlos"), und es gibt kein Auto-Storno —
+   der einzige Cron schickt eine Erinnerung nach 24 h und rührt die Zeile nie wieder an. Ein Käufer,
+   der einen Kauf anfängt und nie bezahlt, fesselte den Verkäufer damit unbefristet an sein Konto.
+   Apple 5.1.1(v) verlangt eine **erreichbare** Löschung. Nur noch `paid` sperrt
+   (`20260824140000`).
+3. **`3dfbe73` — die Tastatur verdeckte das Bestätigungsfeld.** Feld und Knopf stehen am unteren
+   Ende einer scrollenden Fläche; ohne Zutun schob sich die Tastatur darüber. Behoben mit
+   `automaticallyAdjustKeyboardInsets` + `keyboardShouldPersistTaps="handled"` — bewusst **nicht**
+   der `KeyboardAvoidingView` aus `messages/[id].tsx`, der ohne das native Modul über
+   `LayoutAnimation` läuft und springt (Abschnitt 79). Das Modul steckt im TestFlight-Build gar
+   nicht.
+
+### Push aus dem Kaltstart führte nur auf die Startseite (`a7ba9aa`)
+
+Zaurs Beschreibung enthielt die Diagnose: *„Wenn man nicht in der App ist und die Meldung anklickt,
+macht er die Startseite auf — ist man in der App, gelangt man direkt in den Chat."*
+
+`addNotificationResponseReceivedListener` kann den Kaltstart nicht fangen: iOS liefert den Tipp aus,
+**bevor** React gemountet ist. Der Gegenpart ist `getLastNotificationResponseAsync()`. Serlo macht
+das seit Längerem (`src/_layout.full.tsx`), Berkat hatte es nie.
+
+⚠️ Zweiter Teil einer Beobachtung vom 23.08.; der erste (Push an beide Apps) war in
+`20260823190000` behoben. Prüfbar wurde dieser hier erst, als Zaur Berkat einmal öffnete und
+**Mitteilungen erlaubte** — vorher gab es keinen `berkat`-Token, und der dokumentierte Rückfall in
+`send_push_to_user` (`v_count = 0` → an alle Geräte) schickte Berkat-Meldungen in die Serlo-App.
+
+⚠️ **Dieser Rückfall steht noch.** Er trifft jeden, der nur eine der beiden Apps installiert hat.
+Abschalten wäre heute schlimmer (Berkat-Nutzer ohne Token bekämen gar nichts) — aber er gehört
+entfernt, sobald Berkat richtig ausgerollt ist.
+
+### Das CI war rot, und zwar zu Unrecht (`25bce22`)
+
+`apps/berkat` fehlte in der `exclude`-Liste der Wurzel-`tsconfig.json`, wo `apps/web` und
+`apps/remotion` längst stehen. Der Wurzel-Lauf zog Berkats Quelltext mit hinein, während `npm ci`
+im Wurzelverzeichnis Berkats `node_modules` gar nicht anlegt → zwei unlösbare `TS2307`.
+
+**Beide Pakete waren sauber deklariert.** Kein fehlender Code, ein falscher Prüfrahmen. Behoben nach
+dem `apps/web`-Muster: eigener CI-Job, eigene Lock-Datei, eigenes `npm ci`. **Berkat wird damit
+erstmals wirklich geprüft** — vorher scheiterte der Lauf, bevor er zu Berkats Code kam.
+
+⚠️ Das ist mehr als Kosmetik: Ein dauerhaft roter Lauf schickt bei jedem Push einen
+Telegram-Alarm, und nach dem dritten wischt man ihn weg. **Rot muss ein Signal bleiben.**
+
+### Vorbereitete Artikel fallen ins Regal zurück (`ab8f727`)
+
+Auf „Verkaufen" stand als grösstes Element *„3 Artikel warten auf einen Abend, den es nicht mehr
+gibt"* — und weiter unten „Dein Regal — leer". Zwei Zahlen über dieselben drei Dinge.
+
+Ein Artikel ohne Session steht über `status` in einem von zwei Töpfen: `listed` (Regal) oder
+`scheduled` (an `planned_for` gebunden). Der zweite bindet ihn an einen **Abend**. Verschwindet der
+Abend, ist der Artikel nirgends mehr.
+
+**Der Artikel gehört dem Verkäufer, nicht dem Abend.** Ein Auslöser auf `scheduled_lives` legt ihn
+bei `cancelled` und `expired` zurück ins Regal (`20260824180000`), plus einmaliges Aufräumen für das
+Bestehende.
+
+⚠️ `live` ist bewusst NICHT dabei — diesen Status erreicht ein Termin nur beim Verknüpfen, und dort
+holt `claimPreparedAuctions` die Ware im selben Zug in die Session. Wer den Auslöser erweitert,
+räumt einem sendenden Verkäufer mitten in der Show das Studio leer.
+
+### „Deine ersten Schritte" kam zurück, sobald man es richtig machte (`38573a1`)
+
+Zaur: *„Wenn man das einmal durchmacht, hat man es doch gelernt."* Zwei der vier Schritte hingen an
+der **Gegenwart** statt an der **Vergangenheit**:
+
+    Termin   plannedShows.length > 0   nur ZUKÜNFTIGE Termine  → Abend vorbei, Haken weg
+    Regal    standing.length > 0       nur status = 'listed'    → alles verkauft, Haken weg
+
+Es traf also ausgerechnet den Verkäufer, der es richtig macht. `useSellerEverStarted` stellt jetzt
+die richtige Frage — ohne neue Tabelle, ohne Fortschritts-Feld, gezählt über Zeilen, die ohnehin
+liegen bleiben. ⚠️ Deshalb steht in den zwei Zählabfragen **kein `status`-Filter**.
+
+### Der Whatnot-Vergleich: Aktivität wird ein Register
+
+Zaur hat Whatnots Reiter danebengelegt. Der Unterschied ist nicht Geschmack: **Ein Strom beantwortet
+„was ist passiert?", ein Register „wo stehe ich?"** — und die Fragen eines Käufers sind
+Zustands-Fragen, deren Antwort im Strom wegscrollt.
+
+| Commit | Was |
+|---|---|
+| `9a2b50a` | Offene **Preisvorschläge** neben die offenen Gebote. Wer einen Vorschlag machte und die App schloss, hatte keinen Weg zurück ausser einer Push-Meldung |
+| `04c908c` | **Aktivität** = `Neues · Gebote · Vorschläge · Gemerkt`. Merkliste nach `components/SavedList.tsx` gewandert (zwei Häuser: Reiter + `/saved`) |
+| `c70b95f` | **Gemerkt** als zweispaltiges Gitter |
+| `633b41e` | **Gemerkt** führt alle drei Merk-Arten zusammen, Pillen `Alle · Vorgemerkt · Artikel · Suchen` |
+| `5f9f7b9` | Schuhe trugen das Platzhalter-Symbol (dieselbe Kiste wie `sonstiges` und der Rückfall) |
+| `a946357` | **Suchfeld** auf dem Kategorien-Reiter |
+
+**Die zwei Funde dahinter — beide dieselbe Klasse:** Die Fähigkeit war da, der Weg zurück fehlte.
+
+1. **Preisvorschläge** hatten keinen Ort. Kein Widerspruch zu `OfferPanel` („bewusst KEIN eigener
+   Bildschirm") — verhandelt wird weiterhin am Artikel, der Block ist der Weg zurück.
+2. **Vormerkungen** hatten gar keinen. `useReminders` kannte nur `useMyReminder` für EINEN Artikel.
+   Wer sich drei Sachen bei drei Verkäufern vormerkte, hatte keinen Ort dafür — obwohl das laut dem
+   eigenen Kopf der Datei „der leiseste der drei Wege auf einen vorbereiteten Artikel" ist, also das
+   Signal mit der höchsten Kaufabsicht. Neu: `useMyReminders`, **mit Termin** (ohne das Wann wäre
+   die Liste eine Sammlung ohne Aussage).
+
+⚠️ **Bewusste Abweichung von Whatnot:** Deren „Shows" merkt eine GANZE Sendung vor, unsere
+Vormerkung gilt EINEM Artikel darin. Deshalb heisst die Pille „Vorgemerkt" und nicht „Sendungen".
+
+⚠️ **„Käufe" fehlt im Register, mit Absicht.** Whatnot hat den Reiter; bei uns steckt das
+Gegenstück im Konto unter „Deine Pakete" — und dort hängt nicht nur die Bestellliste, sondern der
+ganze Sammelkorb mit `useCheckoutCart` und `useShippingLookup`. Das ist der Geld-Pfad. Eigener
+Schritt, eigene Prüfung.
+
+### Nebenan bei Serlo, aber für Berkat entscheidend: die Anmelde-Mails
+
+Beide Apps teilen sich eine Supabase-Instanz. Zwei Fehler, die auch Berkat betrafen:
+
+1. **Es ging gar keine Mail raus.** Resend war als SMTP hinterlegt, aber **ohne verifizierte
+   Domain** — Resend nimmt dann nur Mail an die eigene Kontoadresse an und weist alles andere mit
+   `550` ab. Passwort-Zurücksetzen und Magic-Link-Anmeldung waren damit für **alle** tot.
+   ⚠️ Die echte Ursache steht nur im **Raw**-Reiter des Auth-Log-Ereignisses; das Dashboard meldet
+   nichtssagend „Error sending magic link email".
+2. **Danach kam die Phishing-Warnung.** Absender `mail.serlo.ch`, Link auf `<projekt>.supabase.co` —
+   Gmail versah die Mail mit der **roten** Warnung. Behoben, indem `/auth/callback` jetzt
+   `?token_hash=…&type=…` per `verifyOtp` einlöst und die Vorlagen auf die eigene Domain zeigen.
+
+Beides ist erledigt und geprüft: Mail kommt im Posteingang an, ohne Warnung.
+
+---
+
+## 87. Anschlusspunkt für den nächsten Chat (Stand 24.08.2026, Nacht)
+
+**Hier anfangen.** Löst Abschnitt 82 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt der Motor.
+
+### Der Zustand
+
+- **Migrationen:** 310 Dateien, **alle eingespielt** (`supabase db push --dry-run` → „Remote
+  database is up to date"). Heute dazu: `…120000` (Kontolöschung + R2), `…130000` (Story-Medien),
+  `…140000` (Blocker nur `paid`), `…160000` (`v_uid::text`), `…180000` (Vorbereitetes fällt zurück)
+- **`r2-delete`:** Version **26**, mit `OWNER_ONLY_ROOTS`, Ordner-Auftrag und
+  `verify_jwt = false` in `config.toml`
+- **Build:** weiterhin **`1.0.0 (1)`** in TestFlight — ohne
+  `react-native-keyboard-controller` und `expo-image-manipulator`
+- **Letzter OTA:** „Suchfeld auf Kategorien", Runtime 1.0.0, Branch `production`
+- **CI:** grün, mit eigenem `berkat (expo)`-Job
+
+⚠️ **OTA-Befehl für Berkat — NICHT im Wurzelverzeichnis:**
+
+```bash
+cd apps/berkat && eas update --branch production --platform ios --message "…"
+```
+
+Berkat ist ein **eigenes Expo-Projekt** (`apps/berkat/app.json`, eigenes `eas.json`, eigene
+projectId). Ein `eas update` im Wurzelverzeichnis veröffentlicht **Serlo**. Und: `EAS_BUILD=1`
+braucht Berkat **nicht** — sein `metro.config.js` hat den Stub-Schalter gar nicht.
+
+⚠️ **Nach jedem OTA die App ZWEIMAL schliessen und öffnen.** Der erste Start lädt, der zweite führt
+aus (`lib/buildInfo.ts`). Die Zeile ganz unten im Konto sagt, welcher Stand läuft.
+
+### ⚠️ Das Erste, was zu tun ist
+
+1. **Gegenprobe 10 ist erledigt** (Abschnitt 84, Nachtrag) — die Kontolöschung ist am Gerät
+   durchgeprüft, inklusive des Chat-Fotos an ein fremdes Konto. Damit ist der grosse offene Block
+   von gestern zu.
+2. **Die Prüfliste (Abschnitt 56) abarbeiten.** Stories und Highlights sind seit heute auf
+   TestFlight, A21–A26 sind also erstmals prüfbar.
+3. **Den Push-Rückfall entfernen**, sobald Berkat ausgerollt ist — `send_push_to_user`, Bedingung
+   `v_count = 0` (Abschnitt 86). Solange er steht, bekommen Nutzer mit nur einer App die Meldungen
+   der anderen.
+
+### Was heute NICHT geprüft wurde
+
+- **Die Warteschlange wiederholt nichts.** Eine Zeile auf `status = 'error'` wird nie wieder
+  angefasst; `attempts` ist trotz des Namens kein Zähler. Bekannt seit Abschnitt 84, unverändert.
+  Solange der Cron tot war, fiel es nicht auf — jetzt füllt die Story-Purge täglich nach.
+- **Das Datenmodell „vorbereitet".** `ab8f727` behandelt das Symptom sauber, aber Whatnots Modell
+  ist strukturell anders: Dort ist eine Show eine **Ansicht** auf das Inventar, kein Behälter.
+  Bewusst aufgeschoben — Phase 0 zeigt in acht Wochen, ob es sich lohnt.
+- **Show-Ware ist nicht auffindbar.** Vorbereitete Artikel stehen auf `status = 'scheduled'`, jede
+  Stöber-Abfrage filtert auf `'listed'`. Das Aufgebot eines Abends sieht nur, wer den Verkäufer
+  schon kennt und sein Profil öffnet. Bei Whatnot ist Show-Ware **vorher** auffindbar und mit Datum
+  versehen — ihr Hauptmechanismus, um eine Sendung mit Publikum zu füllen.
+- **Kategorie-Kacheln tragen Symbole, keine Produktfotos.** Dokumentierter Übergangszustand;
+  `theme/categoryArt.ts` sagt, dass nur diese eine Datei zu ändern ist. Es ist Bildarbeit, keine
+  Code-Arbeit.
 
 ---
 
