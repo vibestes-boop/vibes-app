@@ -31,6 +31,16 @@ export type Story = {
   id: string;
   user_id: string;
   media_url: string;
+  /**
+   * Das Vorschaubild für die Scheibe im Ring.
+   *
+   * ⚠️ Berkat schreibt es heute nie — `useCreateStory` setzt nur `media_url`,
+   * und bei einem Bild wäre beides ohnehin dasselbe. Gelesen wird es trotzdem
+   * (`StoryRail.coverOf`), weil es der Riegel für den Tag ist, an dem eine
+   * Story ein VIDEO ist: Dann ist `media_url` eine .mp4, `expo-image` zeichnet
+   * sie nicht, und die Scheibe bliebe leer.
+   */
+  thumbnail_url: string | null;
   media_type: string | null;
   created_at: string;
 };
@@ -82,7 +92,7 @@ export function useBerkatStories() {
       // Stories in Berkats Ring. Siehe `20260823210000`.
       const { data: rows, error } = await supabase
         .from('stories')
-        .select('id, user_id, media_url, media_type, created_at')
+        .select('id, user_id, media_url, thumbnail_url, media_type, created_at')
         .eq('app', 'berkat')
         .eq('archived', false)
         .gte('created_at', since)

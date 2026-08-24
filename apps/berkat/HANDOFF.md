@@ -10019,7 +10019,7 @@ Ein paar Entscheidungen im Kleinen, die begründet sind:
 - **`'portrait'` als Zuschnitt.** Bei Abayas ist die Länge das Merkmal; ein quadratischer Rahmen
   schneidet sie oben und unten ab.
 
-### Nachtrag 24.08.2026: der Name liegt jetzt IM Kreis — und der Kreis wuchs um ein Viertel
+### Nachtrag 24.08.2026: im Kreis liegt die Ware, der Name auf seiner Kante — und er wuchs um ein Viertel
 
 Zaur hat einen Wettbewerber aus derselben Gegend danebengelegt: Dort steht der Name **als Pille auf
 der Unterkante des Kreises** statt als Textzeile darunter. Sein Schluss war der richtige — *„somit
@@ -10033,10 +10033,30 @@ Das ist keine Kosmetik: Der Ring ist das Einzige auf der Startseite, das sich t�
 er existiert, damit die App nicht tot aussieht, wenn niemand sendet. Größe ist dafür das Werkzeug —
 eine 62er-Scheibe mit Bildunterschrift liest sich als Liste, eine 78er als Bühne.
 
+**Und der zweite Teil derselben Beobachtung, der das Ganze erst begründet:** Im Kreis liegt jetzt
+das **erste Story-Bild**, nicht mehr das Profilbild. Zaur: *„in einer Stories-Kreis gibt es mehrere
+Stories."* Der Wettbewerber zeigt dort ein Auto, Lautsprecher, einen Kühler — Berkat zeigte einen
+Avatar.
+
+Das ist die eigentliche Änderung, und die Pille ist ihre Folge: Ein Avatar beantwortet „wer", die
+Frage im Ring ist aber „was gibt es zu sehen". Ein Verkäufer, der eine Abaya zeigt, wirbt mit der
+Abaya. Sobald im Kreis das Bild liegt, ist der Name dort nicht mehr ablesbar — deshalb die Pille,
+und deshalb wird der Platz frei, den der Kreis sich nimmt. Die drei Schritte hängen zusammen.
+
+- **Das ERSTE Bild, nicht das neueste.** Die Abfrage sortiert aufsteigend, `stories[0]` ist also
+  genau das, was beim Antippen als Erstes kommt. Die Scheibe ist damit eine Vorschau und keine
+  Überraschung.
+- **`thumbnail_url` hat Vorrang vor `media_url`.** Berkat schreibt es heute nie, und bei einem Bild
+  wäre beides dasselbe — der Vorrang ist der Riegel für den Tag, an dem eine Story ein **Video**
+  ist: Dann ist `media_url` eine `.mp4`, `expo-image` zeichnet sie nicht, und die Scheibe bliebe
+  leer. Serlo hatte genau diesen Fehler schon (`lib/useStoryHighlights.ts`, Kommentar an Schritt 2).
+- **Ohne Story bleibt das Profilbild stehen.** Die eigene Scheibe vor der ersten Story hat kein
+  Bild, das sie zeigen könnte; dort tritt der Avatar mit dem „+" ein. Das ist die Einladung.
+
 Drei Maße, die daran hängen und keine Geschmacksfrage sind:
 
-- **Die Pille trägt `ui.onImage`**, nicht eine helle Fläche. Der Kreis zeigt ein fremdes
-  Profilbild; heller Text darauf ist auf dem einen lesbar und auf dem nächsten weg — dieselbe
+- **Die Pille trägt `ui.onImage`**, nicht eine helle Fläche. Der Kreis zeigt jetzt ein fremdes
+  Foto; heller Text darauf ist auf dem einen lesbar und auf dem nächsten weg — dieselbe
   Begründung wie bei `ui.overlay`, nur nach dunkel. Nachgerechnet gegen den schlimmsten Fall (ein
   schneeweißes Bild darunter): Weiß auf der Pille kommt auf **9,3 : 1**.
 - **Höchstens `SIZE + 6` breit.** Bei `SIZE + 10` spannte „Deine Story" die Pille über die ganze

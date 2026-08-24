@@ -11,6 +11,7 @@
 
 import { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Plus } from 'lucide-react-native';
 
 import { Avatar } from './Avatar';
@@ -37,6 +38,8 @@ import { radius, space, ui } from '../theme/tokens';
  */
 const SIZE = 78;
 const RING = 2.5;
+/** Der Durchmesser INNERHALB des Rings, also die Bildfläche selbst. */
+const INNER = SIZE - RING * 2 - 4;
 /** Wie weit die Namens-Pille unter den Kreis ragt. */
 const PILL_OVERHANG = 6;
 
@@ -61,6 +64,7 @@ type Props = {
 
 function Bubble({
   label,
+  coverUrl,
   avatarUrl,
   name,
   seen,
@@ -69,6 +73,11 @@ function Bubble({
   onPress,
 }: {
   label: string;
+  /**
+   * Das ERSTE Bild dieser Story-Reihe — das, was beim Antippen als Erstes
+   * kommt. Fehlt es (eigene Scheibe ohne Story), tritt das Profilbild ein.
+   */
+  coverUrl: string | null;
   avatarUrl: string | null;
   name: string | null;
   seen: boolean;
@@ -86,9 +95,23 @@ function Bubble({
     >
       {/* ⚠️ Der Ring ist die ganze Auskunft: Marke = ungesehen, blass = gesehen.
           Kein Text sagt das, und das ist die Konvention, die jeder kennt. */}
+      {/* ⚠️ Im Kreis liegt die WARE, nicht das Gesicht (24.08.2026).
+          Vorher stand hier das Profilbild. Das beantwortet „wer", aber die
+          Frage im Ring ist „was gibt es zu sehen" — und ein Verkäufer, der
+          eine Abaya zeigt, wirbt mit der Abaya, nicht mit seinem Avatar.
+          Genau deshalb braucht der Name die Pille darunter: Der Platz, auf
+          dem er sonst stünde, ist jetzt Bildfläche.
+
+          Das ERSTE Bild, nicht das neueste — die Liste ist aufsteigend
+          sortiert, `stories[0]` ist also das, was beim Antippen als Erstes
+          kommt. Die Scheibe zeigt damit eine Vorschau und keine Überraschung. */}
       <View style={[s.ring, seen ? s.ringSeen : s.ringFresh]}>
         <View style={s.ringInner}>
-          <Avatar uri={avatarUrl} name={name} size={SIZE - RING * 2 - 4} />
+          {coverUrl ? (
+            <Image source={{ uri: coverUrl }} style={s.cover} contentFit="cover" transition={120} />
+          ) : (
+            <Avatar uri={avatarUrl} name={name} size={INNER} />
+          )}
         </View>
       </View>
 
@@ -112,6 +135,22 @@ function Bubble({
   );
 }
 
+/**
+ * Das Bild, das auf der Scheibe steht: das erste der Reihe.
+ *
+ * ⚠️ `thumbnail_url` hat Vorrang. Heute schreibt Berkat es nie (eine eigene
+ * Story trägt nur `media_url`), und für ein Bild wäre es ohnehin dasselbe. Der
+ * Vorrang ist der Riegel für den Tag, an dem eine Story ein VIDEO ist: Dann ist
+ * `media_url` eine .mp4, und `expo-image` zeichnet sie nicht — die Scheibe
+ * bliebe leer. Serlo hat genau diesen Fehler schon einmal gehabt
+ * (`lib/useStoryHighlights.ts`, Kommentar an Schritt 2).
+ */
+function coverOf(group: StoryGroup | null): string | null {
+  const first = group?.stories[0];
+  if (!first) return null;
+  return first.thumbnail_url || first.media_url || null;
+}
+
 function StoryRailInner({ groups, myUserId, myAvatarUrl, myUsername, busy, onOpen, onCreate }: Props) {
   const mine = groups.find((g) => g.userId === myUserId) ?? null;
   const others = groups.filter((g) => g.userId !== myUserId);
@@ -130,6 +169,9 @@ function StoryRailInner({ groups, myUserId, myAvatarUrl, myUsername, busy, onOpe
       {myUserId ? (
         <Bubble
           label={mine ? 'Deine Story' : 'Hinzufügen'}
+          // Ohne eigene Story gibt es kein Bild — dann steht hier das
+          // Profilbild mit dem „+", und das ist die Einladung.
+          coverUrl={coverOf(mine)}
           avatarUrl={mine?.avatarUrl ?? myAvatarUrl ?? null}
           name={mine?.username ?? myUsername ?? null}
           // Die eigene Story ist nie „ungesehen" — man hat sie selbst gemacht.
@@ -144,6 +186,7 @@ function StoryRailInner({ groups, myUserId, myAvatarUrl, myUsername, busy, onOpe
         <Bubble
           key={g.userId}
           label={g.username ?? 'Verkäufer'}
+          coverUrl={coverOf(g)}
           avatarUrl={g.avatarUrl}
           name={g.username}
           seen={g.seen}
@@ -180,6 +223,13 @@ const s = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 2,
     borderColor: ui.bg,
+  },
+  cover: {
+    width: INNER,
+    height: INNER,
+    borderRadius: radius.pill,
+    // Bis das Bild da ist, steht hier eine ruhige Fläche und kein Loch.
+    backgroundColor: ui.sunken,
   },
 
   plus: {
