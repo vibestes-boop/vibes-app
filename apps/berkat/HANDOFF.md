@@ -11162,6 +11162,43 @@ Regal-Zeilen. Drei Wege, keiner davon offensichtlich:
 
 Der dritte ist der ehrliche und der teuerste. **Gehört entschieden, nicht im Vorbeigehen gebaut.**
 
+### Nachtrag: „Suche merken" steht nicht mehr nur im Leerzustand (25.08.2026)
+
+Punkt 2 aus dem Whatnot-Vergleich. Bis hierher erschien das Merken **nur**, wenn eine Suche nichts
+fand. Die Begründung stand im Code und klang gut:
+
+> „Eine erfolglose Suche ist die einzige, die es zu merken lohnt — deshalb steht der Knopf im
+> Leerzustand und nicht neben dem Suchfeld."
+
+**Sie deckt einen von zwei Fällen ab.** Whatnots Ergebnisseite zeigt ihren blauen `Saved`-Knopf
+über einer Liste mit **vier Treffern**. Der zweite Fall ist bei gebrauchter Einzelware der
+Normalfall: Man merkt sich eine erfolgreiche Suche, weil morgen ein **fünfter, besserer** Artikel
+kommen könnte. Bei Ware, die es jedes Stück nur einmal gibt, ist das nicht die Ausnahme.
+
+| | |
+|---|---|
+| Wo | Lesezeichen in der **Kopfzeile**, wo bisher ein leerer Platzhalter die Überschrift mittig hielt — **keine neue Zeile Höhe** |
+| Wann | nur bei gesetzter Suche (ab zwei Zeichen). Ohne Text gibt es nichts zu merken |
+| Was | ein **Umschalter**, kein zweiter Anlege-Knopf: Wer merken kann, muss vergessen können — sonst sammeln sich Suchen an, die man nicht mehr los wird, und jede schickt Push-Meldungen |
+| Farbe | gefüllt in Grün = gemerkt. Dieselbe Sprache wie das Merken-Herz auf der Karte: Bestätigung, keine Dringlichkeit (rot), kein Kauf (Bernstein) |
+
+⚠️ **Zwei Stellen, ein Zustand.** Der warme Knopf im Leerzustand bleibt — er ist ein anderer Moment
+(das Angebot an der Stelle, an der jemand sonst weggeht) und war der Fund der neunten Analyse. Aber
+**beide lesen dieselbe Zeile** (`savedSearchRow`): Ohne das böte der untere „Sag mir Bescheid" für
+etwas an, das oben schon grün gefüllt ist. Zwei Aussagen über denselben Zustand sind genau die
+Sorte Widerspruch, die dieses Dokument sonst als Fehler führt.
+
+⚠️ **Verglichen wird über `normalizeQuery` auf BEIDEN Seiten.** Der eindeutige Index in der
+Datenbank steht auf `lower(btrim(query))`. Ohne dasselbe Rechnen im Client sähe „ Abaya " wie eine
+neue Suche aus, der Knopf stünde auf „nicht gemerkt", und das Antippen liefe in ein `23505` statt
+in ein Entfernen.
+
+**Kein Server-Anteil.** `berkat_saved_searches` hat DELETE-Policy und Grant seit `20260821120000` —
+nachgesehen, nicht vermutet: Ohne sie hätte `.delete()` **null Zeilen getroffen und trotzdem Erfolg
+gemeldet** (die Falle aus Abschnitt 3), und der Eintrag wäre beim nächsten Laden wieder da.
+
+Geprüft: `tsc` Exit 0, `expo export` Exit 0, Bundle unverändert. **Am Gerät offen** — neu als A31.
+
 ```bash
 SERVICE_ROLE_KEY=… node scripts/seed-berkat-show-items.mjs
 ```
@@ -11181,6 +11218,7 @@ trägt, hätte den NULL-Fall nie erzeugt — also genau den, an dem der Typfehle
 | ~~A28~~ | ~~**Die Artikelseite eines vorbereiteten Artikels**~~ — ✅ 25.08.2026 | A |
 | ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026 | A |
 | ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026 | A |
+| A31 | **Suche merken als Umschalter**: etwas suchen → Lesezeichen oben rechts antippen → wird **grün gefüllt**. App verlassen, zurück, dieselbe Suche tippen → muss **immer noch** grün sein. Nochmal antippen → wieder leer, und die Suche ist unter Aktivität → Gemerkt → Suchen verschwunden. ⚠️ Gegenprobe mit führendem Leerzeichen („ abaya"): Der Knopf muss trotzdem grün sein | A |
 | B14 | **Die Glocke von einem zweiten Konto**: vormerken, Verkäufer sieht „N warten", beim Auktionsstart kommt die Meldung und die Vormerkung verschwindet | B |
 
 ⚠️ **Was dieses ✅ trägt und was nicht.** Es steht auf einer Sichtprüfung am Gerät, nicht auf einem

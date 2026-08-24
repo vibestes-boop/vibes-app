@@ -59,6 +59,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   BellPlus,
+  Bookmark as BookmarkIcon,
   CalendarClock,
   ChevronLeft,
   Search,
@@ -74,6 +75,7 @@ import { useSavedIds, useToggleSaved, useSavedCounts } from '../lib/useSaved';
 import {
   normalizeQuery,
   savedSearchError,
+  useSavedSearches,
   useSavedSearchActions,
 } from '../lib/useSavedSearches';
 import { useCategoryOptions } from '../lib/useCategories';
@@ -205,8 +207,26 @@ export default function ShopScreen() {
   }, []);
 
   // Gespeicherte Suche. Die Meldung erzeugt der Server (Trigger
-  // `notify_saved_searches`); hier wird nur angelegt.
-  const { save: saveSearchMutation } = useSavedSearchActions(myUserId);
+  // `notify_saved_searches`); hier wird nur angelegt und entfernt.
+  const { save: saveSearchMutation, remove: removeSearchMutation } =
+    useSavedSearchActions(myUserId);
+  const { data: savedSearches = [] } = useSavedSearches(myUserId);
+
+  /**
+   * Ist GENAU diese Suche schon gemerkt? Die Zeile, nicht nur ein Ja/Nein —
+   * zum Entfernen braucht es ihre Kennung.
+   *
+   * ⚠️ Verglichen wird über `normalizeQuery` auf BEIDEN Seiten, weil der
+   * eindeutige Index in der Datenbank auf `lower(btrim(query))` steht. Ohne
+   * dasselbe Rechnen im Client sähe „ Abaya " wie eine neue Suche aus, der
+   * Knopf stünde auf „nicht gemerkt", und das Antippen liefe in ein 23505.
+   */
+  const savedSearchRow = useMemo(() => {
+    const q = normalizeQuery(query).toLowerCase();
+    if (q.length < 2) return null;
+    return savedSearches.find((s) => normalizeQuery(s.query).toLowerCase() === q) ?? null;
+  }, [savedSearches, query]);
+
   const saveSearch = useCallback(() => {
     const q = normalizeQuery(query);
     if (q.length < 2 || savingSearch) return;
@@ -225,6 +245,42 @@ export default function ShopScreen() {
       .catch((err) => setSearchNotice(savedSearchError(err)))
       .finally(() => setSavingSearch(false));
   }, [query, savingSearch, saveSearchMutation]);
+
+  /**
+   * Der Umschalter — merken oder wieder vergessen.
+   *
+   * ⚠️ Bis zum 25.08.2026 gab es das Merken NUR im Leerzustand, mit der
+   * Begründung: „Eine erfolglose Suche ist die einzige, die es zu merken
+   * lohnt." Der Satz deckt einen von zwei Fällen ab. Der zweite ist bei
+   * gebrauchter Einzelware der Normalfall: Eine Suche mit vier Treffern merkt
+   * man sich, weil morgen ein FÜNFTER, besserer kommen könnte. Whatnots
+   * Ergebnisseite zeigt ihren „Saved"-Knopf deshalb auch über gefüllten
+   * Listen, nicht nur über leeren (Analyse 15).
+   *
+   * Und wer merken kann, muss vergessen können — sonst sammeln sich Suchen an,
+   * die man nicht mehr los wird, und jede schickt Push-Meldungen. Deshalb ein
+   * Umschalter und kein zweiter Anlege-Knopf.
+   */
+  const toggleSavedSearch = useCallback(() => {
+    if (!myUserId) {
+      router.push('/login');
+      return;
+    }
+    if (!savedSearchRow) {
+      saveSearch();
+      return;
+    }
+    if (savingSearch) return;
+    setSavingSearch(true);
+    setSearchNotice(null);
+    removeSearchMutation
+      .mutateAsync(savedSearchRow.id)
+      // Kein Erfolgs-Jubel beim Entfernen: Das ist kein Peak, sondern ein
+      // Aufräumen. Haptik gehört zu den Hochs (Design-Gesetz 3, „maßhalten").
+      .then(() => setSearchNotice('Nicht mehr gemerkt.'))
+      .catch((err) => setSearchNotice(savedSearchError(err)))
+      .finally(() => setSavingSearch(false));
+  }, [myUserId, savedSearchRow, savingSearch, saveSearch, removeSearchMutation]);
 
   /**
    * Die Auswahl entsteht AUS DEN DATEN, nicht aus einer festen Liste.
@@ -427,7 +483,40 @@ export default function ShopScreen() {
             </Text>
           ) : null}
         </View>
-        <View style={styles.back} />
+        {/* ── Suche merken. Steht in der Kopfzeile, wo bisher ein leerer
+            Platzhalter die Überschrift mittig hielt — also ohne eine einzige
+            neue Zeile Höhe.
+
+            ⚠️ Nur bei gesetzter Suche: Ohne Text gibt es nichts zu merken, und
+            ein Knopf, der garantiert ins Leere führt, ist dieselbe Sorte Lärm
+            wie ein Filter ohne Treffer (siehe `options` weiter oben).
+
+            Gefüllt in Grün heisst „gemerkt" — dieselbe Sprache wie das
+            Merken-Herz auf der Karte (`ListingCard`): Bestätigung, keine
+            Dringlichkeit (rot) und kein Kauf (Bernstein). */}
+        {normalizeQuery(query).length >= 2 ? (
+          <Pressable
+            hitSlop={10}
+            style={styles.back}
+            disabled={savingSearch}
+            onPress={toggleSavedSearch}
+            accessibilityRole="button"
+            accessibilityState={{ selected: Boolean(savedSearchRow) }}
+            accessibilityLabel={
+              savedSearchRow
+                ? 'Diese Suche nicht mehr merken'
+                : 'Diese Suche merken und benachrichtigt werden'
+            }
+          >
+            <BookmarkIcon
+              size={22}
+              color={savedSearchRow ? ui.success : ui.text}
+              fill={savedSearchRow ? ui.success : 'transparent'}
+            />
+          </Pressable>
+        ) : (
+          <View style={styles.back} />
+        )}
       </View>
 
       {showTools ? (
@@ -590,17 +679,40 @@ export default function ShopScreen() {
                   der Knopf im Leerzustand und nicht neben dem Suchfeld.
                   ⚠️ Nur bei gesetzter Suche: Ein leerer Filterzustand hat
                   keinen Text, den man speichern könnte. */}
-              {query.trim().length >= 2 ? (
+              {/* ⚠️ Seit dem 25.08.2026 gibt es das Merken an ZWEI Stellen —
+                  hier und als Lesezeichen in der Kopfzeile. Das ist kein
+                  Versehen und auch keine Dublette: Es sind zwei verschiedene
+                  Momente. Oben ein stiller Umschalter für eine laufende Suche,
+                  hier das warme Angebot an der Stelle, an der jemand sonst
+                  weggeht.
+
+                  ⚠️ Sie müssen sich aber EINIG sein. Beide lesen deshalb
+                  `savedSearchRow`; ohne das böte dieser Knopf „Sag mir
+                  Bescheid" für etwas an, das oben schon grün gefüllt ist —
+                  zwei Aussagen über denselben Zustand, und genau die Sorte
+                  Widerspruch, die dieses Dokument sonst als Fehler führt. */}
+              {normalizeQuery(query).length >= 2 ? (
                 <Pressable
                   style={({ pressed }) => [styles.notifyCta, pressed && { opacity: 0.7 }]}
-                  onPress={saveSearch}
+                  onPress={toggleSavedSearch}
                   disabled={savingSearch}
                   accessibilityRole="button"
-                  accessibilityLabel={`Bescheid geben, wenn „${query.trim()}" eingestellt wird`}
+                  accessibilityState={{ selected: Boolean(savedSearchRow) }}
+                  accessibilityLabel={
+                    savedSearchRow
+                      ? `„${normalizeQuery(query)}" nicht mehr merken`
+                      : `Bescheid geben, wenn „${normalizeQuery(query)}" eingestellt wird`
+                  }
                 >
-                  <BellPlus size={16} color={ui.text} />
-                  <Text style={styles.notifyCtaText}>
-                    {savingSearch ? 'Einen Moment …' : 'Sag mir Bescheid, wenn so etwas kommt'}
+                  <BellPlus size={16} color={savedSearchRow ? ui.success : ui.text} />
+                  <Text
+                    style={[styles.notifyCtaText, savedSearchRow && { color: ui.success }]}
+                  >
+                    {savingSearch
+                      ? 'Einen Moment …'
+                      : savedSearchRow
+                        ? 'Wir sagen dir Bescheid — antippen zum Abbestellen'
+                        : 'Sag mir Bescheid, wenn so etwas kommt'}
                   </Text>
                 </Pressable>
               ) : null}
