@@ -44,6 +44,19 @@ was gilt.
 > sind jetzt **dieselbe Datei**; dabei fiel ein doppeltes `goBack()` heraus, das nie jemand gesehen
 > hätte.
 >
+> ✅ **Der Objektspeicher räumt jetzt auf** (84 und 85) — beide Migrationen sind **eingespielt**,
+> `r2-delete` steht auf **v23**. Kontolöschung reiht die drei Profil-Adressen und den
+> `highlights/<uid>/`-Ordner ein (84); Story-Medien nimmt ein stündlicher Cron nach **90 Tagen**
+> (85). ⚠️ Der Story-Cron **löscht keine Zeile** — an `stories` hängen Kommentare, Umfragen und
+> Highlights mit CASCADE. Und: Story-Zeilen werden **überhaupt nie** gelöscht, der 24-Stunden-Ablauf
+> ist ein reiner Lesefilter; ein `AFTER DELETE`-Trigger allein hätte fast nichts aufgeräumt.
+>
+> ⚠️ **`db push` liefert die Edge Function NICHT mit** (85). Migration und passende `r2-delete`-Fassung
+> lagen im selben Commit — nach dem Push war die Migration live, die Function aber noch v22 vom
+> 17.05. und kannte `prefix` nicht. Die Warteschlange hätte Ordner-Aufträge **still auf `deleted`
+> gesetzt, ohne eine Datei anzufassen.** Ab jetzt gehört `supabase functions deploy r2-delete` in
+> denselben Arbeitsgang wie der `db push`, sobald sich `r2_delete_queue` ändert.
+>
 > ⚠️ **Stories und Highlights sind NICHT ausgerollt** — beides läuft bisher nur gegen Metro. Und
 > im Bestand liegt **genau eine** Story, die eigene. Für den Ring gibt es jetzt
 > `scripts/seed-berkat-stories.mjs`; **den Schlüssel dafür hat nur Zaur** (Abschnitt 83).
@@ -6701,7 +6714,8 @@ zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.
 
 Im Dokument stehen über **vierzig** Stellen mit „ungeprüft“ oder „nicht geprüft“, verteilt über
 dreiundachtzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20, B9–B11, C6; vier am
-24.08.: **A21–A25**, Highlights, der Story-Ring und das gewanderte „+").
+24.08.: **A21–A25**, Highlights, der Story-Ring und das gewanderte „+"; dazu **A26** und **E9** aus
+dem Story-Aufräumer, Abschnitt 85).
 
 Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
 die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
@@ -6747,6 +6761,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | ~~A23~~ | ~~**Story-Ring mit FREMDEN Stories**~~ — ✅ **am 24.08.2026 belegt**, und zwar am echten Datenstand statt an der Testware: Zaur hat von einem zweiten Konto eine Story gestellt. Gesehen: fremde Scheibe mit **dunklem Marken-Ring** neben der eigenen mit blassem · zwei eigene Stories = **zwei Balken**, beide durchgelaufen · nach dem Ansehen wurde der fremde Ring **blass**. Damit trägt der Sicht-Vermerk bis in die Anzeige. ⚠️ Offen bleibt nur das Verhalten bei VIELEN Scheiben (Scrollen) — dafür ist das Seed-Skript da | 81, 83 |
 | A24 | **Mehrere Bilder in EINEM Highlight**: drei auswählen, anlegen, öffnen — drei Balken, Tipp rechts blättert weiter, Tipp links zurück, am Ende schliesst es. Angelegt wurden bisher nur Highlights mit **einem** Bild | 83 |
 | ~~A25~~ | ~~**Das „+" auf der eigenen Story-Scheibe**~~ — **hinfällig.** Das „+" gibt es nicht mehr; das Anlegen hat seit dem 24.08. eine eigene Kamera-Kachel, und die ist am Simulator belegt (Tipp öffnet den Bild-Wähler, auch wenn schon eine Story steht) | 81, Nachtrag |
+| A26 | **Der erste Lauf des Story-Aufräumers** (24.08.) — kein Telefon nötig, nur der SQL-Editor nach der nächsten vollen Stunde: `SELECT reason, status, count(*) FROM r2_delete_queue WHERE reason IN ('story_expired','story_deleted') GROUP BY reason, status;` Alles auf `deleted` ist richtig; etwas auf `error` sagt in `last_error`, warum — und wird **nie** wiederholt | 85 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -6811,6 +6826,7 @@ Simulator dem Verkäufer (Abschnitt 9, am 19.08. so gelaufen).
 | E6 | **Client-Filterung ab >60 Artikeln** · **Fuß-Knopf ab >8 in einer Kategorie** | mehr Bestand, als die Testware erzeugt |
 | E7 | **Herz aus der Serlo-App kommt in Berkat an** | beide Apps gleichzeitig, zwei Menschen |
 | E8 | **Der `app`-Filter im Push** gegen den bewussten Rückfall | beide Apps auf **demselben** Gerät (Abschnitt 13) |
+| E9 | ⚠️ **Die eigentliche Probe zum Story-Aufräumer** (85): nicht „ist das Bild weg", sondern **„ist das FALSCHE Bild noch da"**. Ein Highlight, dessen R2-Kopie fehlgeschlagen ist, trägt die Original-Adresse unter `thumbnails/` — die muss nach einem Cron-Lauf weiterhin **HTTP 200** liefern | eine Story **älter als 90 Tage** und dazu ein Highlight mit fehlgeschlagener Kopie. Am Nachbau in Postgres 18.4 belegt, am echten Bestand noch nicht — dort gibt es bislang zu wenig Alter |
 
 ### F — nicht durch Testen zu klären
 
@@ -10511,6 +10527,134 @@ mit ON DELETE CASCADE — das sind Äußerungen und Stimmen **anderer** Menschen
 stories` in die Löschfunktion zu schreiben, hätte genau die Kaskade zurückgeholt, gegen die
 Abschnitt 59 geschrieben wurde. Der richtige Ort ist ein eigener Trigger auf `stories`, gebaut wie
 der auf `posts` — eine eigene Migration, kein Anhängsel.
+
+---
+
+## 85. Story-Medien — der Trigger, der fast nie greift (24.08.2026)
+
+Der Auftrag lautete: „einen gleichartigen Trigger auf `stories` bauen". Der Trigger steht. **Aber er
+war nicht die Lösung, sondern nur das Netz** — nachgesehen, ob Stories überhaupt per `DELETE`
+verschwinden, und die Antwort war nein.
+
+| durchsucht | Ergebnis |
+|---|---|
+| alle Migrationen | **kein** `DELETE FROM stories` |
+| alle 21 `cron.schedule`-Aufträge | **keiner** fasst `stories` an |
+| beide Apps + Web-App | **zwei** Löschwege, beide von Hand: `apps/web/app/actions/stories.ts:127`, `apps/berkat/lib/useStories.ts:220` |
+
+Der Ablauf nach 24 Stunden ist ein reiner **Lesefilter** (`archived = false` UND `created_at >= now()
+- 24h`). Die Zeile bleibt unbegrenzt stehen, die Datei auch.
+
+> Ein `AFTER DELETE`-Trigger auf einer Tabelle, aus der nie gelöscht wird, ist kein Aufräumer. Er
+> ist eine Zusicherung für später. Die Arbeit macht ein Cron — **das war die Frage, die vor dem
+> Bauen zu klären war, nicht danach.**
+
+### ⚠️ Der Cron löscht KEINE Zeile
+
+`purge_expired_story_media()` nimmt die Datei und lässt die Zeile stehen. Ein `DELETE FROM stories`
+wäre aus drei Richtungen gleichzeitig falsch gewesen:
+
+| hängt an `stories` | was das ist |
+|---|---|
+| `story_comments`, `story_polls`, `story_views`, `story_likes` | Äußerungen und Stimmen **anderer** Menschen — genau das Argument aus Abschnitt 84 |
+| `story_highlights.story_id` (CASCADE) | ein Aufräum-Auftrag hätte **jedes Serlo-Story-Highlight** mitgerissen |
+| `useMyStoryArchive` (Serlo 200, Berkat 60, **ohne Altersgrenze**) | dort ist die alte Story kein Müll, sondern das Angebot für ein neues Highlight |
+
+Weil `stories.media_url` **NOT NULL** ist, lässt sich eine aufgeräumte Zeile nicht durch Leeren
+kennzeichnen — daher die neue Spalte `media_purged_at`. Nicht `archived`: das heißt „aus dem Ring
+gefallen" und wird vom Highlight-Picker ausdrücklich ignoriert. Zwei Aussagen, zwei Spalten.
+
+### ⚠️ Die Highlight-Prüfung hat DREI Arme, und der wichtigste war der unerwartete
+
+`highlight-copy-media` ist best-effort: schlägt die Kopie fehl, behält das Highlight die
+**Original-Adresse** unter `thumbnails/`. Bekannt. Beim Nachsehen, wie die beiden Apps Highlights
+wirklich schreiben, kam aber ein zweiter Fall dazu:
+
+| Arm | deckt ab | ohne ihn |
+|---|---|---|
+| `story_id` | **alte Serlo-Highlights, die gar keine eigene Adresse führen** (`media_url IS NULL` — die Spalte gab es bei `20260330000000` noch nicht) und ihr Bild live aus `stories` holen (`lib/useStoryHighlights.ts:157`) | ein reiner Adress-Abgleich hätte sie **nie** gefunden |
+| Spalten | Berkat/Serlo, Kopie fehlgeschlagen | Bild eines lebenden Highlights gelöscht |
+| `items` | die vollständige Bilderreihe — die beiden Spalten halten nur das **Titelbild** | ein Highlight aus fünf Bildern wäre zu einem Fünftel geschützt |
+
+> Berkat setzt `story_id` ausdrücklich **nicht** (`useHighlights.ts:263`) — deshalb überlebt ein
+> Berkat-Highlight das Löschen seiner Quell-Story. Serlo setzt es. Zwei Apps, zwei Bauarten, eine
+> Prüfung, die beide kennen muss.
+
+### 90 Tage, und warum nicht 24 Stunden
+
+Das Anzeigefenster ist 24 Stunden — die Aufbewahrung ist es nicht. Beide Apps bieten dem Nutzer sein
+eigenes Story-Archiv **ohne Altersgrenze** als Vorlage an. Jede Altersgrenze schneidet das ab; 24
+Stunden hätten den Highlight-Picker praktisch geleert. Das wäre eine Feature-Abschaffung gewesen,
+keine Aufräumaktion. 90 Tage lassen ihn für praktisch jeden Nutzer vollständig und beenden das
+unbegrenzte Wachstum trotzdem.
+
+Dazu der Filter `media_purged_at IS NULL` in **beiden** Pickern — sonst böten sie tote Adressen an,
+und ein daraus gebautes Highlight wäre von der ersten Sekunde an kaputt.
+
+### Gegengeprüft, nicht nur durchdacht
+
+Die drei Tabellen in einem Wegwerf-Postgres (18.4) nachgebaut und die Migration wirklich laufen
+lassen:
+
+| Fall | erwartet | Ergebnis |
+|---|---|---|
+| Story ohne Highlight | eingereiht | ✅ |
+| Berkat-Highlight, Kopie **geglückt** (`highlights/…`) | Original wird abgeholt | ✅ |
+| Berkat-Highlight, Kopie **fehlgeschlagen** | nichts eingereiht, Highlight lebt | ✅ |
+| altes Serlo-Highlight **ohne Adresse** | nichts eingereiht | ✅ |
+| Adresse nur in `items[2]` | nichts eingereiht | ✅ |
+| zweiter Lauf | findet nichts | ✅ |
+| `SET ROLE authenticated` | `permission denied` bei beiden Funktionen | ✅ |
+
+Dabei gemessen: **der CASCADE läuft vor dem Trigger.** Verlassen sollte man sich darauf nicht — die
+Reihenfolge von AFTER-Triggern gegenüber den Fremdschlüssel-Triggern ist nirgends zugesichert.
+Beide Ausgänge sind unschädlich, und das ist Absicht: schlimmstenfalls bleibt eine Datei liegen, nie
+wird ein lebendes Bild gelöscht.
+
+### ⚠️ Die Falle des Tages: `db push` liefert die Edge Function NICHT mit
+
+`20260824120000` und die passende `r2-delete`-Fassung lagen im **selben Commit** (`7f6217b`). Nach
+dem `db push` war die Migration live — die deployte Function aber stand noch auf **Version 22 vom
+17.05.2026** und kennt `prefix` gar nicht.
+
+Was in diesem Fenster passiert wäre: Die Ordner-Zeile wird ohne `prefix` gelesen, ergibt eine leere
+Schlüsselliste, `Promise.all([])` gelingt — und die Zeile wird auf `status = 'deleted'` gesetzt,
+**ohne dass eine Datei angefasst wurde.**
+
+> Die Dateien blieben liegen, also die ungefährliche Richtung. Aber die Warteschlange hätte
+> behauptet, sie wäre fertig — und weil der Cron nur `pending` holt, wäre das **nie** aufgefallen
+> und **nie** wiederholt worden. Ein stiller Erfolg ist schlimmer als ein lauter Fehler.
+
+Behoben durch `supabase functions deploy r2-delete` (jetzt v23), rund 20 Minuten nach dem Push.
+**Regel für alles Weitere: Ändert eine Migration die Spalten von `r2_delete_queue`, gehört der
+Function-Deploy in denselben Arbeitsgang wie der `db push`.** Falls doch einmal eine Zeile im
+Fenster durchrutscht:
+
+```sql
+UPDATE r2_delete_queue SET status = 'pending', processed_at = NULL
+ WHERE reason = 'account_deleted' AND prefix IS NOT NULL AND status = 'deleted';
+```
+
+### Stand
+
+| | |
+|---|---|
+| `20260824130000_stories_r2_media_cleanup.sql` | ✅ eingespielt, Cron `purge-expired-story-media` registriert (stündlich, Minute 23) |
+| `r2-delete` v23 | ✅ deployed |
+| Commit | `7bc928a` auf `berkat` |
+| **Noch nicht ausgeliefert** | die zwei `media_purged_at`-Filter — Serlo und Berkat sind getrennte EAS-Projekte, also zwei OTAs |
+
+⚠️ **Vor dem OTA die Runtime prüfen.** `app.json` steht auf **1.31.0**, der letzte Serlo-OTA ging
+aber auf **1.30.0** (16 Stunden vorher). Bei `runtimeVersion.policy: "appVersion"` veröffentlicht ein
+blindes `eas update` auf 1.31.0 — und erreicht damit niemanden, der auf 1.30.0 sitzt. Nicht dringend:
+zu filtern gibt es erst, wenn die ersten Stories 90 Tage alt werden.
+
+Erste Kontrolle nach dem Lauf zur Minute 23:
+
+```sql
+SELECT reason, status, count(*) FROM r2_delete_queue
+ WHERE reason IN ('story_expired','story_deleted') GROUP BY reason, status;
+```
 
 ---
 
