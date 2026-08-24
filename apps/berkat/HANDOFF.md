@@ -179,6 +179,7 @@ was gilt.
 | **Streitfall** — melden, Belegfoto, Fall-Karte im Verlauf, Abschnitt beim Verkäufer | ✅ gebaut (67, 68); am Gerät offen (Prüfliste D8/D9) |
 | **Nachrichten** — Vorschau, Ungelesen, Fotos, Tagestrenner, Artikel-Bezug | ✅ gebaut (64–66, 72); am Gerät offen (A11/A12, B7) |
 | **Sicherheit** — Audit gegen die Produktions-Rechte, elf Migrationen | ✅ vier Löcher zu, alles von aussen gemessen (73) — **einschliesslich des Wächters gegen die Selbst-Beförderung zum Admin**, aus einer angemeldeten Sitzung belegt (403 / 42501) |
+| **Show-Ware auffindbar** — vorbereitete Artikel im Regal, in der Suche und in den Kategorien, mit Datum und „ab X €"; Glocke statt Kaufknopf | ✅ am Gerät gesehen (88). ⚠️ **Nicht ausgerollt** — kein OTA, kein Commit. Dabei gefunden: `20260824180000` erzeugt Regal-Artikel **ohne Preis**, die niemand kaufen kann — die Anzeige ist abgesichert, die Ursache offen (88, Nachtrag) |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -971,6 +972,28 @@ Drei Fallen dabei, alle selbst hineingetreten:
 **Der schnellste Vorab-Hinweis ist die Laufzeit.** `eas build:view` zeigt Start und Ende: Ein
 Build, der WebRTC kompiliert, braucht zwanzig Minuten. **Was in unter zwei Minuten stirbt, ist nie
 am Kompilieren gescheitert** — dann lohnt der Blick gar nicht erst in Richtung Xcode.
+
+### Der Seed-Schlüssel heisst `sb_secret_…` — ein `eyJ…` wird abgewiesen
+
+Am 25.08.2026 gekostet. `seed-berkat-show-items.mjs` antwortete mit **401**, und die Meldung fragte
+„Ist es der service_role-Schlüssel?" — **er war es.** Nur eben ein **Legacy-JWT**.
+
+Berkats Supabase-Projekt ist auf die **neuen API-Schlüssel** umgestellt. Belegt an der eigenen
+`.env`: Der öffentliche Schlüssel dort ist `sb_publishable_…` mit **46 Zeichen**, kein JWT. Damit
+sind die alten JWTs (`eyJhbGciOiJ…`, gut zweihundert Zeichen) abgeschaltet — **egal welche Rolle
+darin steht.**
+
+| | |
+|---|---|
+| öffentlich | `sb_publishable_…` — steht in `apps/berkat/.env` |
+| geheim | `sb_secret_…` — **Project Settings → API Keys → „secret" → Reveal** |
+| abgeschaltet | alles mit `eyJ…`, Abschnitt **„Legacy API keys"** darunter |
+
+Beide Abschnitte sehen im Dashboard gleich wichtig aus, und der alte steht direkt unter dem neuen.
+
+> **Die Lehre, und sie ist die alte:** Eine Fehlermeldung, die nach der **Rolle** fragt, während das
+> Problem die **Bauart** ist, kostet mehr Zeit als gar keine. Alle drei Seed-Skripte erkennen das
+> `eyJ…`-Präfix jetzt und sagen es beim Namen.
 
 ### npm bricht ohne `legacy-peer-deps` ab
 
@@ -10899,6 +10922,14 @@ Beides ist erledigt und geprüft: Mail kommt im Posteingang an, ohne Warnung.
 
 **Hier anfangen.** Löst Abschnitt 82 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt der Motor.
 
+> ⚠️ **Nachtrag 25.08.2026:** Show-Ware ist auffindbar gebaut — **Abschnitt 88**, im Arbeitsstand,
+> nicht ausgerollt. Damit ist der dritte Punkt unter „Was heute NICHT geprüft wurde" erledigt.
+> Zum Prüfen fehlt Testware: `scripts/seed-berkat-show-items.mjs`.
+>
+> ⚠️ Und eine Regel, die über Berkat hinausgeht: **`tsc` und `expo export` für Berkat laufen NUR
+> aus `apps/berkat`.** Aus der Wurzel prüfen sie Berkats Quelltext seit `25bce22` gar nicht mehr und
+> melden trotzdem sauber.
+
 ### Der Zustand
 
 - **Migrationen:** 310 Dateien, **alle eingespielt** (`supabase db push --dry-run` → „Remote
@@ -10943,13 +10974,228 @@ aus (`lib/buildInfo.ts`). Die Zeile ganz unten im Konto sagt, welcher Stand läu
 - **Das Datenmodell „vorbereitet".** `ab8f727` behandelt das Symptom sauber, aber Whatnots Modell
   ist strukturell anders: Dort ist eine Show eine **Ansicht** auf das Inventar, kein Behälter.
   Bewusst aufgeschoben — Phase 0 zeigt in acht Wochen, ob es sich lohnt.
-- **Show-Ware ist nicht auffindbar.** Vorbereitete Artikel stehen auf `status = 'scheduled'`, jede
-  Stöber-Abfrage filtert auf `'listed'`. Das Aufgebot eines Abends sieht nur, wer den Verkäufer
-  schon kennt und sein Profil öffnet. Bei Whatnot ist Show-Ware **vorher** auffindbar und mit Datum
-  versehen — ihr Hauptmechanismus, um eine Sendung mit Publikum zu füllen.
+- ~~**Show-Ware ist nicht auffindbar.**~~ ✅ **gebaut am 25.08.2026 — Abschnitt 88.** Vorbereitete
+  Artikel stehen in Regal, Suche und Kategorien, mit Datum an der Karte. ⚠️ Am Gerät **ungeprüft**:
+  Es gibt keine Show-Ware im Bestand. Dafür ist `scripts/seed-berkat-show-items.mjs` da.
 - **Kategorie-Kacheln tragen Symbole, keine Produktfotos.** Dokumentierter Übergangszustand;
   `theme/categoryArt.ts` sagt, dass nur diese eine Datei zu ändern ist. Es ist Bildarbeit, keine
   Code-Arbeit.
+
+---
+
+## 88. Show-Ware wird auffindbar (25.08.2026)
+
+Zaur hat Whatnots Suchergebnis-Seite danebengelegt. Zwei der vier Treffer dort tragen
+**„Show starts 1/30 · 4:00 PM"** — Ware, die erst am Freitag versteigert wird, steht ganz normal in
+der Suche, mit Datum an der Zeile.
+
+> **Das ist kein Detail, sondern ihr Hauptmechanismus, eine Sendung mit Publikum zu füllen.** Man
+> sucht eine Tasche, findet eine, die Freitag drankommt, und merkt sich den Abend. Bei Berkat sah
+> das Aufgebot eines Abends nur, wer den Verkäufer schon kannte und seinen Termin öffnete.
+
+**Keine Migration.** Die Lese-Policy `live_auctions_select_standing` erlaubt seit jeher **jede**
+Zeile ohne Session, nicht nur die im Regal — von aussen mit dem öffentlichen Schlüssel gemessen, nicht
+angenommen. Es fehlte allein der Status-Filter im Client.
+
+### Was gebaut ist
+
+| | |
+|---|---|
+| `lib/useListings.ts` | `browseQuery()` neben `shelfQuery()`, `Listing` um `planned_for`, `start_price_cents` und den Termin erweitert, `listingPrice()` / `isShowItem()` |
+| `components/ListingCard.tsx` | Datums-Pille auf dem Bild, „ab X €" statt Festpreis |
+| `app/shop.tsx` | Chip **„In einer Show"**, wirksamer Preis in Filter und Sortierung, `narrowed` |
+| `app/listing/[id].tsx` | Startpreis statt Kaufpreis, Termin unter dem Titel, **Glocke statt Kaufknopf** |
+| `app/messages/[id].tsx` | Produktkarte im Chat rechnet mit dem wirksamen Preis |
+| `scripts/seed-berkat-show-items.mjs` | ein Termin in zwei Tagen samt fünf vorbereiteten Artikeln |
+
+### ⚠️ Zwei Grenzen statt einer mit Schalter
+
+Der naheliegende Weg wäre gewesen, `shelfQuery()` den Status-Filter zu erweitern. Er hätte **fünf**
+Aufrufer auf einmal getroffen, darunter zwei, für die er falsch ist:
+
+- **`useSellerListings`** → das Verkäufer-Profil zeigt den Termin samt Aufgebot bereits als eigenen
+  Block. Show-Ware zusätzlich ins Regal zu legen wären zwei Zahlen über dieselben Dinge — genau der
+  Fehler aus Abschnitt 86 („3 Artikel warten auf einen Abend" über „Dein Regal — leer").
+- **`ShelfPickSheet`** → „Aus dem Regal holen" böte sonst Artikel an, die schon für einen Abend
+  vorbereitet sind.
+
+### ⚠️ Kein Kaufknopf auf Show-Ware — und das ist der Kern
+
+Ein Sofortkauf würde den Abend aushöhlen: Der Artikel ist angekündigt, Leute kommen seinetwegen, und
+wer ihn vorher wegkaufen kann, nimmt der Auktion ihre Bedeutung. Das ist wörtlich dieselbe
+Begründung, mit der am 22.08. der Preisvorschlag auf die Zeit **vor** dem Start begrenzt wurde:
+*„Die Glaubwürdigkeit der Auktion IST das Produkt."*
+
+Der Weg ist stattdessen die **Glocke** — `berkat_auction_reminders` gibt es seit dem 19.08.
+(Abschnitt 51), sie war nur an genau EINER Stelle erreichbar: im Aufgebot am Termin. Dieselbe Klasse
+wie die zwei Funde vom 24.08.: **Die Fähigkeit war da, der Weg dorthin fehlte.**
+
+Das Vorschlags-Blatt rendert bei Show-Ware **gar nicht**: `prepare_live_auction` setzt
+`accepts_offers` nie, die Spalte steht ab Werk auf `false`, und `make_berkat_offer` lehnt jeden
+Vorschlag darauf ab. Ein Weg, den der Server garantiert verweigert, ist dieselbe Sackgasse wie der
+goldene Kaufknopf ohne Kassen-Freigabe (17.08.).
+
+### ⚠️ Drei stille Fehler, die der neue Zustand ausgelöst hätte
+
+Alle drei hatten dieselbe Ursache: **eine Negation, die einen Fall abdeckte, den es noch nicht gab.**
+
+1. **`ListingCard`: `status !== 'listed'` → „Weg".** Solange es nur `listed`, `sold` und `cancelled`
+   gab, war „alles andere ist weg" richtig. Mit `scheduled` im Stöbern hätte dieselbe Zeile jeden für
+   Freitag vorbereiteten Artikel als **„Weg"** ausgezeichnet.
+2. **`listing/[id].tsx`: dasselbe `gone`.** Hätte Kaufweg und Verkäufer-Block gesperrt und
+   **„Zurückgezogen"** über einen Artikel geschrieben, der gerade beworben wird.
+3. **Der Preis.** `buy_now_cents` ist bei Show-Ware oft NULL — „Günstigste" hätte die gesamte
+   Show-Ware an den Anfang gezogen, und der Filter „bis 25 €" hätte jeden vorbereiteten Artikel
+   durchgelassen, auch den, der bei 300 € startet.
+
+> **Die Lehre: Eine Negation deckt keinen Fall ab, den es noch nicht gibt.** Sie deckt ihn falsch ab,
+> und zwar still. Was weg ist, gehört beim Namen genannt.
+
+### ⚠️ Der Typ log über Geld — und `tsc` hat es zweimal nicht gesagt
+
+`Listing.buy_now_cents` stand auf `number`. Die Spalte ist seit `20260813150000` **nullbar**
+(`buy_now_cents int CHECK (… > start_price_cents)`); der Typ log nur nicht, solange hier
+ausschliesslich Dauerangebote ankamen. Auf `number | null` gestellt fielen drei echte Stellen heraus.
+
+**Beim ersten Anlauf meldete `tsc` nichts — weil er im falschen Ordner lief.** Seit `25bce22`
+(Abschnitt 86) steht `apps/berkat` in der `exclude`-Liste der Wurzel-`tsconfig.json`. Ein
+`npx tsc --noEmit` aus `/Users/zaurhatuev/vibes-app` prüft Berkats Quelltext also **überhaupt
+nicht** und meldet sauber.
+
+> ⚠️ **`tsc` für Berkat läuft NUR aus `apps/berkat`.** Ein grüner Lauf aus der Wurzel ist kein
+> Ergebnis, sondern eine leere Menge — dieselbe Falle wie „eine Null im Ergebnis beweist nichts"
+> (Abschnitt 73). Dasselbe gilt für den Export.
+
+### ⚠️ Ein vorbereiteter Artikel ohne sichtbaren Abend wird NICHT gezeigt
+
+`scheduled_lives_select_public` gibt nur `scheduled`, `reminded` und `live` heraus — ein abgesagter
+Abend ist für den Leser gar nicht da, der Embed liefert dann `null`. `withVisibleShow()` sortiert
+solche Zeilen aus: **„irgendwann in einer Show" ist keine Auskunft.** Der Auslöser aus
+`20260824180000` legt sie ohnehin zurück ins Regal; das hier ist das Netz für das Fenster dazwischen.
+
+### Geprüft — und was ausdrücklich nicht
+
+| | |
+|---|---|
+| `tsc --noEmit` **in `apps/berkat`** | ✅ Exit 0 |
+| `expo export --platform ios` | ✅ Exit 0, **10,8 MB**, unverändert |
+| Die neue Abfrage von aussen, ohne Anmeldung | ✅ HTTP 200, 33 Zeilen, keine Rechteverletzung |
+| Embed `scheduled_lives!planned_for` | ✅ löst auf, kein `PGRST200` |
+| Kategorie- und Zustands-Kürzel im Seed | ✅ am Bestand nachgeschlagen — `haushalt` und `wie_neu` gab es nicht, `conditionLabel()` hätte dafür still `null` geliefert |
+
+### Nachtrag: die Testware liegt, und der Weg ist von aussen belegt
+
+Der Seed ist gelaufen — Termin **Do, 27.08. 20:00** bei `kimocheiko2015`, fünf Artikel, drei davon
+ohne Sofortkauf-Preis. Dieselbe Abfrage wie die App, ohne Anmeldung:
+
+```
+HTTP 200 · 38 Zeilen · 5 scheduled, 33 listed
+alle fünf mit AUFGELÖSTEM Termin (2026-08-27T18:00Z, status scheduled)
+```
+
+Daraus gerechnet, was die Oberfläche zeigt:
+
+| | |
+|---|---|
+| Pille auf der Karte | **„Do 20:00"** — die Wochentags-Fassung, nicht das nackte Datum |
+| „Günstigste" **mit** Fix | Lederjacke (ab 1 €) < Abaya (ab 1 €) < Teeservice (5 €) < Teppich (10 €) < Armband (20 €) |
+| „Günstigste" **ohne** Fix | Teeservice, Armband, Teppich zuerst — die drei **ohne** Sofortkauf-Preis, weil `null` beim Vergleich vorn landet |
+| Filter „bis 25 €" **ohne** Fix | Lederjacke und Abaya wären **rausgefallen** (12 000 bzw. 8 900 > 2 500), obwohl beide bei 1 € starten |
+
+Damit ist die dritte Falle oben nicht mehr behauptet, sondern gerechnet.
+
+⚠️ **Der Termin ist öffentlich sichtbar** — er steht im „Demnächst"-Streifen unter dem Namen von
+`kimocheiko2015`. Der Erinnerungs-Push geht an die **Follower des Gastgebers** (`useSchedule.ts`),
+und der hat gemessen **null** — es geht also nichts raus. Wäre es ein Konto mit Followern gewesen,
+hätten die am Donnerstag um 19:45 eine Meldung über eine Sendung bekommen, die es nicht gibt.
+**Vor jedem Seed auf ein fremdes Konto gehört diese Zahl geprüft.**
+
+⚠️ **Am Gerät weiterhin ungeprüft** — A27 bis A30 stehen offen. Der Seed macht sie erst möglich.
+
+### ⚠️ Nachtrag: „ab 5 €" auf einem REGAL-Artikel — und der Fund dahinter
+
+Zaur hat nach dem Aufräumen einen Screenshot der Startseite geschickt. Darauf stand auf einer
+gewöhnlichen Regal-Karte **„ab 5 €"** — obwohl keine Testware mehr in der Datenbank lag.
+
+**Zwei Fehler übereinander, und der untere ist der interessantere.**
+
+**1 · Mein Rückfall war falsch.** `listingPrice()` hatte „kein Festpreis → dann eben der
+Startpreis" — mit `from: true`, also mit dem Vorsatz „ab". Ein Regal-Artikel ist aber **keine
+Auktion**; auf ihn kann niemand bieten. Das „ab" behauptete einen Weg, den es nicht gibt. Vorher
+stand dort `—` (`formatEuro(null)`), und das war ehrlicher. Zurückgedreht: `cents` ist jetzt
+`number | null` und wird durchgereicht statt geraten.
+
+**2 · Der Fall ist nicht theoretisch — er entsteht seit dem 24.08.** Im Kommentar stand, ein
+Regal-Artikel ohne `buy_now_cents` könne nach Konstruktion nicht existieren. Am Bestand gemessen:
+**einer** („Jjjj", 21.08., `start 5,00 €`, `buy_now NULL`). Die Herkunft ist nachverfolgt, nicht
+geraten:
+
+- `move_auction_to_shelf` scheidet aus — sie verlangt einen Preis (`price_too_low` bei NULL) und
+  setzt `start_price_cents` auf 100. Die Zeile hat 500.
+- ⚠️ **`release_prepared_on_plan_end` (`20260824180000`, Commit `ab8f727`)** setzt vorbereitete
+  Artikel bei abgesagtem oder abgelaufenem Termin auf `status = 'listed'` und rührt
+  `buy_now_cents` **nicht an**. Ein vorbereiteter Artikel braucht keinen Sofortkauf-Preis, ein
+  Regal-Artikel schon. Das einmalige Aufräumen am Ende derselben Migration hat genau diese Zeile
+  erzeugt.
+
+> **Der Auslöser vom 24.08. löst das richtige Problem — „der Artikel gehört dem Verkäufer, nicht
+> dem Abend" — und erzeugt dabei einen Regal-Artikel, den niemand kaufen kann.** Er steht öffentlich
+> im Regal, in der Suche und in seiner Kategorie, und der Kaufweg endet an einem fehlenden Betrag.
+
+**Was ich behoben habe (die Anzeige):** Drei Stellen prüfen jetzt auf „kein Preis" statt zu raten —
+das Vorschlags-Blatt (ohne Listenpreis gibt es keine Obergrenze für einen Vorschlag), der
+**Kaufknopf** (stand sonst als „Kaufen · —" da) und Filter/Sortierung im Regal (preislos fliegt bei
+„bis 25 €" raus und steht beim Sortieren in beiden Richtungen hinten).
+
+Das ist die **dritte Auflage derselben Sackgasse**: 17.08. der goldene Kaufknopf ohne
+Kassen-Freigabe, heute das Vorschlags-Blatt und der Kaufknopf ohne Preis. Das Muster ist jedes Mal
+gleich — **ein Weg wird angeboten, den der Server nicht gehen kann.**
+
+**Was NICHT behoben ist — und eine Entscheidung braucht:** Der Auslöser erzeugt weiter preislose
+Regal-Zeilen. Drei Wege, keiner davon offensichtlich:
+
+| Weg | Preis |
+|---|---|
+| Beim Freigeben `buy_now_cents` aus dem letzten Startpreis füllen | Erfindet einen Verkaufspreis, den der Verkäufer nie genannt hat |
+| Preislose Zeilen aus den Stöber-Abfragen nehmen | Der Verkäufer sieht seinen Artikel im eigenen Regal, sonst niemand — und erfährt nicht, warum |
+| Freigeben, aber den Verkäufer zum Nachtragen auffordern | Richtig, aber es braucht eine Oberfläche dafür („N Artikel ohne Preis") |
+
+Der dritte ist der ehrliche und der teuerste. **Gehört entschieden, nicht im Vorbeigehen gebaut.**
+
+```bash
+SERVICE_ROLE_KEY=… node scripts/seed-berkat-show-items.mjs
+```
+
+Legt einen Termin in **zwei Tagen** an (nah genug, dass `formatSlot` einen Wochentag zeigt statt
+eines nackten Datums — die Fassung, die auf der Karte steht) und fünf Artikel darauf, davon **drei
+ohne Sofortkauf-Preis**. Letzteres mit Absicht: Eine Testware, in der jeder Artikel einen Festpreis
+trägt, hätte den NULL-Fall nie erzeugt — also genau den, an dem der Typfehler hing.
+
+⚠️ **Nicht ausgerollt.** Kein OTA, kein Commit. Alles hier liegt im Arbeitsstand.
+
+### Neu auf der Prüfliste
+
+| | Was | Gruppe |
+|---|---|---|
+| ~~A27~~ | ~~**Show-Ware im Regal**~~ — ✅ **25.08.2026 am Gerät gesehen** (Zaur). Karten mit Datums-Pille und „ab X €", Chip „In einer Show" in der Leiste | A |
+| ~~A28~~ | ~~**Die Artikelseite eines vorbereiteten Artikels**~~ — ✅ 25.08.2026 | A |
+| ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026 | A |
+| ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026 | A |
+| B14 | **Die Glocke von einem zweiten Konto**: vormerken, Verkäufer sieht „N warten", beim Auktionsstart kommt die Meldung und die Vormerkung verschwindet | B |
+
+⚠️ **Was dieses ✅ trägt und was nicht.** Es steht auf einer Sichtprüfung am Gerät, nicht auf einem
+Protokoll — die vier Punkte sind mit dem Seed durchgesehen worden, ohne dass etwas auffiel, und der
+Screenshot desselben Durchgangs hat den preislosen Regal-Artikel gefunden. Wer also hinsieht, meldet
+auch. Das ist genau die Art Beleg, die dieses Projekt sonst nirgends bekommt (Abschnitt 56: „Gefunden
+hat sie ein Mensch, der auf eine Meldung tippte").
+
+⚠️ **Die Fixes danach entwerten es nicht.** Die Null-Preis-Riegel vom selben Abend fassen den
+Show-Zweig nicht an: `listingPrice()` liefert für `scheduled` unverändert den Startpreis mit „ab",
+und Sortierung wie Filter rechnen für Show-Ware mit derselben Zahl wie vorher. Geändert hat sich nur,
+was bei **fehlendem** Preis passiert — ein Fall, den Show-Ware per Definition nicht hat.
+
+⚠️ **Die Testware ist wieder entfernt.** Gegengeprüft: 33 `listed`, 11 `cancelled`, 1 `sold`, kein
+Termin übrig. Wer die Punkte erneut sehen will, lässt den Seed noch einmal laufen.
 
 ---
 

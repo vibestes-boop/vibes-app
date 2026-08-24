@@ -88,6 +88,21 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx expo export --platform ios --o
 Der Export ist der ehrlichere Test: Er baut das komplette Bundle und findet Auflösungsfehler, die
 `tsc` nicht sieht. Läuft er durch, ist der Code lieferbar.
 
+> ⚠️ **Das `cd` ist keine Bequemlichkeit, es ist die Prüfung.** Seit dem 24.08.2026 (`25bce22`)
+> steht `apps/berkat` in der `exclude`-Liste der Wurzel-`tsconfig.json`. Ein `npx tsc --noEmit` aus
+> `/Users/zaurhatuev/vibes-app` prüft Berkats Quelltext damit **überhaupt nicht** — und meldet
+> trotzdem sauber. Am 25.08.2026 genau so passiert: zwei grüne Läufe, null geprüfte Dateien, und
+> drei echte Typfehler kamen erst heraus, als der Befehl im richtigen Ordner lief.
+>
+> **Ein grüner Lauf aus der Wurzel ist kein Ergebnis, sondern eine leere Menge.** Im Zweifel zählen,
+> wie viele Dateien der Lauf überhaupt angefasst hat:
+>
+> ```bash
+> cd /Users/zaurhatuev/vibes-app/apps/berkat && npx tsc --noEmit --listFiles | grep -c apps/berkat
+> ```
+>
+> Am 25.08.2026 gemessen: **1833** aus `apps/berkat`, **0** aus der Wurzel.
+
 ---
 
 ## 4. Änderung ausliefern, ohne zu bauen (OTA)
