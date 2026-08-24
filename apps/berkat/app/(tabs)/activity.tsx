@@ -25,6 +25,7 @@ import { useSession } from '../../lib/session';
 import { useActivity, type ActivityItem, type ActivityKind } from '../../lib/useActivity';
 import { formatEuro, useProfiles } from '../../lib/useAuction';
 import { useMyBids } from '../../lib/useMyBids';
+import { useMyOpenOffers } from '../../lib/useOffers';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
@@ -75,16 +76,26 @@ export default function ActivityScreen() {
   // Wo ich gerade mitbiete — eigener Takt, eigene Quelle. Läuft nichts, ist
   // die Liste leer und der Kopf rendert nicht.
   const { bids, outbid, refetch: refetchBids } = useMyBids(userId);
+  // Dasselbe für Preisvorschläge: „ich habe etwas laufen und warte". Bis zum
+  // 24.08.2026 hatte nur das Gebot hier einen Platz — der Vorschlag nicht,
+  // obwohl er dieselbe Frage stellt. Begründung in `useMyOpenOffers`.
+  const { data: myOffers = [], refetch: refetchOffers } = useMyOpenOffers(userId);
+
+  // Ein Gegenvorschlag ist der dringende Fall: Dort liegt der Ball beim Käufer.
+  const counteredCount = useMemo(
+    () => myOffers.filter((o) => o.status === 'countered').length,
+    [myOffers],
+  );
 
   const [pulling, setPulling] = useState(false);
   const onPull = useCallback(async () => {
     setPulling(true);
     try {
-      await Promise.all([refetch(), refetchBids()]);
+      await Promise.all([refetch(), refetchBids(), refetchOffers()]);
     } finally {
       setPulling(false);
     }
-  }, [refetch, refetchBids]);
+  }, [refetch, refetchBids, refetchOffers]);
 
   // Reiter bleiben aufgebaut — ohne das stünde beim Zurückwechseln der Stand
   // von vorhin da (HANDOFF 3).
@@ -92,7 +103,8 @@ export default function ActivityScreen() {
     useCallback(() => {
       void refetch();
       void refetchBids();
-    }, [refetch, refetchBids]),
+      void refetchOffers();
+    }, [refetch, refetchBids, refetchOffers]),
   );
 
   const userIds = useMemo(() => items.map((i) => i.userId), [items]);
@@ -126,7 +138,7 @@ export default function ActivityScreen() {
         // darf nur greifen, wenn WIRKLICH nichts da ist — steht oben die
         // Gebots-Liste, wäre sie sonst mittig im Nichts.
         contentContainerStyle={
-          items.length === 0 && bids.length === 0
+          items.length === 0 && bids.length === 0 && myOffers.length === 0
             ? styles.emptyWrap
             : { paddingBottom: insets.bottom + space.xl }
         }
@@ -138,7 +150,9 @@ export default function ActivityScreen() {
         //    „und wo du gerade mitbietest" — die Absicht war da, die Liste
         //    fehlte (siebte Whatnot-Analyse).
         ListHeaderComponent={
-          bids.length === 0 ? null : (
+          bids.length === 0 && myOffers.length === 0 ? null : (
+            <>
+            {bids.length === 0 ? null : (
             <View style={styles.bidsBlock}>
               <Text style={styles.bidsLabel}>
                 {outbid > 0
@@ -194,6 +208,74 @@ export default function ActivityScreen() {
                 </Pressable>
               ))}
             </View>
+            )}
+
+            {/* ── Wo ich verhandele. Gleiche Bauform wie die Gebote darüber,
+                aus demselben Grund: Beides ist „ich habe etwas laufen und
+                warte". Bis zum 24.08.2026 hatte nur das Gebot hier einen
+                Platz — wer einen Vorschlag machte und die App schloss, hätte
+                sich merken müssen, bei WELCHEM Artikel.
+
+                ⚠️ Kein Widerspruch zu `OfferPanel` („bewusst KEIN eigener
+                Bildschirm"): Verhandelt wird weiterhin am Artikel. Das hier
+                ist der Weg zurück, nicht der Verhandlungstisch. */}
+            {myOffers.length === 0 ? null : (
+              <View style={styles.bidsBlock}>
+                <Text style={styles.bidsLabel}>
+                  {counteredCount > 0
+                    ? counteredCount === 1
+                      ? 'Ein Gegenvorschlag wartet auf dich'
+                      : `${counteredCount} Gegenvorschläge warten auf dich`
+                    : myOffers.length === 1
+                      ? 'Dein Vorschlag läuft'
+                      : 'Deine Vorschläge laufen'}
+                </Text>
+                {myOffers.map((offer) => (
+                  <Pressable
+                    key={offer.id}
+                    style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => router.push(`/listing/${offer.auction_id}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${offer.title}, ${
+                      offer.status === 'countered' ? 'Gegenvorschlag' : 'wartet auf Antwort'
+                    }, dein Vorschlag ${formatEuro(offer.amount_cents)}`}
+                  >
+                    {offer.image_url ? (
+                      <Image source={{ uri: offer.image_url }} style={styles.bidThumb} contentFit="cover" />
+                    ) : (
+                      <View style={styles.bidThumb} />
+                    )}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={styles.bidTitleRow}>
+                        {/* Der Zustand zuerst, wie bei den Geboten. Rot nur beim
+                            Gegenvorschlag — dort liegt der Ball beim Käufer.
+                            Warten ist weder gut noch dringend, also gedämpft;
+                            Grün hiesse „alles gut", und das weiss hier niemand. */}
+                        <Text
+                          style={[
+                            styles.bidState,
+                            offer.status === 'countered' ? styles.bidOutbid : styles.offerWaiting,
+                          ]}
+                        >
+                          {offer.status === 'countered' ? 'Gegenvorschlag' : 'Wartet auf Antwort'}
+                        </Text>
+                      </View>
+                      <Text numberOfLines={1} style={styles.bidTitle}>
+                        {offer.title}
+                      </Text>
+                      <Text style={styles.bidMeta}>
+                        Dein Vorschlag {formatEuro(offer.amount_cents)}
+                        {offer.status === 'countered' && offer.counter_cents != null
+                          ? ` · Gegenvorschlag ${formatEuro(offer.counter_cents)}`
+                          : ''}
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={ui.textMuted} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            </>
           )
         }
         refreshControl={
@@ -295,6 +377,8 @@ const styles = StyleSheet.create({
   bidLeading: { color: ui.success },
   bidOutbid: { color: ui.live },
   bidSoon: { fontSize: 11, color: ui.textMuted },
+  // Warten ist kein Zustand, der eine Farbe verdient — weder Entwarnung noch Alarm.
+  offerWaiting: { color: ui.textMuted },
   bidTitle: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 1 },
   bidMeta: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
 

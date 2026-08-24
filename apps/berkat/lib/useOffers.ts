@@ -125,6 +125,75 @@ export type SellerOffer = Offer & {
  * ein echter Fremdschlüssel, aber PostgREST-Embeds sind in diesem Projekt schon
  * einmal still zu einer leeren Liste geworden. Zwei Abfragen können das nicht.
  */
+/**
+ * Meine eigenen offenen Vorschläge — die Käufer-Sicht.
+ *
+ * ── ⚠️ WARUM ES DAS BRAUCHT (24.08.2026) ────────────────────────────────────
+ *
+ * Eine Unwucht, die beim Vergleich mit Whatnots Aktivitäts-Reiter auffiel:
+ * Offene GEBOTE haben auf „Aktivität" einen festen Platz (`useMyBids`, Block
+ * „Wo ich mitbiete"). Offene VORSCHLÄGE hatten keinen — obwohl beides dasselbe
+ * ist: „ich habe da etwas laufen und warte auf Antwort."
+ *
+ * Wer einen Vorschlag machte und die App schloss, hatte keinen Weg zurück
+ * ausser einer Push-Meldung. Er hätte sich merken müssen, bei WELCHEM Artikel
+ * er verhandelt hat.
+ *
+ * ⚠️ Das ist ausdrücklich KEIN Widerspruch zur Entscheidung in
+ * `components/OfferPanel.tsx` („Bewusst KEIN eigener Bildschirm. Ein Vorschlag
+ * gehört an den Artikel, über den verhandelt wird"). Die gilt für das
+ * VERHANDELN. Diese Liste verhandelt nichts — sie ist ein Wegweiser zurück zum
+ * Artikel, genau wie die Gebots-Liste zum Live-Raum weist.
+ *
+ * Zwei Abfragen statt eines Embeds, aus demselben Grund wie bei
+ * `useSellerOffers`: PostgREST-Embeds sind in diesem Projekt schon einmal still
+ * zu einer leeren Liste geworden.
+ */
+export function useMyOpenOffers(userId: string | null) {
+  return useQuery({
+    queryKey: ['berkat', 'my-offers', userId],
+    enabled: Boolean(userId),
+    staleTime: 20_000,
+    queryFn: async (): Promise<SellerOffer[]> => {
+      const { data, error } = await supabase
+        .from('berkat_offers')
+        .select(OFFER_COLUMNS)
+        // Der einzige Unterschied zu `useSellerOffers`: die andere Seite des
+        // Tisches. `countered` gehört dazu — ein Gegenvorschlag ist der Fall,
+        // in dem der Käufer am dringendsten zurückmuss.
+        .eq('buyer_id', userId!)
+        .in('status', ['pending', 'countered'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const offers = (data ?? []) as unknown as Offer[];
+      if (offers.length === 0) return [];
+
+      const ids = [...new Set(offers.map((o) => o.auction_id))];
+      const { data: rows, error: e2 } = await supabase
+        .from('live_auctions')
+        .select('id, title, image_url, buy_now_cents')
+        .in('id', ids);
+      if (e2) throw e2;
+
+      const byId = new Map(
+        ((rows ?? []) as { id: string; title: string; image_url: string | null; buy_now_cents: number | null }[])
+          .map((r) => [r.id, r]),
+      );
+
+      return offers.map((o) => {
+        const a = byId.get(o.auction_id);
+        return {
+          ...o,
+          title: a?.title ?? 'Artikel nicht mehr da',
+          image_url: a?.image_url ?? null,
+          buy_now_cents: a?.buy_now_cents ?? null,
+        };
+      });
+    },
+  });
+}
+
 export function useSellerOffers(userId: string | null) {
   return useQuery({
     queryKey: ['berkat', 'seller-offers', userId],
