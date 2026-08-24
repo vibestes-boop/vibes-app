@@ -275,18 +275,77 @@ export function useCreateHighlight() {
   });
 }
 
-/** Ein eigenes Highlight entfernen. Die RLS lässt nur eigene Zeilen zu. */
+/**
+ * Ein eigenes Highlight entfernen. Die RLS lässt nur eigene Zeilen zu.
+ *
+ * ⚠️ REIHENFOLGE: erst die Adressen holen, dann die Datei, dann die Zeile.
+ *
+ * Bis zum 24.08.2026 löschte das hier NUR die Zeile — und weil `highlights/`
+ * für den Aufräum-Cron unerreichbar ist (das ist Absicht, siehe Kopf dieser
+ * Datei), blieb die Datei für immer liegen. Beim Prüfen der Highlights sind so
+ * zwei Dateien entstanden, die niemand mehr erreicht.
+ *
+ * Die Zeile ist die einzige Stelle, an der die Adressen stehen. Wer sie zuerst
+ * löscht, weiß danach nicht mehr, welche Datei zu diesem Highlight gehörte —
+ * dieselbe Falle wie bei `avatar_url` in der Kontolöschung.
+ *
+ * ⚠️ Die Datei-Löschung ist BEST-EFFORT und darf nie den Ausschlag geben.
+ * Scheitert sie, verschwindet das Highlight trotzdem: Ein Verkäufer, der ein
+ * Bild aus seinem Schaufenster nimmt, will es weg haben — dass im Hintergrund
+ * eine Datei liegen bleibt, ist unser Problem, nicht seins. (Der Ordner wird
+ * bei einer Kontolöschung ohnehin komplett gefegt, `20260824120000`.)
+ */
 export function useDeleteHighlight() {
   const myUserId = useSession((s) => s.userId);
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async (highlightId: string) => {
+      // Die Adressen einsammeln, SOLANGE die Zeile noch da ist.
+      let urls: string[] = [];
+      try {
+        const { data } = await supabase
+          .from('story_highlights')
+          .select('media_url, thumbnail_url, items')
+          .eq('id', highlightId)
+          .maybeSingle();
+
+        if (data) {
+          const items = Array.isArray(data.items) ? (data.items as HighlightItem[]) : [];
+          urls = [
+            data.media_url as string | null,
+            data.thumbnail_url as string | null,
+            ...items.flatMap((i) => [i.media_url, i.thumbnail_url ?? null]),
+          ]
+            .filter((u): u is string => typeof u === 'string' && u.length > 0)
+            // ⚠️ NUR die Kopien. Schlug `highlight-copy-media` beim Anlegen fehl,
+            // steht hier noch die Original-Adresse unter `thumbnails/` — und die
+            // kann dieselbe Datei sein, die eine Story oder ein Show-Cover
+            // benutzt. Die anzufassen wäre genau der Fehler, den die Kopie
+            // vermeiden sollte, nur andersherum.
+            .filter((u) => u.includes('/highlights/'));
+          urls = Array.from(new Set(urls));
+        }
+      } catch {
+        /* Ohne Adressen wird eben nur die Zeile gelöscht. */
+      }
+
       const { error } = await supabase
         .from('story_highlights')
         .delete()
         .eq('id', highlightId);
       if (error) throw error;
+
+      // Erst NACH dem erfolgreichen Löschen der Zeile. Andersherum stünde bei
+      // einem Fehlschlag ein Highlight ohne Bilder auf dem Profil.
+      if (urls.length > 0) {
+        try {
+          await supabase.functions.invoke('r2-delete', { body: { urls } });
+        } catch {
+          /* best-effort, siehe oben */
+        }
+      }
+
       return highlightId;
     },
     onSuccess: (highlightId) => {

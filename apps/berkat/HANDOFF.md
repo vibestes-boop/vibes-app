@@ -10309,9 +10309,162 @@ R2 **an keiner Stelle**. Eine Kontolöschung (Abschnitt 59) entfernt heute **kei
 aus dem Speicher — auch keine Artikelbilder. Als Kostenfrage klein, als DSGVO-Frage (Art. 17) nicht.
 Gehört auf die Liste, nicht in diesen Abschnitt.
 
+✅ **Beides behoben am 24.08.2026 — Abschnitt 84.**
+
 ### ⚠️ Nicht ausgerollt
 
 Kein OTA. Alles hier läuft bisher nur gegen Metro im Simulator.
+
+---
+
+## 84. Der Objektspeicher lernt löschen — mit dem Skalpell, nicht dem Besen (24.08.2026)
+
+Der Nebenbefund aus Abschnitt 83, abgearbeitet. Zwei Löcher, eine Ursache: **Niemand hat je eine
+Datei aus R2 entfernt, außer der Post-Trigger.**
+
+| | vorher | jetzt |
+|---|---|---|
+| Konto löschen | nennt R2 **an keiner Stelle** — kein Avatar, kein Kopfbild, nichts | reiht die Adressen ein, die es selbst unerreichbar macht |
+| Highlight löschen | nur die Zeile; die Datei bleibt für immer | Zeile **und** Datei |
+
+### ⚠️ Die eigentliche Entscheidung: NICHT `{pfad}/{user_id}/` wegfegen
+
+Der naheliegende Weg wäre ein Präfix-Rundumschlag über alles, was unter der Kennung des Nutzers
+liegt. **Das wäre der Fehler aus Abschnitt 59 gewesen, nur eine Ebene tiefer.** Nachgesehen, was
+dort wirklich liegt — und das ist der ganze Grund, warum dieser Abschnitt so aussieht, wie er
+aussieht:
+
+| Pfad | was dort liegt | darf gefegt werden? |
+|---|---|---|
+| `thumbnails/<uid>/` | Avatar, Kopfbild, Show-Cover, Termin-Bild, Story-Medien — **und die Fotos, die dieser Mensch in fremde Chats gesendet hat** (`app/messages/[id].tsx:286`) | **NEIN** |
+| `products/images/<uid>/` | die Artikelfotos. Die `product_orders` dazu bleiben absichtlich stehen | **NEIN** |
+| `highlights/<uid>/` | ausschließlich die Kopien dieses einen Nutzers, unter zufälligem Namen | **ja** |
+
+> Ein Chat-Foto liegt unter der Kennung des **Absenders**, hängt aber im Verlauf des **Empfängers**.
+> Wer den Ordner leert, reißt Bilder aus einer fremden Unterhaltung. Und ein Käufer, dessen
+> Bestellung stehen bleibt, während das Artikelbild verschwindet, hat keinen gelöschten Beleg —
+> er hat einen **entwerteten**.
+
+Deshalb wird nicht gefegt, sondern **genau das eingereiht, was die Löschung selbst unerreichbar
+macht**: `avatar_url`, `banner_url`, `voice_sample_url`. Das ist die wörtliche Entsprechung zu
+„anonymisieren statt vernichten" — **das Gesicht des Menschen geht, die Bilder der Ware bleiben.**
+
+### ⚠️ Und die Reihenfolge ist der ganze Trick
+
+```sql
+SELECT avatar_url, banner_url, voice_sample_url INTO … ;   -- ZUERST
+UPDATE profiles SET avatar_url = NULL, … ;                 -- DANN
+```
+
+Genau andersherum stand es bisher — und **das ist der Grund, warum die Bilder liegen blieben.** Die
+Spalte war die einzige Stelle, an der die Adresse stand. Wer sie leert, bevor er sie gelesen hat,
+kann die Datei danach nicht mehr finden. Dieselbe Falle steckt in `useDeleteHighlight`: erst die
+Zeile lesen, dann löschen.
+
+### Warum über die Warteschlange und nicht direkt
+
+`delete_own_account()` redet **nicht** mit R2. Sie schreibt nach `r2_delete_queue`, der bestehende
+5-Minuten-Cron lässt `r2-delete` die Arbeit tun. Drei Gründe, der erste wiegt am schwersten:
+
+1. ⚠️ **Eine Löschung darf nie daran scheitern, dass ein Eimer nicht antwortet.** Apple 5.1.1(v)
+   verlangt einen Weg, der GEHT. Netzverkehr im selben Transaktionsblock hieße: R2 langsam →
+   Konto nicht löschbar.
+2. Den **Nachweis** gibt es dort schon (`status`, `attempts`, `last_error`) — siehe aber den
+   Nachtrag unten: eine automatische **Wiederholung** gibt es nicht.
+3. Die Warteschlange ist eine belastbare Vertrauensgrenze: RLS an, **keine** Policy, **kein** Grant.
+   Kein Client kann hineinschreiben — deshalb darf der Cron sie ohne eigene Anmeldung abarbeiten.
+
+Das war auch die Antwort auf die gestellte Alternative „S3 `ListObjectsV2` direkt in
+`delete-account`": Sie hätte die SigV4-Signatur ein **drittes** Mal in den Baum kopiert
+(`r2-delete`, `highlight-copy-media` — und dann `delete-account`), der Function R2-Schlüssel gegeben,
+die sie bisher nicht hat, und die Löschung an die Erreichbarkeit des Speichers gekoppelt.
+`delete-account/index.ts` ist deshalb **unverändert**.
+
+### ⚠️ `ALLOWED_ROOTS` bleibt, wie es war — und das ist Absicht
+
+Die naheliegende Änderung wäre gewesen, `highlights` in `ALLOWED_ROOTS` einzutragen. **Das hätte
+den Story-Ablauf-Schutz zerstört**, für den `highlight-copy-media` überhaupt gebaut wurde: Der Pfad
+ist unerreichbar, *damit* Highlights die Story überleben.
+
+Statt dessen zwei getrennte Türen, jede mit eigenem Nachweis:
+
+| Weg | wer darf | wohin |
+|---|---|---|
+| `assertAllowedRoot` — Warteschlange, Admin | ohne Anmeldung (Cron) | posts, thumbnails, avatars — **`highlights/` weiterhin NICHT** |
+| `assertAllowedKey` — Einzeldatei | angemeldeter Nutzer | zusätzlich `highlights/<eigene-kennung>/` |
+| `prefix` — ganzer Ordner | nur Service-Role / `x-cleanup-secret` | **ausschließlich** `highlights/<uuid>/` |
+
+Die Ordner-Form steht **zweimal** geschrieben: als CHECK-Constraint auf `r2_delete_queue.prefix` und
+als Regex in der Function. Zwei Schlösser an derselben Tür, weil ein zu weiter Präfix nicht auffällt,
+sondern still fremde Dateien mitnimmt. Ein blosses `highlights/` fällt durch — das wäre der Ordner
+**aller** Nutzer.
+
+### Highlight-Zeilen gehen jetzt mit — und zwar zusammen mit den Dateien
+
+`story_highlights.user_id` hängt an `auth.users` mit ON DELETE CASCADE — aber diese Zeile wird ja
+gerade **nicht** gelöscht, sondern gesperrt. Ohne das neue `DELETE` stünde auf dem Profil von
+`geloescht-xxxxxxxx` weiter die volle Reihe seiner Bilder, während Bio, Avatar und Kopfbild leer
+sind. Ein Highlight ist dieselbe Art Aussage über sich selbst wie eine Bio.
+
+⚠️ **Zeile und Datei müssen zusammen gehen.** Nur fegen hieße: Zeile zeigt auf gelöschte Datei →
+leeres Cover, kein Inhalt. Genau der Fehler, gegen den die Kopie gebaut wurde.
+
+Der Ordner-Auftrag wird **immer** eingereiht, auch wenn es gar keine Highlight-Zeile gibt. Das ist
+kein Versehen: `useCreateHighlight` kopiert erst und schreibt dann — schlägt das Schreiben fehl,
+liegt die Kopie verwaist da, und **keine Zeile kennt ihre Adresse.** Nur ein Ordner-Blick findet die.
+Genau so sind am 24.08. beim Prüfen zwei Dateien entstanden.
+
+### Geprüft
+
+| | |
+|---|---|
+| `deno check supabase/functions/r2-delete/index.ts` | ✅ fehlerfrei |
+| `tsc --noEmit` in `apps/berkat` | ✅ nur die zwei bekannten Modul-Meldungen (`keyboardKit`, `expo-image-manipulator`), beide unberührt |
+| Migration gegen echtes Postgres eingespielt | ✅ läuft durch (Wegwerf-DB, danach verworfen) |
+| Die 6 Constraint-Proben | ✅ `highlights/` allein, `thumbnails/<uuid>/`, `..`-Ausbruch und „Ordner+Adresse zugleich" werden **abgewiesen**; gültiger Ordner und die alte Post-Trigger-Zeile gehen durch |
+| Die 16 Proben an den Wächter-Funktionen | ✅ fremdes Highlight abgewiesen, eigenes durch, `assertAllowedRoot` erreicht `highlights/` weiterhin **nicht** |
+
+### ⚠️ Ungeprüft — und das ist die ehrliche Hälfte
+
+- **Nichts davon ist gegen echtes R2 gelaufen.** `ListObjectsV2` ist neu signiert (GET mit
+  Abfragezeichenkette — die Parameter müssen sortiert und RFC-3986-kodiert sein, sonst
+  `SignatureDoesNotMatch`). Der Weg ist gebaut und typgeprüft, aber **kein einziges Objekt wurde
+  bisher wirklich gelöscht.**
+- **Die Migration ist NICHT eingespielt.** Nur gegen eine Wegwerf-Datenbank geprüft.
+- **Der Durchlauf braucht wieder einen Menschen** — aus demselben Grund wie in Abschnitt 59:
+  `delete_own_account()` läuft auf `auth.uid()`, aus dem SQL-Editor ist das NULL.
+- Die eigentliche Probe ist nicht „ist das Bild weg", sondern **„ist das FALSCHE Bild noch da"** —
+  Gegenproben 9 und 10 in der Migration: ein Artikelbild einer Bestellung und ein Chat-Foto an einen
+  anderen Menschen müssen nach der Löschung weiterhin HTTP 200 liefern.
+
+### ⚠️ Dabei aufgefallen, NICHT behoben: die Warteschlange wiederholt nichts
+
+Beim Schreiben stand hier zuerst „Wiederholung gibt es schon". **Nachgesehen, und es stimmt nicht.**
+Der Cron holt `status = 'pending'`; eine gescheiterte Zeile bekommt `status = 'error'` und wird nie
+wieder angefasst. Deshalb kommt `attempts` über 1 nie hinaus — die Spalte sieht nach einem
+Wiederholungszähler aus und ist keiner.
+
+Das ist Verhalten von 2026-05-17 und trifft den Post-Aufräumer genauso; hier nur festgehalten, nicht
+mitgeändert (wer es ändert, ändert es für beide). Bis dahin ist Nachsehen Handarbeit:
+
+```sql
+SELECT reason, prefix, media_url, last_error FROM r2_delete_queue WHERE status = 'error';
+```
+
+> Dieselbe Klasse wie Fund 1 in Abschnitt 60: Der Satz war plausibel, die Spalte hieß passend — und
+> geprüft war er nicht.
+
+### ⚠️ Dabei aufgefallen, NICHT behoben: Story-Medien räumt niemand auf
+
+Einen `AFTER DELETE`-Trigger, der Dateien einreiht, gibt es **nur auf `posts`** — nicht auf
+`stories`. Jede abgelaufene Story lässt ihr Bild in R2 liegen, bei **jedem** Nutzer, nicht nur bei
+gelöschten Konten. Das ist der größere der beiden Funde.
+
+Bewusst nicht in dieser Migration mitbehoben: An `stories` hängen `story_comments` und `story_polls`
+mit ON DELETE CASCADE — das sind Äußerungen und Stimmen **anderer** Menschen. Ein `DELETE FROM
+stories` in die Löschfunktion zu schreiben, hätte genau die Kaskade zurückgeholt, gegen die
+Abschnitt 59 geschrieben wurde. Der richtige Ort ist ein eigener Trigger auf `stories`, gebaut wie
+der auf `posts` — eine eigene Migration, kein Anhängsel.
 
 ---
 
