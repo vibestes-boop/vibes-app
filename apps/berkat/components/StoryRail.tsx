@@ -17,8 +17,28 @@ import { Avatar } from './Avatar';
 import type { StoryGroup } from '../lib/useStories';
 import { radius, space, ui } from '../theme/tokens';
 
-const SIZE = 62;
+/**
+ * ⚠️ 78 statt 62 — und der Platz dafür kommt aus dem Namen (24.08.2026).
+ *
+ * Bis dahin stand der Name als eigene Textzeile UNTER dem Kreis. Die kostete
+ * rund 18 Punkte Höhe, in denen nichts zu sehen war. Ein Wettbewerber aus
+ * derselben Gegend legt den Namen stattdessen als Pille auf die Unterkante des
+ * Kreises — damit fällt die Zeile weg und der Kreis darf sie sich nehmen.
+ *
+ * Gerechnet: vorher 62 + 5 Abstand + ~13 Textzeile = 80. Jetzt 78 Kreis + 6
+ * Überstand der Pille = 84. **Vier Punkte mehr Höhe für einen Kreis, der im
+ * Durchmesser um ein Viertel und in der Fläche um die Hälfte wächst.**
+ *
+ * Warum das nicht Kosmetik ist: Der Ring ist das Einzige auf der Startseite,
+ * das sich täglich ändert, und er ist gebaut worden, damit die App nicht tot
+ * aussieht, wenn niemand sendet (Übergabe 81). Genau dafür ist seine Größe das
+ * Werkzeug — eine 62er-Scheibe mit Bildunterschrift liest sich als Liste, eine
+ * 78er als Bühne.
+ */
+const SIZE = 78;
 const RING = 2.5;
+/** Wie weit die Namens-Pille unter den Kreis ragt. */
+const PILL_OVERHANG = 6;
 
 type Props = {
   groups: StoryGroup[];
@@ -71,14 +91,23 @@ function Bubble({
           <Avatar uri={avatarUrl} name={name} size={SIZE - RING * 2 - 4} />
         </View>
       </View>
+
+      {/* ⚠️ Das „+" sitzt OBEN rechts, nicht unten — unten steht jetzt der Name.
+          Vor dem 24.08.2026 lag es bei `top: SIZE - 20`, also genau dort, wo die
+          Pille hingehört; beides zusammen hätte sich überlappt. */}
       {plus ? (
         <View style={s.plus}>
           <Plus size={13} color={ui.card} strokeWidth={3} />
         </View>
       ) : null}
-      <Text numberOfLines={1} style={s.label}>
-        {label}
-      </Text>
+
+      {/* Der Name liegt AUF der Kreis-Unterkante statt darunter. Damit fällt die
+          eigene Textzeile weg, und der Kreis nimmt sich ihren Platz. */}
+      <View style={s.pill}>
+        <Text numberOfLines={1} style={s.pillText}>
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -130,7 +159,9 @@ export const StoryRail = memo(StoryRailInner);
 const s = StyleSheet.create({
   wrap: { backgroundColor: ui.bg },
   row: { paddingHorizontal: space.md, paddingTop: space.sm, gap: space.md },
-  item: { width: SIZE + 8, alignItems: 'center' },
+  // `paddingBottom` hält den Überstand der Pille im Element — ohne ihn würde
+  // sie aus der Reihe herausragen und der Streifen darunter rückte hoch.
+  item: { width: SIZE + 10, alignItems: 'center', paddingBottom: PILL_OVERHANG },
   itemPressed: { opacity: 0.6 },
 
   ring: {
@@ -153,10 +184,13 @@ const s = StyleSheet.create({
 
   plus: {
     position: 'absolute',
-    right: 2,
-    top: SIZE - 20,
-    width: 20,
-    height: 20,
+    // Auf dem Kreisrand, oben rechts bei 45° — gerechnet, nicht geschätzt:
+    // Mittelpunkt (44|39), Radius 39, also (44+27,6 | 39−27,6). Ein `right: 0`
+    // klebte am Rand der ZELLE (Breite 88) und stünde damit neben dem Kreis.
+    right: 5,
+    top: 1,
+    width: 22,
+    height: 22,
     borderRadius: radius.pill,
     backgroundColor: ui.brand,
     borderWidth: 2,
@@ -165,11 +199,38 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  label: {
-    marginTop: 5,
-    fontSize: 11,
-    color: ui.textMuted,
-    maxWidth: SIZE + 8,
+  /**
+   * Die Namens-Pille auf der Unterkante.
+   *
+   * ⚠️ `ui.onImage` und nicht etwa eine helle Fläche: Der Kreis trägt ein
+   * fremdes Profilbild, und darauf ist heller Text mal lesbar und mal weg —
+   * dieselbe Begründung wie bei `ui.overlay` in `theme/tokens.ts`, nur nach
+   * dunkel. Nachgerechnet gegen den schlimmsten Fall (schneeweißes Bild
+   * darunter): Weiß auf der Pille kommt auf **9,3 : 1**. Über einem dunklen
+   * Bild ist es mehr. Wer an der Deckkraft dreht, rechnet nach.
+   *
+   * Der helle Rand trennt die Pille vom Bild — ohne ihn verschwimmt sie auf
+   * einem dunklen Avatar mit dem Kreis zu einem Fleck.
+   */
+  pill: {
+    position: 'absolute',
+    bottom: 0,
+    // ⚠️ Höchstens so breit wie der Kreis plus ein Hauch. Bei `SIZE + 10`
+    // spannte „Deine Story" die Pille über die ganze Zelle, und sie stand
+    // links und rechts über den Kreis hinaus — dann trägt nicht mehr der Kreis
+    // den Namen, sondern der Name den Kreis.
+    maxWidth: SIZE + 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: ui.onImage,
+    borderWidth: 1.5,
+    borderColor: ui.bg,
+  },
+  pillText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: ui.card,
     textAlign: 'center',
   },
 });

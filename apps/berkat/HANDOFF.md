@@ -6701,7 +6701,7 @@ zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.
 
 Im Dokument stehen über **vierzig** Stellen mit „ungeprüft“ oder „nicht geprüft“, verteilt über
 dreiundachtzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20, B9–B11, C6; vier am
-24.08.: **A21–A24**, Highlights und der Story-Ring).
+24.08.: **A21–A25**, Highlights, der Story-Ring und das gewanderte „+").
 
 Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
 die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
@@ -6746,6 +6746,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A22 | **Die Grenzen des Blattes**: 12 Bilder wählen — der Knopf muss auf „Höchstens 12 Bilder" umschlagen. Und ein Foto über 8 MB: die Meldung muss die **tatsächliche Größe** nennen, nicht „hat nicht geklappt" | 83 |
 | A23 | **Story-Ring mit FREMDEN Stories** — braucht `scripts/seed-berkat-stories.mjs` (Abschnitt 83). Drei Scheiben, die ungesehenen mit Marken-Ring; eine öffnen, durchblättern, schliessen; zurück im Ring muss der Ring dieser Scheibe **blass** sein. ⚠️ Der Einzelfall (eine eigene Story) ist am 24.08. belegt — der Ring selbst nicht | 81, 83 |
 | A24 | **Mehrere Bilder in EINEM Highlight**: drei auswählen, anlegen, öffnen — drei Balken, Tipp rechts blättert weiter, Tipp links zurück, am Ende schliesst es. Angelegt wurden bisher nur Highlights mit **einem** Bild | 83 |
+| A25 | **Das „+" auf der eigenen Story-Scheibe** (24.08.): Es ist wegen der Namens-Pille von unten rechts nach **oben rechts** gewandert. Die Stelle ist gerechnet, aber **nie gesehen** — das Testkonto hat eine Story, und dann rendert das „+" gar nicht. Sichtbar wird es, sobald die eine Story abgelaufen ist. ⚠️ Gleiches gilt für die Pille „Hinzufügen" statt „Deine Story" | 81, Nachtrag |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -10017,6 +10018,39 @@ Ein paar Entscheidungen im Kleinen, die begründet sind:
   Datei, an der Schweigen richtig ist — der Nutzen (ein grauer Ring) ist den Abbruch nicht wert.
 - **`'portrait'` als Zuschnitt.** Bei Abayas ist die Länge das Merkmal; ein quadratischer Rahmen
   schneidet sie oben und unten ab.
+
+### Nachtrag 24.08.2026: der Name liegt jetzt IM Kreis — und der Kreis wuchs um ein Viertel
+
+Zaur hat einen Wettbewerber aus derselben Gegend danebengelegt: Dort steht der Name **als Pille auf
+der Unterkante des Kreises** statt als Textzeile darunter. Sein Schluss war der richtige — *„somit
+konnten sie die Story-Kreise größer machen für dieselbe Fläche."*
+
+Gerechnet: Die Textzeile kostete rund 18 Punkte Höhe, in denen nichts zu sehen war. Vorher
+62 + 5 Abstand + ~13 Zeile = **80**. Jetzt 78 Kreis + 6 Überstand der Pille = **84**. Vier Punkte
+mehr für einen Kreis, der im Durchmesser um ein Viertel und **in der Fläche um die Hälfte** wächst.
+
+Das ist keine Kosmetik: Der Ring ist das Einzige auf der Startseite, das sich täglich ändert, und
+er existiert, damit die App nicht tot aussieht, wenn niemand sendet. Größe ist dafür das Werkzeug —
+eine 62er-Scheibe mit Bildunterschrift liest sich als Liste, eine 78er als Bühne.
+
+Drei Maße, die daran hängen und keine Geschmacksfrage sind:
+
+- **Die Pille trägt `ui.onImage`**, nicht eine helle Fläche. Der Kreis zeigt ein fremdes
+  Profilbild; heller Text darauf ist auf dem einen lesbar und auf dem nächsten weg — dieselbe
+  Begründung wie bei `ui.overlay`, nur nach dunkel. Nachgerechnet gegen den schlimmsten Fall (ein
+  schneeweißes Bild darunter): Weiß auf der Pille kommt auf **9,3 : 1**.
+- **Höchstens `SIZE + 6` breit.** Bei `SIZE + 10` spannte „Deine Story" die Pille über die ganze
+  Zelle und stand beidseitig über den Kreis hinaus — dann trägt nicht mehr der Kreis den Namen,
+  sondern der Name den Kreis.
+- **Das „+" musste nach oben rechts.** Es lag bei `top: SIZE − 20`, also genau dort, wo die Pille
+  jetzt sitzt. Die neue Stelle ist gerechnet, nicht geschätzt: Mittelpunkt (44|39), Radius 39, der
+  45°-Punkt liegt bei (71,6|11,4). Ein `right: 0` klebte am Rand der **Zelle** (Breite 88) und
+  stünde damit neben dem Kreis statt auf ihm.
+
+⚠️ **Die Highlight-Scheiben auf dem Profil bleiben, wie sie sind** (Name unter dem Kreis). Zwei
+Gründe: Dort ist der Name die eigentliche Auskunft („Abayas", „Versand") und gehört nicht über ein
+Produktfoto gelegt, und das Profil scrollt ohnehin — die Enge, die den Umbau hier rechtfertigt,
+gibt es dort nicht.
 
 ### ⚠️ Ein Fehler beim Bauen, gefunden am Simulator
 
