@@ -20,3 +20,22 @@ verify_jwt = false
 
 [functions.bunny-webhook]
 verify_jwt = false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# r2-delete: dieselbe Klasse, aber der Anrufer ist kein Dritter, sondern der
+# eigene 5-Minuten-Cron. `20260517153000_r2_media_cleanup_public_processor_cron`
+# schickt BEWUSST nur `Content-Type` und keinen Authorization-Kopf — die Function
+# behandelt `{processQueue:true}` deshalb VOR jeder Auth-Prüfung. Das ist kein
+# Loch: `r2_delete_queue` hat RLS an, keine Policy und keinen Grant, kein Client
+# kann hineinschreiben. Die Tabelle IST die Vertrauensgrenze.
+#
+# Steht verify_jwt auf true (Default), weist das Gateway den Cron mit
+# `UNAUTHORIZED_NO_AUTH_HEADER` ab, bevor die Function startet. Niemand liest die
+# Antwort, die Zeilen bleiben für immer `pending` — genau so ist der Aufräumer am
+# 07.07.2026 gestorben und erst am 24.08. aufgefallen (22 Zeilen im Rückstau).
+#
+# Die anderen Wege bleiben geschützt, sie prüfen selbst: `selfTest` und `prefix`
+# über `isAdminCleanup`, `keys`/`urls` über `getUserId` + `assertAllowedKey`.
+# ─────────────────────────────────────────────────────────────────────────────
+[functions.r2-delete]
+verify_jwt = false
