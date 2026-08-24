@@ -6,13 +6,13 @@
 // Dieselbe Regel wie beim „Demnächst"-Streifen (Übergabe 62, Fund 6) und beim
 // Fuss-Knopf der Kategorie-Seite.
 //
-// Angemeldet ohne jede Story sieht man nur die eigene „+"-Scheibe. Das ist
-// Absicht: Sie ist eine Einladung, keine Behauptung über andere.
+// Angemeldet ohne jede Story sieht man nur die Kamera-Kachel. Das ist Absicht:
+// Sie ist eine Einladung, keine Behauptung über andere.
 
 import { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Plus } from 'lucide-react-native';
+import { Camera } from 'lucide-react-native';
 
 import { Avatar } from './Avatar';
 import type { StoryGroup } from '../lib/useStories';
@@ -46,21 +46,61 @@ const PILL_OVERHANG = 6;
 type Props = {
   groups: StoryGroup[];
   myUserId: string | null;
-  /**
-   * Das eigene Profilbild.
-   *
-   * ⚠️ Muss von aussen kommen und darf NICHT aus `groups` gelesen werden: Wer
-   * noch keine Story hat, steht dort gar nicht drin — die eigene Scheibe zeigte
-   * dann ein „?" statt des eigenen Gesichts. Genau das war beim ersten Bau der
-   * Fall, und es sieht aus wie ein Fehler, nicht wie eine Einladung.
-   */
-  myAvatarUrl?: string | null;
-  myUsername?: string | null;
-  /** Läuft gerade ein Upload? Dann ist die eigene Scheibe gesperrt. */
+  /** Läuft gerade ein Upload? Dann ist die Kamera-Kachel gesperrt. */
   busy?: boolean;
   onOpen: (userId: string) => void;
   onCreate: () => void;
 };
+
+/**
+ * Die Kamera-Kachel ganz vorne.
+ *
+ * ── ⚠️ WARUM SIE DAUERHAFT DASTEHT (24.08.2026) ─────────────────────────────
+ *
+ * Bis heute trug die eigene Scheibe ein „+", aber nur `plus={!mine}` — also nur,
+ * solange man KEINE Story hatte. Sobald eine stand, öffnete ein Tipp den
+ * Betrachter, und es gab **keinen Weg mehr, eine zweite hinzuzufügen**. Man
+ * hätte die erste löschen müssen. Das war eine Lücke, kein Entwurf.
+ *
+ * Zwei Auswege waren möglich:
+ *
+ *   1. Instagram: Das „+"-Abzeichen bleibt auf der eigenen Scheibe. Tipp auf den
+ *      Kreis = ansehen, Tipp auf das Abzeichen = neu. **Verworfen** — das sind
+ *      zwei Ziele auf einem Kreis, und das kleinere (22 Punkte) ist das
+ *      wichtigere. Für eine Zielgruppe, die nicht täglich Instagram bedient, ist
+ *      dieser Unterschied unsichtbar.
+ *   2. Eine eigene Kachel davor. **Gewählt** — ein großes, eindeutiges Ziel, das
+ *      immer dasselbe tut. So macht es auch der Wettbewerber, an dem Berkat sich
+ *      hier misst.
+ *
+ * Sie kostet dauerhaft einen Platz. Bei fünf Verkäufern ist das der richtige
+ * Handel: Der Engpass ist nicht der Platz im Ring, sondern dass überhaupt jemand
+ * etwas hineinstellt.
+ */
+function AddTile({ dimmed, onPress }: { dimmed?: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={dimmed}
+      style={({ pressed }) => [s.item, (pressed || dimmed) && s.itemPressed]}
+      accessibilityRole="button"
+      accessibilityLabel="Story hinzufügen"
+    >
+      {/* Gestrichelt, damit die Kachel als PLATZ lesbar ist und nicht als Bild,
+          das nicht geladen hat — dieselbe Sprache wie die „Neu"-Scheibe bei den
+          Highlights. Ein Kamera-Zeichen statt eines „+", weil es sagt, WAS
+          passiert: Es geht ein Bild-Wähler auf, kein Formular. */}
+      <View style={s.add}>
+        <Camera size={26} color={ui.brand} strokeWidth={1.8} />
+      </View>
+      <View style={s.pill}>
+        <Text numberOfLines={1} style={s.pillText}>
+          Hinzufügen
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
 
 function Bubble({
   label,
@@ -68,28 +108,24 @@ function Bubble({
   avatarUrl,
   name,
   seen,
-  plus,
-  dimmed,
   onPress,
 }: {
   label: string;
   /**
    * Das ERSTE Bild dieser Story-Reihe — das, was beim Antippen als Erstes
-   * kommt. Fehlt es (eigene Scheibe ohne Story), tritt das Profilbild ein.
+   * kommt. Eine Scheibe ohne Story gibt es nicht mehr; das Anlegen hat seit dem
+   * 24.08.2026 eine eigene Kachel.
    */
   coverUrl: string | null;
   avatarUrl: string | null;
   name: string | null;
   seen: boolean;
-  plus?: boolean;
-  dimmed?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      disabled={dimmed}
-      style={({ pressed }) => [s.item, (pressed || dimmed) && s.itemPressed]}
+      style={({ pressed }) => [s.item, pressed && s.itemPressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
@@ -114,15 +150,6 @@ function Bubble({
           )}
         </View>
       </View>
-
-      {/* ⚠️ Das „+" sitzt OBEN rechts, nicht unten — unten steht jetzt der Name.
-          Vor dem 24.08.2026 lag es bei `top: SIZE - 20`, also genau dort, wo die
-          Pille hingehört; beides zusammen hätte sich überlappt. */}
-      {plus ? (
-        <View style={s.plus}>
-          <Plus size={13} color={ui.card} strokeWidth={3} />
-        </View>
-      ) : null}
 
       {/* Der Name liegt AUF der Kreis-Unterkante statt darunter. Damit fällt die
           eigene Textzeile weg, und der Kreis nimmt sich ihren Platz. */}
@@ -151,7 +178,7 @@ function coverOf(group: StoryGroup | null): string | null {
   return first.thumbnail_url || first.media_url || null;
 }
 
-function StoryRailInner({ groups, myUserId, myAvatarUrl, myUsername, busy, onOpen, onCreate }: Props) {
+function StoryRailInner({ groups, myUserId, busy, onOpen, onCreate }: Props) {
   const mine = groups.find((g) => g.userId === myUserId) ?? null;
   const others = groups.filter((g) => g.userId !== myUserId);
 
@@ -166,19 +193,20 @@ function StoryRailInner({ groups, myUserId, myAvatarUrl, myUsername, busy, onOpe
       contentContainerStyle={s.row}
       style={s.wrap}
     >
-      {myUserId ? (
+      {/* Die Kamera-Kachel steht IMMER vorne, auch wenn schon eine Story steht.
+          Genau das war vorher nicht so, und deshalb kam man nach der ersten
+          Story nicht mehr an eine zweite (Begründung an `AddTile`). */}
+      {myUserId ? <AddTile dimmed={busy} onPress={onCreate} /> : null}
+
+      {mine ? (
         <Bubble
-          label={mine ? 'Deine Story' : 'Hinzufügen'}
-          // Ohne eigene Story gibt es kein Bild — dann steht hier das
-          // Profilbild mit dem „+", und das ist die Einladung.
+          label="Deine Story"
           coverUrl={coverOf(mine)}
-          avatarUrl={mine?.avatarUrl ?? myAvatarUrl ?? null}
-          name={mine?.username ?? myUsername ?? null}
+          avatarUrl={mine.avatarUrl}
+          name={mine.username}
           // Die eigene Story ist nie „ungesehen" — man hat sie selbst gemacht.
-          seen={!mine ? true : mine.seen}
-          plus={!mine}
-          dimmed={busy}
-          onPress={() => (mine ? onOpen(mine.userId) : onCreate())}
+          seen={mine.seen}
+          onPress={() => onOpen(mine.userId)}
         />
       ) : null}
 
@@ -232,19 +260,18 @@ const s = StyleSheet.create({
     backgroundColor: ui.sunken,
   },
 
-  plus: {
-    position: 'absolute',
-    // Auf dem Kreisrand, oben rechts bei 45° — gerechnet, nicht geschätzt:
-    // Mittelpunkt (44|39), Radius 39, also (44+27,6 | 39−27,6). Ein `right: 0`
-    // klebte am Rand der ZELLE (Breite 88) und stünde damit neben dem Kreis.
-    right: 5,
-    top: 1,
-    width: 22,
-    height: 22,
+  /**
+   * Die Kamera-Kachel. Gleiche Außenmaße wie eine Scheibe, damit die Reihe
+   * fluchtet — nur ohne Ring, weil sie keine Story IST.
+   */
+  add: {
+    width: SIZE,
+    height: SIZE,
     borderRadius: radius.pill,
-    backgroundColor: ui.brand,
-    borderWidth: 2,
-    borderColor: ui.bg,
+    backgroundColor: ui.card,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: ui.lineStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },

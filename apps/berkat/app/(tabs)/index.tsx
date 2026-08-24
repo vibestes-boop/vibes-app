@@ -120,7 +120,12 @@ export default function HomeScreen() {
   // fehlende Zahl darf die Startseite nicht mitreißen.
   const userId = useSession((st) => st.userId);
   // Stories: der Ring über dem Regal. Begründung in `lib/useStories.ts`.
-  const myProfile = useSession((st) => st.profile);
+  //
+  // ⚠️ Das eigene Profil wird hier NICHT mehr gebraucht. Bis zum 24.08.2026
+  // gingen Bild und Name hinein, weil die eigene Scheibe vor der ersten Story
+  // den Avatar zeigte. Seit die Kamera-Kachel das Anlegen übernimmt, gibt es
+  // diese Scheibe nicht mehr — und eine Scheibe MIT Story bringt Bild und Name
+  // aus ihrer eigenen Gruppe mit.
   const { data: storyGroups = [] } = useBerkatStories();
   const createStory = useCreateStory();
   const { data: unread = 0 } = useUnreadCount(userId);
@@ -537,8 +542,6 @@ export default function HomeScreen() {
               <StoryRail
                 groups={storyGroups}
                 myUserId={userId ?? null}
-                myAvatarUrl={myProfile?.avatar_url ?? null}
-                myUsername={myProfile?.username ?? null}
                 busy={createStory.isPending}
                 onOpen={(sellerId) => router.push(`/story/${sellerId}`)}
                 onCreate={() =>

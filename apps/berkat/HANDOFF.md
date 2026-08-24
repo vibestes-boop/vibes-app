@@ -6744,9 +6744,9 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A20 | **Der Live-/Termin-Slot** auf dem umgebauten Profil: Bei laufender Sendung muss der rote Streifen ohne Scrollen sichtbar sein. Er ist durch den Umbau nach OBEN gerückt, sollte also unkritisch sein — einmal ansehen genügt | 76 |
 | A21 | **Highlights, der ganze Weg** (24.08.): auf dem eigenen Profil „+" → Name → einmal „Foto hinzufügen", einmal ein Bild aus den eigenen Stories → Scheibe steht über den Reitern → antippen → Betrachter → Papierkorb löscht das **ganze** Highlight. ⚠️ Am 24.08. am **Entwickler-Build** durchgespielt und in Ordnung; offen ist die Gegenprobe auf **TestFlight** (dort ist `__DEV__` aus) | 83 |
 | A22 | **Die Grenzen des Blattes**: 12 Bilder wählen — der Knopf muss auf „Höchstens 12 Bilder" umschlagen. Und ein Foto über 8 MB: die Meldung muss die **tatsächliche Größe** nennen, nicht „hat nicht geklappt" | 83 |
-| A23 | **Story-Ring mit FREMDEN Stories** — braucht `scripts/seed-berkat-stories.mjs` (Abschnitt 83). Drei Scheiben, die ungesehenen mit Marken-Ring; eine öffnen, durchblättern, schliessen; zurück im Ring muss der Ring dieser Scheibe **blass** sein. ⚠️ Der Einzelfall (eine eigene Story) ist am 24.08. belegt — der Ring selbst nicht | 81, 83 |
+| ~~A23~~ | ~~**Story-Ring mit FREMDEN Stories**~~ — ✅ **am 24.08.2026 belegt**, und zwar am echten Datenstand statt an der Testware: Zaur hat von einem zweiten Konto eine Story gestellt. Gesehen: fremde Scheibe mit **dunklem Marken-Ring** neben der eigenen mit blassem · zwei eigene Stories = **zwei Balken**, beide durchgelaufen · nach dem Ansehen wurde der fremde Ring **blass**. Damit trägt der Sicht-Vermerk bis in die Anzeige. ⚠️ Offen bleibt nur das Verhalten bei VIELEN Scheiben (Scrollen) — dafür ist das Seed-Skript da | 81, 83 |
 | A24 | **Mehrere Bilder in EINEM Highlight**: drei auswählen, anlegen, öffnen — drei Balken, Tipp rechts blättert weiter, Tipp links zurück, am Ende schliesst es. Angelegt wurden bisher nur Highlights mit **einem** Bild | 83 |
-| A25 | **Das „+" auf der eigenen Story-Scheibe** (24.08.): Es ist wegen der Namens-Pille von unten rechts nach **oben rechts** gewandert. Die Stelle ist gerechnet, aber **nie gesehen** — das Testkonto hat eine Story, und dann rendert das „+" gar nicht. Sichtbar wird es, sobald die eine Story abgelaufen ist. ⚠️ Gleiches gilt für die Pille „Hinzufügen" statt „Deine Story" | 81, Nachtrag |
+| ~~A25~~ | ~~**Das „+" auf der eigenen Story-Scheibe**~~ — **hinfällig.** Das „+" gibt es nicht mehr; das Anlegen hat seit dem 24.08. eine eigene Kamera-Kachel, und die ist am Simulator belegt (Tipp öffnet den Bild-Wähler, auch wenn schon eine Story steht) | 81, Nachtrag |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -10062,10 +10062,36 @@ Drei Maße, die daran hängen und keine Geschmacksfrage sind:
 - **Höchstens `SIZE + 6` breit.** Bei `SIZE + 10` spannte „Deine Story" die Pille über die ganze
   Zelle und stand beidseitig über den Kreis hinaus — dann trägt nicht mehr der Kreis den Namen,
   sondern der Name den Kreis.
-- **Das „+" musste nach oben rechts.** Es lag bei `top: SIZE − 20`, also genau dort, wo die Pille
-  jetzt sitzt. Die neue Stelle ist gerechnet, nicht geschätzt: Mittelpunkt (44|39), Radius 39, der
-  45°-Punkt liegt bei (71,6|11,4). Ein `right: 0` klebte am Rand der **Zelle** (Breite 88) und
-  stünde damit neben dem Kreis statt auf ihm.
+- ~~**Das „+" musste nach oben rechts.**~~ Zwischenschritt, eine halbe Stunde alt und wieder weg —
+  das „+" gibt es gar nicht mehr, siehe den nächsten Block.
+
+### ⚠️ Und dabei fiel eine Lücke auf: nach der ersten Story gab es keine zweite
+
+Zaurs Frage: *„wenn man eine Story hinzugefügt hat, wie kann man eine zweite hinzufügen?"*
+
+Die Antwort war: **gar nicht.** Die eigene Scheibe trug ein „+", aber nur über `plus={!mine}` —
+also nur, solange man keine Story hatte. Sobald eine stand, öffnete ein Tipp den Betrachter, und es
+gab keinen Weg mehr zu einer zweiten. Man hätte die erste löschen müssen. Das war eine Lücke, kein
+Entwurf, und sie stand seit dem Bau am 23.08. drin.
+
+Zwei Auswege gab es:
+
+1. **Instagram:** Das „+"-Abzeichen bleibt auf der eigenen Scheibe. Tipp auf den Kreis = ansehen,
+   Tipp auf das Abzeichen = neu. **Verworfen** — zwei Ziele auf einem Kreis, und das kleinere
+   (22 Punkte) ist das wichtigere. Für eine Zielgruppe, die nicht täglich Instagram bedient, ist
+   dieser Unterschied unsichtbar.
+2. **Eine eigene Kamera-Kachel davor**, dauerhaft, die eigene Story als normale Scheibe daneben.
+   **Gewählt** — ein großes, eindeutiges Ziel, das immer dasselbe tut. So macht es auch der
+   Wettbewerber auf Zaurs Bild.
+
+Sie kostet dauerhaft einen Platz im Ring. Bei fünf Verkäufern ist das der richtige Handel: Der
+Engpass ist nicht der Platz, sondern dass überhaupt jemand etwas hineinstellt.
+
+⚠️ **Zwei Props sind dadurch weggefallen** (`myAvatarUrl`, `myUsername` an `StoryRail`). Sie kamen
+aus dem Fehler vom 23.08. — die eigene Scheibe zeigte vor der ersten Story ein „?", weil sie ihr
+Profil aus der Story-Liste las, in der sie noch gar nicht stand. Diese Scheibe gibt es jetzt nicht
+mehr: Ohne Story steht dort die Kamera-Kachel, und eine Scheibe MIT Story bringt Bild und Name aus
+ihrer eigenen Gruppe mit. Der Fix ist nicht zurückgenommen, sondern gegenstandslos geworden.
 
 ⚠️ **Die Highlight-Scheiben auf dem Profil bleiben, wie sie sind** (Name unter dem Kreis). Zwei
 Gründe: Dort ist der Name die eigentliche Auskunft („Abayas", „Versand") und gehört nicht über ein

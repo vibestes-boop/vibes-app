@@ -173,6 +173,12 @@ export function useHighlight(highlightId: string | null | undefined) {
  * Ring. Das ist der Punkt der Funktion: Was aus dem Ring gefallen ist, soll
  * genau hier noch einmal auftauchen. Die RLS lässt eigene Zeilen in jedem Fall
  * durch (`stories_own_archived_select`).
+ *
+ * ⚠️ ABER NICHT MEHR OHNE JEDE GRENZE: `media_purged_at` muss leer sein. Seit
+ * `20260824130000` räumt ein Cron die Dateien von Stories fort, die älter als
+ * 90 Tage sind — die Zeile bleibt, das Bild nicht. Ohne diesen Filter böte der
+ * Picker tote Adressen an, und ein daraus gebautes Highlight wäre von der
+ * ersten Sekunde an kaputt.
  */
 export function useMyStoryArchive(enabled: boolean) {
   const myUserId = useSession((s) => s.userId);
@@ -187,6 +193,7 @@ export function useMyStoryArchive(enabled: boolean) {
         .select('id, media_url, thumbnail_url, created_at')
         .eq('user_id', myUserId!)
         .eq('app', 'berkat')
+        .is('media_purged_at', null)
         .order('created_at', { ascending: false })
         .limit(60);
       if (error) throw error;
