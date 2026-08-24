@@ -48,7 +48,7 @@ import { Avatar } from '../../components/Avatar';
 import { pickAndUpload } from '../../lib/uploadImage';
 import { REPORT_REASONS, useMyBlocks, useSellerActions } from '../../lib/useSellerActions';
 import { disputeReasonLabel, orderRef, useDisputeWith } from '../../lib/useDispute';
-import { useListing, useListingsByIds } from '../../lib/useListings';
+import { listingPrice, useListing, useListingsByIds } from '../../lib/useListings';
 import { formatEuro } from '../../lib/useAuction';
 import { formatCents } from '../../lib/useShipping';
 import { keyboardKit } from '../../lib/keyboardKit';
@@ -568,14 +568,21 @@ export default function ConversationScreen() {
                       {item.listing_id && listingsById?.get(item.listing_id) ? (
                         (() => {
                           const l = listingsById.get(item.listing_id)!;
+                          // ⚠️ `useListingsByIds` filtert bewusst NICHT auf
+                          // den Status — eine Karte soll auch dann noch
+                          // stehen, wenn der Artikel inzwischen verkauft ist.
+                          // Damit kann hier seit dem 25.08.2026 auch Show-Ware
+                          // landen, und deren `buy_now_cents` ist oft 0. Ein
+                          // „0 €" in einer Chat-Karte wäre die falscheste
+                          // Zahl, die dieser Bildschirm zeigen kann.
+                          const p = listingPrice(l);
+                          const priceText = `${p.from ? 'ab ' : ''}${formatEuro(p.cents)}`;
                           return (
                             <Pressable
                               style={[styles.prod, mine && styles.prodMine]}
                               onPress={() => router.push(`/listing/${l.id}`)}
                               accessibilityRole="button"
-                              accessibilityLabel={`${l.title}, ${formatEuro(
-                                l.buy_now_cents,
-                              )} — Angebot ansehen`}
+                              accessibilityLabel={`${l.title}, ${priceText} — Angebot ansehen`}
                             >
                               {l.image_url ? (
                                 <Image
@@ -595,7 +602,7 @@ export default function ConversationScreen() {
                                   {l.title}
                                 </Text>
                                 <Text style={[styles.prodPrice, mine && styles.prodPriceMine]}>
-                                  {formatEuro(l.buy_now_cents)}
+                                  {priceText}
                                 </Text>
                               </View>
                             </Pressable>

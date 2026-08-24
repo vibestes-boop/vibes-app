@@ -57,12 +57,19 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BellPlus, ChevronLeft, Search, SlidersHorizontal, X } from 'lucide-react-native';
+import {
+  BellPlus,
+  CalendarClock,
+  ChevronLeft,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { formatEuro, useProfiles } from '../lib/useAuction';
-import { useShopListings, type Listing } from '../lib/useListings';
+import { isShowItem, listingPrice, useShopListings, type Listing } from '../lib/useListings';
 import { useSavedIds, useToggleSaved, useSavedCounts } from '../lib/useSaved';
 import {
   normalizeQuery,
@@ -167,6 +174,20 @@ export default function ShopScreen() {
   const [size, setSize] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  /**
+   * „Nur Show-Ware" — Whatnots `In Show`-Chip.
+   *
+   * ⚠️ Er steht in der Leiste und NICHT im Filter-Blatt, und das ist derselbe
+   * Grund, aus dem dort der Filter-Knopf vor der Sortierung steht: Er
+   * verändert die Art dessen, was man sieht, nicht nur eine Eigenschaft.
+   * „Kann ich das jetzt kaufen oder muss ich Freitag dabei sein?" ist die
+   * gröbste Frage auf diesem Bildschirm — sie gehört an die Oberfläche.
+   *
+   * Bewusst ein **Schalter**, kein Dreifach-Wähler (alles / nur Regal / nur
+   * Show): Für „nur Regal" gibt es keinen Anlass, den jemand hat. Wer sofort
+   * kaufen will, sortiert nicht — er tippt auf das, was kein Datum trägt.
+   */
+  const [onlyShow, setOnlyShow] = useState(false);
 
   const activeFilters = [cat, cond, size, city, maxPrice].filter((v) => v !== null).length;
   const resetFilters = useCallback(() => {
@@ -175,6 +196,12 @@ export default function ShopScreen() {
     setSize(null);
     setCity(null);
     setMaxPrice(null);
+    // ⚠️ Gehört mit zurückgesetzt, obwohl er nicht im Blatt sitzt: Der
+    // Leerzustand verspricht „Filter zurücksetzen" und meint damit alles, was
+    // gerade eingrenzt. Einen Eingrenzer stehen zu lassen, den der Knopf nicht
+    // nennt, ist genau der Fehler, den der Leerzustand hier schon einmal
+    // hatte — jemand tippt und steht weiter vor einer leeren Fläche.
+    setOnlyShow(false);
   }, []);
 
   // Gespeicherte Suche. Die Meldung erzeugt der Server (Trigger
@@ -241,7 +268,12 @@ export default function ShopScreen() {
 
   /** Preisstufen, die zum Bestand passen — „bis 500 €" wäre bei 249 € Höchstpreis sinnlos. */
   const priceSteps = useMemo(() => {
-    const top = Math.max(0, ...listings.map((l) => l.buy_now_cents));
+    // Preislose Zeilen fallen raus, statt als 0 zu zählen: Sie sagen nichts
+    // über die Spanne des Bestands aus.
+    const known = listings
+      .map((l) => listingPrice(l).cents)
+      .filter((c): c is number => c !== null);
+    const top = Math.max(0, ...known);
     return [2500, 5000, 10000, 25000].filter((c) => c < top);
   }, [listings]);
 
@@ -250,6 +282,27 @@ export default function ShopScreen() {
   // nicht mehr an sie heran, um den Suchbegriff zu ändern.
   const showTools = listings.length >= TOOLS_FROM;
 
+  // Aus demselben Grund am geladenen Bestand: Sonst verschwände der Chip in
+  // dem Moment, in dem er eingeschaltet ist und die Liste nur noch Show-Ware
+  // zeigt — man käme nicht mehr heraus.
+  const hasShowItems = useMemo(() => listings.some(isShowItem), [listings]);
+
+  /**
+   * Ist die Liste gerade eingegrenzt — egal womit?
+   *
+   * ⚠️ Diese Variable ist die Antwort auf eine Warnung, die zwei Bildschirme
+   * weiter unten stand und die ich beim Bauen ausgelöst habe: „Wer hier eine
+   * dritte Art der Eingrenzung einbaut, muss sie in diese Bedingung
+   * aufnehmen." Die Bedingung war an DREI Stellen abgeschrieben (Trefferzahl
+   * im Kopf, Leerzustand, Text darin) — der Chip wäre also an zwei davon
+   * vergessen worden, und der Kopf hätte „38 Artikel" über vier Karten
+   * geschrieben. Genau der Fehler vom 18.08.2026, nur mit neuem Auslöser.
+   *
+   * Eine Warnung ist kein Riegel. Jetzt gibt es die Bedingung einmal.
+   */
+  const narrowedByFilter = activeFilters > 0 || onlyShow;
+  const narrowed = Boolean(query.trim()) || narrowedByFilter;
+
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const found = listings.filter((l) => {
@@ -257,11 +310,23 @@ export default function ShopScreen() {
       // das Ergebnis gleich. Zusammen in EINEM Durchlauf, weil zwei Durchläufe
       // über dieselbe Liste nichts gewinnen.
       // Vergleich auf Elternebene: „Mode" muss auch „Abaya" durchlassen.
+      if (onlyShow && !isShowItem(l)) return false;
       if (cat && (!l.category || (parentOf.get(l.category) ?? l.category) !== cat)) return false;
       if (cond && l.condition !== cond) return false;
       if (size && l.size !== size) return false;
       if (city && l.city !== city) return false;
-      if (maxPrice !== null && l.buy_now_cents > maxPrice) return false;
+      // ⚠️ `listingPrice`, nicht `buy_now_cents`. Bei Show-Ware ist der
+      // Sofortkauf-Preis freiwillig und meistens 0 — „bis 25 €" hätte sonst
+      // jeden vorbereiteten Artikel durchgelassen, auch den, der bei 300 €
+      // startet. Ein Filter, der stillschweigend das Falsche misst, ist
+      // schlimmer als keiner: Man glaubt, man habe eingegrenzt.
+      if (maxPrice !== null) {
+        const c = listingPrice(l).cents;
+        // ⚠️ Ohne Preis fliegt die Zeile RAUS, nicht rein. „Bis 25 €" ist eine
+        // Zusage; eine Zeile durchzulassen, von der man nicht weiss, was sie
+        // kostet, bricht sie. Im Zweifel weniger zeigen als falsch zusagen.
+        if (c === null || c > maxPrice) return false;
+      }
       if (!needle) return true;
       // Titel, Größe und Ort: die drei Dinge, nach denen jemand im Regal sucht —
       // „Abaya", „42", „Berlin". Die Beschreibung bleibt draußen, sie würde bei
@@ -281,12 +346,24 @@ export default function ShopScreen() {
     // `filter()` gibt bereits ein neues Feld zurück — hier darf also an Ort und
     // Stelle sortiert werden, ohne den Zwischenspeicher von React Query
     // umzustellen.
-    return found.sort((a, b) =>
-      sort === 'guenstig'
-        ? a.buy_now_cents - b.buy_now_cents
-        : b.buy_now_cents - a.buy_now_cents,
-    );
-  }, [listings, query, sort, cat, cond, size, city, maxPrice, parentOf]);
+    //
+    // ⚠️ Auch hier der wirksame Preis. Mit `buy_now_cents` hätte „Günstigste"
+    // die gesamte Show-Ware an den Anfang gezogen — nicht weil sie billig ist,
+    // sondern weil dort eine 0 steht, wo kein Sofortkauf angeboten wird.
+    //
+    // ⚠️ Zeilen ohne Preis stehen in BEIDEN Richtungen hinten. Ein unbekannter
+    // Preis hat keinen Platz auf einer Skala — ihn als 0 zu behandeln machte
+    // ihn zum billigsten, als Unendlich zum teuersten. Beides wäre erfunden.
+    const rank = (l: Listing) => listingPrice(l).cents;
+    return found.sort((a, b) => {
+      const x = rank(a);
+      const y = rank(b);
+      if (x === null && y === null) return 0;
+      if (x === null) return 1;
+      if (y === null) return -1;
+      return sort === 'guenstig' ? x - y : y - x;
+    });
+  }, [listings, query, sort, cat, cond, size, city, maxPrice, onlyShow, parentOf]);
 
   // Wie oft andere sich einen Artikel gemerkt haben — nur die Summe, nie wer
   // (`get_saved_counts`, `20260822120000`). Nur für die Artikel, die gerade
@@ -330,14 +407,23 @@ export default function ShopScreen() {
 
                   ⚠️ Das galt zuerst nur für die SUCHE. Am 18.08.2026 am Gerät
                   gesehen: Mit den Filtern „Mode" und „Berlin" standen zwei
-                  Karten da und darüber „38 Artikel". Wer hier eine dritte Art
-                  der Eingrenzung einbaut, muss sie in diese Bedingung
-                  aufnehmen. */}
-              {query.trim() || activeFilters > 0
+                  Karten da und darüber „38 Artikel". Die Bedingung dafür heisst
+                  seit dem 25.08. `narrowed` und steht an genau einer Stelle —
+                  siehe dort, warum.
+
+                  ⚠️ Und „rund um die Uhr" stimmt nur noch für das Regal. Liegt
+                  Show-Ware mit dabei, ist ein Teil der Liste eben NICHT rund um
+                  die Uhr zu haben, sondern Freitag um acht. Ein Untertitel, der
+                  etwas verspricht, das für die halbe Liste nicht gilt, ist
+                  keine Kleinigkeit — er ist der Grund, warum jemand auf ein
+                  Datum tippt und Kaufen erwartet. */}
+              {narrowed
                 ? shown.length === 1
                   ? '1 Treffer'
                   : `${shown.length} Treffer`
-                : `${listings.length} Artikel · rund um die Uhr`}
+                : hasShowItems
+                  ? `${listings.length} Artikel · Regal und kommende Shows`
+                  : `${listings.length} Artikel · rund um die Uhr`}
             </Text>
           ) : null}
         </View>
@@ -397,6 +483,26 @@ export default function ShopScreen() {
               </Text>
             </Pressable>
 
+            {/* ⚠️ Nur wenn es Show-Ware GIBT. Ein Chip, der garantiert null
+                Treffer liefert, ist dieselbe Sorte Lärm wie eine feste
+                Kategorienliste mit leeren Einträgen — die Begründung dafür
+                steht ein paar Zeilen höher bei `options`. Heute ist der Chip
+                deshalb meistens gar nicht da, und das ist richtig so. */}
+            {hasShowItems ? (
+              <Pressable
+                onPress={() => setOnlyShow((v) => !v)}
+                style={[styles.chip, styles.filterChip, onlyShow && styles.chipOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: onlyShow }}
+                accessibilityLabel={
+                  onlyShow ? 'Alle Angebote zeigen' : 'Nur Artikel aus kommenden Sendungen'
+                }
+              >
+                <CalendarClock size={14} color={onlyShow ? ui.bg : ui.text} />
+                <Text style={[styles.chipText, onlyShow && styles.chipTextOn]}>In einer Show</Text>
+              </Pressable>
+            ) : null}
+
             {SORTS.map((option) => {
               const on = option.key === sort;
               return (
@@ -431,7 +537,7 @@ export default function ShopScreen() {
         ListEmptyComponent={
           isLoading ? (
             <ActivityIndicator style={{ marginTop: space.xl }} color={ui.textMuted} />
-          ) : query.trim() || activeFilters > 0 ? (
+          ) : narrowed ? (
             // ⚠️ NICHT „Noch nichts im Regal": Das Regal ist voll, es passt nur
             // nichts zur Auswahl. Derselbe Fehler wie am 18.08. auf der
             // Startseite — ein Leerzustand, der über die falsche Menge redet
@@ -447,12 +553,18 @@ export default function ShopScreen() {
                 {query.trim() ? `Nichts für „${query.trim()}"` : 'Nichts in dieser Auswahl'}
               </Text>
               <Text style={styles.emptyBody}>
-                {query.trim() && activeFilters > 0
+                {query.trim() && narrowedByFilter
                   ? 'Es liegt an der Suche, an den Filtern — oder an beidem zusammen.'
                   : query.trim()
                     ? 'Gesucht wird in Titel, Größe und Ort. Versuch ein anderes Wort.'
-                    : 'Die Filter sind zu eng. Nimm einen davon weg.'}
-                {` Im Regal liegen ${listings.length} Artikel.`}
+                    : onlyShow && activeFilters === 0
+                      ? // Der eine Fall, in dem der Grund NICHT „zu eng" ist,
+                        // sondern schlicht „gibt es gerade nicht". Ihn wie einen
+                        // zu engen Filter zu behandeln würde jemanden Knöpfe
+                        // drücken lassen, die nichts ändern können.
+                        'Für kommende Sendungen ist gerade nichts vorbereitet.'
+                      : 'Die Filter sind zu eng. Nimm einen davon weg.'}
+                {` Insgesamt liegen ${listings.length} Artikel bereit.`}
               </Text>
               <Pressable
                 style={({ pressed }) => [styles.clearCta, pressed && { opacity: 0.7 }]}
@@ -464,7 +576,7 @@ export default function ShopScreen() {
                 accessibilityLabel="Suche und Filter zurücksetzen"
               >
                 <Text style={styles.clearCtaText}>
-                  {query.trim() && activeFilters > 0
+                  {query.trim() && narrowedByFilter
                     ? 'Suche und Filter zurücksetzen'
                     : query.trim()
                       ? 'Suche zurücksetzen'

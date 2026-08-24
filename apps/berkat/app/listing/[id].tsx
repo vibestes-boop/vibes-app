@@ -56,6 +56,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  Bell,
+  BellRing,
+  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -79,7 +82,12 @@ import {
   sellerKindNote,
   useBerkatSeller,
 } from '../../lib/useBerkatSeller';
-import { listingImages, useListing, useSellerListings } from '../../lib/useListings';
+import {
+  listingImages,
+  listingPrice,
+  useListing,
+  useSellerListings,
+} from '../../lib/useListings';
 import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import {
   offerErrorText,
@@ -87,6 +95,12 @@ import {
   useOffersForListing,
   type Offer,
 } from '../../lib/useOffers';
+import {
+  reminderErrorText,
+  useMyReminder,
+  useReminderActions,
+} from '../../lib/useReminders';
+import { formatSlot } from '../../lib/useSchedule';
 import { REPORT_REASONS, useSellerActions } from '../../lib/useSellerActions';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
 import { shippingHint, useShippingFrom } from '../../lib/useShipping';
@@ -228,7 +242,44 @@ export default function ListingScreen() {
   );
 
   const mine = Boolean(myUserId && listing && myUserId === listing.seller_id);
-  const gone = Boolean(listing && listing.status !== 'listed');
+  /**
+   * Für einen Abend vorbereitet — der Artikel ist da, aber noch nicht dran.
+   *
+   * ⚠️ Seit dem 25.08.2026 kommt man hier überhaupt erst an: Vorher war
+   * Show-Ware in keiner Stöber-Abfrage, diese Seite also nur über einen
+   * direkten Link erreichbar.
+   */
+  const upcoming = Boolean(listing && listing.status === 'scheduled');
+  const showSlot = listing?.show?.scheduled_at ?? null;
+  /**
+   * ⚠️ HIER STAND `status !== 'listed'`, UND DAS WAR EINE ZEITBOMBE.
+   *
+   * Mit `scheduled` in der Stöber-Liste hätte dieselbe Zeile jeden für Freitag
+   * vorbereiteten Artikel als **„Zurückgezogen"** ausgezeichnet, den Kaufweg
+   * ausgeblendet und den Verkäufer-Block gesperrt — bei einem Artikel, der
+   * gerade beworben wird. Dieselbe Negation, dieselbe Ursache und dieselbe
+   * Reparatur wie in `ListingCard`: Was weg ist, wird beim Namen genannt.
+   */
+  const gone = Boolean(
+    listing && (listing.status === 'sold' || listing.status === 'cancelled'),
+  );
+
+  /**
+   * Die Glocke — der Kaufweg für einen Artikel, den man noch nicht kaufen kann.
+   *
+   * Kein neuer Mechanismus: `berkat_auction_reminders` gibt es seit dem
+   * 19.08.2026 (Abschnitt 51), und `start_live_auction` verbraucht die Zeile
+   * beim Auktionsstart. Sie war bisher nur an EINER Stelle erreichbar — im
+   * Aufgebot am Termin (`LineupPreview`). Wer über die Suche hierherkommt,
+   * hätte sonst gelesen, dass es den Artikel gibt, und wäre ohne Weg gegangen.
+   *
+   * ⚠️ Die Bedingung sitzt im ersten Parameter, nicht in einem `if`: Hooks
+   * dürfen nicht bedingt aufgerufen werden, und `useMyReminder` schaltet sich
+   * bei `undefined` selbst ab.
+   */
+  const { data: reminderOn } = useMyReminder(upcoming ? id : undefined, myUserId);
+  const { toggle: toggleReminder } = useReminderActions(myUserId);
+  const [reminderNotice, setReminderNotice] = useState<string | null>(null);
   /** Steuert NUR den Rechtstext — nicht den Weg. Siehe `canCheckout`. */
   const isPrivate = listing?.seller_kind === 'private';
 
@@ -370,8 +421,13 @@ export default function ListingScreen() {
     // Der Link führt auf die Web-Seite (`/listing?id=…`), und die trägt den
     // „In Berkat öffnen"-Knopf. So funktioniert er auch bei Empfängern ohne App
     // — also bei genau denen, für die man teilt.
+    // ⚠️ Bei Show-Ware gehört der Termin MIT in die geteilte Nachricht — sie
+    // ist der eigentliche Zweck des Teilens („komm Freitag dazu"), und ohne
+    // ihn stünde dort ein Startpreis, den der Empfänger für den Preis hält.
+    const p = listingPrice(listing);
+    const when = listing.show ? ` · live ${formatSlot(listing.show.scheduled_at)}` : '';
     void Share.share({
-      message: `${listing.title} · ${formatEuro(listing.buy_now_cents)}\n${listingLink(listing.id)}`,
+      message: `${listing.title} · ${p.from ? 'ab ' : ''}${formatEuro(p.cents)}${when}\n${listingLink(listing.id)}`,
     }).catch(() => {
       // Abgebrochenes Teilen ist kein Fehler.
     });
@@ -566,11 +622,33 @@ export default function ListingScreen() {
               (Analyse 13). Der ausführliche Satz bleibt unten stehen, wo er
               erklärt; hier steht nur die Warnung, dass die Zahl nicht die
               ganze ist. */}
+          {/* ⚠️ Bei Show-Ware ist die grosse Zahl der STARTPREIS, nicht der
+              Kaufpreis. Sie unverändert stehen zu lassen wäre die teuerste
+              Zeile dieses Bildschirms: „1 €" gross oben, und darunter eine
+              Auktion, die bei 80 € endet. */}
           <View style={styles.priceRow}>
-            <Text style={styles.price}>{formatEuro(listing.buy_now_cents)}</Text>
+            <Text style={styles.price}>
+              {upcoming
+                ? `ab ${formatEuro(listing.start_price_cents)}`
+                : formatEuro(listing.buy_now_cents)}
+            </Text>
             <Text style={styles.priceAdd}>zzgl. Versand</Text>
           </View>
           <Text style={styles.title}>{listing.title}</Text>
+
+          {/* Der Termin direkt unter dem Titel — vor Zustand, Ort und
+              Beschreibung. Er ist bei diesem Artikel die Bedingung für alles
+              Weitere: Wer Freitag nicht kann, muss den Rest nicht lesen. */}
+          {upcoming ? (
+            <View style={styles.showNote}>
+              <CalendarClock size={16} color={ui.live} />
+              <Text style={styles.showNoteText}>
+                {showSlot
+                  ? `Wird versteigert — ${formatSlot(showSlot)} live`
+                  : 'Wird in einer kommenden Sendung versteigert'}
+              </Text>
+            </View>
+          ) : null}
 
           {meta.length ? (
             <View style={styles.chips}>
@@ -646,7 +724,20 @@ export default function ListingScreen() {
               nicht auf den Menschen geschaut. Der Kaufknopf unten bleibt
               unberührt — beides sind Wege zum selben Artikel, und keiner
               verdrängt den anderen. ──────────────────────────────────────── */}
-          {!gone ? (
+          {/* ⚠️ Bei Show-Ware gar nicht erst rendern, und zwar nicht aus
+              Geschmack: `prepare_live_auction` setzt `accepts_offers` nie, die
+              Spalte steht also ab Werk auf `false`, und `make_berkat_offer`
+              lehnt jeden Vorschlag darauf ab. Das Blatt hätte einen
+              Bezugspreis gebraucht, den es dort nicht gibt — und hätte einen
+              Weg gezeigt, den der Server garantiert verweigert. Genau die
+              Sackgasse, die auf diesem Bildschirm schon einmal stand (der
+              goldene Kaufknopf ohne Kassen-Freigabe, 17.08.2026). */}
+          {/* ⚠️ Und ohne Preis erst recht nicht: Ein Preisvorschlag misst sich
+              am Listenpreis (`OfferPanel` lässt nur Beträge DARUNTER zu). Fehlt
+              der, gäbe es keine Obergrenze — der Vorschlag wäre eine Zahl ohne
+              Bezug. Preislose Regal-Zeilen entstehen seit `20260824180000`
+              beim Freigeben vorbereiteter Ware; siehe Übergabe 88, Nachtrag. */}
+          {!gone && !upcoming && listing.buy_now_cents !== null ? (
             <OfferPanel
               offers={offers}
               isSeller={mine}
@@ -892,6 +983,73 @@ export default function ListingScreen() {
               {listing.status === 'sold' ? 'Schon verkauft' : 'Zurückgezogen'}
             </Text>
           </View>
+        ) : upcoming ? (
+          // ── Show-Ware. Hier steht KEIN Kaufknopf, und das ist der Kern.
+          //
+          // ⚠️ Ein Sofortkauf würde den Abend aushöhlen: Der Artikel ist
+          // angekündigt, Leute kommen seinetwegen — wer ihn vorher wegkaufen
+          // kann, nimmt der Auktion ihre Bedeutung. Das ist wörtlich dieselbe
+          // Begründung, mit der am 22.08.2026 der Preisvorschlag auf die Zeit
+          // VOR dem Start begrenzt wurde: „Die Glaubwürdigkeit der Auktion IST
+          // das Produkt."
+          //
+          // Der Weg ist stattdessen die Glocke — die leiseste Zusage, die es
+          // gibt, und laut `useReminders.ts` das Signal mit der höchsten
+          // Kaufabsicht.
+          mine ? (
+            // Am eigenen Artikel gibt es nichts vorzumerken, und Bearbeiten/
+            // Zurückziehen greifen hier nicht: Beide arbeiten auf Regal-Ware.
+            // Verwaltet wird Show-Ware im Vorbereiten-Blatt am Termin.
+            <View style={styles.goneBar}>
+              <Text style={styles.goneText}>
+                {showSlot ? `Liegt bereit für ${formatSlot(showSlot)}` : 'Liegt für einen Abend bereit'}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1 }}>
+              <Pressable
+                style={[styles.remind, Boolean(reminderOn) && styles.remindOn]}
+                disabled={toggleReminder.isPending}
+                onPress={() => {
+                  if (!myUserId) {
+                    router.push('/login');
+                    return;
+                  }
+                  void toggleReminder
+                    .mutateAsync({ auctionId: id, on: !reminderOn })
+                    .then(() => setReminderNotice(null))
+                    .catch((error: unknown) =>
+                      setReminderNotice(
+                        reminderErrorText(
+                          error instanceof Error ? error.message : String(error),
+                        ),
+                      ),
+                    );
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: Boolean(reminderOn) }}
+                accessibilityLabel={
+                  reminderOn
+                    ? 'Nicht mehr benachrichtigen'
+                    : 'Benachrichtige mich, wenn der Artikel drankommt'
+                }
+              >
+                {reminderOn ? (
+                  <BellRing size={17} color={ui.success} />
+                ) : (
+                  <Bell size={17} color={ui.text} />
+                )}
+                <Text
+                  style={[styles.remindText, Boolean(reminderOn) && styles.remindTextOn]}
+                >
+                  {reminderOn ? 'Wir sagen dir Bescheid' : 'Sag mir Bescheid, wenn der drankommt'}
+                </Text>
+              </Pressable>
+              {reminderNotice ? (
+                <Text style={styles.remindNotice}>{reminderNotice}</Text>
+              ) : null}
+            </View>
+          )
         ) : mine ? (
           // Der eigene Artikel: Bearbeiten ist der häufige Handgriff (Preis
           // senken!), Zurückziehen der seltene. Deshalb trägt Bearbeiten die
@@ -928,7 +1086,14 @@ export default function ListingScreen() {
           <View style={styles.waiting}>
             <ActivityIndicator color={ui.textMuted} />
           </View>
-        ) : canCheckout ? (
+        ) : canCheckout && listing.buy_now_cents !== null ? (
+          // ⚠️ `buy_now_cents !== null` gehört in dieselbe Bedingung wie die
+          // Kassen-Freigabe, und aus demselben Grund: Ohne Preis stünde hier
+          // „Kaufen · —" — ein goldener Knopf über einem Gedankenstrich, der in
+          // einen Kauf ohne Betrag führt. Das ist die dritte Auflage derselben
+          // Sackgasse (17.08. der Knopf ohne Freigabe, 25.08. das Vorschlags-
+          // Blatt ohne Bezugspreis). Wer keinen Preis hat, bekommt den
+          // Nachricht-Zweig darunter — der trägt genau hier.
           <Pressable
             style={[styles.buy, busy && styles.off]}
             disabled={busy}
@@ -999,7 +1164,11 @@ export default function ListingScreen() {
               canWomenOnly={canWomenOnly}
               initial={{
                 title: listing.title,
-                priceCents: listing.buy_now_cents,
+                // `?? undefined` statt `?? 0`: Ein Preisfeld, das mit 0,00 €
+                // vorbelegt ist, sieht aus wie eine Angabe. Leer ist die
+                // Wahrheit — und das Bearbeiten ist Vollersatz, eine erfundene
+                // Null würde beim Speichern zur echten.
+                priceCents: listing.buy_now_cents ?? undefined,
                 womenOnly: listing.women_only,
                 acceptsOffers: listing.accepts_offers,
                 category: listing.category,
@@ -1232,6 +1401,40 @@ const styles = StyleSheet.create({
   },
   goneText: { fontSize: 14, fontWeight: '700', color: ui.textMuted },
   waiting: { height: 52, alignItems: 'center', justifyContent: 'center' },
+
+  /* ── Show-Ware ─────────────────────────────────────────────────────────────
+     ⚠️ Die Glocke trägt bewusst NICHT Bernstein, obwohl sie hier der einzige
+     Weg ist und `tokens.ts` die Kauffarbe für genau solche Bildschirme
+     vorsieht. Eine Vormerkung ist keine Kauferklärung — sie verpflichtet zu
+     nichts. Ihr das Gewicht des Kaufknopfs zu geben hiesse, jemandem eine
+     Entscheidung zu suggerieren, die er gar nicht trifft. Kontur statt
+     Fläche, und gefüllt erst, wenn sie AN ist. */
+  showNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    marginTop: space.sm,
+  },
+  showNoteText: { fontSize: 14, fontWeight: '700', color: ui.live, flexShrink: 1 },
+  remind: {
+    height: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: ui.lineStrong,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xs,
+  },
+  remindOn: { borderColor: ui.success, backgroundColor: ui.sunken },
+  remindText: { fontSize: 15, fontWeight: '700', color: ui.text },
+  remindTextOn: { color: ui.success },
+  remindNotice: {
+    fontSize: 12,
+    color: ui.live,
+    marginTop: space.xs,
+    textAlign: 'center',
+  },
 
   dots: {
     position: 'absolute',

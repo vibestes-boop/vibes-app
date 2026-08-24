@@ -26,11 +26,18 @@
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Camera, Heart, Lock } from 'lucide-react-native';
+import { CalendarClock, Camera, Heart, Lock } from 'lucide-react-native';
 
 import { formatEuro } from '../lib/useAuction';
 import { conditionLabel } from '../lib/useBerkatSeller';
-import { listingImages, listingMeta, type Listing } from '../lib/useListings';
+import {
+  isShowItem,
+  listingImages,
+  listingMeta,
+  listingPrice,
+  type Listing,
+} from '../lib/useListings';
+import { formatSlot } from '../lib/useSchedule';
 import { radius, ratio, space, ui } from '../theme/tokens';
 
 type Props = {
@@ -103,9 +110,17 @@ export function ListingCard({
         ? 'Gewerblich'
         : null;
 
-  const label = `${listing.title}, ${formatEuro(listing.buy_now_cents)}${
-    sellerName ? `, von ${sellerName}` : ''
-  }`;
+  // Show-Ware: Preis und Datum kommen aus derselben Quelle wie überall
+  // (`listingPrice`), damit Karte, Artikelseite und Suche nicht auseinanderlaufen.
+  const show = isShowItem(listing) ? listing.show : null;
+  const price = listingPrice(listing);
+  const priceText = `${price.from ? 'ab ' : ''}${formatEuro(price.cents)}`;
+
+  // ⚠️ Der Termin gehört IN die Vorlesung, nicht daneben. Wer die Karte hört
+  // statt sieht, bekommt sonst „Kleid, ab 1 €" — und hält es für kaufbar.
+  const label = `${listing.title}, ${priceText}${
+    show ? `, in einer Sendung am ${formatSlot(show.scheduled_at)}` : ''
+  }${sellerName ? `, von ${sellerName}` : ''}`;
 
   if (layout === 'row') {
     return (
@@ -134,7 +149,17 @@ export function ListingCard({
               </Text>
               {listing.women_only ? <Lock size={12} color={ui.success} /> : null}
             </View>
-            <Text style={s.rowPrice}>{formatEuro(listing.buy_now_cents)}</Text>
+            {/* Auch hier `priceText` statt des nackten Festpreises. Die
+                Zeilen-Fassung bekommt heute keine Show-Ware zu sehen
+                (`useSellerListings` bleibt beim Regal), aber ein Preis, der
+                nur in einem von zwei Layouts stimmt, ist eine Falle, die
+                still auf ihren Tag wartet. */}
+            <Text style={s.rowPrice}>{priceText}</Text>
+            {show ? (
+              <Text numberOfLines={1} style={s.rowShow}>
+                In der Sendung {formatSlot(show.scheduled_at)}
+              </Text>
+            ) : null}
             {meta ? (
               <Text numberOfLines={1} style={s.meta}>
                 {meta}
@@ -182,12 +207,36 @@ export function ListingCard({
             „Das, was du wolltest, ist weg."
 
             Unten links, weil das die einzige freie Ecke ist — Schloss oben
-            links, Herz oben rechts, „Deins" unten rechts. */}
-        {listing.status !== 'listed' ? (
+            links, Herz oben rechts, „Deins" unten rechts.
+
+            ⚠️ HIER STAND `status !== 'listed'`, UND DAS WÄRE AM 25.08.2026 ZUM
+            FEHLER GEWORDEN. Solange es nur `listed`, `sold` und `cancelled`
+            gab, war „alles andere ist weg" richtig. Mit `scheduled` im Stöbern
+            hätte dieselbe Zeile jeden für Freitag vorbereiteten Artikel als
+            **„Weg"** ausgezeichnet — also genau das Gegenteil dessen, was er
+            ist. Die Bedingung nennt die zwei Zustände deshalb beim Namen.
+            Eine Negation deckt keinen Fall ab, den es noch nicht gibt. */}
+        {listing.status === 'sold' || listing.status === 'cancelled' ? (
           <View style={s.gonePill}>
             <Text style={s.gonePillText}>
               {listing.status === 'sold' ? 'Verkauft' : 'Weg'}
             </Text>
+          </View>
+        ) : null}
+
+        {/* Dieselbe Ecke, der umgekehrte Fall: nicht „war mal da", sondern
+            „kommt noch". Beide schliessen sich aus — was verkauft ist, ist
+            für keinen Abend mehr vorbereitet.
+
+            ⚠️ Bewusst NICHT in Bernstein. `tokens.ts` sagt es ausdrücklich:
+            eine Signalfarbe wirkt nur, solange sie selten ist, und in einem
+            Raster ist sie das nie. Die Pille trägt deshalb die milchige
+            Auflage wie ihre Nachbarn, nur mit der Ereignis-Tinte
+            (`overlayUrgent`, auf 4,83:1 nachgemessen — Abschnitt 8). */}
+        {show ? (
+          <View style={[s.gonePill, s.showPill]}>
+            <CalendarClock size={10} color={ui.overlayUrgent} />
+            <Text style={s.showPillText}>{formatSlot(show.scheduled_at)}</Text>
           </View>
         ) : null}
 
@@ -285,7 +334,11 @@ export function ListingCard({
           Dazu die Lesbarkeit: Auf einem fremden Foto bräuchte er die milchige
           Auflage (Abschnitt 8); hier steht er dunkel auf Sand. Für das Merkmal,
           das die meisten Käufe entscheidet, ist das die bessere Fläche. */}
-      <Text style={s.price}>{formatEuro(listing.buy_now_cents)}</Text>
+      {/* ⚠️ „ab" ist kein Schmuckwort. Ein Festpreis sagt „dafür gehört es
+          dir", ein Startpreis „dort fängt das Bieten an" — dieselbe Zahl,
+          zwei völlig verschiedene Zusagen. Ohne den Vorsatz sähe ein Kleid,
+          das Freitag ab 1 € versteigert wird, aus wie ein Kleid für 1 €. */}
+      <Text style={s.price}>{priceText}</Text>
       <Text numberOfLines={1} style={s.meta}>
         {meta ?? ' '}
       </Text>
@@ -346,6 +399,9 @@ const s = StyleSheet.create({
     backgroundColor: ui.overlay,
   },
   gonePillText: { fontSize: 10, fontWeight: '700', color: ui.overlayMuted },
+  /** Erbt Sitz und Fläche von `gonePill` — nur Symbol und Tinte kommen dazu. */
+  showPill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  showPillText: { fontSize: 10, fontWeight: '700', color: ui.overlayUrgent },
   heart: {
     position: 'absolute',
     top: space.sm,
@@ -418,6 +474,7 @@ const s = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rowTitle: { flexShrink: 1, fontSize: 14, fontWeight: '600', color: ui.text },
   rowPrice: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
+  rowShow: { fontSize: 12, fontWeight: '600', color: ui.live, marginTop: 2 },
 
   // ── Beides ───────────────────────────────────────────────────────────────
   meta: { fontSize: 11, color: ui.textMuted, marginTop: 2 },

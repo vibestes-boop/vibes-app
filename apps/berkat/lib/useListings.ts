@@ -27,16 +27,42 @@ import { SEARCH_MIN, useDebounced } from './useSellerSearch';
  * Ein Dauerangebot ist keine eigene Tabelle, sondern eine `live_auctions`-Zeile
  * ohne Session (Migration 20260815210000). `cancelled` heißt zurückgezogen,
  * `sold` verkauft — beide bleiben lesbar, siehe `useListing` unten.
+ *
+ * `scheduled` ist der vierte Fall und seit dem 25.08.2026 hier drin: ein für
+ * einen Abend **vorbereiteter** Artikel (`usePrepared.ts`). Er lag bis dahin
+ * ausserhalb dieses Typs, weil keine Stöber-Abfrage ihn je holte — genau das
+ * war der Fehler, siehe `browseQuery()`.
  */
-export type ListingStatus = 'listed' | 'sold' | 'cancelled';
+export type ListingStatus = 'listed' | 'scheduled' | 'sold' | 'cancelled';
 
 export type Listing = {
   id: string;
   seller_id: string;
   title: string;
   image_url: string | null;
-  /** Der Festpreis. Bei einem Dauerangebot immer gesetzt. */
-  buy_now_cents: number;
+  /**
+   * Der Festpreis.
+   *
+   * ⚠️ **NULLBAR, seit Show-Ware in denselben Typ fällt (25.08.2026).** Die
+   * Spalte war das immer (`buy_now_cents int CHECK (… > start_price_cents)`,
+   * `20260813150000`) — der Typ log nur nicht, solange hier ausschliesslich
+   * Dauerangebote ankamen, und die haben per RPC immer einen Preis. Ein für
+   * einen Abend vorbereiteter Artikel braucht keinen: Dort ist der Sofortkauf
+   * freiwillig.
+   *
+   * `number` stehen zu lassen wäre die bequeme Wahl gewesen und genau die
+   * Sorte Lüge, die dieses Projekt schon zweimal Geld gekostet hat — ein Typ,
+   * der etwas verspricht, das die Datenbank nicht garantiert.
+   *
+   * ⚠️ Nie direkt anzeigen. `listingPrice()` unten liefert Betrag und Vorsatz
+   * („ab") passend zum Zustand.
+   */
+  buy_now_cents: number | null;
+  /**
+   * Startpreis der Auktion. Für Regal-Ware ohne Bedeutung, für Show-Ware die
+   * einzige Zahl, die es vor dem Abend gibt.
+   */
+  start_price_cents: number;
   /**
    * ALLE Bilder in Reihenfolge (seit 20260817140000, max. 8). `image_url`
    * bleibt das Cover und ist immer `image_urls[0]` — die RPCs halten beide
@@ -97,6 +123,24 @@ export type Listing = {
    * Rechtsfolge, und die stand nirgends.
    */
   seller_kind: 'private' | 'business' | null;
+  /**
+   * Der Termin, für den dieser Artikel vorbereitet ist. NULL = Regal-Ware.
+   *
+   * `ON DELETE SET NULL` — bleibt nach dem Live-Gehen als Herkunft stehen,
+   * siehe `20260819110000`.
+   */
+  planned_for: string | null;
+  /**
+   * Der Termin selbst, per Embed mitgeholt.
+   *
+   * ⚠️ **NULL heisst hier nicht „kein Termin", sondern „kein SICHTBARER".**
+   * `scheduled_lives_select_public` (`20260822180000`) gibt nur `scheduled`,
+   * `reminded` und `live` heraus — ein abgesagter oder abgelaufener Abend ist
+   * für den Leser gar nicht da. Genau darauf stützt sich `browseQuery()`: Ein
+   * vorbereiteter Artikel ohne sichtbaren Abend wird nicht angezeigt, weil
+   * „irgendwann in einer Show" keine Auskunft ist.
+   */
+  show: { scheduled_at: string; title: string; status: string } | null;
 };
 
 /**
@@ -106,9 +150,14 @@ export type Listing = {
  * weil der Zeilentyp es nicht trug).
  */
 const LISTING_COLUMNS =
-  'id, seller_id, title, image_url, image_urls, buy_now_cents, women_only, accepts_offers, ' +
-  'created_at, status, category, description, condition, size, postal_code, city, seller_kind, ' +
-  'shipping_tier';
+  'id, seller_id, title, image_url, image_urls, buy_now_cents, start_price_cents, women_only, ' +
+  'accepts_offers, created_at, status, category, description, condition, size, postal_code, ' +
+  'city, seller_kind, shipping_tier, planned_for, ' +
+  // Der Termin per Embed statt als zweite Abfrage: `planned_for` hat einen
+  // echten Fremdschlüssel auf `scheduled_lives`, PostgREST löst ihn also auf.
+  // Am 25.08.2026 von aussen gegengeprüft (kein PGRST200) — die Falle aus der
+  // Serlo-Notiz „Embed ohne FK liefert still []" greift hier nicht.
+  'show:scheduled_lives!planned_for(scheduled_at, title, status)';
 
 /**
  * Die Regal-Grenze, in jeder Listen-Abfrage dieselbe.
@@ -122,6 +171,55 @@ function shelfQuery() {
     .select(LISTING_COLUMNS)
     .is('session_id', null)
     .eq('status', 'listed');
+}
+
+/**
+ * Die **Stöber**-Grenze: Regal-Ware UND was für einen Abend vorbereitet ist.
+ *
+ * ── ⚠️ WARUM ES SIE GEBEN MUSS (25.08.2026) ─────────────────────────────────
+ *
+ * Bis hierher filterte jede Stöber-Abfrage auf `status = 'listed'`. Ein für
+ * Freitag vorbereiteter Artikel stand damit in **keiner** Suche, in keiner
+ * Kategorie, in keinem Raster — er war nur zu finden, wenn man den Verkäufer
+ * schon kannte und seinen Termin öffnete. Bei Whatnot ist Show-Ware ganz
+ * normal auffindbar, mit Datum an der Zeile, und das ist kein Detail: **Es ist
+ * ihr Hauptmechanismus, eine Sendung mit Publikum zu füllen.** Man sucht eine
+ * Tasche, findet eine, die Freitag drankommt, und merkt sich den Abend.
+ *
+ * ⚠️ **Getrennt von `shelfQuery()` und nicht statt dessen.** Der naheliegende
+ * Weg wäre gewesen, den Status-Filter dort zu erweitern — er hätte fünf
+ * Aufrufer auf einmal getroffen, darunter zwei, für die es falsch ist:
+ *
+ *   `useSellerListings`  → das Verkäufer-Profil zeigt den Termin samt Aufgebot
+ *                          bereits als eigenen Block. Show-Ware zusätzlich ins
+ *                          Regal zu legen wären zwei Zahlen über dieselben
+ *                          Dinge — der Fehler aus Übergabe 86.
+ *   `ShelfPickSheet`     → „Aus dem Regal holen" böte sonst Artikel an, die
+ *                          schon für einen Abend vorbereitet sind.
+ *
+ * Deshalb zwei Grenzen mit je einem Zweck, nicht eine mit einem Schalter.
+ */
+function browseQuery() {
+  return supabase
+    .from('live_auctions')
+    .select(LISTING_COLUMNS)
+    .is('session_id', null)
+    .in('status', ['listed', 'scheduled']);
+}
+
+/**
+ * Vorbereitete Artikel ohne **sichtbaren** Abend aussortieren.
+ *
+ * Der Auslöser aus `20260824180000` legt sie zurück ins Regal, sobald ein
+ * Termin abgesagt oder abgelaufen ist. Das ist die eigentliche Reparatur; das
+ * hier ist das Netz darunter — für das Fenster zwischen beidem und für den
+ * Fall, dass der Termin per `ON DELETE SET NULL` ganz verschwunden ist.
+ *
+ * ⚠️ Ohne das stünde eine Karte da, die „in einer Show" sagt und auf die Frage
+ * „in welcher?" keine Antwort hat.
+ */
+function withVisibleShow(rows: Listing[]): Listing[] {
+  return rows.filter((l) => l.status !== 'scheduled' || l.show !== null);
 }
 
 /** supabase-js bildet die lange Spaltenliste nicht mehr auf einen Zeilentyp ab. */
@@ -142,11 +240,11 @@ export function useShopListings(limit = 60, enabled = true) {
     enabled,
     staleTime: 30_000,
     queryFn: async (): Promise<Listing[]> => {
-      const { data, error } = await shelfQuery()
+      const { data, error } = await browseQuery()
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return asListings(data);
+      return withVisibleShow(asListings(data));
     },
   });
 }
@@ -168,11 +266,21 @@ export function useShopCount() {
     queryKey: ['berkat', 'shop-count'],
     staleTime: 60_000,
     queryFn: async (): Promise<number> => {
+      // ⚠️ Dieselben zwei Zustände wie `browseQuery()`, und das ist Pflicht:
+      // Die Zahl steht auf einem Knopf („Alle 38 Angebote ansehen"). Zählte
+      // sie nur das Regal, verspräche der Knopf weniger, als dahinter liegt —
+      // und der Leerzustand der Startseite schickte jemanden weg, obwohl für
+      // Freitag zehn Artikel bereitliegen.
+      //
+      // Der Rest-Fehler ist bekannt und klein: Ein vorbereiteter Artikel, dessen
+      // Abend nicht mehr sichtbar ist, wird hier mitgezählt und in der Liste
+      // dann von `withVisibleShow()` entfernt. `20260824180000` räumt genau die
+      // ab; ein `head`-Zähler kann keinen Embed prüfen.
       const { count, error } = await supabase
         .from('live_auctions')
         .select('id', { count: 'exact', head: true })
         .is('session_id', null)
-        .eq('status', 'listed');
+        .in('status', ['listed', 'scheduled']);
       if (error) {
         if (__DEV__) console.warn('[Berkat] Angebote zählen:', error.message);
         return 0;
@@ -200,12 +308,12 @@ export function useCategoryListings(slugs: string[]) {
     enabled: slugs.length > 0,
     staleTime: 30_000,
     queryFn: async (): Promise<Listing[]> => {
-      const { data, error } = await shelfQuery()
+      const { data, error } = await browseQuery()
         .in('category', slugs)
         .order('created_at', { ascending: false })
         .limit(60);
       if (error) throw error;
-      return asListings(data);
+      return withVisibleShow(asListings(data));
     },
   });
 }
@@ -303,6 +411,51 @@ export function useListingsByIds(ids: string[]) {
 }
 
 /**
+ * Kommt dieser Artikel erst an einem Abend dran, statt jetzt im Regal zu liegen?
+ *
+ * Die eine Frage, an der die halbe Anzeige hängt — Preisvorsatz, Datumszeile,
+ * Kaufknopf. Sie steht hier und nicht als `status === 'scheduled'` an fünf
+ * Stellen, damit sie nicht an vieren stimmt und an der fünften nicht.
+ */
+export function isShowItem(l: Pick<Listing, 'status'>): boolean {
+  return l.status === 'scheduled';
+}
+
+/**
+ * Der Betrag, den die Karte zeigt — und ob ein „ab" davor gehört.
+ *
+ * ⚠️ Ein Festpreis und ein Startpreis sind **nicht dieselbe Aussage**. „25 €"
+ * heisst „dafür gehört es dir", „ab 1 €" heisst „dort fängt das Bieten an".
+ * Beide gleich zu setzen wäre die schlimmere Sorte Fehler: Sie sieht nach
+ * einem Schnäppchen aus und ist eine Auktion.
+ *
+ * Bei Show-Ware bleibt der Sofortkauf-Preis bewusst aussen vor. Er ist dort
+ * freiwillig, oft 0, und er gehört auf die Artikelseite neben die
+ * Rechtsfolge — nicht in ein Stöber-Raster.
+ */
+export function listingPrice(l: Pick<Listing, 'status' | 'buy_now_cents' | 'start_price_cents'>): {
+  /** `null` = es gibt keinen. `formatEuro(null)` schreibt dafür „—". */
+  cents: number | null;
+  from: boolean;
+} {
+  // ⚠️ HIER STAND „kein Festpreis → dann eben der Startpreis", und das war
+  // falsch — am 25.08.2026 im Screenshot aufgeflogen: Ein Regal-Artikel stand
+  // mit „ab 5 €" da. Ein Regal-Artikel ist KEINE Auktion; auf ihn kann niemand
+  // bieten. Das „ab" hat einen Weg behauptet, den es nicht gibt.
+  //
+  // Der Fall ist auch nicht theoretisch, wie ich zuerst geschrieben hatte:
+  // `release_prepared_on_plan_end` (`20260824180000`) legt vorbereitete Artikel
+  // bei abgesagtem Termin ins Regal, OHNE einen Preis zu setzen — ein
+  // vorbereiteter Artikel braucht keinen, ein Regal-Artikel schon. Solche
+  // Zeilen sind nicht kaufbar; siehe Übergabe 88, Nachtrag.
+  //
+  // `null` durchreichen statt raten: „—" sagt „hier steht kein Preis", und das
+  // ist die Wahrheit. Jede erfundene Zahl wäre eine Aussage über Geld.
+  if (isShowItem(l)) return { cents: l.start_price_cents, from: true };
+  return { cents: l.buy_now_cents, from: false };
+}
+
+/**
  * Die Bild-Liste eines Angebots — mit Netz für Zeilen von vor dem Backfill.
  * Eine leere Liste heißt wirklich „kein Bild", nie „Liste vergessen".
  */
@@ -331,12 +484,12 @@ export function useListingSearch(query: string) {
     enabled: settled.length >= SEARCH_MIN,
     staleTime: 30_000,
     queryFn: async (): Promise<Listing[]> => {
-      const { data, error } = await shelfQuery()
+      const { data, error } = await browseQuery()
         .ilike('title', `%${q}%`)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
-      return asListings(data);
+      return withVisibleShow(asListings(data));
     },
   });
 }
