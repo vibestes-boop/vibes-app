@@ -10940,8 +10940,9 @@ Beides ist erledigt und geprüft: Mail kommt im Posteingang an, ohne Warnung.
   `verify_jwt = false` in `config.toml`
 - **Build:** weiterhin **`1.0.0 (1)`** in TestFlight — ohne
   `react-native-keyboard-controller` und `expo-image-manipulator`
-- **Letzter OTA:** „Show-Ware auffindbar; Suche merken als Umschalter" (25.08.2026), Runtime 1.0.0,
-  Branch `production`, Gruppe `e3d9696e-7f80-4f97-991c-974906ed545d`, Commit `7cbffef`
+- **Letzter OTA:** „Regal sagt, wenn ein Preis fehlt" (25.08.2026), Runtime 1.0.0, Branch
+  `production`, Gruppe `bf93024e-6c69-4a32-af80-a65a200fb488`, Commit `5cefe22`. Davor am selben
+  Abend „Show-Ware auffindbar; Suche merken als Umschalter", Gruppe `e3d9696e-…`
 - **CI:** grün, mit eigenem `berkat (expo)`-Job
 
 ⚠️ **OTA-Befehl für Berkat — NICHT im Wurzelverzeichnis:**
@@ -11269,6 +11270,19 @@ Befehlskette, nicht als Blick davor. Die drei Kennzeichen danach: Laufzeit **1.0
 
 ⚠️ **Was mit diesem OTA rausging, ist am Gerät ungeprüft:** A31 (der Merken-Umschalter) und der
 `BROWSABLE`-Riegel. A27–A30 sind gesehen, aber gegen Metro, nicht gegen TestFlight.
+
+**Zweiter OTA am selben Abend** — der Preis-Hinweis am Regal:
+
+| | |
+|---|---|
+| Gruppe | `bf93024e-6c69-4a32-af80-a65a200fb488` |
+| iOS-Update | `01a03618-eaf5-7877-ad0b-cd4f0f5d4a7e` |
+| Commit | `5cefe22` |
+
+⚠️ **Damit stehen an einem Abend fünf ungeprüfte Punkte auf dem Gerät: A27–A32.** Das ist genau die
+Lage, vor der Abschnitt 3 warnt („in so einer Sitzung läuft auf dem Telefon fast immer der
+vorletzte Stand"). Die Zeile unten im Konto muss **`bf93024e`** zeigen — alles andere heisst, du
+prüfst einen früheren Stand.
 
 ```bash
 SERVICE_ROLE_KEY=… node scripts/seed-berkat-show-items.mjs
