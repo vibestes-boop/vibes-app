@@ -133,7 +133,7 @@ export default async function Image({ params }: { params: { username: string } }
           <Stat label="Follower" value={formatCount(followers)} />
           <Stat label="Posts"    value={formatCount(posts)} />
           <div style={{ marginLeft: 'auto', fontSize: '22px', color: '#a7a3b1' }}>
-            {`serlo.app/u/${username}`}
+            {`serlo.ch/u/${username}`}
           </div>
         </div>
       </div>

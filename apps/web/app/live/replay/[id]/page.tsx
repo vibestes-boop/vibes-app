@@ -64,7 +64,7 @@ export default async function ReplayPage({ params }: PageProps) {
   // and video rich results. Only emitted when recording is ready (has URL).
   // Duration ISO 8601 format: PT<M>M<S>S.
   // v1.w.UI.133 — JSON-LD structured data batch.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.serlo.ch';
   const videoJsonLd =
     isReady && recording
       ? {

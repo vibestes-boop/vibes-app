@@ -98,7 +98,7 @@ export default async function Image({ params }: { params: { tag: string } }) {
           }}
         >
           <span>Entdecke alle Videos mit diesem Hashtag</span>
-          <span style={{ fontWeight: 500, color: '#8d8a99' }}>serlo.app</span>
+          <span style={{ fontWeight: 500, color: '#8d8a99' }}>serlo.ch</span>
         </div>
       </div>
     ),

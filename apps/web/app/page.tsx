@@ -71,7 +71,7 @@ export default async function HomePage() {
     // landing page — logged-in feed is personalised so WebSite schema is not
     // meaningful there. SearchAction points to /search?q={search_term_string}.
     // v1.w.UI.135
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.serlo.ch';
     const websiteJsonLd = {
       '@context': 'https://schema.org',
       '@type': 'WebSite',

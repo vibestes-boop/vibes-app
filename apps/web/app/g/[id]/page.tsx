@@ -99,7 +99,7 @@ export default async function GuildDetailPage({ params }: Props) {
   // rich results. memberCount exposed via interactionStatistic (RegisterAction
   // = "joined" is the closest schema.org approximation for community members).
   // v1.w.UI.134 — JSON-LD structured data batch.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.serlo.ch';
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',

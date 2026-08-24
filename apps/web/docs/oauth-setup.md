@@ -18,7 +18,7 @@ Diese Anleitung aktiviert Google- und Apple-Login für die Serlo-Web-App. Magic-
    - Name: "Serlo Web"
    - **Authorized JavaScript origins**:
      - `http://localhost:3000` (Dev)
-     - `https://serlo.app` (später, wenn Domain steht)
+     - `https://www.serlo.ch` (Produktion)
    - **Authorized redirect URIs**:
      - `https://llymwqfgujwkoxzqxrlm.supabase.co/auth/v1/callback`
      - (Das ist die Callback-URL die Supabase selbst handhabt — **nicht** unsere `/auth/callback`-Route)
@@ -75,12 +75,16 @@ Testen: `/login` → "Mit Apple weiter" → Apple-Popup → nach Zustimmung Redi
 
 ## 3. Redirect URL für Production
 
-Wenn du später auf `serlo.app` deployst:
+Die Domain steht seit dem 24.08.2026: **`www.serlo.ch`** (bei IONOS, zeigt auf
+Vercel). ⚠️ NICHT `serlo.app` — die stand hier bis dahin, gehört aber jemand
+anderem; sie wurde am 15.08.2026 von einem Fremden registriert.
+
+Beim Einrichten oder Ändern:
 
 1. Google Cloud Console: neue Authorized JavaScript origin + Redirect URI hinzufügen (siehe oben)
 2. Apple Developer Portal: neue Return URL in der Services ID ergänzen
-3. Supabase: unter **Auth → URL Configuration** die neue Site URL eintragen: `https://serlo.app`
-4. Additional Redirect URLs: sowohl `http://localhost:3000/**` als auch `https://serlo.app/**`
+3. Supabase: unter **Auth → URL Configuration** die neue Site URL eintragen: `https://www.serlo.ch`
+4. Additional Redirect URLs: sowohl `http://localhost:3000/**` als auch `https://www.serlo.ch/**`
 
 ---
 

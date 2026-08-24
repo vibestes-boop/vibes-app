@@ -256,7 +256,7 @@ export default async function Image({ params }: { params: { username: string } }
                 display: 'flex',
               }}
             >
-              serlo.app/u/{profile.username}/shop
+              serlo.ch/u/{profile.username}/shop
             </div>
           </div>
         </div>

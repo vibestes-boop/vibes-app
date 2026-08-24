@@ -179,7 +179,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   // Preis: Coins sind keine ISO-4217-Währung — wir geben `priceCurrency: 'XXX'`
   // (ISO-Platzhalter für non-fiat) + `description` mit Coin-Betrag.
   // v1.w.UI.133 — JSON-LD structured data batch.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serlo.app";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.serlo.ch";
   const productJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Product",

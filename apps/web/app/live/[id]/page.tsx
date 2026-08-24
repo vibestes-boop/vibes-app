@@ -185,7 +185,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
   // when the stream is active (eventStatus = EventScheduled/InProgress).
   // Combined with VideoObject so embedded players can be indexed.
   // v1.w.UI.134 — JSON-LD structured data batch.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.serlo.ch';
   const liveJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BroadcastEvent',

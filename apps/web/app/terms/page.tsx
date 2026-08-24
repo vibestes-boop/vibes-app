@@ -35,7 +35,7 @@ export default function TermsPage() {
           Vertragsverhältnis zwischen Zaur Hatuev, handelnd unter Serlo
           (nachfolgend &bdquo;Serlo&quot; oder &bdquo;Anbieter&quot;), und den Nutzerinnen
           und Nutzern (nachfolgend &bdquo;Nutzer&quot;) der über
-          <code>serlo.app</code> und zugehörige Subdomains bereitgestellten Web-
+          <code>serlo.ch</code> und zugehörige Subdomains bereitgestellten Web-
           und Mobil-Dienste. Abweichende
           Bedingungen des Nutzers werden nicht anerkannt, es sei denn, der
           Anbieter stimmt ihrer Geltung ausdrücklich schriftlich zu.

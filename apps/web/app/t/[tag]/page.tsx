@@ -74,7 +74,7 @@ export default async function HashtagPage({ params }: PageProps) {
   // for a given topic (the hashtag). ItemList entries let Google index the
   // individual posts and their positions in the tag feed.
   // v1.w.UI.135
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.serlo.ch';
   const collectionJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',

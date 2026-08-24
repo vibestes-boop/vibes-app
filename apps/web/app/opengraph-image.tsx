@@ -114,7 +114,7 @@ export default function Image() {
             <span>·</span>
             <span>Community</span>
           </div>
-          <div style={{ fontWeight: 500 }}>serlo.app</div>
+          <div style={{ fontWeight: 500 }}>serlo.ch</div>
         </div>
       </div>
     ),
