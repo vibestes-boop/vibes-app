@@ -81,7 +81,7 @@ import { BerkatMark } from '../../components/BerkatMark';
 import { PrepareSheet } from '../../components/PrepareSheet';
 import { SchedulePlanner } from '../../components/SchedulePlanner';
 import { CategoryPicker } from '../../components/CategoryPicker';
-import { SellerStart, useProfileFilled, type StartStep } from '../../components/SellerStart';
+import { SellerStart, useProfileFilled, useSellerEverStarted, type StartStep } from '../../components/SellerStart';
 import { useSellerShows } from '../../lib/useSellerShows';
 // Nur noch zum Zählen — bearbeitet wird das Regal auf `/shelf`.
 import { useSellerListings } from '../../lib/useListings';
@@ -187,8 +187,16 @@ export default function SellScreen() {
   // Alle vier Zustände kommen aus Daten, die es ohnehin gibt — keine Tabelle,
   // kein Fortschritts-Feld, nichts zum Zurücksetzen. Damit kann die Liste auch
   // nicht mit der Wirklichkeit auseinanderlaufen.
+  //
+  // ⚠️ Es kommt aber darauf an, die richtige Frage zu stellen. Zwei der vier
+  // Schritte hingen bis zum 24.08.2026 an der GEGENWART (`plannedShows` sind
+  // nur künftige Termine, `standing` nur offene Angebote) — der Haken verfiel
+  // also wieder, sobald der Abend vorbei oder alles verkauft war. Ausgerechnet
+  // beim Verkäufer, der es richtig macht, kam die Anfänger-Liste zurück.
+  // Begründung und Zähl-Abfragen: `useSellerEverStarted` in `SellerStart.tsx`.
   const { data: profileFilled = false } = useProfileFilled(myUserId);
   const { past: pastShows } = useSellerShows(myUserId ?? undefined);
+  const { everAnnounced, everListed } = useSellerEverStarted(myUserId ?? null);
 
   const startSteps = useMemo(
     (): StartStep[] => [
@@ -204,13 +212,17 @@ export default function SellScreen() {
         label: 'Ersten Termin ankündigen',
         // Kein Ziel: Der Planer steht auf diesem Bildschirm gleich darunter.
         hint: 'Der Knopf steht gleich darunter. Deine Follower werden 15 Minuten vorher erinnert.',
-        done: plannedShows.length > 0,
+        // `plannedShows` bleibt als ZWEITE Bedingung stehen, obwohl `everAnnounced`
+        // sie mit einschliesst: Der Zähler hat 5 Minuten Ruhezeit, die Liste der
+        // künftigen Termine wird beim Anlegen sofort erneuert. So springt der
+        // Haken im selben Moment um, in dem der Verkäufer den Termin einträgt.
+        done: plannedShows.length > 0 || everAnnounced,
       },
       {
         key: 'regal',
         label: 'Etwas ins Regal legen',
         hint: 'Damit man bei dir auch dann etwas kaufen kann, wenn du nicht sendest.',
-        done: standing.length > 0,
+        done: standing.length > 0 || everListed,
         target: '/shelf',
       },
       {
@@ -220,7 +232,7 @@ export default function SellScreen() {
         done: (pastShows.data?.length ?? 0) > 0,
       },
     ],
-    [profileFilled, plannedShows.length, standing.length, pastShows.data, myUserId],
+    [profileFilled, plannedShows.length, standing.length, pastShows.data, everAnnounced, everListed, myUserId],
   );
 
   const [coverUrl, setCoverUrl] = useState<string | null>(null);

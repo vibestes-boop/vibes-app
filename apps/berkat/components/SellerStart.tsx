@@ -69,6 +69,78 @@ export function useProfileFilled(userId: string | null) {
   });
 }
 
+/**
+ * „Schon mal gemacht?" — für die beiden Schritte, deren Haken sonst wieder verfällt.
+ *
+ * ── ⚠️ WARUM ES DAS BRAUCHT (24.08.2026) ────────────────────────────────────
+ *
+ * Von Zaur gemeldet: *„Wieso kommt ‚Deine ersten Schritte' immer wieder? Wenn
+ * man das einmal durchmacht, hat man es doch gelernt."* Er hat recht, und der
+ * Fehler saß in einer Entscheidung, die für sich genommen richtig war.
+ *
+ * Der Kopf dieser Datei sagt: keine Tabelle, kein Fortschritts-Feld, alle
+ * Zustände aus Daten, die es ohnehin gibt. Gut gedacht — nur wurde dabei die
+ * falsche Frage gestellt. Zwei der vier Schritte hingen an **Gegenwart** statt
+ * an **Vergangenheit**:
+ *
+ *   Termin  `plannedShows.length > 0`  → nur ZUKÜNFTIGE Termine. Ist der Abend
+ *                                        vorbei, ist der Haken weg.
+ *   Regal   `standing.length > 0`      → nur `status = 'listed'`. Alles
+ *                                        verkauft, Haken weg.
+ *
+ * Beides trifft ausgerechnet den Verkäufer, der es RICHTIG macht: Wer sendet
+ * und verkauft, bekommt die Anfänger-Liste zurück. Eine Liste, die einem das
+ * Gelernte wieder abspricht, ist schlimmer als keine.
+ *
+ * Das Prinzip bleibt: keine neue Tabelle, kein Fortschritts-Feld, nichts zum
+ * Zurücksetzen. Gezählt wird über Zeilen, die ohnehin liegen bleiben — ein
+ * abgelaufener Termin und ein verkaufter Artikel verschwinden nicht, sie
+ * wechseln nur den Status.
+ *
+ * ⚠️ Deshalb steht hier BEWUSST kein `status`-Filter. Wer einen hinzufügt,
+ * baut genau den Fehler wieder ein.
+ */
+export function useSellerEverStarted(userId: string | null) {
+  const announced = useQuery({
+    queryKey: ['berkat', 'ever-announced', userId],
+    enabled: Boolean(userId),
+    // Die Antwort ändert sich einmal im Leben eines Verkäufers von nein auf ja.
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<boolean> => {
+      const { count, error } = await supabase
+        .from('scheduled_lives')
+        .select('id', { count: 'exact', head: true })
+        .eq('host_id', userId!)
+        .eq('app', 'berkat');
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    },
+  });
+
+  const listed = useQuery({
+    queryKey: ['berkat', 'ever-listed', userId],
+    enabled: Boolean(userId),
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<boolean> => {
+      const { count, error } = await supabase
+        .from('live_auctions')
+        // `session_id IS NULL` = Regal, nicht Show-Ware. Die Lese-Policy
+        // `live_auctions_select_standing` gibt auch verkaufte und
+        // zurückgezogene Zeilen frei — genau darauf beruht das „schon mal".
+        .select('id', { count: 'exact', head: true })
+        .eq('seller_id', userId!)
+        .is('session_id', null);
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    },
+  });
+
+  return {
+    everAnnounced: announced.data ?? false,
+    everListed: listed.data ?? false,
+  };
+}
+
 export function SellerStart({
   steps,
   onOpen,
