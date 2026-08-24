@@ -116,6 +116,16 @@ export function ListingCard({
   const price = listingPrice(listing);
   const priceText = `${price.from ? 'ab ' : ''}${formatEuro(price.cents)}`;
 
+  /**
+   * Ein Regal-Artikel ohne Festpreis — nicht kaufbar und seit dem 25.08.2026
+   * auch nicht auffindbar (`BROWSABLE` in `useListings.ts`).
+   *
+   * ⚠️ Die Zeile erscheint NUR dem Besitzer. Ein Fremder, der über einen alten
+   * Merk-Eintrag hierherkommt, sieht schlicht „—" — die Aufgabe gehört dem
+   * Verkäufer, nicht ihm.
+   */
+  const needsPrice = !isShowItem(listing) && listing.buy_now_cents === null;
+
   // ⚠️ Der Termin gehört IN die Vorlesung, nicht daneben. Wer die Karte hört
   // statt sieht, bekommt sonst „Kleid, ab 1 €" — und hält es für kaufbar.
   const label = `${listing.title}, ${priceText}${
@@ -158,6 +168,15 @@ export function ListingCard({
             {show ? (
               <Text numberOfLines={1} style={s.rowShow}>
                 In der Sendung {formatSlot(show.scheduled_at)}
+              </Text>
+            ) : null}
+            {/* ⚠️ Der Satz sagt die FOLGE, nicht den Zustand. „Kein Preis" wäre
+                eine Beschreibung, die man wegliest; „niemand kann ihn finden"
+                ist der Grund, etwas zu tun. Warm bleiben und handlungsleitend —
+                Design-Gesetz 2: Tiefs wärmer machen. */}
+            {mine && needsPrice ? (
+              <Text numberOfLines={2} style={s.rowWarn}>
+                Ohne Preis findet ihn niemand — tipp drauf und trag einen ein.
               </Text>
             ) : null}
             {meta ? (
@@ -475,6 +494,7 @@ const s = StyleSheet.create({
   rowTitle: { flexShrink: 1, fontSize: 14, fontWeight: '600', color: ui.text },
   rowPrice: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
   rowShow: { fontSize: 12, fontWeight: '600', color: ui.live, marginTop: 2 },
+  rowWarn: { fontSize: 12, fontWeight: '600', color: ui.live, marginTop: 2 },
 
   // ── Beides ───────────────────────────────────────────────────────────────
   meta: { fontSize: 11, color: ui.textMuted, marginTop: 2 },

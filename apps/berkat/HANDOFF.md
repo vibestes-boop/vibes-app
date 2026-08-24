@@ -11182,10 +11182,32 @@ weiterhin im eigenen Regal (`shelfQuery`), auf der Artikelseite und in der Merkl
 per „Bearbeiten" den Preis nachtragen. **Der Weg zurück existiert also, er ist nur nicht
 ausgeschildert.**
 
-> **Was damit NICHT gelöst ist, und es gehört benannt: Wer unsichtbar wird, erfährt es nicht.** Ein
-> Verkäufer, dessen Termin abgesagt wurde, hat jetzt Artikel, die niemand findet, und keinen
-> Hinweis darauf. Der zweite Weg aus der Tabelle oben („N Artikel brauchen einen Preis" auf
-> Verkaufen) bleibt offen — bewusst, als eigener Schritt.
+> **Was damit NICHT gelöst war: Wer unsichtbar wird, erfährt es nicht.** Ein Verkäufer, dessen
+> Termin abgesagt wurde, hätte Artikel gehabt, die niemand findet, und keinen Hinweis darauf.
+
+✅ **Nachgezogen am selben Abend — und die Lösung war schon da, sie war nur falsch.**
+
+Auf „Verkaufen" steht seit jeher die Zeile **„Dein Regal · N kaufbar"**. Die zählte preislose
+Artikel mit. **Sie war also seit dem 24.08. eine Falschaussage** — und sie richtig zu machen IST
+der gesuchte Hinweis:
+
+```
+Dein Regal            2 kaufbar · 1 ohne Preis
+```
+
+Kein Banner, keine neue Abfrage, kein neuer Bildschirm. `standing` liegt ohnehin geladen da, die
+Zeile führt ohnehin ins Regal, und dort sagt jede betroffene Karte, was zu tun ist:
+*„Ohne Preis findet ihn niemand — tipp drauf und trag einen ein."*
+
+⚠️ **Der Satz nennt die FOLGE, nicht den Zustand.** „Kein Preis" wäre eine Beschreibung, die man
+wegliest; „niemand kann ihn finden" ist der Grund, etwas zu tun (Design-Gesetz 2).
+
+⚠️ **Nur dem Besitzer.** Ein Fremder, der über einen alten Merk-Eintrag auf so einen Artikel kommt,
+sieht schlicht „—". Die Aufgabe gehört dem Verkäufer, nicht ihm.
+
+> **Die Lehre, und sie ist billiger als jede neue Oberfläche: Wenn ein Riegel etwas versteckt, such
+> zuerst die Zahl, die dadurch falsch geworden ist.** Meistens steht der Hinweis schon da — er sagt
+> nur gerade das Gegenteil.
 
 ⚠️ Für `scheduled` gilt die Preisregel **nicht**: Dort ist der Sofortkauf freiwillig, und der
 Startpreis trägt die Anzeige („ab X €").
@@ -11268,6 +11290,7 @@ trägt, hätte den NULL-Fall nie erzeugt — also genau den, an dem der Typfehle
 | ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026 | A |
 | ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026 | A |
 | A31 | **Suche merken als Umschalter**: etwas suchen → Lesezeichen oben rechts antippen → wird **grün gefüllt**. App verlassen, zurück, dieselbe Suche tippen → muss **immer noch** grün sein. Nochmal antippen → wieder leer, und die Suche ist unter Aktivität → Gemerkt → Suchen verschwunden. ⚠️ Gegenprobe mit führendem Leerzeichen („ abaya"): Der Knopf muss trotzdem grün sein | A |
+| A32 | **Der Preis-Hinweis am eigenen Regal**: Einen Artikel ohne Sofortkauf-Preis anlegen (oder den bestehenden nehmen) — auf „Verkaufen" muss **„N kaufbar · 1 ohne Preis"** stehen, das zweite rot. Im Regal trägt die Zeile den Satz „Ohne Preis findet ihn niemand". Preis eintragen → beides verschwindet, und der Artikel taucht im Stöbern auf | A |
 | B14 | **Die Glocke von einem zweiten Konto**: vormerken, Verkäufer sieht „N warten", beim Auktionsstart kommt die Meldung und die Vormerkung verschwindet | B |
 
 ⚠️ **Was dieses ✅ trägt und was nicht.** Es steht auf einer Sichtprüfung am Gerät, nicht auf einem

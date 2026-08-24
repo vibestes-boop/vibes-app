@@ -173,6 +173,19 @@ export default function SellScreen() {
   // Bestellungen samt Lieferadressen im Speicher zu halten, um zwei Zahlen
   // anzuzeigen.
   const { data: standing = [] } = useSellerListings(myUserId ?? undefined);
+  /**
+   * Wie viele im Regal wirklich kaufbar sind — und wie vielen der Preis fehlt.
+   *
+   * Kostet keine zweite Abfrage: `standing` liegt ohnehin da. `shelfQuery`
+   * filtert bewusst NICHT auf den Preis — der Verkäufer muss seine preislosen
+   * Artikel ja sehen, um sie zu reparieren. Nur das Stöbern blendet sie aus
+   * (`BROWSABLE` in `useListings.ts`).
+   */
+  const shelfUnpriced = useMemo(
+    () => standing.filter((l) => l.buy_now_cents === null).length,
+    [standing],
+  );
+  const shelfPriced = standing.length - shelfUnpriced;
   const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
   // ⚠️ Der Hook lag seit dem 18.08.2026 ungenutzt herum — sein eigener Kommentar
   // sagt „die Zahl für das Abzeichen", und das Abzeichen gab es nie.
@@ -1200,10 +1213,32 @@ export default function SellScreen() {
           >
             <ShoppingBag size={19} color={ui.text} />
             <Text style={styles.jobLabel}>Dein Regal</Text>
-            {standing.length > 0 ? (
-              <Text style={styles.jobMeta}>{standing.length} kaufbar</Text>
-            ) : (
+            {/* ⚠️ HIER STAND `{standing.length} kaufbar`, UND DAS WAR SEIT DEM
+                24.08.2026 FALSCH.
+
+                `release_prepared_on_plan_end` (`20260824180000`) legt
+                vorbereitete Ware bei abgesagtem Termin zurück ins Regal, ohne
+                einen Preis zu setzen. Solche Zeilen sind NICHT kaufbar und seit
+                dem 25.08. auch nicht auffindbar (`BROWSABLE`) — die Zeile zählte
+                sie trotzdem als „kaufbar" mit.
+
+                Das ist zugleich die Antwort auf die Lücke, die der Riegel offen
+                liess: **Wer unsichtbar wird, erfährt es nicht.** Die Zahl richtig
+                zu machen IST der Hinweis — kein Banner, keine neue Abfrage, kein
+                neuer Bildschirm. Die Zeile führt ohnehin ins Regal, und dort
+                sagt jede betroffene Karte, was zu tun ist. */}
+            {standing.length === 0 ? (
               <Text style={styles.jobMeta}>leer</Text>
+            ) : (
+              <Text style={styles.jobMeta}>
+                {shelfPriced > 0 ? `${shelfPriced} kaufbar` : null}
+                {shelfPriced > 0 && shelfUnpriced > 0 ? ' · ' : null}
+                {shelfUnpriced > 0 ? (
+                  <Text style={styles.jobMetaWarn}>
+                    {shelfUnpriced === 1 ? '1 ohne Preis' : `${shelfUnpriced} ohne Preis`}
+                  </Text>
+                ) : null}
+              </Text>
             )}
             <ChevronRight size={18} color={ui.textMuted} />
           </Pressable>
@@ -1350,6 +1385,8 @@ const styles = StyleSheet.create({
   jobRowPressed: { opacity: 0.6 },
   jobLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
   jobMeta: { fontSize: 12, color: ui.textMuted },
+  /** Nicht rot als Alarm, sondern als das eine Wort, das hier heraussticht. */
+  jobMetaWarn: { fontSize: 12, fontWeight: '700', color: ui.live },
   // Gold, nicht Grau: Diese Zahl hat eine Frist, und die Versandzeit steht als
   // Kachel auf dem öffentlichen Profil.
   jobBadge: {
