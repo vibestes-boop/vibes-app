@@ -11162,6 +11162,32 @@ Regal-Zeilen. Drei Wege, keiner davon offensichtlich:
 
 Der dritte ist der ehrliche und der teuerste. **Gehört entschieden, nicht im Vorbeigehen gebaut.**
 
+✅ **Zaur hat entschieden: aus dem Stöbern nehmen (25.08.2026).** Umgesetzt als PostgREST-Bedingung
+`BROWSABLE` in `lib/useListings.ts`:
+
+```
+(status = 'listed' AND buy_now_cents IS NOT NULL)  OR  status = 'scheduled'
+```
+
+⚠️ **Serverseitig, nicht im Client.** Ein Filter über die geladenen Zeilen hätte die Grenze von
+sechzig mit toten Zeilen gefüllt — und `useShopCount` hätte weiter die falsche Zahl auf den Knopf
+geschrieben („Alle N Angebote ansehen"). Die Bedingung steht deshalb als **eine** Zeichenkette und
+wird von Liste und Zähler geteilt. Von aussen gemessen: **33 → 32**, HTTP 206, genau die eine
+preislose Zeile fällt weg.
+
+⚠️ **Der Riegel steht im STÖBERN, nicht an der Zeile.** Der Verkäufer sieht seinen Artikel
+weiterhin im eigenen Regal (`shelfQuery`), auf der Artikelseite und in der Merkliste — und kann dort
+per „Bearbeiten" den Preis nachtragen. **Der Weg zurück existiert also, er ist nur nicht
+ausgeschildert.**
+
+> **Was damit NICHT gelöst ist, und es gehört benannt: Wer unsichtbar wird, erfährt es nicht.** Ein
+> Verkäufer, dessen Termin abgesagt wurde, hat jetzt Artikel, die niemand findet, und keinen
+> Hinweis darauf. Der zweite Weg aus der Tabelle oben („N Artikel brauchen einen Preis" auf
+> Verkaufen) bleibt offen — bewusst, als eigener Schritt.
+
+⚠️ Für `scheduled` gilt die Preisregel **nicht**: Dort ist der Sofortkauf freiwillig, und der
+Startpreis trägt die Anzeige („ab X €").
+
 ### Nachtrag: „Suche merken" steht nicht mehr nur im Leerzustand (25.08.2026)
 
 Punkt 2 aus dem Whatnot-Vergleich. Bis hierher erschien das Merken **nur**, wenn eine Suche nichts

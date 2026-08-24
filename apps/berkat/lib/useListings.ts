@@ -204,8 +204,40 @@ function browseQuery() {
     .from('live_auctions')
     .select(LISTING_COLUMNS)
     .is('session_id', null)
-    .in('status', ['listed', 'scheduled']);
+    .or(BROWSABLE);
 }
+
+/**
+ * Wer im Stöbern erscheinen darf — als PostgREST-Bedingung, nicht als Filter
+ * im Client.
+ *
+ * ```
+ * (status = 'listed' AND buy_now_cents IS NOT NULL)  OR  status = 'scheduled'
+ * ```
+ *
+ * ⚠️ **Die Preis-Bedingung ist am 25.08.2026 dazugekommen, und sie ist keine
+ * Kosmetik.** `release_prepared_on_plan_end` (`20260824180000`) legt
+ * vorbereitete Ware bei abgesagtem Termin zurück ins Regal, **ohne einen Preis
+ * zu setzen** — ein vorbereiteter Artikel braucht keinen, ein Regal-Artikel
+ * schon. Solche Zeilen standen danach öffentlich im Regal, in der Suche und in
+ * ihrer Kategorie, und jeder Kaufweg endete an einem fehlenden Betrag.
+ *
+ * Der Riegel steht im STÖBERN, nicht an der Zeile: Der Verkäufer sieht seinen
+ * Artikel weiterhin im eigenen Regal (`shelfQuery`), auf der Artikelseite
+ * (`useListing`) und in seiner Merkliste — und kann dort per „Bearbeiten" den
+ * Preis nachtragen. Der Weg zurück existiert also, er ist nur nicht
+ * ausgeschildert. Das ist bewusst so entschieden (Übergabe 88, Nachtrag) und
+ * bleibt der offene Rest: **Wer unsichtbar wird, erfährt es nicht.**
+ *
+ * ⚠️ Für `scheduled` gilt die Preisregel NICHT — dort ist der Sofortkauf
+ * freiwillig, und der Startpreis trägt die Anzeige („ab X €").
+ *
+ * Steht als Zeichenkette an EINER Stelle, weil `useShopCount` dieselbe
+ * Bedingung braucht: Ein Zähler, der eine andere Menge misst als die Liste
+ * darunter, verspricht auf seinem Knopf eine falsche Zahl.
+ */
+const BROWSABLE =
+  'and(status.eq.listed,buy_now_cents.not.is.null),status.eq.scheduled';
 
 /**
  * Vorbereitete Artikel ohne **sichtbaren** Abend aussortieren.
@@ -266,11 +298,12 @@ export function useShopCount() {
     queryKey: ['berkat', 'shop-count'],
     staleTime: 60_000,
     queryFn: async (): Promise<number> => {
-      // ⚠️ Dieselben zwei Zustände wie `browseQuery()`, und das ist Pflicht:
-      // Die Zahl steht auf einem Knopf („Alle 38 Angebote ansehen"). Zählte
-      // sie nur das Regal, verspräche der Knopf weniger, als dahinter liegt —
-      // und der Leerzustand der Startseite schickte jemanden weg, obwohl für
-      // Freitag zehn Artikel bereitliegen.
+      // ⚠️ DIESELBE Bedingung wie `browseQuery()`, und das ist Pflicht: Die
+      // Zahl steht auf einem Knopf („Alle 38 Angebote ansehen"). Zählte sie nur
+      // das Regal, verspräche der Knopf weniger, als dahinter liegt — und der
+      // Leerzustand der Startseite schickte jemanden weg, obwohl für Freitag
+      // zehn Artikel bereitliegen. Zählte sie preislose Zeilen mit, verspräche
+      // er mehr.
       //
       // Der Rest-Fehler ist bekannt und klein: Ein vorbereiteter Artikel, dessen
       // Abend nicht mehr sichtbar ist, wird hier mitgezählt und in der Liste
@@ -280,7 +313,7 @@ export function useShopCount() {
         .from('live_auctions')
         .select('id', { count: 'exact', head: true })
         .is('session_id', null)
-        .in('status', ['listed', 'scheduled']);
+        .or(BROWSABLE);
       if (error) {
         if (__DEV__) console.warn('[Berkat] Angebote zählen:', error.message);
         return 0;
