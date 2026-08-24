@@ -4,10 +4,51 @@
 // Hier steht, was PASSIERT ist — auch das, wofür es keinen Push gibt, weil es
 // niemanden wecken muss: dass ein Verkäufer, dem man folgt, gerade sendet, dass
 // jemand etwas ins Regal gelegt hat, dass eine Einladung sich gelohnt hat.
+//
+// ── ⚠️ VOM STROM ZUM REGISTER (24.08.2026) ──────────────────────────────────
+//
+// Bis dahin war dieser Bildschirm EIN Strom mit zwei Zustands-Blöcken obendrauf.
+// Zaur hat Whatnots Aktivitäts-Reiter danebengelegt, und der ist etwas anderes:
+// vier Register (Purchases · Bids · Offers · Saved), keine Chronik.
+//
+// Der Unterschied ist nicht Geschmack. Ein Strom beantwortet „was ist
+// passiert?", ein Register „wo stehe ich?". Die Fragen eines Käufers sind
+// Zustands-Fragen — führe ich noch, wartet mein Vorschlag, wo war noch dieses
+// eine Angebot — und ein Strom beantwortet die schlecht, weil die Antwort
+// wegscrollt.
+//
+// Vier Reiter statt Whatnots vieren, mit einer Abweichung:
+//
+//   Neues        der bisherige Strom. Bleibt, weil er Dinge trägt, die Whatnot
+//                gar nicht hat („Verkäufer sendet gerade") und die wirklich
+//                Ereignisse sind.
+//   Gebote       `useMyBids`
+//   Vorschläge   `useMyOpenOffers`
+//   Gemerkt      `SavedList` — dieselbe Liste wie unter `/saved`
+//
+// ⚠️ „Käufe" fehlt mit Absicht. Whatnot hat den Reiter, bei uns steckt das
+// Gegenstück im Konto unter „Deine Pakete" — und dort hängt nicht nur die
+// Bestellliste, sondern der ganze Sammelkorb mit `useCheckoutCart` und
+// `useShippingLookup`. Das ist der Geld-Pfad. Ihn für eine Umsortierung
+// anzufassen wäre der falsche Handel; das gehört in einen eigenen Schritt mit
+// eigener Prüfung.
+//
+// ⚠️ Und der Strom bleibt der Vorgabe-Reiter, obwohl „Gebote" das Dringendste
+// enthält. Grund: `outbid` und `won` sind ohnehin Ereignis-Arten im Strom — wer
+// überboten wurde, sieht es also weiterhin sofort beim Öffnen, ohne einen
+// Reiter suchen zu müssen. Ein leerer Vorgabe-Reiter wäre der schlechtere Tausch.
 
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -27,8 +68,22 @@ import { formatEuro, useProfiles } from '../../lib/useAuction';
 import { useMyBids } from '../../lib/useMyBids';
 import { useMyOpenOffers } from '../../lib/useOffers';
 import { Avatar } from '../../components/Avatar';
+import { SavedList } from '../../components/SavedList';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
+
+type TabKey = 'neues' | 'gebote' | 'vorschlaege' | 'gemerkt';
+
+/**
+ * Die Reiter. Reihenfolge ist Absicht: erst das Neue (Vorgabe), dann das, was
+ * auf mich wartet, dann das, was ich mir aufgehoben habe.
+ */
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'neues', label: 'Neues' },
+  { key: 'gebote', label: 'Gebote' },
+  { key: 'vorschlaege', label: 'Vorschläge' },
+  { key: 'gemerkt', label: 'Gemerkt' },
+];
 
 /** Symbol und Farbe je Art. Gold ist der Kauf, Rot die laufende Uhr. */
 function look(kind: ActivityKind): { Icon: typeof Gavel; tint: string } {
@@ -87,6 +142,7 @@ export default function ActivityScreen() {
     [myOffers],
   );
 
+  const [tab, setTab] = useState<TabKey>('neues');
   const [pulling, setPulling] = useState(false);
   const onPull = useCallback(async () => {
     setPulling(true);
@@ -131,154 +187,45 @@ export default function ActivityScreen() {
         <Text style={styles.title}>Aktivität</Text>
       </View>
 
+      {/* Unterstrichene Textreiter statt Pillen — dieselbe Sprache wie Whatnot,
+          und sie kostet keine Höhe. Bei vier Wörtern reicht die Breite ohne
+          Scrollen; kommt ein fünftes dazu, muss das hier eine ScrollView werden. */}
+      <View style={styles.tabs}>
+        {TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <Pressable
+              key={t.key}
+              style={styles.tab}
+              onPress={() => setTab(t.key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={t.label}
+            >
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{t.label}</Text>
+              <View style={[styles.tabRule, active && styles.tabRuleActive]} />
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {tab !== 'neues' ? null : (
       <FlatList
         data={items}
         keyExtractor={(item: ActivityItem) => item.key}
         // ⚠️ `emptyWrap` zentriert den Leerzustand über die ganze Höhe. Das
         // darf nur greifen, wenn WIRKLICH nichts da ist — steht oben die
         // Gebots-Liste, wäre sie sonst mittig im Nichts.
+        // ⚠️ Hier stand bis zum Register-Umbau zusätzlich `&& bids.length === 0
+        // && myOffers.length === 0` — die Blöcke lagen ja über dem Strom und der
+        // zentrierte Leerzustand hätte sie sonst mittig ins Nichts geschoben. Seit
+        // beide eigene Reiter haben, geht es nur noch um den Strom selbst.
         contentContainerStyle={
-          items.length === 0 && bids.length === 0 && myOffers.length === 0
+          items.length === 0
             ? styles.emptyWrap
             : { paddingBottom: insets.bottom + space.xl }
         }
-        // ── Wo ich gerade mitbiete. Steht ÜBER dem Ereignis-Strom, weil es
-        //    das Einzige hier ist, das eine Handlung verlangen kann: Eine
-        //    Auktion läuft ab, ein Strom nicht.
-        //
-        //    Der Leerzustand dieses Bildschirms versprach seit dem 16.08.
-        //    „und wo du gerade mitbietest" — die Absicht war da, die Liste
-        //    fehlte (siebte Whatnot-Analyse).
-        ListHeaderComponent={
-          bids.length === 0 && myOffers.length === 0 ? null : (
-            <>
-            {bids.length === 0 ? null : (
-            <View style={styles.bidsBlock}>
-              <Text style={styles.bidsLabel}>
-                {outbid > 0
-                  ? outbid === 1
-                    ? 'Du wurdest überboten'
-                    : `Du wurdest ${outbid}× überboten`
-                  : 'Du bietest gerade mit'}
-              </Text>
-              {bids.map((bid) => (
-                <Pressable
-                  key={bid.auctionId}
-                  style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
-                  // Zum Live-Raum, nicht zum Artikel: Wer überboten wurde, will
-                  // dorthin, wo er wieder bieten kann.
-                  onPress={() =>
-                    bid.sessionId ? router.push(`/live/${bid.sessionId}`) : undefined
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel={`${bid.title}, ${
-                    bid.leading ? 'du führst' : 'überboten'
-                  }, aktuell ${formatEuro(bid.currentCents)}`}
-                >
-                  {bid.imageUrl ? (
-                    <Image source={{ uri: bid.imageUrl }} style={styles.bidThumb} contentFit="cover" />
-                  ) : (
-                    <View style={styles.bidThumb} />
-                  )}
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <View style={styles.bidTitleRow}>
-                      {/* Der Zustand zuerst, nicht der Titel: „Überboten" ist
-                          die Auskunft, der Artikelname nur die Zuordnung. */}
-                      <Text
-                        style={[styles.bidState, bid.leading ? styles.bidLeading : styles.bidOutbid]}
-                      >
-                        {bid.leading ? 'Du führst' : 'Überboten'}
-                      </Text>
-                      {bid.status === 'scheduled' ? (
-                        <Text style={styles.bidSoon}>startet noch</Text>
-                      ) : null}
-                    </View>
-                    <Text numberOfLines={1} style={styles.bidTitle}>
-                      {bid.title}
-                    </Text>
-                    <Text style={styles.bidMeta}>
-                      Aktuell {formatEuro(bid.currentCents)}
-                      {/* Das eigene Maximum steht nur da, wenn es eines gibt —
-                          wer von Hand bietet, hat keines, und eine leere
-                          Angabe wäre eine Frage statt einer Auskunft. */}
-                      {bid.maxCents != null ? ` · dein Maximum ${formatEuro(bid.maxCents)}` : ''}
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color={ui.textMuted} />
-                </Pressable>
-              ))}
-            </View>
-            )}
-
-            {/* ── Wo ich verhandele. Gleiche Bauform wie die Gebote darüber,
-                aus demselben Grund: Beides ist „ich habe etwas laufen und
-                warte". Bis zum 24.08.2026 hatte nur das Gebot hier einen
-                Platz — wer einen Vorschlag machte und die App schloss, hätte
-                sich merken müssen, bei WELCHEM Artikel.
-
-                ⚠️ Kein Widerspruch zu `OfferPanel` („bewusst KEIN eigener
-                Bildschirm"): Verhandelt wird weiterhin am Artikel. Das hier
-                ist der Weg zurück, nicht der Verhandlungstisch. */}
-            {myOffers.length === 0 ? null : (
-              <View style={styles.bidsBlock}>
-                <Text style={styles.bidsLabel}>
-                  {counteredCount > 0
-                    ? counteredCount === 1
-                      ? 'Ein Gegenvorschlag wartet auf dich'
-                      : `${counteredCount} Gegenvorschläge warten auf dich`
-                    : myOffers.length === 1
-                      ? 'Dein Vorschlag läuft'
-                      : 'Deine Vorschläge laufen'}
-                </Text>
-                {myOffers.map((offer) => (
-                  <Pressable
-                    key={offer.id}
-                    style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
-                    onPress={() => router.push(`/listing/${offer.auction_id}`)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${offer.title}, ${
-                      offer.status === 'countered' ? 'Gegenvorschlag' : 'wartet auf Antwort'
-                    }, dein Vorschlag ${formatEuro(offer.amount_cents)}`}
-                  >
-                    {offer.image_url ? (
-                      <Image source={{ uri: offer.image_url }} style={styles.bidThumb} contentFit="cover" />
-                    ) : (
-                      <View style={styles.bidThumb} />
-                    )}
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <View style={styles.bidTitleRow}>
-                        {/* Der Zustand zuerst, wie bei den Geboten. Rot nur beim
-                            Gegenvorschlag — dort liegt der Ball beim Käufer.
-                            Warten ist weder gut noch dringend, also gedämpft;
-                            Grün hiesse „alles gut", und das weiss hier niemand. */}
-                        <Text
-                          style={[
-                            styles.bidState,
-                            offer.status === 'countered' ? styles.bidOutbid : styles.offerWaiting,
-                          ]}
-                        >
-                          {offer.status === 'countered' ? 'Gegenvorschlag' : 'Wartet auf Antwort'}
-                        </Text>
-                      </View>
-                      <Text numberOfLines={1} style={styles.bidTitle}>
-                        {offer.title}
-                      </Text>
-                      <Text style={styles.bidMeta}>
-                        Dein Vorschlag {formatEuro(offer.amount_cents)}
-                        {offer.status === 'countered' && offer.counter_cents != null
-                          ? ` · Gegenvorschlag ${formatEuro(offer.counter_cents)}`
-                          : ''}
-                      </Text>
-                    </View>
-                    <ChevronRight size={18} color={ui.textMuted} />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-            </>
-          )
-        }
-        refreshControl={
+                refreshControl={
           <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={ui.textMuted} />
         }
         ListEmptyComponent={
@@ -352,19 +299,199 @@ export default function ActivityScreen() {
           );
         }}
       />
+      )}
+
+      {tab !== 'gebote' ? null : (
+        <ScrollView
+          contentContainerStyle={
+            bids.length === 0
+              ? styles.emptyWrap
+              : { paddingTop: space.sm, paddingBottom: insets.bottom + space.xl }
+          }
+          refreshControl={
+            <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={ui.textMuted} />
+          }
+        >
+          {bids.length === 0 ? (
+            <View style={styles.empty}>
+              <BerkatMark size={38} color={ui.sunken} />
+              <Text style={styles.emptyTitle}>Du bietest gerade nirgends mit</Text>
+              <Text style={styles.emptyBody}>
+                Sobald du in einer Show mitbietest, steht hier, ob du noch führst — auch wenn du
+                die App längst zugemacht hast.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.bidsBlock}>
+                          <Text style={styles.bidsLabel}>
+                            {outbid > 0
+                              ? outbid === 1
+                                ? 'Du wurdest überboten'
+                                : `Du wurdest ${outbid}× überboten`
+                              : 'Du bietest gerade mit'}
+                          </Text>
+                          {bids.map((bid) => (
+                            <Pressable
+                              key={bid.auctionId}
+                              style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
+                              // Zum Live-Raum, nicht zum Artikel: Wer überboten wurde, will
+                              // dorthin, wo er wieder bieten kann.
+                              onPress={() =>
+                                bid.sessionId ? router.push(`/live/${bid.sessionId}`) : undefined
+                              }
+                              accessibilityRole="button"
+                              accessibilityLabel={`${bid.title}, ${
+                                bid.leading ? 'du führst' : 'überboten'
+                              }, aktuell ${formatEuro(bid.currentCents)}`}
+                            >
+                              {bid.imageUrl ? (
+                                <Image source={{ uri: bid.imageUrl }} style={styles.bidThumb} contentFit="cover" />
+                              ) : (
+                                <View style={styles.bidThumb} />
+                              )}
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <View style={styles.bidTitleRow}>
+                                  {/* Der Zustand zuerst, nicht der Titel: „Überboten" ist
+                                      die Auskunft, der Artikelname nur die Zuordnung. */}
+                                  <Text
+                                    style={[styles.bidState, bid.leading ? styles.bidLeading : styles.bidOutbid]}
+                                  >
+                                    {bid.leading ? 'Du führst' : 'Überboten'}
+                                  </Text>
+                                  {bid.status === 'scheduled' ? (
+                                    <Text style={styles.bidSoon}>startet noch</Text>
+                                  ) : null}
+                                </View>
+                                <Text numberOfLines={1} style={styles.bidTitle}>
+                                  {bid.title}
+                                </Text>
+                                <Text style={styles.bidMeta}>
+                                  Aktuell {formatEuro(bid.currentCents)}
+                                  {/* Das eigene Maximum steht nur da, wenn es eines gibt —
+                                      wer von Hand bietet, hat keines, und eine leere
+                                      Angabe wäre eine Frage statt einer Auskunft. */}
+                                  {bid.maxCents != null ? ` · dein Maximum ${formatEuro(bid.maxCents)}` : ''}
+                                </Text>
+                              </View>
+                              <ChevronRight size={18} color={ui.textMuted} />
+                            </Pressable>
+                          ))}
+                        </View>
+          )}
+        </ScrollView>
+      )}
+
+      {tab !== 'vorschlaege' ? null : (
+        <ScrollView
+          contentContainerStyle={
+            myOffers.length === 0
+              ? styles.emptyWrap
+              : { paddingTop: space.sm, paddingBottom: insets.bottom + space.xl }
+          }
+          refreshControl={
+            <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={ui.textMuted} />
+          }
+        >
+          {myOffers.length === 0 ? (
+            <View style={styles.empty}>
+              <BerkatMark size={38} color={ui.sunken} />
+              <Text style={styles.emptyTitle}>Kein Vorschlag offen</Text>
+              <Text style={styles.emptyBody}>
+                Bei Artikeln im Regal kannst du einen Preis vorschlagen. Solange der Verkäufer
+                nicht geantwortet hat, findest du ihn hier wieder.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.bidsBlock}>
+                            <Text style={styles.bidsLabel}>
+                              {counteredCount > 0
+                                ? counteredCount === 1
+                                  ? 'Ein Gegenvorschlag wartet auf dich'
+                                  : `${counteredCount} Gegenvorschläge warten auf dich`
+                                : myOffers.length === 1
+                                  ? 'Dein Vorschlag läuft'
+                                  : 'Deine Vorschläge laufen'}
+                            </Text>
+                            {myOffers.map((offer) => (
+                              <Pressable
+                                key={offer.id}
+                                style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
+                                onPress={() => router.push(`/listing/${offer.auction_id}`)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${offer.title}, ${
+                                  offer.status === 'countered' ? 'Gegenvorschlag' : 'wartet auf Antwort'
+                                }, dein Vorschlag ${formatEuro(offer.amount_cents)}`}
+                              >
+                                {offer.image_url ? (
+                                  <Image source={{ uri: offer.image_url }} style={styles.bidThumb} contentFit="cover" />
+                                ) : (
+                                  <View style={styles.bidThumb} />
+                                )}
+                                <View style={{ flex: 1, minWidth: 0 }}>
+                                  <View style={styles.bidTitleRow}>
+                                    {/* Der Zustand zuerst, wie bei den Geboten. Rot nur beim
+                                        Gegenvorschlag — dort liegt der Ball beim Käufer.
+                                        Warten ist weder gut noch dringend, also gedämpft;
+                                        Grün hiesse „alles gut", und das weiss hier niemand. */}
+                                    <Text
+                                      style={[
+                                        styles.bidState,
+                                        offer.status === 'countered' ? styles.bidOutbid : styles.offerWaiting,
+                                      ]}
+                                    >
+                                      {offer.status === 'countered' ? 'Gegenvorschlag' : 'Wartet auf Antwort'}
+                                    </Text>
+                                  </View>
+                                  <Text numberOfLines={1} style={styles.bidTitle}>
+                                    {offer.title}
+                                  </Text>
+                                  <Text style={styles.bidMeta}>
+                                    Dein Vorschlag {formatEuro(offer.amount_cents)}
+                                    {offer.status === 'countered' && offer.counter_cents != null
+                                      ? ` · Gegenvorschlag ${formatEuro(offer.counter_cents)}`
+                                      : ''}
+                                  </Text>
+                                </View>
+                                <ChevronRight size={18} color={ui.textMuted} />
+                              </Pressable>
+                            ))}
+                          </View>
+          )}
+        </ScrollView>
+      )}
+
+      {tab !== 'gemerkt' ? null : (
+        <SavedList userId={userId} bottomInset={insets.bottom} />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // ── Wo ich mitbiete. Eigener Block über dem Strom, mit Trennlinie
-  // darunter: Er gehört nicht zu den Ereignissen, er ist ein Zustand.
+  // ── Die Reiter. Unterstrich statt Pille: Er trägt die Auswahl, ohne eine
+  // Fläche zu belegen — bei vier Wörtern nebeneinander zählt jeder Punkt.
+  tabs: {
+    flexDirection: 'row',
+    paddingHorizontal: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
+  },
+  tab: { flex: 1, alignItems: 'center', paddingTop: space.xs, gap: space.xs },
+  tabLabel: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
+  tabLabelActive: { color: ui.text, fontWeight: '700' },
+  // Der Strich liegt IMMER da, nur durchsichtig — sonst springt die Zeile um
+  // zwei Punkte, sobald man den Reiter wechselt.
+  tabRule: { height: 2, alignSelf: 'stretch', backgroundColor: 'transparent', borderRadius: 1 },
+  tabRuleActive: { backgroundColor: ui.text },
+
+  // ── Gebote und Vorschläge. Bis zum Register-Umbau ein Block ÜBER dem Strom,
+  // mit Trennlinie darunter — die trennte ihn von den Ereignissen. Seit beide
+  // eigene Reiter haben, ist unter dem Block nichts mehr, und die Linie wäre
+  // ein Strich ins Leere.
   bidsBlock: {
     paddingHorizontal: space.md,
     paddingTop: space.sm,
     paddingBottom: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ui.line,
     gap: space.sm,
   },
   bidsLabel: { fontSize: 12, fontWeight: '700', color: ui.textMuted },
