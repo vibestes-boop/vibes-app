@@ -28,11 +28,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   UIManager,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, ShoppingBag } from 'lucide-react-native';
+import { ChevronRight, Search, ShoppingBag, X } from 'lucide-react-native';
 import { Image } from 'expo-image';
 
 import { useCategoryTree, type Category, type CategoryNode } from '../../lib/useCategories';
@@ -93,6 +94,7 @@ function hasActivity(c: Category): boolean {
 export default function CategoriesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [query, setQuery] = useState('');
   const queryClient = useQueryClient();
   const { tree, isLoading, refetch } = useCategoryTree();
 
@@ -170,6 +172,50 @@ export default function CategoriesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Kategorien</Text>
         <Text style={styles.subtitle}>Stöbern, auch wenn gerade niemand sendet</Text>
+      </View>
+
+      {/* ── ⚠️ DAS SUCHFELD GEHÖRT HIERHER (24.08.2026) ────────────────────────
+          Von Zaur beim Vergleich mit Whatnot bemerkt: Deren zweiter Reiter heisst
+          „Categories", trägt eine Lupe und IST die Suche — Stöbern und Suchen sind
+          eine Tür. Bei uns waren es drei: die Suche auf der Startseite, die
+          Kacheln hier, die Filter in `shop.tsx`. Wer etwas Bestimmtes wollte,
+          musste erst wissen, WO man das tut.
+
+          Bewusst kein zweites Such-Werk: Das Feld reicht die Eingabe an
+          `shop.tsx` weiter (`?q=`, dort seit jeher entgegengenommen). Dort liegen
+          Filter, Sortierung und die gespeicherten Suchen. Eine eigene
+          Ergebnisliste hier wäre eine zweite Wahrheit über denselben Bestand.
+
+          ⚠️ Die Beschriftung sagt „Artikel", nicht „Suchen": `shop.tsx` sucht in
+          Angebots-Titeln. Verkäufer findet man auf der Startseite. Ein Feld, das
+          mehr verspricht, als es einlöst, ist schlimmer als ein enges. */}
+      <View style={styles.searchRow}>
+        <Search size={17} color={ui.textMuted} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Artikel suchen"
+          placeholderTextColor={ui.textMuted}
+          style={styles.searchInput}
+          returnKeyType="search"
+          autoCorrect={false}
+          autoCapitalize="none"
+          onSubmitEditing={() => {
+            const q = query.trim();
+            router.push(q ? `/shop?q=${encodeURIComponent(q)}` : '/shop');
+          }}
+          accessibilityLabel="Artikel suchen"
+        />
+        {query.length > 0 ? (
+          <Pressable
+            hitSlop={10}
+            onPress={() => setQuery('')}
+            accessibilityRole="button"
+            accessibilityLabel="Suche leeren"
+          >
+            <X size={16} color={ui.textMuted} />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Kein sechster Reiter: Unten liegen schon fünf, und „Kategorien" ist
@@ -391,6 +437,20 @@ function PanelCount({ category }: { category: Category }) {
 }
 
 const styles = StyleSheet.create({
+  // Ein Feld, keine Kachel: Es soll aussehen wie etwas, in das man tippt.
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginHorizontal: space.md,
+    marginBottom: space.sm,
+    paddingHorizontal: space.md,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: ui.sunken,
+  },
+  searchInput: { flex: 1, fontSize: 15, color: ui.text, padding: 0 },
+
   screen: { flex: 1, backgroundColor: ui.bg },
 
   header: { paddingHorizontal: space.md, paddingTop: space.sm },
