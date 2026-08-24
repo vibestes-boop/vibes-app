@@ -69,7 +69,30 @@ export default function DeleteAccountScreen() {
         <View style={s.back} />
       </View>
 
+      {/* ⚠️ Die Tastatur verdeckte Eingabefeld UND Knopf, sobald man das Feld
+          antippte — am 24.08.2026 am Gerät gesehen. Beide stehen am unteren Ende
+          eines scrollenden Bildschirms, und ohne die Zeilen unten schiebt nichts
+          sie hoch. Auf dem Bildschirm, der nicht scheitern darf, weil Apple
+          5.1.1(v) ihn verlangt.
+
+          `automaticallyAdjustKeyboardInsets` und NICHT der `KeyboardAvoidingView`
+          aus `messages/[id].tsx`: Der Hausbrauch dort ist für einen festgenagelten
+          Eingabebalken gebaut und läuft ohne das native Modul über
+          `LayoutAnimation` — also mit genau dem Springen aus Abschnitt 79. Hier
+          scrollt die Fläche ohnehin, und dann macht die native iOS-Anpassung des
+          Inhalts-Randes dasselbe ruhiger und ohne Bibliothek. Wichtig, weil das
+          Modul im TestFlight-Build 1.0.0 gar nicht steckt (`lib/keyboardKit.ts`)
+          — der Bildschirm muss OHNE es funktionieren.
+
+          Android braucht nichts davon: Dort verkleinert `softwareKeyboardLayoutMode`
+          (Expo-Standard `resize`) schon das Fenster.
+
+          `keyboardShouldPersistTaps="handled"` ist der zweite Teil des Fehlers:
+          Ohne das verschluckt der erste Tipp auf „Konto endgültig löschen" nur die
+          Tastatur, und man muss zweimal tippen. */}
       <ScrollView
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: space.lg, paddingBottom: insets.bottom + space.xl }}
       >
         {/* ⚠️ Der Verweis zeigte zuerst auf „den letzten Teil" — und das war der
