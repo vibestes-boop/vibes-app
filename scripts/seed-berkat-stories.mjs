@@ -52,7 +52,7 @@ if (!KEY) {
     '\n❌ SERVICE_ROLE_KEY fehlt.\n\n' +
       '   SERVICE_ROLE_KEY=DEIN_KEY node scripts/seed-berkat-stories.mjs\n\n' +
       '   Der Schlüssel steht im Supabase-Dashboard:\n' +
-      '   Project Settings → API → service_role → Reveal\n',
+      '   Project Settings → API Keys → „secret" → Reveal (sb_secret_…)\n',
   );
   process.exit(1);
 }
@@ -73,7 +73,7 @@ if (badChar) {
 if (KEY.length < 30) {
   console.error(
     `\n❌ Der Schlüssel ist mit ${KEY.length} Zeichen zu kurz — das ist keiner.\n` +
-      '   Supabase → Project Settings → API → service_role → Reveal\n',
+      '   Supabase → Project Settings → API Keys → „secret" → Reveal (sb_secret_…)\n',
   );
   process.exit(1);
 }
@@ -93,15 +93,25 @@ async function rest(path, init = {}) {
   });
   const text = await res.text();
   if (!res.ok) {
+    // ⚠️ Die Unterscheidung ist die BAUART, nicht die Rolle. Am 25.08.2026
+    // schickte der alte Text („Ist es der service_role-Schlüssel?") in die
+    // falsche Richtung: Der eingefügte Schlüssel war einer — nur ein
+    // Legacy-JWT, und die sind für dieses Projekt abgeschaltet.
     if (res.status === 401 || res.status === 403) {
       throw new Error(
         `Der Schlüssel wurde abgelehnt (${res.status}).\n\n` +
           `   Er ist ${KEY.length} Zeichen lang und beginnt mit „${KEY.slice(0, 11)}…".\n\n` +
-          '   Prüf zwei Dinge:\n' +
-          '   1. Ist es der service_role-Schlüssel? Der anon-Schlüssel steht im\n' +
-          '      Dashboard direkt darüber und wird hier abgelehnt.\n' +
-          '   2. Ist er vollständig? Beim Kopieren gehen gern Zeichen verloren.\n\n' +
-          '   Supabase → Project Settings → API → service_role → Reveal',
+          (KEY.startsWith('eyJ')
+            ? '   ⚠️ Das ist ein LEGACY-JWT (erkennbar am „eyJ…").\n' +
+              '      Dieses Projekt benutzt die NEUEN API-Schlüssel — die alten JWTs\n' +
+              '      sind abgeschaltet, egal ob anon oder service_role drinsteht.\n\n' +
+              '   Gebraucht wird „sb_secret_…":\n' +
+              '      Supabase → Project Settings → API Keys → „secret" → Reveal\n\n' +
+              '   ⚠️ NICHT aus dem Abschnitt „Legacy API keys" darunter.'
+            : '   Prüf zwei Dinge:\n' +
+              '   1. Ist es der „sb_secret_…"-Schlüssel? Nur der umgeht RLS.\n' +
+              '      Supabase → Project Settings → API Keys → „secret" → Reveal\n' +
+              '   2. Ist er vollständig? Beim Kopieren gehen gern Zeichen verloren.'),
       );
     }
     throw new Error(`${res.status} ${path}\n${text}`);
@@ -210,7 +220,12 @@ async function main() {
   console.log(`   Bilder je Verkäufer: ${SETS.map((s) => s.img.length).join(', ')}`);
   console.log('');
   console.log('   ⚠️ Sie laufen nach 24 Stunden aus dem Ring — dann neu laufen lassen.');
-  console.log('   Entfernen: node scripts/seed-berkat-stories.mjs --remove');
+  // ⚠️ ABSOLUTER Pfad, aus `process.argv[1]`. Hier stand ein relativer
+  // (`node scripts/…`), und der gilt nur im Wurzelverzeichnis — am
+  // 25.08.2026 aus `apps/berkat` heraus kopiert und mit
+  // MODULE_NOT_FOUND gescheitert. Ein Befehl, den man zum Laufen erst
+  // umschreiben muss, ist kein Befehl.
+  console.log(`   Entfernen: node ${process.argv[1]} --remove`);
 }
 
 main().catch((e) => {

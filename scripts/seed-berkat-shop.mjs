@@ -52,7 +52,7 @@ if (!KEY) {
     '\n❌ SERVICE_ROLE_KEY fehlt.\n\n' +
       '   SERVICE_ROLE_KEY=DEIN_KEY node scripts/seed-berkat-shop.mjs\n\n' +
       '   Der Schlüssel steht im Supabase-Dashboard:\n' +
-      '   Project Settings → API → service_role → Reveal\n',
+      '   Project Settings → API Keys → „secret" → Reveal (sb_secret_…)\n',
   );
   process.exit(1);
 }
@@ -77,7 +77,7 @@ if (badChar) {
 if (KEY.length < 30) {
   console.error(
     `\n❌ Der Schlüssel ist mit ${KEY.length} Zeichen zu kurz — das ist keiner.\n` +
-      '   Supabase → Project Settings → API → service_role → Reveal\n',
+      '   Supabase → Project Settings → API Keys → „secret" → Reveal (sb_secret_…)\n',
   );
   process.exit(1);
 }
@@ -99,18 +99,29 @@ async function rest(path, init = {}) {
   if (!res.ok) {
     // ⚠️ 401/403 heißt IMMER dasselbe: Der Schlüssel taugt nicht. Die rohe
     // Antwort („Invalid API key. Double check your API key.") sagt nicht, WAS
-    // zu prüfen ist — und der häufigste Fall ist nicht ein falscher Schlüssel,
-    // sondern der falsche VON ZWEIEN. Im Dashboard stehen `anon` und
-    // `service_role` direkt untereinander; nur der zweite umgeht RLS.
+    // zu prüfen ist.
+    //
+    // ⚠️ Hier stand bis zum 25.08.2026 „Ist es der service_role-Schlüssel? Der
+    // anon-Schlüssel steht im Dashboard direkt darüber." Der Satz hat an dem
+    // Tag in die falsche Richtung geschickt: Der eingefügte Schlüssel WAR ein
+    // service_role-Schlüssel — nur ein **Legacy-JWT**, und die sind für dieses
+    // Projekt abgeschaltet. Das Unterscheidungsmerkmal ist nicht die Rolle,
+    // sondern die BAUART: `eyJ…` ist alt, `sb_secret_…` ist der gültige Weg.
     if (res.status === 401 || res.status === 403) {
       throw new Error(
         `Der Schlüssel wurde abgelehnt (${res.status}).\n\n` +
           `   Er ist ${KEY.length} Zeichen lang und beginnt mit „${KEY.slice(0, 11)}…".\n\n` +
-          '   Prüf zwei Dinge:\n' +
-          '   1. Ist es der service_role-Schlüssel? Der anon-Schlüssel steht im\n' +
-          '      Dashboard direkt darüber und wird hier abgelehnt.\n' +
-          '   2. Ist er vollständig? Beim Kopieren gehen gern Zeichen verloren.\n\n' +
-          '   Supabase → Project Settings → API → service_role → Reveal',
+          (KEY.startsWith('eyJ')
+            ? '   ⚠️ Das ist ein LEGACY-JWT (erkennbar am „eyJ…").\n' +
+              '      Dieses Projekt benutzt die NEUEN API-Schlüssel — die alten JWTs\n' +
+              '      sind abgeschaltet, egal ob anon oder service_role drinsteht.\n\n' +
+              '   Gebraucht wird „sb_secret_…":\n' +
+              '      Supabase → Project Settings → API Keys → „secret" → Reveal\n\n' +
+              '   ⚠️ NICHT aus dem Abschnitt „Legacy API keys" darunter.'
+            : '   Prüf zwei Dinge:\n' +
+              '   1. Ist es der „sb_secret_…"-Schlüssel? Nur der umgeht RLS.\n' +
+              '      Supabase → Project Settings → API Keys → „secret" → Reveal\n' +
+              '   2. Ist er vollständig? Beim Kopieren gehen gern Zeichen verloren.'),
       );
     }
     throw new Error(`${res.status} ${path}\n${text}`);
@@ -404,7 +415,12 @@ async function main() {
     body: JSON.stringify(rows),
   });
   console.log(`✅ ${made.length} Artikel angelegt.`);
-  console.log('   Entfernen: node scripts/seed-berkat-shop.mjs --remove');
+  // ⚠️ ABSOLUTER Pfad, aus `process.argv[1]`. Hier stand ein relativer
+  // (`node scripts/…`), und der gilt nur im Wurzelverzeichnis — am
+  // 25.08.2026 aus `apps/berkat` heraus kopiert und mit
+  // MODULE_NOT_FOUND gescheitert. Ein Befehl, den man zum Laufen erst
+  // umschreiben muss, ist kein Befehl.
+  console.log(`   Entfernen: node ${process.argv[1]} --remove`);
 }
 
 main().catch((e) => {
