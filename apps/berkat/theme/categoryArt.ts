@@ -21,6 +21,7 @@ import {
   Baby,
   BookOpen,
   Coins,
+  Footprints,
   Gem,
   House,
   Moon,
@@ -48,7 +49,12 @@ export type CategoryArt = {
 
 const ART: Record<string, CategoryArt> = {
   mode: { icon: Shirt, tint: '#E8E5E9' },
-  schuhe: { icon: Package, tint: '#E5E5E9' },
+  // ⚠️ Nicht `Package`. Bis zum 24.08.2026 stand hier dieselbe Kiste wie bei
+  // `sonstiges` und im Rückfall — auf dem Raster sahen Schuhe damit aus wie der
+  // Rest-Topf, also nach „uns ist nichts eingefallen". Für `sonstiges` ist die
+  // Kiste richtig; für eine benannte Kategorie ist sie eine Auskunft, die keine
+  // ist.
+  schuhe: { icon: Footprints, tint: '#E5E5E9' },
   taschen: { icon: ShoppingBag, tint: '#E9E5E8' },
   schmuck: { icon: Gem, tint: '#E9E5E6' },
   beauty: { icon: Sparkles, tint: '#E9E5E5' },
