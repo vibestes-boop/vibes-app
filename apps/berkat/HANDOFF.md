@@ -1,6 +1,6 @@
 # Berkat — Übergabe
 
-**Stand: 24.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 25.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
@@ -12,13 +12,13 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 
 ---
 
-## 0. Wo du gerade stehst — 23.08.2026
+## 0. Wo du gerade stehst — 25.08.2026
 
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 87 → 56.** Abschnitt 87 ist der Anschlusspunkt (er löste 82 ab,
-> davor 75, 74, 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
+> **Wer neu einsteigt, liest 0 → 89 → 56.** Abschnitt 89 ist der Anschlusspunkt (er löste 87 ab,
+> davor 82, 75, 74, 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
 > nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
 >
 > ⚠️ **Wer nur EINEN Abschnitt liest, liest 73.** Der Sicherheits-Audit vom 22.08.2026 hat vier
@@ -32,11 +32,32 @@ was gilt.
 > 18.08. belegt hatte. Der Rumpf war jedes Mal aktuell, nur der Kopf nicht. **Wer unten etwas
 > abhakt, hakt es oben mit ab** — sonst liest der nächste Chat den falschen Zustand zuerst.
 >
+> ✅ **Neu am 25.08.2026 — zwei Löcher zu, ohne eine einzige Migration** (88). Zaur hat Whatnots
+> Suchergebnis-Seite danebengelegt: Dort trägt Ware, die erst Freitag versteigert wird, ein Datum
+> und steht ganz normal in der Suche. Bei uns war sie **unauffindbar** — jede Stöber-Abfrage
+> filterte auf `'listed'`, vorbereitete Ware steht auf `'scheduled'`. Jetzt: Datums-Pille, „ab X €",
+> Chip „In einer Show", und **die Glocke statt eines Kaufknopfs** (ein Sofortkauf würde den Abend
+> aushöhlen). Dazu „Suche merken" auch bei Treffern, als Umschalter.
+>
+> ⚠️ **Und dabei fiel auf, dass `20260824180000` Regal-Artikel OHNE Preis erzeugt** — nicht kaufbar,
+> aber öffentlich gelistet. Die fallen jetzt aus dem Stöbern, und die Zeile „Dein Regal · N kaufbar"
+> sagt endlich die Wahrheit („2 kaufbar · 1 ohne Preis"). **Die Lösung stand schon da, sie war nur
+> falsch.**
+>
+> ⚠️ **Die teuerste Kleinigkeit des Tages, und sie gilt über Berkat hinaus: `tsc` und `expo export`
+> prüfen Berkat NUR aus `apps/berkat`.** Seit `25bce22` steht der Ordner in der `exclude`-Liste der
+> Wurzel-`tsconfig.json` — ein Lauf aus der Wurzel meldet sauber und hat **nichts** angesehen.
+> Zwei grüne Läufe, null geprüfte Dateien, drei echte Typfehler erst danach. Gemessen: **1833
+> Dateien gegen 0**. Steht im [`LEITFADEN.md`](LEITFADEN.md).
+>
+> ⚠️ **Sechs Punkte stehen ungeprüft auf dem Gerät (A27–A32), alle von einem Abend.** Zwei OTAs an
+> einem Abend, und ein OTA wirkt erst beim übernächsten Start — die Zeile unten im Konto muss
+> **`bf93024e`** zeigen.
+>
 > **Neu am 23./24.08.2026 (die grosse Runde)** — Verkäufer-Profil umsortiert (76), `comment_reply`
 > freigeschaltet (77), Push-App-Filter an vier Direktwegen (78), Chat-Tastatur auf den UI-Thread
 > samt EAS-Build `1.0.0 (3)` (79), **neue Markenfarben Aubergine + Bernstein mit Neutralen bei
-> Buntheit 0** (80), **Stories** (81) und **Highlights** (83). ⚠️ **Der Anschlusspunkt ist jetzt
-> Abschnitt 87.**
+> Buntheit 0** (80), **Stories** (81) und **Highlights** (83).
 >
 > 🔴 **Und dann kam der 24.08. nachmittags (86).** Fünf stille Fehler an einem Tag — nichts davon
 > stürzte ab, nichts meldete sich: Der **R2-Aufräumer war sieben Wochen tot** (ein Deploy ohne
@@ -255,17 +276,18 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–83; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **82 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–89; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **89 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
 
-⚠️ **Nicht committet ist nur `deno.lock`** — die Datei war schon vor dem 15.08. geändert und gehört
-nicht zu dieser Arbeit.
+**Git, Stand 25.08.2026:** Branch `berkat` steht auf **`a185d6e`**, auf `origin` gepusht,
+Arbeitsverzeichnis **sauber**. Ein blankes `git push` genügt (Upstream steht seit dem 16.08.).
 
-**Git, Stand 16.08.2026 abends:** Branch `berkat` ist auf `origin` gepusht und hat jetzt ein
-Upstream (hatte vorher keins — deshalb schlug der erste `git push` fehl; künftig genügt `git push`).
-Der Push vom 16.08. trug 73 Dateien nach, weil der Zweig zwanzig Commits zurücklag.
+⚠️ Hier stand bis zum 25.08. „Nicht committet ist nur `deno.lock`". Das galt seit dem 15.08. nicht
+mehr — die Datei liegt längst im Baum (`0d952e0`). Eine Zeile über den Arbeitsstand veraltet
+schneller als jede andere in diesem Dokument; wer sie liest, sollte im Zweifel `git status` fragen
+statt sie zu glauben.
 
 ---
 
@@ -301,7 +323,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | **78 Berkat-eigene, alle eingespielt**; im Tracking **302** ohne Lücke (23.08.2026) — Abschnitt 5, zuletzt 77. ⚠️ Die 302. ist eine **Serlo**-Migration (`comment_reply`), keine Berkat-eigene |
+| Migrationen | **alle eingespielt**, keine Lücke — im Tracking **310** (Stand 24.08.2026, Abschnitt 87). ⚠️ Der 25.08. hat **keine** hinzugefügt: Abschnitt 88 kam ganz ohne Schema-Änderung aus, weil die Lese-Policy die neuen Zeilen längst erlaubte |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -6765,9 +6787,15 @@ zugleich die Gegenprobe für die Invalidierung in `useAuction.ts`.
 ## 56. Die Prüfliste — alles Ungeprüfte an einer Stelle (21.08.2026)
 
 Im Dokument stehen über **vierzig** Stellen mit „ungeprüft“ oder „nicht geprüft“, verteilt über
-dreiundachtzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20, B9–B11, C6; vier am
+neunundachtzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20, B9–B11, C6; vier am
 24.08.: **A21–A25**, Highlights, der Story-Ring und das gewanderte „+"; dazu **A26** und **E9** aus
 dem Story-Aufräumer, Abschnitt 85).
+
+⚠️ **Sechs kamen am 25.08. dazu — A27 bis A32, alle in Gruppe A**, alle aus Abschnitt 88 (Show-Ware
+auffindbar, Merken-Umschalter, der Preis-Hinweis am Regal). Vier davon sind gegen **Metro** gesehen,
+aber noch nicht gegen TestFlight; zwei sind ganz offen. **A31 und A32 kosten zusammen fünf Minuten
+und brauchen keine Vorbereitung** — A32 hat seine Testdatenlage sogar schon, weil ein preisloser
+Artikel seit dem 21.08. im Regal liegt.
 
 Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
 die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
@@ -10919,13 +10947,15 @@ Beides ist erledigt und geprüft: Mail kommt im Posteingang an, ohne Warnung.
 
 ---
 
-## 87. Anschlusspunkt für den nächsten Chat (Stand 24.08.2026, Nacht)
+## 87. Anschlusspunkt vom 24.08.2026 (Nacht) — abgelöst von Abschnitt 89
 
-**Hier anfangen.** Löst Abschnitt 82 ab. Danach [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt der Motor.
+⚠️ **Nicht mehr der Einstieg.** Der aktuelle Anschlusspunkt ist
+[Abschnitt 89](#89-anschlusspunkt-für-den-nächsten-chat-stand-25082026-nacht). Dieser Abschnitt
+bleibt stehen, weil sein Zustandsbericht die Lage vom 24.08. festhält — die Migrations- und
+`r2-delete`-Stände darin gelten unverändert.
 
-> ⚠️ **Nachtrag 25.08.2026:** Show-Ware ist auffindbar gebaut — **Abschnitt 88**, im Arbeitsstand,
-> nicht ausgerollt. Damit ist der dritte Punkt unter „Was heute NICHT geprüft wurde" erledigt.
-> Zum Prüfen fehlt Testware: `scripts/seed-berkat-show-items.mjs`.
+> ⚠️ **Nachtrag 25.08.2026:** Show-Ware ist auffindbar — **Abschnitt 88**, gebaut UND ausgerollt.
+> Damit ist der dritte Punkt unter „Was heute NICHT geprüft wurde" erledigt.
 >
 > ⚠️ Und eine Regel, die über Berkat hinausgeht: **`tsc` und `expo export` für Berkat laufen NUR
 > aus `apps/berkat`.** Aus der Wurzel prüfen sie Berkats Quelltext seit `25bce22` gar nicht mehr und
@@ -11209,6 +11239,59 @@ sieht schlicht „—". Die Aufgabe gehört dem Verkäufer, nicht ihm.
 > **Die Lehre, und sie ist billiger als jede neue Oberfläche: Wenn ein Riegel etwas versteckt, such
 > zuerst die Zahl, die dadurch falsch geworden ist.** Meistens steht der Hinweis schon da — er sagt
 > nur gerade das Gegenteil.
+
+---
+
+## 89. Anschlusspunkt für den nächsten Chat (Stand 25.08.2026, Nacht)
+
+**Hier anfangen.** Löst Abschnitt 87 ab (davor 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach
+[Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt
+der Motor.
+
+### Der Zustand
+
+- **Migrationen:** unverändert **310**, alle eingespielt. Heute kam **keine** dazu — der ganze
+  25.08. lief ohne Schema-Änderung
+- **`r2-delete`:** Version **26**, unverändert
+- **Build:** weiterhin **`1.0.0 (1)`** in TestFlight
+- **Letzter OTA:** „Regal sagt, wenn ein Preis fehlt", Gruppe `bf93024e-6c69-4a32-af80-a65a200fb488`,
+  Commit `5cefe22`. Davor am selben Abend `e3d9696e-…`
+- **Git:** `origin/berkat` steht auf `a185d6e`, Arbeitsverzeichnis sauber
+
+### ⚠️ Das Erste, was zu tun ist
+
+1. **Sechs ungeprüfte Punkte am Gerät abarbeiten — A27 bis A32.** Sie sind alle an einem Abend
+   entstanden, und das ist genau die Lage, vor der Abschnitt 3 warnt. **A31 und A32 kosten fünf
+   Minuten und brauchen keine Vorbereitung**; A32 hat sogar schon seine Testdatenlage, weil „Jjjj"
+   seit dem 21.08. preislos im Regal liegt.
+2. **Vorher die Zeile unten im Konto lesen: `bf93024e`.** Steht dort etwas anderes, prüfst du einen
+   früheren Stand.
+3. **Den Push-Rückfall entfernen** — `send_push_to_user`, Bedingung `v_count = 0` (Abschnitt 86).
+   Steht seit gestern offen und trifft jeden, der nur eine der beiden Apps hat.
+
+### Was heute NICHT geprüft wurde
+
+- **Der Rest von Whatnots Ergebnisseite.** Zwei von vier Abständen sind zu (Show-Ware auffindbar,
+  Suche merken). Offen bleiben die **fünf Sorten-Reiter** (`Top · Products · Shows · Users ·
+  Categories` — eine Eingabe, fünf Fragen; bei uns drei Türen) und **Liste statt Gitter** für
+  Suchergebnisse. Beides bewusst aufgeschoben, siehe unten.
+- **Der Verkäufer erfährt weiterhin nicht, WARUM sein Artikel keinen Preis hat.** Die Zeile sagt
+  „1 ohne Preis" — sie sagt nicht, dass der abgesagte Termin die Ursache war. Für einen Verkäufer
+  mit zwanzig Artikeln wäre das der nächste sinnvolle Satz.
+- **Die Warteschlange wiederholt nichts** (unverändert seit Abschnitt 84). `attempts` ist trotz des
+  Namens kein Zähler.
+- **Das Datenmodell „vorbereitet".** Whatnots Modell ist strukturell anders — dort ist eine Show
+  eine **Ansicht** auf das Inventar, kein Behälter. Show-Ware auffindbar zu machen war der
+  praktische Teil davon; das Modell bleibt aufgeschoben, bis Phase 0 zeigt, ob es sich lohnt.
+- **Kategorie-Kacheln tragen Symbole, keine Produktfotos.** Bildarbeit, keine Code-Arbeit;
+  `theme/categoryArt.ts` ist die einzige Datei.
+
+### ⚠️ Der Tag in einem Satz
+
+> **Kein Schema, keine Migration, keine neue Tabelle — und trotzdem waren zwei Löcher offen, die
+> keine Datenbank je gemeldet hätte:** Show-Ware, die es gab und die niemand finden konnte, und
+> Regal-Ware, die aussah wie kaufbar und es nicht war. Beide fand ein Mensch, der auf einen
+> Bildschirm sah.
 
 ⚠️ Für `scheduled` gilt die Preisregel **nicht**: Dort ist der Sofortkauf freiwillig, und der
 Startpreis trägt die Anzeige („ab X €").
