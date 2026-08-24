@@ -179,7 +179,8 @@ was gilt.
 | **Streitfall** — melden, Belegfoto, Fall-Karte im Verlauf, Abschnitt beim Verkäufer | ✅ gebaut (67, 68); am Gerät offen (Prüfliste D8/D9) |
 | **Nachrichten** — Vorschau, Ungelesen, Fotos, Tagestrenner, Artikel-Bezug | ✅ gebaut (64–66, 72); am Gerät offen (A11/A12, B7) |
 | **Sicherheit** — Audit gegen die Produktions-Rechte, elf Migrationen | ✅ vier Löcher zu, alles von aussen gemessen (73) — **einschliesslich des Wächters gegen die Selbst-Beförderung zum Admin**, aus einer angemeldeten Sitzung belegt (403 / 42501) |
-| **Show-Ware auffindbar** — vorbereitete Artikel im Regal, in der Suche und in den Kategorien, mit Datum und „ab X €"; Glocke statt Kaufknopf | ✅ am Gerät gesehen (88). ⚠️ **Nicht ausgerollt** — kein OTA, kein Commit. Dabei gefunden: `20260824180000` erzeugt Regal-Artikel **ohne Preis**, die niemand kaufen kann — die Anzeige ist abgesichert, die Ursache offen (88, Nachtrag) |
+| **Show-Ware auffindbar** — vorbereitete Artikel im Regal, in der Suche und in den Kategorien, mit Datum und „ab X €"; Glocke statt Kaufknopf | ✅ am Gerät gesehen, **ausgerollt am 25.08.2026** (88). Dabei gefunden: `20260824180000` erzeugt Regal-Artikel **ohne Preis** — die fallen jetzt aus dem Stöbern, aber **wer unsichtbar wird, erfährt es nicht** (88, Nachtrag) |
+| **Suche merken** — Lesezeichen in der Kopfzeile, auch bei Treffern, als Umschalter | ✅ gebaut und ausgerollt (88). ⚠️ Am Gerät offen: **A31** |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -10939,7 +10940,8 @@ Beides ist erledigt und geprüft: Mail kommt im Posteingang an, ohne Warnung.
   `verify_jwt = false` in `config.toml`
 - **Build:** weiterhin **`1.0.0 (1)`** in TestFlight — ohne
   `react-native-keyboard-controller` und `expo-image-manipulator`
-- **Letzter OTA:** „Suchfeld auf Kategorien", Runtime 1.0.0, Branch `production`
+- **Letzter OTA:** „Show-Ware auffindbar; Suche merken als Umschalter" (25.08.2026), Runtime 1.0.0,
+  Branch `production`, Gruppe `e3d9696e-7f80-4f97-991c-974906ed545d`, Commit `7cbffef`
 - **CI:** grün, mit eigenem `berkat (expo)`-Job
 
 ⚠️ **OTA-Befehl für Berkat — NICHT im Wurzelverzeichnis:**
@@ -11224,6 +11226,27 @@ nachgesehen, nicht vermutet: Ohne sie hätte `.delete()` **null Zeilen getroffen
 gemeldet** (die Falle aus Abschnitt 3), und der Eintrag wäre beim nächsten Laden wieder da.
 
 Geprüft: `tsc` Exit 0, `expo export` Exit 0, Bundle unverändert. **Am Gerät offen** — neu als A31.
+
+### ✅ Ausgerollt (25.08.2026)
+
+Fünf Commits auf `origin/berkat` (`5f233c5..7cbffef`) und ein OTA:
+
+| | |
+|---|---|
+| Zweig | `production`, Laufzeit **1.0.0** |
+| Gruppe | `e3d9696e-7f80-4f97-991c-974906ed545d` |
+| iOS-Update | `01a03612-aa63-7cce-9058-450aa6bd686d` |
+| Commit | `7cbffef` |
+
+Der Riegel aus Abschnitt 3 lief mit — `eas project:info | grep -q "@zaurhat/berkat"` in **derselben**
+Befehlskette, nicht als Blick davor. Die drei Kennzeichen danach: Laufzeit **1.0.0** (Serlo wäre
+1.30.0/1.31.0), Dashboard-Pfad `/projects/**berkat**/`, und der Commit stimmt mit `HEAD` überein.
+
+⚠️ Vor dem Prüfen die App **zweimal** schliessen und öffnen. Die Zeile unten im Konto muss
+`… · 25.08. …· e3d9696e` zeigen — steht dort etwas Älteres, prüfst du den Stand davor.
+
+⚠️ **Was mit diesem OTA rausging, ist am Gerät ungeprüft:** A31 (der Merken-Umschalter) und der
+`BROWSABLE`-Riegel. A27–A30 sind gesehen, aber gegen Metro, nicht gegen TestFlight.
 
 ```bash
 SERVICE_ROLE_KEY=… node scripts/seed-berkat-show-items.mjs
