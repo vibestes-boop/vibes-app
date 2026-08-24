@@ -1,5 +1,17 @@
 # -----------------------------------------------------------------------------
-# Typecheck-Workflow: tsc --noEmit gegen Expo-Root und apps/web.
+# Typecheck-Workflow: tsc --noEmit gegen Expo-Root, apps/web und apps/berkat.
+#
+# ⚠️ JEDE App prüft sich mit IHREN Abhängigkeiten. Bis zum 24.08.2026 fehlte
+# `apps/berkat` in der `exclude`-Liste der Wurzel-`tsconfig.json` — der
+# Wurzel-Lauf zog Berkats Quelltext also mit hinein, während `npm ci` im
+# Wurzelverzeichnis Berkats `node_modules` gar nicht anlegt. Ergebnis: zwei
+# unlösbare `TS2307 Cannot find module`-Meldungen
+# (`react-native-keyboard-controller`, `expo-image-manipulator`), obwohl beide
+# Pakete in `apps/berkat/package.json` sauber deklariert sind.
+#
+# Das ist teurer als es aussieht: Ein dauerhaft roter Lauf schickt jedes Mal
+# einen Telegram-Alarm, und nach dem dritten wischt man ihn weg. Dann fällt der
+# nächste echte Fehler nicht mehr auf. Rot muss ein Signal bleiben.
 #
 # Zweck: TS-Sauberkeit gegen schleichende Regressionen schützen. Niemand läuft
 # `tsc --noEmit` lokal manuell vor jedem Push — CI muss das übernehmen.
@@ -82,13 +94,41 @@ jobs:
         # 1:1 durch → Job rot, PR-Gate blockt.
         run: npm run typecheck
 
+  berkat:
+    name: berkat (expo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: apps/berkat
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/berkat/package-lock.json
+
+      - name: Install (apps/berkat)
+        # Eigene Lock-Datei, eigene node_modules — genau deshalb gibt es diesen
+        # Job. Der Wurzel-Lauf kann Berkat nicht prüfen, weil er dessen Pakete
+        # nicht installiert (siehe Kopf dieser Datei).
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        # Script in apps/berkat/package.json:  "typecheck": "tsc --noEmit"
+        run: npm run typecheck
+
   # Telegram-Ping bei Rot (Security-/Monitoring-Ausbau 2026-07-02).
   # `if: failure()` + needs auf alle Jobs = feuert, sobald irgendein Job rot ist.
   # Ohne TELEGRAM_*-Secrets ist der Step ein No-Op (siehe Action-Doku).
   telegram-alert:
     name: telegram alert (bei rot)
     if: failure()
-    needs: [native, web]
+    needs: [native, web, berkat]
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
