@@ -312,18 +312,74 @@ export function useAddHighlight() {
 }
 
 // ── Highlight entfernen ───────────────────────────────────────────────────────
+/**
+ * ⚠️ REIHENFOLGE: erst die Adressen holen, dann die Zeile, dann die Datei.
+ *
+ * Bis zum 24.08.2026 löschte das hier NUR die Zeile — und weil `highlights/`
+ * für den allgemeinen R2-Cleanup unerreichbar ist (das ist Absicht: genau das
+ * lässt Highlights den Story-Ablauf überleben, siehe `useAddHighlight`), blieb
+ * die kopierte Datei danach für immer liegen.
+ *
+ * Die Zeile ist die einzige Stelle, an der die Adressen stehen. Wer sie zuerst
+ * löscht, weiß danach nicht mehr, welche Datei zu diesem Highlight gehörte.
+ *
+ * ⚠️ Die Datei-Löschung ist BEST-EFFORT und darf nie den Ausschlag geben.
+ * Scheitert sie, verschwindet das Highlight trotzdem — wer ein Bild aus seinem
+ * Profil nimmt, will es weg haben; eine liegengebliebene Datei ist unser
+ * Problem, nicht seins.
+ */
 export function useRemoveHighlight() {
   const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.profile?.id);
 
   return useMutation({
     mutationFn: async (highlightId: string) => {
+      // Die Adressen einsammeln, SOLANGE die Zeile noch da ist.
+      let urls: string[] = [];
+      try {
+        const { data } = await supabase
+          .from('story_highlights')
+          .select('media_url, thumbnail_url, items')
+          .eq('id', highlightId)
+          .eq('user_id', userId ?? '')
+          .maybeSingle();
+
+        if (data) {
+          const items = Array.isArray(data.items) ? (data.items as HighlightItem[]) : [];
+          urls = Array.from(new Set(
+            [
+              data.media_url as string | null,
+              data.thumbnail_url as string | null,
+              ...items.flatMap((i) => [i.media_url, i.thumbnail_url ?? null]),
+            ]
+              .filter((u): u is string => typeof u === 'string' && u.length > 0)
+              // ⚠️ NUR die Kopien. Schlug `highlight-copy-media` beim Anlegen
+              // fehl, steht hier noch die Original-Adresse unter `thumbnails/` —
+              // und die kann dieselbe Datei sein, die eine Story oder ein Post
+              // benutzt. Die anzufassen wäre echter Datenverlust.
+              .filter((u) => u.includes('/highlights/')),
+          ));
+        }
+      } catch {
+        /* Ohne Adressen wird eben nur die Zeile gelöscht. */
+      }
+
       const { error } = await supabase
         .from('story_highlights')
         .delete()
         .eq('id', highlightId)
         .eq('user_id', userId ?? '');
       if (error) throw error;
+
+      // Erst NACH dem erfolgreichen Löschen der Zeile. Andersherum stünde bei
+      // einem Fehlschlag ein Highlight ohne Bilder auf dem Profil.
+      if (urls.length > 0) {
+        try {
+          await supabase.functions.invoke('r2-delete', { body: { urls } });
+        } catch {
+          /* best-effort, siehe oben */
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['story-highlights', userId] });
