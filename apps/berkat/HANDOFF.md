@@ -57,8 +57,11 @@ was gilt.
 > gesetzt, ohne eine Datei anzufassen.** Ab jetzt gehört `supabase functions deploy r2-delete` in
 > denselben Arbeitsgang wie der `db push`, sobald sich `r2_delete_queue` ändert.
 >
-> ⚠️ **Stories und Highlights sind NICHT ausgerollt** — beides läuft bisher nur gegen Metro. Und
-> im Bestand liegt **genau eine** Story, die eigene. Für den Ring gibt es jetzt
+> ✅ **Stories und Highlights sind seit dem 24.08.2026 ausgerollt** — OTA auf Runtime 1.0.0, Gruppe
+> `3e6f7656`. Damit sind **A21 und A24 endlich prüfbar** (bisher nur gegen Metro belegt). ⚠️ Erst
+> die App **zweimal** schließen und öffnen, sonst siehst du den Stand davor.
+>
+> Im Bestand liegt weiterhin **genau eine** Story, die eigene. Für den Ring gibt es jetzt
 > `scripts/seed-berkat-stories.mjs`; **den Schlüssel dafür hat nur Zaur** (Abschnitt 83).
 >
 > ⚠️ **Fünf geteilte Tabellen brauchten an einem Tag einen App-Stempel** — `notifications`,
@@ -10642,12 +10645,15 @@ UPDATE r2_delete_queue SET status = 'pending', processed_at = NULL
 | `20260824130000_stories_r2_media_cleanup.sql` | ✅ eingespielt, Cron `purge-expired-story-media` registriert (stündlich, Minute 23) |
 | `r2-delete` v23 | ✅ deployed |
 | Commit | `7bc928a` auf `berkat` |
-| **Noch nicht ausgeliefert** | die zwei `media_purged_at`-Filter — Serlo und Berkat sind getrennte EAS-Projekte, also zwei OTAs |
+| OTA Berkat | ✅ Runtime **1.0.0**, Gruppe `3e6f7656` — **darin auch Stories und Highlights, erstmals an TestFlight** |
+| OTA Serlo | ✅ Runtime **1.31.0**, Gruppe `fe400af1` |
 
-⚠️ **Vor dem OTA die Runtime prüfen.** `app.json` steht auf **1.31.0**, der letzte Serlo-OTA ging
-aber auf **1.30.0** (16 Stunden vorher). Bei `runtimeVersion.policy: "appVersion"` veröffentlicht ein
-blindes `eas update` auf 1.31.0 — und erreicht damit niemanden, der auf 1.30.0 sitzt. Nicht dringend:
-zu filtern gibt es erst, wenn die ersten Stories 90 Tage alt werden.
+⚠️ **Vor einem Serlo-OTA immer die Runtime klären, sie ist nicht aus dem Repo ablesbar.** `app.json`
+steht seit dem 11.07. auf **1.31.0**, `master` auf 1.26.3 — eine **1.30.0 gibt es in keinem Zweig und
+in keinem Worktree**, der OTA vom 23.08. ging aber genau dorthin (und schrieb „(Runtime 1.30.0)"
+ausdrücklich in die Nachricht). Bei `runtimeVersion.policy: "appVersion"` erreicht ein Update auf der
+falschen Runtime **niemanden** — und sieht dabei erledigt aus. Für den 24.08. hat Zaur 1.31.0
+bestätigt; wer später ausrollt, fragt erneut, statt `app.json` zu glauben.
 
 Erste Kontrolle nach dem Lauf zur Minute 23:
 
