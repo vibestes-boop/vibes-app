@@ -408,6 +408,12 @@ export type BidError =
   | 'bid_too_low'
   | 'bid_too_high'
   | 'seller_cannot_bid'
+  // Vom Riegel auf `live_bids` (20260825160000 bzw. 20260825120000). Sie
+  // kommen NICHT aus `place_live_bid`, sondern aus einem Trigger — deshalb
+  // stehen sie hier und nicht bei den RPC-Gruenden darueber.
+  | 'too_many_unpaid'
+  | 'under_age'
+  | 'birth_date_missing'
   | 'not_authenticated'
   | 'unknown';
 
@@ -440,6 +446,15 @@ export function bidErrorText(reason: BidError): string {
       return 'Auf die eigene Ware kann man nicht bieten.';
     case 'not_authenticated':
       return 'Melde dich an, dann kannst du mitbieten.';
+    case 'too_many_unpaid':
+      // ⚠️ Der Satz nennt den WEG ZURUECK, nicht nur die Sperre. Wer drei
+      // Zuschlaege nicht bezahlt hat, ist meistens kein Betrueger, sondern
+      // jemand, der drei Abende vergessen hat (Design-Gesetz 2).
+      return 'Mitbieten geht gerade nicht — es liegen offene Zuschlaege vor. Mehr dazu im Konto.';
+    case 'under_age':
+      return 'Mitbieten geht erst ab 18 — ein Gebot ist ein verbindlicher Kauf.';
+    case 'birth_date_missing':
+      return 'Sag uns kurz dein Geburtsdatum, dann geht es weiter.';
     default:
       return 'Das Gebot kam nicht durch. Versuch es gleich noch einmal.';
   }

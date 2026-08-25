@@ -25,6 +25,7 @@ import {
   CalendarClock,
   Check,
   ChevronRight,
+  Gavel,
   Handshake,
   ImagePlus,
   Package,
@@ -1198,6 +1199,27 @@ export default function SellScreen() {
             ) : (
               <Text style={styles.jobMeta}>keine</Text>
             )}
+            <ChevronRight size={18} color={ui.textMuted} />
+          </Pressable>
+
+          {/* ⚠️ „Deine Zuschläge" ist seit dem 26.08.2026 kein Nice-to-have.
+              Alles nach der Auktion hing an `product_orders` — die entstehen
+              aber nur mit Kassen-Freigabe, und die bleibt für fremde Verkäufer
+              aus (ZAG). Für sie stand nach dem Zuschlag NICHTS: kein Korb,
+              keine Bestellung, keine Liste. Bei Direktzahlung ist das hier der
+              einzige Ort, an dem steht, wem man schreiben muss. */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.jobRow,
+              styles.jobRowSplit,
+              pressed && styles.jobRowPressed,
+            ]}
+            onPress={() => router.push('/wins')}
+            accessibilityRole="button"
+            accessibilityLabel="Deine Zuschläge"
+          >
+            <Gavel size={19} color={ui.text} />
+            <Text style={styles.jobLabel}>Deine Zuschläge</Text>
             <ChevronRight size={18} color={ui.textMuted} />
           </Pressable>
 

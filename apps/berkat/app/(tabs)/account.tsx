@@ -35,6 +35,7 @@ import {
   useUsernames,
 } from '../../lib/useAuction';
 import { useCheckoutCart } from '../../lib/useCheckout';
+import { strikeNotice, useMyStrikes } from '../../lib/useUnpaidStrikes';
 import { shippingHint, useShippingLookup } from '../../lib/useShipping';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
 import { missingBusinessFields, useBerkatSeller } from '../../lib/useBerkatSeller';
@@ -200,6 +201,10 @@ export default function AccountScreen() {
   const { serverNow } = useServerClock();
 
   const { data: carts = [], refetch: refetchCarts } = useMyCarts(myUserId);
+  // Offene Zuschlaege (`20260825160000`). Der Zaehler kommt aus der RPC, damit
+  // der Zwoelf-Monats-Verfall nicht ein drittes Mal abgeschrieben wird.
+  const { data: strikeCount = 0 } = useMyStrikes(myUserId);
+  const strikeText = strikeNotice(strikeCount);
   const { data: liveSellers } = useLiveSellers(carts.map((c) => c.seller_id));
   const { data: orders = [], refetch: refetchOrders } = useMyOrders(myUserId);
   const { data: unreadMessages = 0, refetch: refetchUnread } = useUnreadMessageCount(myUserId);
@@ -459,6 +464,25 @@ export default function AccountScreen() {
         {sellerAway ? <Text style={styles.linkWarn}>im Urlaub</Text> : null}
         <ChevronRight size={18} color={ui.textMuted} />
       </Pressable>
+
+      {/* ── ⚠️ OFFENE ZUSCHLÄGE ────────────────────────────────────────────
+          Eine Sperre ohne Erklärung ist eine Wand. Wer nicht mehr bieten kann,
+          muss hier lesen WARUM und WAS er tun kann — sonst hält er die App für
+          kaputt und geht.
+
+          ⚠️ Der Ton ist Absicht (Design-Gesetz 2). Wer drei Zuschläge nicht
+          bezahlt hat, ist meistens kein Betrüger, sondern jemand, der drei
+          Abende vergessen hat. Der Text nennt den Weg zurück — den Verkäufer
+          ansprechen, der seine Meldung zurücknehmen kann — statt ein Urteil.
+
+          Steht VOR den Paketen: Wer gesperrt ist, soll es lesen, bevor er nach
+          etwas sucht, das er gerade nicht tun kann. */}
+      {strikeText ? (
+        <View style={[styles.card, styles.strikeCard]}>
+          <Text style={styles.strikeTitle}>{strikeText.title}</Text>
+          <Text style={styles.cardBody}>{strikeText.body}</Text>
+        </View>
+      ) : null}
 
       <Text style={styles.sectionLabel}>Deine Pakete</Text>
       {carts.length === 0 ? (
@@ -771,6 +795,8 @@ const styles = StyleSheet.create({
     gap: space.sm,
     marginTop: space.md,
   },
+  strikeCard: { borderColor: ui.live },
+  strikeTitle: { fontSize: 15, fontWeight: '700', color: ui.live },
   card: {
     backgroundColor: ui.card,
     borderRadius: radius.md,
