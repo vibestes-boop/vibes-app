@@ -35,8 +35,17 @@ export type MyOrder = {
  * Auktion; es wurde nur nicht mitgenommen.
  */
 export type CartItem = {
+  /**
+   * ⚠️ Seit dem 26.08.2026 dabei, damit die Zeile ANTIPPBAR ist. Zaur beim
+   * Prüfen: „wenn man drauf klickt öffnet das Produktdetailsseite nicht" —
+   * sie konnte es gar nicht, der Kennung wegen. Ein Bild, das aussieht wie ein
+   * Knopf und keiner ist, ist schlimmer als ein Bild ohne Anspruch.
+   */
+  id: string;
   title: string;
   image_url: string | null;
+  /** Der Zuschlagspreis dieses einen Artikels. */
+  price_cents: number | null;
 };
 
 /**
@@ -74,15 +83,24 @@ export function useMyOrder(orderId: string | undefined, userId: string | null) {
 
       const { data: won } = await supabase
         .from('live_auctions')
-        .select('title, image_url')
+        .select('id, title, image_url, current_bid_cents')
         .eq('cart_id', order.cart_id)
         .eq('status', 'sold');
 
       return {
         ...order,
-        items: ((won ?? []) as { title: string; image_url: string | null }[]).map((row) => ({
+        items: (
+          (won ?? []) as {
+            id: string;
+            title: string;
+            image_url: string | null;
+            current_bid_cents: number | null;
+          }[]
+        ).map((row) => ({
+          id: row.id,
           title: row.title,
           image_url: row.image_url,
+          price_cents: row.current_bid_cents,
         })),
       };
     },
@@ -120,17 +138,24 @@ export function useMyOrders(userId: string | null) {
       if (cartIds.length > 0) {
         const { data: won, error: wonError } = await supabase
           .from('live_auctions')
-          .select('cart_id, title, image_url')
+          .select('id, cart_id, title, image_url, current_bid_cents')
           .in('cart_id', cartIds)
           .eq('status', 'sold');
         if (wonError) throw wonError;
         for (const row of (won ?? []) as {
+          id: string;
           cart_id: string;
           title: string;
           image_url: string | null;
+          current_bid_cents: number | null;
         }[]) {
           const list = byCart.get(row.cart_id) ?? [];
-          list.push({ title: row.title, image_url: row.image_url });
+          list.push({
+            id: row.id,
+            title: row.title,
+            image_url: row.image_url,
+            price_cents: row.current_bid_cents,
+          });
           byCart.set(row.cart_id, list);
         }
       }

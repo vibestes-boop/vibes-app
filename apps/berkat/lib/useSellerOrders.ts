@@ -77,17 +77,24 @@ export function useSellerOrders(userId: string | null) {
           // `shipping_tier` MUSS mit: Ohne sie kann die Unterdeckungs-Prüfung
           // nicht wissen, welcher Satz für dieses Paket gilt — und würde bei
           // jedem Brief einen Fehlalarm auslösen (`20260823140000`).
-          .select('cart_id, title, image_url, shipping_tier')
+          .select('id, cart_id, title, image_url, shipping_tier, current_bid_cents')
           .in('cart_id', cartIds)
           .eq('status', 'sold');
         for (const row of (won ?? []) as {
+          id: string;
           cart_id: string;
           title: string;
           image_url: string | null;
           shipping_tier: number | null;
+          current_bid_cents: number | null;
         }[]) {
           const list = byCart.get(row.cart_id) ?? [];
-          list.push({ title: row.title, image_url: row.image_url });
+          list.push({
+            id: row.id,
+            title: row.title,
+            image_url: row.image_url,
+            price_cents: row.current_bid_cents,
+          });
           byCart.set(row.cart_id, list);
           // Die Stufe eines PAKETS ist die höchste seiner Artikel — alles geht
           // in dieselbe Sendung. `?? 4` innen: Ein Artikel ohne Angabe muss die

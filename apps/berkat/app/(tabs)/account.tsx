@@ -153,7 +153,7 @@ function useMyCarts(userId: string | null) {
         // zeigt den teuersten Satz („ab 4,90 €"), während die Kasse bei einem
         // Brief 1,19 € verlangt. Eine zu HOHE Angabe schreckt ab, und bei
         // 6-€-Ware entscheidet genau sie über den Kauf (`20260823140000`).
-        .select('cart_id, current_bid_cents, title, image_url, shipping_tier')
+        .select('id, cart_id, current_bid_cents, title, image_url, shipping_tier')
         .in(
           'cart_id',
           rows.map((c) => c.id),
@@ -162,6 +162,7 @@ function useMyCarts(userId: string | null) {
       if (wonError) throw wonError;
 
       const items = (won ?? []) as {
+        id: string;
         cart_id: string;
         current_bid_cents: number | null;
         title: string;
@@ -175,7 +176,14 @@ function useMyCarts(userId: string | null) {
           itemCount: mine.length,
           totalCents: mine.reduce((sum, item) => sum + (item.current_bid_cents ?? 0), 0),
           // Was drin liegt — vorher war ein offenes Paket nur eine Zahl.
-          items: mine.map((item) => ({ title: item.title, image_url: item.image_url })),
+          // ⚠️ `id` und Preis gehen MIT — ohne sie ist die Zeile im Paket
+          // nicht antippbar und sagt nicht, was sie gekostet hat.
+          items: mine.map((item) => ({
+            id: item.id,
+            title: item.title,
+            image_url: item.image_url,
+            price_cents: item.current_bid_cents,
+          })),
           // Die Stufe eines PAKETS ist die höchste seiner Artikel — alles geht
           // in dieselbe Sendung. `?? 4` innen: Ein Artikel ohne Angabe muss die
           // teuerste Stufe erzwingen, sonst verbilligt eine Lücke den Satz.
@@ -524,28 +532,58 @@ export default function AccountScreen() {
               </Text>
             ) : null}
 
-            {/* Was drin liegt, als Bilderreihe. Ein offenes Paket war vorher
-                nur eine Zahl — man sah nicht, wofür man gleich bezahlt. */}
+            {/* ── ⚠️ ZEILEN STATT BILDERREIHE (26.08.2026) ────────────────────
+                Hier stand eine Reihe 44×44-Kacheln, eingeführt mit der
+                richtigen Absicht („ein offenes Paket war vorher nur eine
+                Zahl"). Am Gerät gemeldet und zu Recht: Bei EINEM Artikel ist
+                ein einzelnes Quadrat keine Auskunft. Zaur: „garkeine
+                produktbeschreibung oder titel und das bild ist klein sagt sehr
+                wenig aus was das ist, und wenn man drauf klickt öffnet das
+                produktdetailsseite nicht."
+
+                Drei Dinge waren falsch, und das dritte ist das schlimmste:
+                  • kein Titel — man erkennt nicht, wofür man zahlt
+                  • zu klein, um es am Foto zu erkennen
+                  • **es sah aus wie ein Knopf und war keiner.**
+
+                Jetzt: Zeile mit Bild im Karten-Format, Titel und Zuschlag,
+                antippbar zur Artikelseite. Dort steht seit heute „Du hast den
+                Zuschlag" — der Weg führt also nicht ins Nichts zurück. */}
             {cart.items.length > 0 ? (
-              <View style={styles.cartStrip}>
-                {cart.items.slice(0, 6).map((item, index) => (
-                  <View key={`${cart.id}-${index}`} style={styles.cartThumb}>
-                    {item.image_url ? (
-                      <Image
-                        source={{ uri: item.image_url }}
-                        style={StyleSheet.absoluteFill}
-                        contentFit="cover"
-                        transition={120}
-                      />
-                    ) : (
-                      <Package size={15} color={ui.textMuted} />
-                    )}
-                  </View>
+              <View style={styles.cartItems}>
+                {cart.items.slice(0, 6).map((item) => (
+                  <Pressable
+                    key={`${cart.id}-${item.id}`}
+                    style={({ pressed }) => [styles.cartRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => router.push(`/listing/${item.id}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.title} ansehen`}
+                  >
+                    <View style={styles.cartThumb}>
+                      {item.image_url ? (
+                        <Image
+                          source={{ uri: item.image_url }}
+                          style={StyleSheet.absoluteFill}
+                          contentFit="cover"
+                          transition={120}
+                        />
+                      ) : (
+                        <Package size={16} color={ui.textMuted} />
+                      )}
+                    </View>
+                    <Text numberOfLines={2} style={styles.cartItemTitle}>
+                      {item.title}
+                    </Text>
+                    {item.price_cents !== null ? (
+                      <Text style={styles.cartItemPrice}>{formatEuro(item.price_cents)}</Text>
+                    ) : null}
+                    <ChevronRight size={16} color={ui.textMuted} />
+                  </Pressable>
                 ))}
                 {cart.items.length > 6 ? (
-                  <View style={[styles.cartThumb, styles.cartMore]}>
-                    <Text style={styles.cartMoreText}>+{cart.items.length - 6}</Text>
-                  </View>
+                  <Text style={styles.cartMoreText}>
+                    +{cart.items.length - 6} weitere im Paket
+                  </Text>
                 ) : null}
               </View>
             ) : null}
@@ -808,9 +846,15 @@ const styles = StyleSheet.create({
   },
   cartHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   cartStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: space.sm },
+  cartItems: { gap: space.xs, marginTop: space.xs },
+  cartRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  cartItemTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: ui.text },
+  cartItemPrice: { fontSize: 14, fontWeight: '700', color: ui.text },
   cartThumb: {
-    width: 44,
-    height: 44,
+    /* 4:5 wie jede Karte in dieser App — ein Quadrat schneidet hochkant
+       fotografierte Ware oben und unten ab. */
+    width: 48,
+    height: 60,
     borderRadius: radius.sm,
     backgroundColor: ui.sunken,
     alignItems: 'center',
