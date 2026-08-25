@@ -11363,6 +11363,31 @@ Zaurs eigenes Konto nicht. Das ist gewollt, aber es macht die Reihenfolge zur Pf
   geht nur über `service_role` im SQL-Editor. Bei fünf Verkäufern in Phase 0 vertretbar; wächst die
   Zahl, gehört ein Admin-Weg dazu.
 
+### ✅ Ausgerollt (25.08.2026, Nacht) — in dieser Reihenfolge
+
+| Schritt | |
+|---|---|
+| 1 · OTA | Gruppe `4d5611c8-54dd-43e4-a15b-67eb033311df`, Laufzeit 1.0.0, Commit `105715b` |
+| 2 · Migration | `supabase db push` — **genau eine** stand an, keine Altlast (vorher im Trockenlauf gesehen) |
+
+Gegenproben **von aussen**, mit dem öffentlichen Schlüssel:
+
+```
+profiles?select=birth_date   → 42501  permission denied for table profiles
+rpc/birth_date_state (anon)  → 42501  permission denied for function
+rpc/is_adult         (anon)  → 42501  permission denied for function
+live_auctions (Regal)        →    33  unverändert
+```
+
+⚠️ **Die letzte Zeile ist die wichtige.** Drei Absagen allein beweisen nichts — sie sähen bei einem
+kaputten Schlüssel genauso aus. Erst die Gegenkontrolle zeigt, dass die 42501 der Riegel sind
+(Lehre aus Abschnitt 84: „Ein ‚die fremde Datei ist noch da' beweist nichts, solange nicht
+feststeht, dass überhaupt gelöscht wurde").
+
+⚠️ **Ab jetzt kann niemand bieten, bevor er sein Geburtsdatum genannt hat — auch Zaurs Konto
+nicht.** Das ist der Zweck. Vor dem ersten Gebot die App **zweimal** schliessen und öffnen, sonst
+läuft noch der Stand ohne das Blatt und die Absage kommt als nackte Fehlermeldung.
+
 ### Neu auf der Prüfliste
 
 | | Was | Gruppe |
@@ -11381,23 +11406,27 @@ der Motor.
 
 ### Der Zustand
 
-- **Migrationen:** unverändert **310**, alle eingespielt. Heute kam **keine** dazu — der ganze
-  25.08. lief ohne Schema-Änderung
+- **Migrationen:** **311**, alle eingespielt. Neu: `20260825120000_berkat_age_gate.sql` — die
+  einzige Schema-Änderung des 25.08. (Abschnitt 88 kam ganz ohne aus)
 - **`r2-delete`:** Version **26**, unverändert
 - **Build:** weiterhin **`1.0.0 (1)`** in TestFlight
-- **Letzter OTA:** „Regal sagt, wenn ein Preis fehlt", Gruppe `bf93024e-6c69-4a32-af80-a65a200fb488`,
-  Commit `5cefe22`. Davor am selben Abend `e3d9696e-…`
-- **Git:** `origin/berkat` steht auf `a185d6e`, Arbeitsverzeichnis sauber
+- **Letzter OTA:** „Altersabfrage: kein Gebot ohne Volljährigkeit", Gruppe
+  `4d5611c8-54dd-43e4-a15b-67eb033311df`, Commit `105715b`. Davor am selben Abend `bf93024e-…`
+  (Preis-Hinweis) und `e3d9696e-…` (Show-Ware, Suche merken) — **drei an einem Abend**
+- **Git:** `origin/berkat` auf `105715b`, Arbeitsverzeichnis sauber
 
 ### ⚠️ Das Erste, was zu tun ist
 
-1. **Sechs ungeprüfte Punkte am Gerät abarbeiten — A27 bis A32.** Sie sind alle an einem Abend
-   entstanden, und das ist genau die Lage, vor der Abschnitt 3 warnt. **A31 und A32 kosten fünf
-   Minuten und brauchen keine Vorbereitung**; A32 hat sogar schon seine Testdatenlage, weil „Jjjj"
-   seit dem 21.08. preislos im Regal liegt.
-2. **Vorher die Zeile unten im Konto lesen: `bf93024e`.** Steht dort etwas anderes, prüfst du einen
-   früheren Stand.
-3. **Den Push-Rückfall entfernen** — `send_push_to_user`, Bedingung `v_count = 0` (Abschnitt 86).
+1. ⚠️ **A33 zuerst — die Altersabfrage.** Seit dem 25.08. kann **niemand** bieten, bevor er sein
+   Geburtsdatum genannt hat, auch dein eigenes Konto nicht (Abschnitt 90). Das ist der einzige
+   Punkt, der einen Geldweg blockiert, solange er ungeprüft ist.
+2. **Neun ungeprüfte Punkte am Gerät — A27 bis A35.** Alle an einem Abend entstanden, und das ist
+   genau die Lage, vor der Abschnitt 3 warnt. **A31, A32 und A34 kosten zusammen zehn Minuten**;
+   A32 hat seine Testdatenlage schon, weil „Jjjj" seit dem 21.08. preislos im Regal liegt.
+3. **Vorher die Zeile unten im Konto lesen: `4d5611c8`.** Steht dort etwas anderes, prüfst du einen
+   früheren Stand — und bei der Altersabfrage heisst das: eine nackte Fehlermeldung statt des
+   Blattes.
+4. **Den Push-Rückfall entfernen** — `send_push_to_user`, Bedingung `v_count = 0` (Abschnitt 86).
    Steht seit gestern offen und trifft jeden, der nur eine der beiden Apps hat.
 
 ### Was heute NICHT geprüft wurde
