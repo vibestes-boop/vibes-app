@@ -11454,6 +11454,71 @@ Kleinigkeit. Neu als **A36**.
 
 ---
 
+## 92. Eine Sendung vormerken — ohne folgen zu müssen (25.08.2026, nachts)
+
+Aus der Analyse: **Berkat hat reichhaltiges Verkäufer-Werkzeug und keinen
+Nachfrage-Motor.** Der einzige Weg zu einer Erinnerung war `follows` — und das hat ein Loch, das
+erst in Phase 0 aufgeht:
+
+> **Am ersten Abend folgt niemand niemandem.** Ein Verkäufer, der zum ersten Mal sendet, hat null
+> Follower. Sein Erinnerungs-Fanout geht an null Menschen — genau an dem Abend, an dem Publikum am
+> meisten zählt.
+
+### ⚠️ Das widerspricht einer dokumentierten Entscheidung
+
+Im Kopf von `lib/useSchedule.ts` steht seit dem 15.08.:
+
+> „Es gibt bewusst keinen ‚Erinnere mich'-Knopf: Das wäre ein zweiter Mechanismus neben `follows` …
+> Wer erinnert werden will, folgt."
+
+Die Begründung ist gut und deckt einen Fall nicht ab. **Folgen ist eine Aussage über eine PERSON**
+(„zeig mir alles von dem"), **Vormerken eine über einen TERMIN** („ich habe Freitag um acht Zeit").
+Zwei Fragen; die zweite kann man beantworten, ohne die erste zu stellen. Whatnot trennt sie genauso.
+
+⚠️ Der Preis, vor dem die alte Notiz warnt, ist echt — zwei Wege zu derselben Meldung. Er ist auf
+dem **Server** bezahlt: Der Fanout ist ein **`UNION`**, kein `UNION ALL`.
+
+### Was gebaut ist
+
+| | |
+|---|---|
+| `berkat_show_reminders` | Paar aus Termin und Konto, **kein eigenes `id`** — das Paar IST der Schlüssel |
+| Fanout | `mark_due_scheduled_lives_reminded` bekommt eine zweite Quelle per `UNION` |
+| Verbrauch | die Vormerkung wird beim Erinnern **gelöscht**, wie die Glocke am Artikel |
+| `lib/useShowReminders.ts` | **eine** Abfrage für alle sichtbaren Karten, nicht eine je Karte |
+| `UpcomingStrip` | Glocke oben rechts auf dem Bild, beide Kartenformen |
+
+⚠️ **Die Funktion gehört Serlo, nicht Berkat.** `mark_due_scheduled_lives_reminded` ist Serlos
+Apparat (`20260421000000`). Die zweite Quelle ist deshalb eine **Berkat-eigene** Tabelle: Für eine
+Serlo-Show findet der `UNION` dort keine Zeile, und das Verhalten bleibt zeichengleich.
+
+⚠️ **Niemand sieht, wer vorgemerkt hat** — auch der Gastgeber nicht. Die RLS gibt nur die eigenen
+Zeilen heraus. Ein „N warten" wäre eine eigene Entscheidung und eine eigene Funktion.
+
+### Gegen echtes Postgres geprüft — sechs Proben
+
+Am Nachbau (Postgres 18.4) mit vier Konten gefahren:
+
+| Konto | Meldungen |
+|---|---|
+| folgt nur | **1** |
+| **merkt nur** (folgt nicht) | **1** ← der ganze Zweck |
+| folgt **und** merkt | **1**, nicht zwei ← die riskanteste Probe |
+| Gastgeber (hatte sich selbst vorgemerkt) | **0** |
+
+Dazu: Vormerkungen danach verbraucht (0 Zeilen), App-Stempel `berkat` geerbt, und die
+**Serlo-Gegenprobe** erinnert unverändert 2 Follower mit `app = 'serlo'`.
+
+⚠️ Die letzte ist die wichtige. Drei richtige Zahlen beweisen nichts, solange nicht feststeht, dass
+Serlos Weg unberührt blieb — die Funktion gehört ihm.
+
+### ⚠️ Nicht ausgerollt, nicht eingespielt
+
+Kein OTA, keine Migration, kein Push. Und am Gerät ungeprüft: Der eigentliche Test braucht einen
+Termin in vierzehn Minuten und den Cron — neu als **A37**.
+
+---
+
 ## 89. Anschlusspunkt für den nächsten Chat (Stand 25.08.2026, Nacht)
 
 **Hier anfangen.** Löst Abschnitt 87 ab (davor 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach

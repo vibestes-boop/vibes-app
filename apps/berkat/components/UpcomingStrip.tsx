@@ -6,17 +6,25 @@
 // „heute um 20:00 bei zaur" — ein Grund, wiederzukommen, statt einer Absage.
 //
 // Antippen führt aufs Verkäufer-Profil und nicht auf eine Detailseite des
-// Termins. Das ist Absicht: **Erinnert werden die Follower**, der Folgen-Knopf
-// ist also die einzige Handlung, die hier etwas bewirkt. Eine eigene
-// Termin-Seite hätte einen Knopf gebraucht, den es nicht gibt.
+// Termins.
+//
+// ⚠️ Hier stand bis zum 25.08.2026: „Das ist Absicht: Erinnert werden die
+// Follower, der Folgen-Knopf ist also die einzige Handlung, die hier etwas
+// bewirkt." Der zweite Halbsatz stimmt nicht mehr — seit `20260825140000` gibt
+// es die **Glocke auf der Karte**, und sie bewirkt genau hier etwas. Der Grund
+// steht im Kopf von `lib/useShowReminders.ts`: Am ersten Abend folgt niemand
+// niemandem, und dann erinnert der Fanway null Menschen.
 
 import { useMemo } from 'react';
+import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarClock, Lock, Repeat } from 'lucide-react-native';
+import { Bell, BellRing, CalendarClock, Lock, Repeat } from 'lucide-react-native';
 import { ui, radius, ratio, space } from '../theme/tokens';
 import { formatSlot, formatUntil, nextPerSeries, type PlannedShow } from '../lib/useSchedule';
 import { usePreparedByPlan } from '../lib/usePrepared';
+import { useShowReminder } from '../lib/useShowReminders';
+import { useSession } from '../lib/session';
 import { Avatar } from './Avatar';
 import { BerkatMark } from './BerkatMark';
 
@@ -27,6 +35,62 @@ type Props = {
   shows: PlannedShow[];
   onSelect: (hostId: string) => void;
 };
+
+/**
+ * Die Glocke auf der Termin-Karte — „erinner mich an DIESEN Abend".
+ *
+ * ⚠️ Ein Pressable IM Pressable: Der innere gewinnt, der Tipp auf die Glocke
+ * öffnet also nicht das Profil. Dasselbe Muster wie das Merken-Herz auf
+ * `ListingCard`.
+ *
+ * ⚠️ Und sie ersetzt nicht das Folgen, sie steht daneben. Folgen heisst „zeig
+ * mir alles von dem", Vormerken „ich habe Freitag um acht Zeit". Warum das ein
+ * zweiter Mechanismus sein darf, obwohl eine Notiz in `useSchedule.ts` das
+ * Gegenteil sagt, steht im Kopf von `lib/useShowReminders.ts` — kurz: Am
+ * ersten Abend folgt niemand niemandem.
+ *
+ * Am eigenen Termin gibt es nichts vorzumerken. Der Server würde die Meldung
+ * ohnehin unterdrücken (`uid <> host_id`), und ein Knopf, der garantiert
+ * nichts tut, ist eine Einladung ins Leere.
+ */
+function ReminderBell({ show }: { show: PlannedShow }) {
+  const myUserId = useSession((state) => state.userId);
+  const { on, flip, busy } = useShowReminder(show.id, myUserId);
+
+  if (myUserId && myUserId === show.host_id) return null;
+
+  return (
+    <Pressable
+      style={[s.bell, on && s.bellOn]}
+      hitSlop={8}
+      disabled={busy}
+      onPress={() => {
+        if (!myUserId) {
+          router.push('/login');
+          return;
+        }
+        void flip().catch(() => {
+          // Still: Der Streifen ist keine Fläche für Fehlermeldungen, und der
+          // Knopf springt beim nächsten Nachladen von selbst zurück. Wer es
+          // wissen muss, sieht es daran, dass die Glocke leer bleibt.
+        });
+      }}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={
+        on
+          ? `Nicht mehr an ${show.title} erinnern`
+          : `An ${show.title} erinnern, ${formatSlot(show.scheduled_at)}`
+      }
+    >
+      {on ? (
+        <BellRing size={14} color={ui.successInk} />
+      ) : (
+        <Bell size={14} color={ui.text} />
+      )}
+    </Pressable>
+  );
+}
 
 export function UpcomingStrip({ shows, onSelect }: Props) {
   // Aus einer wöchentlichen Reihe wird EINE Karte. Vier gleiche nebeneinander
@@ -92,6 +156,7 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
                 ) : (
                   <BerkatMark size={28} color={ui.lineStrong} />
                 )}
+                <ReminderBell show={show} />
               </View>
 
               <View style={s.wideText}>
@@ -204,6 +269,7 @@ export function UpcomingStrip({ shows, onSelect }: Props) {
                 // Karten im Streifen behalten so trotzdem dieselbe Höhe.
                 <BerkatMark size={34} color={ui.lineStrong} />
               )}
+              <ReminderBell show={show} />
             </View>
 
             <Text numberOfLines={2} style={s.title}>
@@ -343,6 +409,22 @@ const s = StyleSheet.create({
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   host: { flex: 1, minWidth: 0, fontSize: 12, fontWeight: '600', color: ui.textMuted },
 
+  /* Oben rechts auf dem Bild — die einzige freie Ecke der Termin-Karte.
+     ⚠️ Milchig, nicht durchsichtig: Sie liegt auf einem FREMDEN Foto, und das
+     ist die eine Stelle, an der Berkats zwei feste Flächen nicht greifen
+     (Übergabe 8). Auf Glas wäre die Glocke mal sichtbar und mal nicht. */
+  bell: {
+    position: 'absolute',
+    top: space.xs,
+    right: space.xs,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ui.overlay,
+  },
+  bellOn: { backgroundColor: ui.success },
   thumb: {
     aspectRatio: ratio.card,
     marginTop: space.sm,
