@@ -11582,7 +11582,58 @@ fast gleich:
 ⚠️ Zwei Rollen im selben Konto machen das unlesbar. **Der Name „Deine Zuschläge" ist zu nah an der
 Meldung** — er gehört überdacht, sobald jemand anderes als Zaur die App benutzt.
 
-### ⚠️ Ungeklärt: warum die Meldung an einem alten Zuschlag scheiterte
+### ⚠️ Geklärt, und es war schlimmer als vermutet: eine erfundene Spalte
+
+Die Meldung sagte „Die Meldung fehlt noch in der Datenbank. Migration einspielen." — obwohl die
+Migration eingespielt **und von aussen als vorhanden belegt** war (42501 für anon). Zwei Fehler
+übereinander:
+
+**1 · `product_orders` hat keine Spalte `payment_status`.** Sie heisst `status`.
+`report_unpaid_buyer` lief bei **jedem** Aufruf in `42703 column o.payment_status does not exist` —
+und weil das erst zur Laufzeit passiert, war die Migration grün.
+
+⚠️ **Und der Prüfstand hat den Fehler bestätigt statt ihn zu finden.** Neun Proben gegen echtes
+Postgres, alle bestanden — aber die Tabelle darin war von mir **geschrieben**, mit derselben
+erfundenen Spalte wie die Funktion.
+
+> **Ein Prüfstand, dessen Schema aus demselben Kopf stammt wie der Code, prüft die Erinnerung des
+> Autors, nicht die Wirklichkeit.** Tabellen für einen Prüfstand gehören aus dem ABZUG kopiert;
+> `supabase/schema_live.sql` liegt im Repo, ein `grep` hätte gereicht.
+
+Dazu war `= 'paid'` auch korrigiert noch falsch: Eine **versendete** Bestellung wurde ebenfalls
+bezahlt. Jetzt `IN ('paid','shipped','delivered')`, wie `useMyOrders.ts` es seit jeher macht.
+
+⚠️ Derselbe Tippfehler steckte im Client (`useSellerWins.ts`) — dort hätte er **nicht gekracht**,
+sondern still 400 geliefert und **jeden** Zuschlag als unbezahlt dastehen lassen. *Ein Name, zwei
+Wirkungen: einmal laut, einmal lautlos.*
+
+**2 · Der Fehlertext hat die Suche in die falsche Richtung geschickt.**
+`message.includes('does not exist')` steht in **jeder** Postgres-Meldung über eine fehlende Spalte
+und wurde zu „Migration einspielen". In allen drei Übersetzern auf den PostgREST-Code verengt.
+
+### ⚠️ Und die Karte führte in eine Sackgasse
+
+Zaur ist den Weg zu Ende gegangen: Der Käufer tippt im Chat auf die Artikelkarte und liest
+**„Dieses Angebot gibt es nicht mehr"** — für einen Artikel, den er gerade gewonnen und noch nicht
+bezahlt hat.
+
+Meine Halbheit: Ich hatte `useListingsByIds` gelockert (die Karte) und `useListing` nicht (das Ziel
+des Tipps). **Eine Karte, die auf eine Fehlerseite führt, ist schlimmer als gar keine Karte.**
+
+Seine Frage dazu war die richtige — „sollten wir für den Käufer die Möglichkeit lassen, das Produkt
+nochmal anzusehen, falls er Fragen hat?" **Ja.** Wer etwas gewonnen hat, muss nachsehen können,
+worum es geht, sonst kann er nicht einmal nachfragen. Dazu kamen `current_bid_cents` und
+`winner_id` in den Zeilentyp (die Karte zeigte sonst ein nacktes „—"), und der Satz auf der Seite
+heisst für den Gewinner jetzt **„Du hast den Zuschlag"** statt „Schon verkauft".
+
+### ⚠️ Der Ordner-Riegel hat an einem Abend ZWEIMAL gegriffen
+
+Beide Male stand `cd /Users/zaurhatuev/vibes-app` am Anfang der Befehlskette, und
+`eas project:info` meldete **`02ab536a`** — Serlo. Der `grep -q "@zaurhat/berkat"` brach ab, **bevor**
+der Befehl lief.
+
+> Am 21. und 23.08. hat genau dieser Fehler zweimal Serlos Produktion getroffen, damals ohne Riegel.
+> **Die Form aus Abschnitt 3 trägt** — und sie trägt, weil sie ein Riegel ist und keine Erinnerung.
 
 Der Käufer war ein gelöschtes Konto (`geloescht-7760a71b`). Mein Verdacht ist `already_paid` — die
 Zuschläge vom 16.08. liefen über echte Stripe-Testzahlungen. **Belegt ist das nicht**, und genau
@@ -11603,9 +11654,10 @@ der Motor.
   (Push-Rückfall abgeschaltet)
 - **`r2-delete`:** Version **26**, unverändert
 - **Build:** weiterhin **`1.0.0 (1)`** in TestFlight
-- **Letzter OTA:** „Echte Fehlermeldungen statt object Object; Artikelkarte im Chat" (26.08.),
-  Gruppe `8dab0f44-e5c4-4023-bf75-ae3a885856e2`, Commit `7824d81`. Davor `b5ae0b1c-…`,
-  `4d5611c8-…` (Altersabfrage), `bf93024e-…`, `e3d9696e-…` — **fünf in zwei Tagen**
+- **Letzter OTA:** „Gewonnene Artikel bleiben ansehbar; Zuschlagspreis statt Strich" (26.08.),
+  Gruppe `eb9403a1-a4d8-448b-b070-b3a3cd855497`, Commit `4f207d6`. Davor `60b960d3-…`,
+  `8dab0f44-…`, `b5ae0b1c-…`, `4d5611c8-…` — **sieben in zwei Tagen**
+- **Migrationen:** **315**, alle eingespielt. Zuletzt `20260826140000` (die erfundene Spalte)
 - **Git:** siehe `git log` — an diesen zwei Tagen ist zu viel passiert, als dass eine Kennung hier
   lange stimmt. ⚠️ Diese Zeile stand am 25.08. schon einmal veraltet da; **eine Commit-ID im
   Fliesstext veraltet schneller als jede andere Angabe in diesem Dokument**
