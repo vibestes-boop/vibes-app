@@ -11527,14 +11527,17 @@ der Motor.
 
 ### Der Zustand
 
-- **Migrationen:** **311**, alle eingespielt. Neu: `20260825120000_berkat_age_gate.sql` — die
-  einzige Schema-Änderung des 25.08. (Abschnitt 88 kam ganz ohne aus)
+- **Migrationen:** **314**, alle eingespielt. Neu am 25./26.08.: `…825120000` (Altersabfrage),
+  `…825140000` (Sendung vormerken), `…825160000` (Nichtzahler-Strikes), `20260826100000`
+  (Push-Rückfall abgeschaltet)
 - **`r2-delete`:** Version **26**, unverändert
 - **Build:** weiterhin **`1.0.0 (1)`** in TestFlight
-- **Letzter OTA:** „Altersabfrage: kein Gebot ohne Volljährigkeit", Gruppe
-  `4d5611c8-54dd-43e4-a15b-67eb033311df`, Commit `105715b`. Davor am selben Abend `bf93024e-…`
-  (Preis-Hinweis) und `e3d9696e-…` (Show-Ware, Suche merken) — **drei an einem Abend**
-- **Git:** `origin/berkat` auf `105715b`, Arbeitsverzeichnis sauber
+- **Letzter OTA:** „Regal bleibt bei Live sichtbar; Show vormerken; Zuschläge und Nichtzahler"
+  (26.08.), Gruppe `b5ae0b1c-f5e7-4a8c-83ae-26231f5cfc77`, Commit `dfc36dd`. Davor `4d5611c8-…`
+  (Altersabfrage), `bf93024e-…` (Preis-Hinweis), `e3d9696e-…` (Show-Ware) — **vier in zwei Tagen**
+- **Git:** siehe `git log` — an diesen zwei Tagen ist zu viel passiert, als dass eine Kennung hier
+  lange stimmt. ⚠️ Diese Zeile stand am 25.08. schon einmal veraltet da; **eine Commit-ID im
+  Fliesstext veraltet schneller als jede andere Angabe in diesem Dokument**
 
 ### ⚠️ Das Erste, was zu tun ist
 
