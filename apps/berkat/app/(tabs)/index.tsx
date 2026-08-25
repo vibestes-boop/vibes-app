@@ -323,7 +323,25 @@ export default function HomeScreen() {
    * „Nichts gefunden" geantwortet, obwohl dort Ware liegt — die Leiste wäre
    * schlechter gewesen als gar keine.
    */
-  const idle = !searchingSellers && !search && visible.length === 0;
+  /**
+   * Stöbern statt Suchen — unabhängig davon, ob gerade jemand sendet.
+   *
+   * ⚠️ **DIESE UNTERSCHEIDUNG IST AM 25.08.2026 DAZUGEKOMMEN, UND SIE WAR EIN
+   * ECHTER FEHLER.** Vorher hing das Regal an `idle`, also an „niemand ist
+   * live" — und `idle` schaltete nicht bloss die Anzeige um, sondern die
+   * **Abfrage** (`enabled`). Sobald EINE Sendung lief, verschwanden alle
+   * dreiunddreissig Regal-Artikel von der Startseite: Aus einem Marktplatz
+   * wurde eine einzelne Karte.
+   *
+   * Das war zu der Zeit richtig gedacht, als das Regal zwei Artikel hatte und
+   * als Lückenfüller gemeint war („Aus dem Regal — auch ohne Sendung"). Mit
+   * einem gefüllten Regal ist es die falsche Rechnung: Eine laufende Show ist
+   * ein Grund MEHR zu bleiben, kein Grund, alles andere wegzunehmen. Whatnot
+   * zeigt beides untereinander.
+   */
+  const browsing = !searchingSellers && !search;
+  /** Niemand sendet — nur noch für die Überschrift und den Leerzustand. */
+  const idle = browsing && visible.length === 0;
   /** Die Kategorie und ihre Kinder — „Mode" muss auch zeigen, was unter „Abaya" liegt. */
   const filterSlugs = useMemo(() => {
     if (filter === ALL) return [];
@@ -334,8 +352,8 @@ export default function HomeScreen() {
   // Zwei Quellen, eine Fläche: ohne Filter das ganze Regal, mit Filter die
   // Kategorie. Immer nur eine davon ist aktiv (`enabled`), es läuft also nie
   // ein Abruf für Zeilen, die niemand sieht.
-  const { data: wholeShelf = [] } = useShopListings(SHELF_PREVIEW, idle && filter === ALL);
-  const { data: categoryShelf = [] } = useCategoryListings(idle ? filterSlugs : []);
+  const { data: wholeShelf = [] } = useShopListings(SHELF_PREVIEW, browsing && filter === ALL);
+  const { data: categoryShelf = [] } = useCategoryListings(browsing ? filterSlugs : []);
   const shelf = filter === ALL ? wholeShelf : categoryShelf.slice(0, SHELF_PREVIEW);
   // Eigener Aufruf statt einer gemeinsamen Liste mit den Show-Gastgebern: Die
   // Kette läuft profiles → visible → idle → shelf, ein Ring wäre die Folge.
@@ -372,6 +390,44 @@ export default function HomeScreen() {
     }
     return visible.length % 2 === 1 ? [...visible, { id: SPACER_ID, spacer: true }] : visible;
   }, [idle, shelf, visible]);
+
+  /**
+   * Eine Regal-Karte — an ZWEI Stellen gebraucht, deshalb einmal geschrieben.
+   *
+   * Sendet niemand, steht das Regal im Raster selbst (`gridData`). Läuft eine
+   * Show, steht es **unter** den Shows im Fuß. Zwei Orte, eine Karte: Eine
+   * zweite Abschrift wäre genau der Fehler, für den es `ListingCard` gibt
+   * (Übergabe: vier Fassungen derselben Auskunft, und sie liefen auseinander).
+   */
+  const shelfCard = useCallback(
+    (listing: Listing) => {
+      const mine = listing.seller_id === userId;
+      const saved = Boolean(savedIds?.has(listing.id));
+      return (
+        <ListingCard
+          listing={listing}
+          sellerName={shelfProfiles[listing.seller_id]?.username}
+          layout="grid"
+          mine={mine}
+          saved={saved}
+          saveCount={saveCounts?.get(listing.id)}
+          // Am eigenen Artikel kein Herz — dort steht „Deins", und gemerkt
+          // wird, was einem nicht gehört. Ohne Anmeldung führt der Tipp zur
+          // Anmeldung statt ins Leere (HANDOFF 22).
+          onToggleSaved={
+            mine
+              ? undefined
+              : () =>
+                  userId
+                    ? toggleSaved.mutate({ auctionId: listing.id, saved })
+                    : router.push('/login')
+          }
+          onPress={() => router.push(`/listing/${listing.id}`)}
+        />
+      );
+    },
+    [savedIds, saveCounts, shelfProfiles, toggleSaved, userId],
+  );
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -658,7 +714,47 @@ export default function HomeScreen() {
         // schicken hieße, die eben getroffene Wahl wegzuwerfen — und die Zahl
         // daneben wäre die falsche (Gesamtbestand statt Kategorie).
         ListFooterComponent={
-          !idle || shelf.length === 0 ? null : filter !== ALL ? (
+          !browsing || shelf.length === 0 ? null : (
+            <View>
+              {/* ── ⚠️ DAS REGAL UNTER DEN SENDUNGEN (25.08.2026) ──────────
+                  Läuft eine Show, stand hier bisher NICHTS — die Startseite
+                  zeigte eine einzige Karte, und der ganze Marktplatz war weg.
+                  Der Fehler war nicht die Gestaltung, sondern die Bedingung:
+                  `idle` schaltete die Abfrage ab, nicht nur die Anzeige.
+
+                  Jetzt hängt das Regal an `browsing` (also „nicht am Suchen")
+                  und steht in BEIDEN Fällen da — sendet niemand, im Raster
+                  selbst; sendet jemand, hier unten.
+
+                  ⚠️ Die Überschrift steht NUR im Sende-Fall. Ohne Show trägt
+                  sie schon der Kopf („Gerade ist niemand live / Aus dem
+                  Regal") — zweimal derselbe Satz auf einem Bildschirm wäre
+                  Lärm. */}
+              {!idle ? (
+                <View style={styles.shelfHead}>
+                  <Text style={styles.shelfTitle}>Aus dem Regal</Text>
+                  <Text style={styles.shelfBody}>
+                    Rund um die Uhr kaufbar — auch während gesendet wird.
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Ein eigenes, umbrechendes Raster statt weiterer Zeilen in der
+                  Liste: Ein Abschnittskopf mitten in einem `numColumns={2}`-
+                  Raster geht nur mit Tricks, die später niemand mehr versteht.
+                  Bei höchstens acht Karten (`SHELF_PREVIEW`) kostet das nichts
+                  — die lange Liste bleibt oben und damit virtualisiert. */}
+              {!idle ? (
+                <View style={styles.footerGrid}>
+                  {shelf.map((listing) => (
+                    <View key={`foot:${listing.id}`} style={styles.footerCell}>
+                      {shelfCard(listing)}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {filter !== ALL ? (
             categoryShelf.length > shelf.length ? (
               <Pressable
                 style={({ pressed }) => [styles.shelfMore, pressed && { opacity: 0.7 }]}
@@ -682,7 +778,9 @@ export default function HomeScreen() {
               <ShoppingBag size={16} color={ui.text} />
               <Text style={styles.emptyCtaText}>Alle {shopCount} Angebote ansehen</Text>
             </Pressable>
-          ) : null
+              ) : null}
+            </View>
+          )
         }
         renderItem={({ item }: { item: GridItem }) => {
           // Der Platzhalter hält nur die Spalte offen: keine Karte, kein Bild,
@@ -693,34 +791,7 @@ export default function HomeScreen() {
           // Kategorie. Kein eigener Aufbau: Die Anbieterkennzeichnung hängt an
           // ihr, und eine zweite Abschrift wäre genau der Fehler, für den es
           // `ListingCard` überhaupt gibt.
-          if ('shelf' in item) {
-            const mine = item.shelf.seller_id === userId;
-            const saved = Boolean(savedIds?.has(item.shelf.id));
-            return (
-              <ListingCard
-                listing={item.shelf}
-                sellerName={shelfProfiles[item.shelf.seller_id]?.username}
-                layout="grid"
-                mine={mine}
-                saved={saved}
-                saveCount={saveCounts?.get(item.shelf.id)}
-                // Am eigenen Artikel kein Herz — dort steht „Deins", und
-                // gemerkt wird, was einem nicht gehört. Ohne Anmeldung führt
-                // der Tipp zur Anmeldung statt ins Leere: Dieselbe Antwort wie
-                // auf der Artikelseite, wo ein grauer Knopf ohne Erklärung
-                // schon einmal eine Sackgasse war (HANDOFF 22).
-                onToggleSaved={
-                  mine
-                    ? undefined
-                    : () =>
-                        userId
-                          ? toggleSaved.mutate({ auctionId: item.shelf.id, saved })
-                          : router.push('/login')
-                }
-                onPress={() => router.push(`/listing/${item.shelf.id}`)}
-              />
-            );
-          }
+          if ('shelf' in item) return shelfCard(item.shelf);
 
           const host = profiles[item.host_id];
           const preview = previews[item.id];
@@ -961,6 +1032,12 @@ const styles = StyleSheet.create({
   shelfBody: { fontSize: 13, color: ui.textMuted, lineHeight: 18 },
   /* Wie `emptyCta`, nur zentriert unter dem Raster statt in einer leeren
      Fläche — dieselbe Kontur, weil es dieselbe Einladung ist. */
+  /* Das Regal im Fuß — umbrechend statt `numColumns`, siehe die Begründung
+     dort. `48%` und nicht `flex: 1`: In einem umbrechenden Flex-Container
+     zöge `flex: 1` eine einzelne Karte in der letzten Zeile auf volle Breite
+     (dieselbe Falle wie in `StandingShelf`). */
+  footerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  footerCell: { width: '48%' },
   shelfMore: {
     alignSelf: 'center',
     flexDirection: 'row',

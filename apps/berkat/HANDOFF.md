@@ -11398,6 +11398,62 @@ läuft noch der Stand ohne das Blatt und die Absage kommt als nackte Fehlermeldu
 
 ---
 
+## 91. Eine laufende Show nahm die Startseite mit (25.08.2026, nachts)
+
+Zaur beim Prüfen: *„wenn man eine live startet ist auf der startseite nur das live zusehen, ich denke
+restliche live sachen sollten auch bleiben."*
+
+Er hat recht, und es steht wörtlich im Code:
+
+```ts
+const idle = !searchingSellers && !search && visible.length === 0;
+const { data: wholeShelf = [] } = useShopListings(SHELF_PREVIEW, idle && filter === ALL);
+```
+
+⚠️ **`idle` schaltete nicht die Anzeige um, sondern die ABFRAGE.** Sobald **eine** Sendung lief, war
+`idle` falsch, das Regal wurde gar nicht erst geladen, und von dreiunddreissig Artikeln blieb nichts
+übrig. Aus einem Marktplatz wurde eine einzelne Karte.
+
+**Warum es einmal richtig war.** Das Regal war als **Lückenfüller** gedacht — der Satz darüber sagt
+es noch heute: *„Aus dem Regal — rund um die Uhr kaufbar, auch ohne Sendung."* Bei zwei Artikeln im
+Regal stimmte das. Mit einem gefüllten Regal ist es die falsche Rechnung:
+
+> **Eine laufende Show ist ein Grund MEHR zu bleiben, kein Grund, alles andere wegzunehmen.**
+> Whatnot zeigt beides untereinander — Shows oben, Ware darunter.
+
+### Was geändert wurde
+
+| | |
+|---|---|
+| `browsing` | neu: „nicht am Suchen". Daran hängt jetzt das **Laden** des Regals |
+| `idle` | bleibt, heisst aber nur noch „niemand sendet" — und steuert allein Überschrift und Leerzustand |
+| Fuss der Liste | trägt bei laufender Show **„Aus dem Regal"** plus das Raster |
+| `shelfCard()` | die Karte einmal geschrieben, an **zwei** Stellen benutzt |
+
+⚠️ **Das Regal im Fuss ist ein eigenes, umbrechendes Raster, kein weiterer Listeneintrag.** Ein
+Abschnittskopf mitten in einem `numColumns={2}`-Raster geht nur mit Tricks, die später niemand mehr
+versteht. Bei höchstens acht Karten (`SHELF_PREVIEW`) kostet das nichts — die lange Liste bleibt
+oben und damit virtualisiert.
+
+⚠️ **Die Überschrift steht NUR im Sende-Fall.** Ohne Show trägt sie schon der Kopf („Gerade ist
+niemand live / Aus dem Regal"); zweimal derselbe Satz auf einem Bildschirm wäre Lärm.
+
+### ⚠️ Geprüft und ausdrücklich NICHT geprüft
+
+`tsc` Exit 0, `expo export` Exit 0. Der Fall **ohne** Sendung ist am Simulator unverändert in
+Ordnung.
+
+**Der Fall MIT Sendung ist am Bildschirm ungeprüft** — und der Grund gehört dazu: Dafür müsste
+jemand live gehen, und ein Sendungsstart schickt **Push an die Follower des Gastgebers**
+(`notify_followers_on_go_live`). Eine Prüfung, die fremden Leuten eine Meldung schickt, ist keine
+Kleinigkeit. Neu als **A36**.
+
+> Dieselbe Klasse wie der Seed-Termin von heute Nachmittag, bei dem die Follower-Zahl vorher geprüft
+> gehört hätte (Abschnitt 88). **Bevor in dieser App etwas „nur zum Testen" losläuft, gehört
+> gefragt, wen es erreicht.**
+
+---
+
 ## 89. Anschlusspunkt für den nächsten Chat (Stand 25.08.2026, Nacht)
 
 **Hier anfangen.** Löst Abschnitt 87 ab (davor 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach
@@ -11546,6 +11602,7 @@ trägt, hätte den NULL-Fall nie erzeugt — also genau den, an dem der Typfehle
 | ~~A28~~ | ~~**Die Artikelseite eines vorbereiteten Artikels**~~ — ✅ 25.08.2026 | A |
 | ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026 | A |
 | ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026 | A |
+| A36 | **Startseite bei laufender Sendung** (25.08., Abschnitt 91): Live gehen → auf der Startseite muss **unter** der Show-Karte „Aus dem Regal" mit dem Raster stehen. ⚠️ Vorher prüfen, wie viele Follower das sendende Konto hat — der Start schickt ihnen einen Push | A |
 | A31 | **Suche merken als Umschalter**: etwas suchen → Lesezeichen oben rechts antippen → wird **grün gefüllt**. App verlassen, zurück, dieselbe Suche tippen → muss **immer noch** grün sein. Nochmal antippen → wieder leer, und die Suche ist unter Aktivität → Gemerkt → Suchen verschwunden. ⚠️ Gegenprobe mit führendem Leerzeichen („ abaya"): Der Knopf muss trotzdem grün sein | A |
 | A32 | **Der Preis-Hinweis am eigenen Regal**: Einen Artikel ohne Sofortkauf-Preis anlegen (oder den bestehenden nehmen) — auf „Verkaufen" muss **„N kaufbar · 1 ohne Preis"** stehen, das zweite rot. Im Regal trägt die Zeile den Satz „Ohne Preis findet ihn niemand". Preis eintragen → beides verschwindet, und der Artikel taucht im Stöbern auf | A |
 | B14 | **Die Glocke von einem zweiten Konto**: vormerken, Verkäufer sieht „N warten", beim Auktionsstart kommt die Meldung und die Vormerkung verschwindet | B |
