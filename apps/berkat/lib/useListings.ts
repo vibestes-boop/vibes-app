@@ -64,6 +64,18 @@ export type Listing = {
    */
   start_price_cents: number;
   /**
+   * Der Zuschlagspreis — bei einer gelaufenen Auktion die einzige Zahl, die
+   * zählt.
+   *
+   * ⚠️ Seit dem 26.08.2026 im Typ, weil ein VERKAUFTER Show-Artikel jetzt bis
+   * hierher kommt (Chat-Karte, Artikelseite). Ohne ihn stand auf der Karte ein
+   * nacktes „—": `buy_now_cents` ist bei Show-Ware meist NULL, und der
+   * Startpreis wäre die falsche Zahl — verkauft wurde ja für mehr.
+   */
+  current_bid_cents: number | null;
+  /** Wer den Zuschlag bekommen hat. NULL, solange nichts verkauft ist. */
+  winner_id: string | null;
+  /**
    * ALLE Bilder in Reihenfolge (seit 20260817140000, max. 8). `image_url`
    * bleibt das Cover und ist immer `image_urls[0]` — die RPCs halten beide
    * synchron. Karten lesen weiter nur das Cover, die Artikelseite blättert.
@@ -150,7 +162,8 @@ export type Listing = {
  * weil der Zeilentyp es nicht trug).
  */
 const LISTING_COLUMNS =
-  'id, seller_id, title, image_url, image_urls, buy_now_cents, start_price_cents, women_only, ' +
+  'id, seller_id, title, image_url, image_urls, buy_now_cents, start_price_cents, ' +
+  'current_bid_cents, winner_id, women_only, ' +
   'accepts_offers, created_at, status, category, description, condition, size, postal_code, ' +
   'city, seller_kind, shipping_tier, planned_for, ' +
   // Der Termin per Embed statt als zweite Abfrage: `planned_for` hat einen
@@ -399,7 +412,26 @@ export function useListing(id: string | undefined) {
         .from('live_auctions')
         .select(LISTING_COLUMNS)
         .eq('id', id!)
-        .is('session_id', null)
+        // ⚠️ HIER STAND NUR `.is('session_id', null)`, UND DAS WAR AM
+        // 26.08.2026 EINE SACKGASSE MIT ANSAGE.
+        //
+        // Zaur hat den Weg gefunden: Der Verkäufer schreibt aus „Deine
+        // Zuschläge", der Käufer bekommt die Artikelkarte, tippt darauf — und
+        // liest **„Dieses Angebot gibt es nicht mehr"**. Für einen Artikel, den
+        // er gerade gewonnen hat.
+        //
+        // Der Grund war meine eigene Halbheit: Ich hatte `useListingsByIds`
+        // gelockert (die Karte im Chat) und `useListing` nicht (das Ziel des
+        // Tipps). Eine Karte, die auf eine Fehlerseite führt, ist schlimmer als
+        // gar keine Karte.
+        //
+        // Zaurs Frage dazu war die richtige: „Sollten wir für den Käufer die
+        // Möglichkeit lassen, das Produkt nochmal anzusehen, falls er Fragen
+        // hat?" **Ja.** Wer etwas gewonnen und noch nicht bezahlt hat, muss
+        // nachsehen können, worum es geht — sonst kann er nicht einmal
+        // nachfragen. Laufende Show-Ware bleibt draussen: Die gehört in den
+        // Raum, nicht auf eine stille Seite.
+        .or('session_id.is.null,status.eq.sold')
         .maybeSingle();
       if (error) throw error;
       return (data as unknown as Listing) ?? null;
@@ -479,7 +511,9 @@ export function isShowItem(l: Pick<Listing, 'status'>): boolean {
  * freiwillig, oft 0, und er gehört auf die Artikelseite neben die
  * Rechtsfolge — nicht in ein Stöber-Raster.
  */
-export function listingPrice(l: Pick<Listing, 'status' | 'buy_now_cents' | 'start_price_cents'>): {
+export function listingPrice(
+  l: Pick<Listing, 'status' | 'buy_now_cents' | 'start_price_cents' | 'current_bid_cents'>,
+): {
   /** `null` = es gibt keinen. `formatEuro(null)` schreibt dafür „—". */
   cents: number | null;
   from: boolean;
@@ -498,6 +532,13 @@ export function listingPrice(l: Pick<Listing, 'status' | 'buy_now_cents' | 'star
   // `null` durchreichen statt raten: „—" sagt „hier steht kein Preis", und das
   // ist die Wahrheit. Jede erfundene Zahl wäre eine Aussage über Geld.
   if (isShowItem(l)) return { cents: l.start_price_cents, from: true };
+  // ⚠️ Verkauft → der ZUSCHLAG, nicht der Sofortkauf-Preis. Am 26.08.2026 im
+  // Chat aufgefallen: Die Karte eines gewonnenen Show-Artikels zeigte ein
+  // nacktes „—", weil `buy_now_cents` dort meist NULL ist. Der Startpreis wäre
+  // die andere falsche Zahl gewesen — verkauft wurde ja für mehr.
+  if (l.status === 'sold' && l.current_bid_cents !== null) {
+    return { cents: l.current_bid_cents, from: false };
+  }
   return { cents: l.buy_now_cents, from: false };
 }
 

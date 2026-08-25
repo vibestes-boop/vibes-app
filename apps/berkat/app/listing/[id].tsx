@@ -1022,8 +1022,25 @@ export default function ListingScreen() {
           // einer Nachricht auf etwas kommt, das vor zehn Minuten weg ging,
           // soll das erfahren — und nicht auf einer Fehlerseite landen.
           <View style={styles.goneBar}>
-            <Text style={styles.goneText}>
-              {listing.status === 'sold' ? 'Schon verkauft' : 'Zurückgezogen'}
+            {/* ⚠️ „Schon verkauft" ist für den GEWINNER die falsche Auskunft.
+                Am 26.08.2026 gefunden: Der Verkäufer schreibt aus „Deine
+                Zuschläge", der Käufer tippt auf die Artikelkarte — und liest
+                über seinem eigenen Gewinn, dass er weg sei.
+
+                Er ist hier, weil er nachsehen will, worum es geht, bevor er
+                antwortet oder bezahlt. Der Satz muss das bestätigen, nicht
+                dementieren. */}
+            <Text
+              style={[
+                styles.goneText,
+                listing.winner_id === myUserId && { color: ui.success },
+              ]}
+            >
+              {listing.status !== 'sold'
+                ? 'Zurückgezogen'
+                : listing.winner_id === myUserId
+                  ? 'Du hast den Zuschlag'
+                  : 'Schon verkauft'}
             </Text>
           </View>
         ) : upcoming ? (
