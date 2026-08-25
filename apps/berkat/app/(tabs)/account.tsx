@@ -350,6 +350,7 @@ export default function AccountScreen() {
       {/* Der einzige Weg zu eingehenden Nachrichten. Steht über den Paketen,
           weil eine Frage des Verkäufers zur Lieferadresse dringender ist als
           ein Paket, das ohnehin 24 Stunden Zeit hat. */}
+      <View style={styles.linkGroup}>
       <Pressable
         style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
         onPress={() => router.push('/messages')}
@@ -414,7 +415,11 @@ export default function AccountScreen() {
           Einstellung, die man sucht, wenn einen etwas stört — nicht eine, mit
           der man das Konto verlässt. ─────────────────────────────────────── */}
       <Pressable
-        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        style={({ pressed }) => [
+          styles.linkRow,
+          styles.linkRowLast,
+          pressed && styles.linkRowPressed,
+        ]}
         onPress={() => router.push('/notification-settings')}
         accessibilityRole="button"
         accessibilityLabel="Benachrichtigungen einstellen"
@@ -423,6 +428,15 @@ export default function AccountScreen() {
         <Text style={styles.linkLabel}>Benachrichtigungen</Text>
         <ChevronRight size={18} color={ui.textMuted} />
       </Pressable>
+      </View>
+
+      {/* ⚠️ Eigene Gruppe, eigene Überschrift. Anbieterangaben und Versand
+          sind Verkäufer-EINSTELLUNGEN — man rührt sie einmal an und danach
+          selten. Sie in derselben Kette wie „Nachrichten" zu führen hiess,
+          täglich Gebrauchtes und einmalig Eingerichtetes gleich laut zu
+          machen. */}
+      <Text style={styles.sectionLabel}>Als Verkäufer</Text>
+      <View style={styles.linkGroup}>
 
       {/* ── Anbieterangaben. Bis zum 19.08.2026 gab es dafür kein Formular:
           Die Spalten standen seit `20260816200000`, die RPC nahm jedes Feld
@@ -462,7 +476,11 @@ export default function AccountScreen() {
           darf. Gedämpft, nicht rot — Rot ist in Berkat die laufende Uhr, und
           ein Urlaub ist keine Frist. ──────────────────────────────────── */}
       <Pressable
-        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        style={({ pressed }) => [
+          styles.linkRow,
+          styles.linkRowLast,
+          pressed && styles.linkRowPressed,
+        ]}
         onPress={() => router.push('/shipping')}
         accessibilityRole="button"
         accessibilityLabel={sellerAway ? 'Versand — du bist gerade im Urlaub' : 'Versand'}
@@ -472,6 +490,7 @@ export default function AccountScreen() {
         {sellerAway ? <Text style={styles.linkWarn}>im Urlaub</Text> : null}
         <ChevronRight size={18} color={ui.textMuted} />
       </Pressable>
+      </View>
 
       {/* ── ⚠️ OFFENE ZUSCHLÄGE ────────────────────────────────────────────
           Eine Sperre ohne Erklärung ist eine Wand. Wer nicht mehr bieten kann,
@@ -795,16 +814,36 @@ const styles = StyleSheet.create({
 
   sectionLabel: { fontSize: 12, fontWeight: '600', color: ui.textMuted, marginBottom: space.sm },
 
+  /* ── ⚠️ AUS SECHS KARTEN WURDE EINE LISTE (26.08.2026) ──────────────────
+     Hier stand `backgroundColor` + `borderRadius` + `marginBottom: space.lg`
+     an JEDER Zeile — sechs freischwebende Karten mit grossen Lücken
+     dazwischen. Am Gerät gemeldet: „ich finde diese seite nicht schön".
+
+     Der Fehler war nicht die einzelne Zeile, sondern dass es **sechs Objekte
+     waren statt einer Liste**. Jede Lücke kostete Höhe, ohne etwas zu sagen —
+     und „Nachrichten" (täglich) sah aus wie „Anbieterangaben" (einmal).
+
+     Jetzt trägt die GRUPPE die Fläche, die Zeile nur eine Haarlinie — das
+     Muster der iOS-Einstellungen. Zwei Gruppen statt einer Kette: was man
+     täglich braucht, und was Verkäufer-Einstellung ist. */
+  linkGroup: {
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    marginBottom: space.lg,
+  },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    backgroundColor: ui.card,
-    borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: 14,
-    marginBottom: space.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
   },
+  /* Die letzte Zeile einer Gruppe trägt keine Linie — sonst läge sie auf der
+     abgerundeten Kante und sähe aus wie ein Fehler. */
+  linkRowLast: { borderBottomWidth: 0 },
   linkRowPressed: { opacity: 0.6 },
   linkLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
   linkWarn: { fontSize: 12, fontWeight: '600', color: ui.live },
