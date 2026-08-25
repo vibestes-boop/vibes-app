@@ -11242,6 +11242,137 @@ sieht schlicht „—". Die Aufgabe gehört dem Verkäufer, nicht ihm.
 
 ---
 
+## 90. Die Altersabfrage — F0, nach vier Tagen geschlossen (25.08.2026, Nacht)
+
+Der zweite der beiden Prüf-Blocker aus [Abschnitt 56, F0](#f--nicht-durch-testen-zu-klären). Der
+erste (Konto löschen) fiel am 24.08.; dieser stand seit dem 21.08.
+
+**Warum das kein Formalismus ist.** Ein Gebot ist bei Berkat eine **bindende Willenserklärung**
+(Abschnitt 19). Wer zwischen 7 und 18 ist, ist beschränkt geschäftsfähig (§ 106 BGB), und ein
+Vertrag, der ihm nicht nur Vorteile bringt, ist ohne die Eltern **schwebend unwirksam**
+(§§ 107, 108). Bietet ein Sechzehnjähriger und gewinnt, hängt der Kauf in der Luft: Der Verkäufer
+hat die Ware zurückgehalten, die Auktion ist gelaufen, und ob daraus Geld wird, entscheiden Fremde.
+§ 110 (Taschengeld) hilft nicht — er greift erst bei **vollständiger** Zahlung aus eigenen Mitteln,
+und genau die steht beim Zuschlag noch aus.
+
+⚠️ **Es ist eine Selbstauskunft, keine Ausweisprüfung.** Das ist der Stand, den Marktplätze dieser
+Grösse fahren (Whatnot, eBay: 18+ per Erklärung). Er erfüllt den Zweck: Es gibt danach einen
+Zeitpunkt, an dem der Nutzer erklärt hat, volljährig zu sein.
+
+### ⚠️ Ein Trigger auf der Tabelle, nicht ein `IF` in jeder RPC
+
+Der naheliegende Weg wäre gewesen, fünf Geld-RPCs je eine Prüfzeile zu verpassen. Drei Gründe
+dagegen, und der dritte wiegt am schwersten:
+
+1. Es wären **fünf SECURITY-DEFINER-Rümpfe** neu zu schreiben. Genau dabei hat
+   `buy_now_live_auction` schon einmal `buy_now_gone`, den `live_bids`-Eintrag, `bid_count`,
+   `ends_at` und den Rückgabewert verloren (Abschnitt 73).
+2. Jede künftige Geld-RPC müsste daran denken. **Eine Warnung ist kein Riegel.**
+3. **`live_bids` ist der Flaschenhals, durch den alles muss** — Gebot, Max-Gebot, Sofortkauf und
+   der eingelöste Preisvorschlag schreiben alle dorthin. Ein Riegel deckt vier Wege ab, auch die,
+   die es noch nicht gibt.
+
+Dieselbe Entscheidung wie bei Fund 1 des Sicherheits-Audits.
+
+### ⚠️ Geprüft wird die ZEILE, nicht `auth.uid()`
+
+`resolve_auto_bids` legt Gebote **im Namen eines anderen** an: Wenn A bietet, zieht Bs hinterlegtes
+Maximum nach — `auth.uid()` ist dabei **A**, die Zeile gehört **B**. Ein Riegel auf `auth.uid()`
+liesse B durch. Geprüft wird deshalb `NEW.bidder_id` / `NEW.buyer_id` / `NEW.sender_id`. Das ist
+Gegenprobe 7, und sie ist die, die man vergisst.
+
+### ⚠️ `product_orders` bekommt AUSDRÜCKLICH keinen Trigger
+
+Die Tabelle teilt sich Berkat mit **Serlos Shop, und Serlo ist im App Store**. Ein Riegel dort hätte
+fremde Käufe blockiert, für die diese Migration nie gedacht war. Der Kaufweg ist trotzdem gedeckt:
+Ohne Gebot und ohne Sofortkauf entsteht in Berkat kein Korb, aus dem eine Bestellung würde.
+
+### ⚠️ Ohne Punkt 6 wäre alles andere wertlos
+
+`GRANT UPDATE ON profiles TO authenticated` steht auf **Tabellen**-Ebene. Ein
+`PATCH /rest/v1/profiles` mit `{"birth_date": "1990-01-01"}` hätte die Einmal-Regel schlicht
+übersprungen — wörtlich Fund 1 des Audits vom 22.08., eine Spalte weiter. Der Wächter von damals
+ist erweitert; sein Rumpf wurde zeichengleich übernommen und um genau zwei Zeilen ergänzt.
+
+Und die Spalte selbst trägt **kein `GRANT SELECT`**. Bei `banner_url` war das ein Fehler (Abschnitt
+3), hier ist es die Absicht: Ein Geburtsdatum ist personenbezogen und geht keinen Client etwas an,
+auch nicht den eigenen. Der Client bekommt `birth_date_state()` — drei Zustände, kein Datum.
+
+### Drei Zahlenfelder, kein Datums-Wähler
+
+`@react-native-community/datetimepicker` ist ein **natives Modul** und steckt im TestFlight-Build
+`1.0.0 (1)` nicht drin. Es einzubauen hiesse, eine Rechtspflicht an einen neuen Store-Build zu
+koppeln (Abschnitt 12). Drei Zahlenfelder gehen per OTA raus, heute.
+
+### Gegen echtes Postgres geprüft — acht Proben
+
+⚠️ **„Migration läuft durch" heisst bei Funktionen nicht „Funktion läuft"** (die Lehre vom 24.08.).
+Der Trigger greift per `EXECUTE format('SELECT ($1).%I', TG_ARGV[0])` dynamisch auf die
+Personenspalte zu — genau die Sorte Zeile, die beim `CREATE` schweigt und beim Aufruf kracht.
+Deshalb gegen eine Wegwerf-Datenbank (Postgres 18.4) gefahren, mit nachgebautem `auth.uid()`:
+
+| Probe | Ergebnis |
+|---|---|
+| Kein Geburtsdatum → Gebot | **abgewiesen**, `42501 / birth_date_missing` |
+| Erwachsener trägt ein → Gebot | `adult`, **geht durch** |
+| Minderjährig → Gebot, Vorschlag, Trinkgeld | **alle drei abgewiesen**, `under_age` |
+| Zweites, ANDERES Datum | **abgewiesen**, `birth_date_locked` |
+| Zweites, GLEICHES Datum | geht durch (Idempotenz nach Verbindungsabbruch) |
+| Datum in der Zukunft | **abgewiesen**, `birth_date_implausible` |
+| **A bietet für den minderjährigen B** | **abgewiesen**, `under_age` |
+| `PATCH birth_date` als `authenticated` | **abgewiesen**, „darf nicht vom Client geaendert werden" |
+
+⚠️ **Der erste Durchlauf bestand mehrere Proben aus dem falschen Grund.** `SET LOCAL` wirkt nur in
+einem Transaktionsblock — ausserhalb tut es nichts, also war `auth.uid()` durchgehend NULL und die
+Rolle blieb `postgres`. Das PATCH ging „durch", weil der Wächter Nicht-Client-Rollen absichtlich
+passieren lässt. **Ein Prüfstand, der die Voraussetzung nicht herstellt, misst die falsche Sache** —
+dieselbe Klasse wie der `tsc`-Lauf aus dem falschen Ordner am selben Tag.
+
+### Die Oberfläche fängt zweimal ab
+
+| | |
+|---|---|
+| **vorher** | `passAgeGate()` im Live-Raum (Gebot, Max-Gebot) und auf der Artikelseite (Kauf, eingelöste Zusage). Spart den Rundweg, wenn der Zustand schon bekannt ist |
+| **nachher** | `ageGateReason()` an der Server-Antwort — für alles, was das Vorher nicht kennt: frisch angemeldet, Zwischenspeicher leer, ein Weg, den später jemand hinzufügt |
+
+Nur das Erste zu bauen hiesse, sich auf einen Client zu verlassen; nur das Zweite hiesse, jedem
+Neuen sein erstes Gebot zu verbrennen.
+
+⚠️ **`ageState === undefined` lässt durch.** „Noch nicht geladen" ist nicht „nicht volljährig" — in
+dem Fall entscheidet der Server, und das Netz fängt es. Ohne diese Zeile hinge jeder an einer
+langsamen Verbindung fest.
+
+### ⚠️ Was das Ausrollen bedeutet — und die Reihenfolge
+
+**Nach der Migration kann NIEMAND mehr bieten, bevor er sein Geburtsdatum genannt hat** — auch
+Zaurs eigenes Konto nicht. Das ist gewollt, aber es macht die Reihenfolge zur Pflicht:
+
+> **Erst der OTA, dann die Migration.** Der Client ist rückwärtskompatibel: Ohne die Migration gibt
+> es die RPC nicht, `ageState` bleibt `undefined`, `passAgeGate()` lässt durch, und der Server
+> blockt nichts — es ändert sich also gar nichts. Andersherum stünde jeder Bieter vor einer
+> Fehlermeldung, für die seine App noch kein Blatt hat.
+
+### ⚠️ Zwei bewusste Lücken
+
+- **Verkaufen ist NICHT gesperrt.** Ein Minderjähriger kann weiterhin einstellen und senden. Das ist
+  rechtlich nicht sauberer als das Bieten, war aber nicht der benannte Blocker — und die Sperre
+  sässe an ganz anderen Stellen (`create_standing_listing`, `prepare_live_auction`, das Live-Gehen).
+  **Eigener Schritt, bewusst aufgeschoben.**
+- **Ein Tippfehler sperrt dauerhaft aus.** Die Einmal-Regel ist der Preis dafür, dass die Schranke
+  überhaupt etwas wert ist — sonst trüge man beim zweiten Versuch einfach 1990 ein. Eine Korrektur
+  geht nur über `service_role` im SQL-Editor. Bei fünf Verkäufern in Phase 0 vertretbar; wächst die
+  Zahl, gehört ein Admin-Weg dazu.
+
+### Neu auf der Prüfliste
+
+| | Was | Gruppe |
+|---|---|---|
+| A33 | **Die Altersabfrage von vorne**: Bieten antippen → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal bieten, geht durch. Danach App neu starten und wieder bieten: Das Blatt darf **nicht** wiederkommen | A |
+| A34 | **Der 31. Februar**: 31/02/1990 eintragen — muss „Diesen Tag gibt es in dem Monat nicht" sagen, nicht stillschweigend auf den 3. März rutschen | A |
+| A35 | **Die Absage**: ein Konto mit Geburtsdatum vor 17 Jahren (per SQL-Editor setzen) — das Blatt muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder, und der Kauf-/Gebotsweg bleibt zu | A |
+
+---
+
 ## 89. Anschlusspunkt für den nächsten Chat (Stand 25.08.2026, Nacht)
 
 **Hier anfangen.** Löst Abschnitt 87 ab (davor 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach

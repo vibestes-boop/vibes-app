@@ -89,6 +89,13 @@ import { Avatar } from '../../components/Avatar';
 import { FloatingHearts, TapHearts } from '../../components/FloatingHearts';
 import { GiveawayCard } from '../../components/GiveawayCard';
 import { MaxBidSheet } from '../../components/MaxBidSheet';
+import { AgeGateSheet } from '../../components/AgeGateSheet';
+import {
+  ageGateError,
+  ageGateReason,
+  useBirthDateState,
+  useSetBirthDate,
+} from '../../lib/useAgeGate';
 import { ShowItemsSheet } from '../../components/ShowItemsSheet';
 import { ViewersSheet } from '../../components/ViewersSheet';
 import { useLiveViewers } from '../../lib/useLiveViewers';
@@ -278,6 +285,41 @@ export default function LiveAuctionRoom() {
   const [draft, setDraft] = useState('');
   const [chatHidden, setChatHidden] = useState(false);
   const [maxOpen, setMaxOpen] = useState(false);
+
+  /**
+   * ── Die Altersschranke ──────────────────────────────────────────────────
+   *
+   * Ein Gebot ist eine bindende Willenserklärung; die eines Minderjährigen ist
+   * ohne die Eltern schwebend unwirksam (§§ 106-108 BGB, siehe
+   * `lib/useAgeGate.ts`). Der Riegel selbst hängt an `live_bids` — hier steht
+   * nur die Frage davor.
+   *
+   * ⚠️ ZWEIMAL abgefangen, und das ist Absicht:
+   *
+   *   VORHER   — wenn der Zustand schon bekannt ist, spart es einen Rundweg
+   *              mitten in einer laufenden Uhr.
+   *   NACHHER  — an der Antwort des Servers, für alles, was das Vorher nicht
+   *              kennt (frisch angemeldet, Zwischenspeicher leer, ein Weg, den
+   *              jemand später hinzufügt).
+   *
+   * Nur das Erste zu bauen hiesse, sich auf einen Client zu verlassen; nur das
+   * Zweite hiesse, jedem Neuen sein erstes Gebot zu verbrennen.
+   */
+  const { data: ageState } = useBirthDateState(myUserId);
+  const setBirthDate = useSetBirthDate(myUserId);
+  const [ageOpen, setAgeOpen] = useState(false);
+  const [ageNotice, setAgeNotice] = useState<string | null>(null);
+
+  /** `true` = der Weg ist frei. `false` = das Blatt ist auf, hier ist Schluss. */
+  const passAgeGate = useCallback(() => {
+    if (ageState === 'adult') return true;
+    // `undefined` heisst „noch nicht geladen", nicht „nicht volljährig" — in
+    // dem Fall darf der Server entscheiden, und das Netz unten fängt es.
+    if (ageState === undefined) return true;
+    setAgeNotice(null);
+    setAgeOpen(true);
+    return false;
+  }, [ageState]);
   const [sellerOpen, setSellerOpen] = useState(false);
   const [viewersOpen, setViewersOpen] = useState(false);
   const [earningsOpen, setEarningsOpen] = useState(false);
@@ -355,7 +397,16 @@ export default function LiveAuctionRoom() {
       const outcome = await setMaxBid(active.id, maxCents);
       setBusy(false);
       setMaxOpen(false);
-      if (!outcome.ok) setNotice(bidErrorText(outcome.reason));
+      if (!outcome.ok) {
+        // ⚠️ Auch hier. Ein Maximum ist ein Gebot auf Vorrat — es schreibt
+        // dieselbe `live_bids`-Zeile und läuft in denselben Riegel.
+        if (ageGateReason(outcome.reason)) {
+          setAgeNotice(null);
+          setAgeOpen(true);
+          return;
+        }
+        setNotice(bidErrorText(outcome.reason));
+      }
     },
     [active, setMaxBid],
   );
@@ -507,16 +558,25 @@ export default function LiveAuctionRoom() {
         router.push('/login');
         return;
       }
+      if (!passAgeGate()) return;
       setBusy(true);
       const outcome = await placeBid(active.id, amountCents);
       setBusy(false);
       if (!outcome.ok) {
+        // Das Netz: Sagt der Server „zu jung" oder „noch nichts gesagt", ist
+        // das keine Fehlermeldung, sondern eine Frage — also aufmachen statt
+        // abweisen.
+        if (ageGateReason(outcome.reason)) {
+          setAgeNotice(null);
+          setAgeOpen(true);
+          return;
+        }
         setNotice(bidErrorText(outcome.reason));
         return;
       }
       setNotice(outcome.extended ? 'Verlängert — jemand hat kurz vor Schluss geboten' : null);
     },
-    [active, myUserId, placeBid, router],
+    [active, myUserId, passAgeGate, placeBid, router],
   );
 
   // Ein leichter Stups, nicht die Erfolgs-Haptik: Applaus ist kein Höhepunkt,
@@ -1114,6 +1174,35 @@ export default function LiveAuctionRoom() {
           onSubmit={(cents) => void submitMaxBid(cents)}
         />
       ) : null}
+
+      {/* ⚠️ `surface="stage"` — der Live-Raum ist Berkats einzige dunkle
+          Fläche. Ein helles Blatt mitten in einer laufenden Sendung wäre ein
+          Blitz (Übergabe 4, „zwei feste Flächen"). */}
+      <AgeGateSheet
+        visible={ageOpen}
+        surface="stage"
+        state={ageState ?? 'missing'}
+        busy={setBirthDate.isPending}
+        notice={ageNotice}
+        onClose={() => setAgeOpen(false)}
+        onSubmit={(iso) => {
+          setAgeNotice(null);
+          setBirthDate
+            .mutateAsync(iso)
+            .then((next) => {
+              // Bei `minor` bleibt das Blatt offen und schlägt selbst in die
+              // Absage um — wer gerade erfahren hat, dass er nicht mitbieten
+              // darf, soll das lesen und nicht ein zuklappendes Blatt sehen.
+              if (next === 'adult') {
+                setAgeOpen(false);
+                setNotice('Alles klar — jetzt kannst du bieten. 🙂');
+              }
+            })
+            .catch((e: unknown) =>
+              setAgeNotice(ageGateError(e instanceof Error ? e.message : String(e))),
+            );
+        }}
+      />
 
       <ViewersSheet
         visible={viewersOpen}

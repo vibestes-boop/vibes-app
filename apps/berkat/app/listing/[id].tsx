@@ -95,6 +95,13 @@ import {
   useOffersForListing,
   type Offer,
 } from '../../lib/useOffers';
+import { AgeGateSheet } from '../../components/AgeGateSheet';
+import {
+  ageGateError,
+  ageGateReason,
+  useBirthDateState,
+  useSetBirthDate,
+} from '../../lib/useAgeGate';
 import {
   reminderErrorText,
   useMyReminder,
@@ -280,6 +287,22 @@ export default function ListingScreen() {
   const { data: reminderOn } = useMyReminder(upcoming ? id : undefined, myUserId);
   const { toggle: toggleReminder } = useReminderActions(myUserId);
   const [reminderNotice, setReminderNotice] = useState<string | null>(null);
+
+  /**
+   * Die Altersschranke — dieselbe wie im Live-Raum, Begründung dort und in
+   * `lib/useAgeGate.ts`. Hier ist die Fläche hell (`ui`), nicht die Bühne.
+   */
+  const { data: ageState } = useBirthDateState(myUserId);
+  const setBirthDate = useSetBirthDate(myUserId);
+  const [ageOpen, setAgeOpen] = useState(false);
+  const [ageNotice, setAgeNotice] = useState<string | null>(null);
+
+  const passAgeGate = useCallback(() => {
+    if (ageState === 'adult' || ageState === undefined) return true;
+    setAgeNotice(null);
+    setAgeOpen(true);
+    return false;
+  }, [ageState]);
   /** Steuert NUR den Rechtstext — nicht den Weg. Siehe `canCheckout`. */
   const isPrivate = listing?.seller_kind === 'private';
 
@@ -326,6 +349,10 @@ export default function ListingScreen() {
 
   const onBuy = useCallback(async () => {
     if (!listing || needsLogin()) return;
+    // Ein Sofortkauf schreibt dieselbe `live_bids`-Zeile wie ein Gebot und
+    // läuft damit in denselben Riegel (Migration `20260825120000`). Vorher
+    // fragen statt hinterher absagen.
+    if (!passAgeGate()) return;
     setBusy(true);
     setNotice(null);
     try {
@@ -337,11 +364,18 @@ export default function ListingScreen() {
       celebrate();
       setNotice({ text: 'Im Paket. 🎉', cta: 'cart' });
     } catch (err) {
-      setNotice({ text: standingErrorText(err instanceof Error ? err.message : String(err)) });
+      const msg = err instanceof Error ? err.message : String(err);
+      // Das Netz — für den Fall, dass der Zustand hier noch nicht geladen war.
+      if (ageGateReason(msg)) {
+        setAgeNotice(null);
+        setAgeOpen(true);
+        return;
+      }
+      setNotice({ text: standingErrorText(msg) });
     } finally {
       setBusy(false);
     }
-  }, [actions.buy, listing, needsLogin]);
+  }, [actions.buy, listing, needsLogin, passAgeGate]);
 
   // ⚠️ Der Artikel geht MIT (`20260822140000`). Vorher stand sein Titel nur im
   // Entwurfstext — und mehr kam beim Verkäufer nicht an: kein Bild, kein Preis,
@@ -400,6 +434,8 @@ export default function ListingScreen() {
   const onBuyAccepted = useCallback(
     async (offer: Offer) => {
       if (!listing || needsLogin()) return;
+      // Eine eingelöste Zusage ist ein Kauf — derselbe Weg, derselbe Riegel.
+      if (!passAgeGate()) return;
       setOfferBusy(true);
       setNotice(null);
       try {
@@ -407,12 +443,18 @@ export default function ListingScreen() {
         celebrate();
         setNotice({ text: 'Im Paket. 🎉', cta: 'cart' });
       } catch (err) {
-        setNotice({ text: standingErrorText(err instanceof Error ? err.message : String(err)) });
+        const msg = err instanceof Error ? err.message : String(err);
+        if (ageGateReason(msg)) {
+          setAgeNotice(null);
+          setAgeOpen(true);
+          return;
+        }
+        setNotice({ text: standingErrorText(msg) });
       } finally {
         setOfferBusy(false);
       }
     },
-    [actions.buy, listing, needsLogin],
+    [actions.buy, listing, needsLogin, passAgeGate],
   );
 
   const onShare = useCallback(() => {
@@ -1254,6 +1296,31 @@ export default function ListingScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Hier hell (`ui`) — die Artikelseite sitzt auf Sand, nicht auf der
+          Bühne. Dieselbe Komponente, andere Fläche; siehe ihren Kopf. */}
+      <AgeGateSheet
+        visible={ageOpen}
+        surface="ui"
+        state={ageState ?? 'missing'}
+        busy={setBirthDate.isPending}
+        notice={ageNotice}
+        onClose={() => setAgeOpen(false)}
+        onSubmit={(iso) => {
+          setAgeNotice(null);
+          setBirthDate
+            .mutateAsync(iso)
+            .then((next) => {
+              if (next === 'adult') {
+                setAgeOpen(false);
+                setNotice({ text: 'Alles klar — jetzt kannst du kaufen. 🙂' });
+              }
+            })
+            .catch((e: unknown) =>
+              setAgeNotice(ageGateError(e instanceof Error ? e.message : String(e))),
+            );
+        }}
+      />
     </View>
   );
 }
