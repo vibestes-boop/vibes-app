@@ -6912,7 +6912,7 @@ Simulator dem Verkäufer (Abschnitt 9, am 19.08. so gelaufen).
 
 | | Was |
 |---|---|
-| F0 | ⚠️ **Zwei Prüf-Blocker, die kein Test löst, sondern Bauen** (21.08.2026): **Konto löschen in der App** fehlt — Apple 5.1.1(v) und DSGVO Art. 17; braucht eine Edge Function, weil `auth.admin.deleteUser` `service_role` verlangt. Und **keine Altersabfrage** — bei einer Auktion nicht kosmetisch: §§ 106/110 BGB machen das Gebot Minderjähriger schwebend unwirksam (Abschnitt 54, Punkt 2) |
+| ~~F0~~ | ~~**Zwei Prüf-Blocker, die kein Test löst, sondern Bauen**~~ (21.08.2026) — ✅ **beide zu.** **Konto löschen** gebaut und am Gerät durchgeprüft am 24.08. (Abschnitt 84, Nachtrag); **Altersabfrage** gebaut, gegen echtes Postgres geprüft und ausgerollt am 25.08. (Abschnitt 90). ⚠️ Was daraus wurde, sind normale Prüfpunkte: **A33–A35**. ⚠️ Und eine Lücke bleibt offen und ist keine: **Verkaufen ist nicht altersgesperrt** — bewusst aufgeschoben, siehe 90 |
 | F1 | **AGB und Widerrufsbelehrung anwaltlich prüfen.** Beides sind Entwürfe. Eine fehlerhafte Belehrung verlängert die Frist auf zwölf Monate und vierzehn Tage (Abschnitt 25) |
 | F2 | **Käuferschutz-Zusage formulieren** — Entscheidung, kein Code (Abschnitt 54, Punkt 3) |
 
