@@ -85,11 +85,20 @@ export function useSellerWins(sellerId: string | null, limit = 50) {
     enabled: cartIds.length > 0,
     staleTime: 30_000,
     queryFn: async (): Promise<Set<string>> => {
+      // ⚠️ `status`, nicht `payment_status` — die Spalte gibt es nicht. Hier
+      // hätte der erfundene Name NICHT gekracht, sondern die Abfrage hätte
+      // still 400 geliefert; `paidCarts` wäre leer geblieben und JEDER
+      // Zuschlag hätte als unbezahlt dagestanden. Derselbe Tippfehler, zwei
+      // Wirkungen: einmal laut (in der RPC), einmal lautlos (hier).
+      //
+      // Und drei Werte, nicht einer: Eine versendete oder zugestellte
+      // Bestellung wurde bezahlt, der Status ist nur weitergewandert
+      // (dieselbe Liste wie in `useMyOrders.ts`).
       const { data, error } = await supabase
         .from('product_orders')
         .select('cart_id')
         .in('cart_id', cartIds)
-        .eq('payment_status', 'paid');
+        .in('status', ['paid', 'shipped', 'delivered']);
       if (error) throw error;
       return new Set((data ?? []).map((r) => (r as { cart_id: string }).cart_id));
     },

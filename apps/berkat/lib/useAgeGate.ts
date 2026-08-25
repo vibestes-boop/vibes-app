@@ -144,7 +144,13 @@ export function ageGateError(message: string): string {
   if (message.includes('under_age'))
     return 'Mitbieten geht erst ab 18 — ein Gebot ist ein verbindlicher Kauf. Stöbern und zuschauen kannst du weiter. 🙂';
   if (message.includes('not_authenticated')) return 'Melde dich an, dann geht es weiter.';
-  if (message.includes('does not exist') || message.includes('PGRST202'))
+  // ⚠️ NUR der PostgREST-Code, NICHT „does not exist". Der Satz steht in
+  // JEDER Postgres-Meldung über eine fehlende Spalte — am 26.08.2026 hat er
+  // genau deshalb einen Tippfehler im Funktionsrumpf
+  // (`payment_status` statt `status`) als „Migration einspielen" ausgegeben
+  // und die Suche in die falsche Richtung geschickt. Ein Übersetzer, der zu
+  // breit greift, verschluckt die Auskunft genauso wie gar keiner.
+  if (message.includes('PGRST202'))
     return 'Die Altersabfrage fehlt noch in der Datenbank. Migration einspielen.';
   return message ? `Der Server sagt: ${message}` : 'Das hat gerade nicht geklappt.';
 }

@@ -92,7 +92,13 @@ export function showReminderError(message: string): string {
   if (message.includes('not_signed_in')) return 'Melde dich an, dann erinnern wir dich.';
   if (message.includes('42501') || message.includes('permission'))
     return 'Melde dich an, dann erinnern wir dich.';
-  if (message.includes('does not exist') || message.includes('PGRST205'))
+  // ⚠️ NUR der PostgREST-Code, NICHT „does not exist". Der Satz steht in
+  // JEDER Postgres-Meldung über eine fehlende Spalte — am 26.08.2026 hat er
+  // genau deshalb einen Tippfehler im Funktionsrumpf
+  // (`payment_status` statt `status`) als „Migration einspielen" ausgegeben
+  // und die Suche in die falsche Richtung geschickt. Ein Übersetzer, der zu
+  // breit greift, verschluckt die Auskunft genauso wie gar keiner.
+  if (message.includes('PGRST205'))
     return 'Die Vormerkung fehlt noch in der Datenbank. Migration einspielen.';
   // Kein Sammel-Satz: Was der Server sagt, steht hier (die Regel aus
   // `useStanding.ts`).

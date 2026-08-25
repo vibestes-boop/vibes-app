@@ -77,7 +77,13 @@ export function unpaidErrorText(message: string): string {
   if (message.includes('not_sold')) return 'Für diesen Artikel gibt es keinen Zuschlag.';
   if (message.includes('auction_not_found')) return 'Den Artikel gibt es nicht mehr.';
   if (message.includes('not_authenticated')) return 'Melde dich an, dann geht es weiter.';
-  if (message.includes('does not exist') || message.includes('PGRST202'))
+  // ⚠️ NUR der PostgREST-Code, NICHT „does not exist". Der Satz steht in
+  // JEDER Postgres-Meldung über eine fehlende Spalte — am 26.08.2026 hat er
+  // genau deshalb einen Tippfehler im Funktionsrumpf
+  // (`payment_status` statt `status`) als „Migration einspielen" ausgegeben
+  // und die Suche in die falsche Richtung geschickt. Ein Übersetzer, der zu
+  // breit greift, verschluckt die Auskunft genauso wie gar keiner.
+  if (message.includes('PGRST202'))
     return 'Die Meldung fehlt noch in der Datenbank. Migration einspielen.';
   return message ? `Der Server sagt: ${message}` : 'Das hat gerade nicht geklappt.';
 }
