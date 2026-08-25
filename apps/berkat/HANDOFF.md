@@ -1,6 +1,6 @@
 # Berkat — Übergabe
 
-**Stand: 25.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
+**Stand: 26.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
 Die Grundlage ist [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) — Strategie, Psychologie, Technik und
@@ -12,12 +12,12 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 
 ---
 
-## 0. Wo du gerade stehst — 25.08.2026
+## 0. Wo du gerade stehst — 26.08.2026
 
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 89 → 56.** Abschnitt 89 ist der Anschlusspunkt (er löste 87 ab,
+> **Wer neu einsteigt, liest 0 → 95 → 56.** Abschnitt 95 ist der Anschlusspunkt (er löste 89 ab, davor 87,
 > davor 82, 75, 74, 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
 > nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
 >
@@ -276,7 +276,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–89; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **89 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–95; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **95 der Anschlusspunkt** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -11641,7 +11641,127 @@ deshalb war der `[object Object]`-Fund der wichtigere: Nach dem OTA sagt es die 
 
 ---
 
-## 89. Anschlusspunkt für den nächsten Chat (Stand 25.08.2026, Nacht)
+## 94. Der Käufer-Weg, zu Ende gegangen (26.08.2026, nachts)
+
+Zaur hat eine Kette durchgeklickt, die vorher nie jemand am Stück gegangen ist: **Verkäufer meldet
+sich → Käufer bekommt die Nachricht → tippt auf den Artikel → will bezahlen.** An jedem Glied lag
+etwas, und drei davon waren meine Halbheiten vom selben Abend.
+
+### Der Bezahl-Knopf gehört NICHT auf die Artikelseite
+
+Zaurs Frage: *„wenn man in chat auf das gekaufte produkt link klickt sollte dort auch das bezahlen
+button stehen oder?"*
+
+**Nein**, und der Grund ist der Sammelkorb: Er gilt **pro Verkäufer**, nicht pro Artikel. Drei
+Gewinne bei zaur sind **ein** Paket mit **einem** Versand. Ein „5 € bezahlen" auf einer einzelnen
+Artikelseite würde entweder den ganzen Korb bezahlen — dann lügt die Beschriftung — oder ihn
+zerlegen, und dann zahlt der Käufer **dreimal 4,90 €**.
+
+Genau deshalb gibt es auch im Live-Raum keinen (Abschnitt 11). Whatnot macht es identisch:
+Produktseite sagt „Sold", bezahlt wird in den Orders, Versand pro Verkäufer gebündelt.
+
+> **Was fehlte, war nicht der Knopf, sondern der WEG.** Der graue Balken stand da und tat nichts.
+
+Jetzt: grün, antippbar, führt ins Konto — und die zweite Zeile sagt, **warum dort und nicht hier**
+(„Im Paket bei zaur · 1 Artikel · noch 23 h"). Ohne diesen Satz wirkt der Sprung wie ein Umweg
+statt wie eine Ersparnis.
+
+### Drei Halbheiten, die alle dasselbe Muster hatten
+
+| | |
+|---|---|
+| Die Chat-Karte kam an, ihr **Ziel** war gesperrt | `useListingsByIds` gelockert, `useListing` vergessen → „Dieses Angebot gibt es nicht mehr" über dem eigenen Gewinn |
+| Die Paket-Zeile **sah aus wie ein Knopf** und war keiner | `CartItem` trug keine `id` |
+| „Schon verkauft" | für den **Gewinner** die falsche Auskunft — jetzt „Du hast den Zuschlag" |
+
+> **Eine Karte, die auf eine Fehlerseite führt, ist schlimmer als gar keine Karte.**
+
+### Das Paket zeigt endlich, was drin ist
+
+Zaur: *„garkeine produktbeschreibung oder titel und das bild ist klein sagt sehr wenig aus."* Die
+Bilderreihe war mit richtiger Absicht gebaut („ein offenes Paket war vorher nur eine Zahl") — bei
+EINEM Artikel ist ein 44×44-Quadrat aber keine Auskunft. Jetzt eine Zeile je Artikel: Bild im
+4:5-Format, Titel, Zuschlagspreis, antippbar.
+
+⚠️ Dafür brauchte `CartItem` die `id` und den Preis — und **der Typprüfer zeigte sofort die zwei
+weiteren Stellen**, die dieselben Zeilen bauen (`useMyOrders`, `useSellerOrders`). Ohne ihn wäre
+eine davon still unvollständig geblieben. Genau dafür gibt es diesen einen Typ (Kopf von
+`useListings.ts`, 17.08.).
+
+### Das Konto ist eine Liste geworden
+
+Zaur: *„ich finde diese seite nicht schön was UI und design angeht."* Der Fehler war nicht die
+einzelne Zeile, sondern dass es **sechs Objekte waren statt einer Liste**: `backgroundColor` +
+`borderRadius` + `marginBottom: space.lg` an jeder Reihe. Jede Lücke kostete Höhe, ohne etwas zu
+sagen — und „Nachrichten" (täglich) sah aus wie „Anbieterangaben" (einmal im Leben).
+
+Jetzt trägt die **Gruppe** die Fläche, die Zeile nur eine Haarlinie, und es sind zwei Gruppen:
+Alltag oben, **„Als Verkäufer"** darunter. Am Simulator gegengeprüft: Die ganze Seite passt auf
+einen Bildschirm, inklusive Paket und „Abmelden" — vorher lag „Deine Pakete" unter der Falz.
+
+⚠️ **Offen und bewusst**: „Deine Pakete" steht weiterhin **unter** den Verkäufer-Einstellungen.
+Das Paket hat eine Frist und ist der einzige Geldweg; es gehört darüber. Seit alles auf einen
+Bildschirm passt, ist es weniger dringend — aber es ist nicht richtig.
+
+### ⚠️ Zwei Fallen, in die ich selbst gelaufen bin
+
+**Zeilennummern sind kein Anker.** Der erste Versuch, die Konto-Gruppen zu setzen, lief per
+Zeilennummern-Skript und schob ein `</View>` **mitten in ein `<Pressable>`** — weil ich in derselben
+Datei vorher schon etwas verschoben hatte. Zurückgesetzt, mit gezielten Edits neu gemacht.
+
+**Der Ordner-Riegel hat an diesem Abend DREIMAL gegriffen.** Jedes Mal stand `cd
+/Users/zaurhatuev/vibes-app` am Anfang meiner Befehlskette, und `eas project:info` meldete
+`02ab536a` — **Serlo**. Der `grep -q "@zaurhat/berkat"` brach ab, bevor `eas update` lief.
+
+> Am 21. und 23.08. hat genau dieser Fehler zweimal Serlos Produktion getroffen, damals ohne Riegel.
+> **Die Form aus Abschnitt 3 trägt — und sie trägt, weil sie ein Riegel ist und keine Erinnerung.**
+> Die Befehlskette MUSS mit `cd apps/berkat` beginnen.
+
+---
+
+## 95. Anschlusspunkt für den nächsten Chat (Stand 26.08.2026, nachts)
+
+**Hier anfangen.** Löst Abschnitt 89 ab (davor 87, 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach
+[Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt
+der Motor.
+
+### Der Zustand
+
+- **Migrationen:** **315**, alle eingespielt. Neu am 25./26.08.: Altersabfrage, Sendung vormerken,
+  Nichtzahler-Strikes, Push-Rückfall aus, und die Spalten-Korrektur `20260826140000`
+- **Letzter OTA:** „Konto: eine Liste statt sechs Karten", Gruppe
+  `ebc42a4e-926a-4f15-8188-0ba4677c9baf`, Commit `92a8881`
+- ⚠️ **Sieben OTAs an einem Abend.** Auf dem Telefon läuft in so einer Sitzung fast immer der
+  vorletzte Stand — die Zeile unten im Konto ist die einzige Wahrheit darüber
+- **Build:** weiterhin `1.0.0 (1)` in TestFlight
+- **Git:** `origin/berkat`, Arbeitsverzeichnis sauber
+
+### ⚠️ Das Erste, was zu tun ist
+
+1. **Die Prüfliste hat einen Stau — A27 bis A39.** Dreizehn Punkte, alle aus zwei Abenden. Das ist
+   die Lage, vor der Abschnitt 3 warnt.
+2. **A33 zuerst** (Altersabfrage): der einzige offene Punkt, der einen Geldweg blockiert.
+3. **Der Strike-Weg wird erst am 28.08. ehrlich prüfbar** — der Melde-Knopf bleibt 48 Stunden nach
+   dem Zuschlag grau. Das ist die Bremse, kein Fehler.
+4. **Den Push-Rückfall gegenprüfen**: Er ist seit `20260826100000` weg. Probe 2 und 3 in der
+   Migration brauchen beide Apps auf einem Gerät.
+
+### Was NICHT geprüft ist und ansteht
+
+- **Verkäufer-Abo (E7).** Zaurs Entscheidung vom 26.08.: **kein ZAG, kein Connect** — die Plattform
+  verdient über ein Abo, nicht über Provision. Damit ist Berkat **Werkzeug-Anbieter, kein
+  Marktplatz**, und Sammelkorb/Bewertungen/Streitfall gelten nur für Verkäufer mit Kassen-Freigabe.
+  **Gebaut ist davon nichts** — ein Abo braucht Stripe Subscriptions.
+- **Verkaufen ist nicht altersgesperrt** (Abschnitt 90, bewusst aufgeschoben).
+- **Der Rest des Codes trägt das alte Fehler-Muster** `instanceof Error ? …` weiter. Umgestellt sind
+  nur die Dateien vom 26.08.; ein `grep` findet die übrigen (Abschnitt 93).
+- **Die Warteschlange wiederholt nichts** (unverändert seit Abschnitt 84).
+- **Phase 0** — fünf Verkäufer, acht Wochen. Unverändert das eigentliche Risiko, und kein Code
+  löst es.
+
+---
+
+## 89. Anschlusspunkt vom 25.08.2026 (Nacht) — abgelöst von Abschnitt 95
 
 **Hier anfangen.** Löst Abschnitt 87 ab (davor 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach
 [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt
@@ -11793,6 +11913,8 @@ trägt, hätte den NULL-Fall nie erzeugt — also genau den, an dem der Typfehle
 | ~~A28~~ | ~~**Die Artikelseite eines vorbereiteten Artikels**~~ — ✅ 25.08.2026 | A |
 | ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026 | A |
 | ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026 | A |
+| A39 | **Der Käufer-Weg am Stück** (26.08., Abschnitt 94): Aus „Deine Zuschläge" schreiben → beim Käufer trägt die Nachricht eine **Artikelkarte mit Bild und Preis** → antippen → Artikelseite mit grünem **„Du hast den Zuschlag · 5 €"** → antippen → landet im Konto beim Paket. Und von dort die Paket-Zeile antippen → wieder auf der Artikelseite. **Der Kreis muss zu sein** | A |
+| A38 | **Das Konto als Liste** (26.08.): Zwei Gruppen mit Haarlinien statt sechs Karten, Überschrift „Als Verkäufer" über den letzten zweien. Die Seite muss **ohne Scrollen** bis „Abmelden" reichen | A |
 | A37 | **Sendung vormerken** (25.08., Abschnitt 92): Termin auf „in 14 Minuten" legen, mit einem Konto vormerken, das dem Gastgeber **nicht** folgt → nach dem Cron muss die Erinnerung ankommen, und die Glocke ist wieder leer (verbraucht). ⚠️ Gegenprobe: ein Konto, das folgt **und** vormerkt, bekommt **eine** Meldung, nicht zwei | A |
 | A36 | **Startseite bei laufender Sendung** (25.08., Abschnitt 91): Live gehen → auf der Startseite muss **unter** der Show-Karte „Aus dem Regal" mit dem Raster stehen. ⚠️ Vorher prüfen, wie viele Follower das sendende Konto hat — der Start schickt ihnen einen Push | A |
 | A31 | **Suche merken als Umschalter**: etwas suchen → Lesezeichen oben rechts antippen → wird **grün gefüllt**. App verlassen, zurück, dieselbe Suche tippen → muss **immer noch** grün sein. Nochmal antippen → wieder leer, und die Suche ist unter Aktivität → Gemerkt → Suchen verschwunden. ⚠️ Gegenprobe mit führendem Leerzeichen („ abaya"): Der Knopf muss trotzdem grün sein | A |
