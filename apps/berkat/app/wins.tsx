@@ -27,6 +27,7 @@ import { ChevronLeft, MessageCircle, ShieldAlert, Undo2 } from 'lucide-react-nat
 
 import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
+import { errText } from '../lib/errorText';
 import { formatEuro } from '../lib/useAuction';
 import {
   canReport,
@@ -68,7 +69,7 @@ export default function WinsScreen() {
       try {
         await action();
       } catch (e: unknown) {
-        setNotice(unpaidErrorText(e instanceof Error ? e.message : String(e)));
+        setNotice(unpaidErrorText(errText(e)));
       } finally {
         setBusyId(null);
       }

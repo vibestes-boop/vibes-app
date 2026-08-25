@@ -73,6 +73,7 @@ import {
 } from 'lucide-react-native';
 
 import { useSession } from '../../lib/session';
+import { errText } from '../../lib/errorText';
 import { goBack } from '../../lib/nav';
 import { listingLink } from '../../lib/links';
 import { formatEuro, useProfiles } from '../../lib/useAuction';
@@ -364,7 +365,7 @@ export default function ListingScreen() {
       celebrate();
       setNotice({ text: 'Im Paket. 🎉', cta: 'cart' });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errText(err);
       // Das Netz — für den Fall, dass der Zustand hier noch nicht geladen war.
       if (ageGateReason(msg)) {
         setAgeNotice(null);
@@ -398,7 +399,7 @@ export default function ListingScreen() {
       await actions.cancel.mutateAsync(listing.id);
       setNotice({ text: 'Zurückgezogen.' });
     } catch (err) {
-      setNotice({ text: standingErrorText(err instanceof Error ? err.message : String(err)) });
+      setNotice({ text: standingErrorText(errText(err)) });
     } finally {
       setBusy(false);
     }
@@ -418,7 +419,7 @@ export default function ListingScreen() {
         await fn();
         setNotice({ text: okText });
       } catch (err) {
-        setNotice({ text: offerErrorText(err instanceof Error ? err.message : String(err)) });
+        setNotice({ text: offerErrorText(errText(err)) });
       } finally {
         setOfferBusy(false);
       }
@@ -443,7 +444,7 @@ export default function ListingScreen() {
         celebrate();
         setNotice({ text: 'Im Paket. 🎉', cta: 'cart' });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = errText(err);
         if (ageGateReason(msg)) {
           setAgeNotice(null);
           setAgeOpen(true);
@@ -1063,7 +1064,7 @@ export default function ListingScreen() {
                     .catch((error: unknown) =>
                       setReminderNotice(
                         reminderErrorText(
-                          error instanceof Error ? error.message : String(error),
+                          errText(error),
                         ),
                       ),
                     );
@@ -1256,7 +1257,7 @@ export default function ListingScreen() {
                   .then(() => setNotice({ text: 'Gespeichert.' }))
                   .catch((e: unknown) =>
                     setNotice({
-                      text: standingErrorText(e instanceof Error ? e.message : String(e)),
+                      text: standingErrorText(errText(e)),
                     }),
                   );
               }}
@@ -1317,7 +1318,7 @@ export default function ListingScreen() {
               }
             })
             .catch((e: unknown) =>
-              setAgeNotice(ageGateError(e instanceof Error ? e.message : String(e))),
+              setAgeNotice(ageGateError(errText(e))),
             );
         }}
       />

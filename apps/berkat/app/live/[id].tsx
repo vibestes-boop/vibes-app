@@ -47,6 +47,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
+import { errText } from '../../lib/errorText';
 import { sendLiveComment, useLiveChat } from '../../lib/useLiveChat';
 import { studioErrorText, useStudioActions } from '../../lib/useStudio';
 import { useFollow } from '../../lib/useFollow';
@@ -386,7 +387,7 @@ export default function LiveAuctionRoom() {
       setNotice(null);
       await action();
     } catch (error) {
-      setNotice(giveawayErrorText(error instanceof Error ? error.message : String(error)));
+      setNotice(giveawayErrorText(errText(error)));
     }
   }, []);
 
@@ -535,7 +536,7 @@ export default function LiveAuctionRoom() {
         setItemsOpen(false);
         setNotice(null);
       } catch (error) {
-        setNotice(studioErrorText(error instanceof Error ? error.message : String(error)));
+        setNotice(studioErrorText(errText(error)));
       } finally {
         setStartBusy(false);
       }
@@ -1199,7 +1200,7 @@ export default function LiveAuctionRoom() {
               }
             })
             .catch((e: unknown) =>
-              setAgeNotice(ageGateError(e instanceof Error ? e.message : String(e))),
+              setAgeNotice(ageGateError(errText(e))),
             );
         }}
       />

@@ -433,7 +433,20 @@ export function useListingsByIds(ids: string[]) {
         .from('live_auctions')
         .select(LISTING_COLUMNS)
         .in('id', unique)
-        .is('session_id', null);
+        // ⚠️ HIER STAND NUR `.is('session_id', null)`, UND DAS WAR AM
+        // 26.08.2026 EINE HALBE ANTWORT. Die Begründung dafür war: „Ein
+        // Artikel, der inzwischen in einer Show liegt, gehört dort und nicht in
+        // eine Chat-Karte." Für LAUFENDE Ware stimmt das.
+        //
+        // Für einen ZUSCHLAG stimmt es nicht — und genau darüber schreiben sich
+        // Käufer und Verkäufer. Zaur hat aus „Deine Zuschläge" eine Nachricht
+        // geschickt, und im Verlauf stand nur Text: kein Bild, kein Preis, kein
+        // Weg zum Artikel. Der Artikel hat eine `session_id` (er lief ja in
+        // einer Show), also fiel er durch den Filter.
+        //
+        // `sold` kommt deshalb dazu. Laufende Show-Ware bleibt draussen: Sie
+        // gehört in den Raum, nicht in einen Chat.
+        .or('session_id.is.null,status.eq.sold');
       // Fällt sie aus, fehlen Karten — der Verlauf bleibt vollständig.
       if (error) return new Map();
       const map = new Map<string, Listing>();
