@@ -11519,6 +11519,77 @@ Termin in vierzehn Minuten und den Cron — neu als **A37**.
 
 ---
 
+## 93. Zaurs Durchgang am 26.08. — vier Funde, zwei davon meine
+
+Der erste echte Durchlauf durch „Deine Zuschläge" und die Vormerkung. Er hat vier Dinge gemeldet;
+zwei waren Missverständnisse, die dem Bau anzulasten sind, und zwei echte Fehler.
+
+### ⚠️ „Der Server sagt: [object Object]" — der schlimmere
+
+Beim Klick auf „Nicht bezahlt" kam statt eines Grundes ein Platzhalter. **Damit war nicht mehr zu
+erkennen, warum es scheiterte — weder für ihn noch für mich.** Der Fund ist deshalb nicht der
+gescheiterte Knopf, sondern dass die App aufgehört hat, Auskunft zu geben.
+
+Ursache ist ein Muster, das an vielen Stellen dieser App steht:
+
+```ts
+catch (e) { text(e instanceof Error ? e.message : String(e)) }
+```
+
+`PostgrestError` erbt zwar von `Error` — aber nicht jedes geworfene Etwas tut das. Bei allem anderen
+ist `instanceof Error` falsch, und `String({})` ergibt `[object Object]`.
+
+> **Ein Sammel-Zweig, der die Auskunft wegwirft, ist schlimmer als gar keiner.** Er sieht nach
+> Fehlerbehandlung aus und verhindert die Diagnose.
+
+Dieselbe Lehre steht seit dem 15.08. in Abschnitt 3 („Eine Fehlermeldung für alles ist keine
+Fehlermeldung") — für Edge Functions. Sie gilt genauso für alles, was `throw`t.
+
+Neu: **`lib/errorText.ts`**. Liest `message`, `details`, `hint`, `error_description`, `code` und
+fällt zuletzt auf `JSON.stringify` zurück — **nicht** auf `String()`, denn genau dieser Unterschied
+hat den Fall erzeugt. An **elf** Stellen des Codes von heute eingesetzt.
+
+⚠️ Und der Rest des Codes trägt das alte Muster weiter. Ein Grep nach `instanceof Error ? ` findet
+sie; umgestellt sind bislang nur die drei Dateien von heute.
+
+### ⚠️ Die Artikelkarte fehlte im Chat
+
+Aus „Deine Zuschläge" geschrieben, kam beim Käufer **nur Text** an: kein Bild, kein Preis, kein Weg
+zum Artikel. `useListingsByIds` filterte auf `session_id IS NULL`, begründet mit:
+
+> „Ein Artikel, der inzwischen in einer Show liegt, gehört dort und nicht in eine Chat-Karte."
+
+Für **laufende** Ware stimmt das. Für einen **Zuschlag** nicht — und genau darüber schreiben sich
+Käufer und Verkäufer. Ein gewonnener Show-Artikel trägt eine `session_id` und fiel durch.
+`status = 'sold'` kommt dazu; laufende Show-Ware bleibt draussen. Von aussen gegengeprüft.
+
+### Zwei Missverständnisse — und beide sind Bau-Fehler, keine Bedienfehler
+
+**„Wie macht man das Vormerken?"** Die Glocke sitzt auf der „Demnächst"-Karte der **Startseite** und
+erscheint nur bei **kommenden** Terminen. Zaur suchte sie im Profil-Reiter „Termine & Shows", der
+„Gelaufen"-Einträge zeigt. Dazu: Es gab keinen kommenden Termin, und am eigenen blendet sie sich aus.
+⚠️ **Drei Gründe, warum ein Knopf nicht da ist, sind zwei zu viele** — wer ihn sucht, findet nie
+heraus, welcher gerade gilt.
+
+**„Zuschlag-Meldung führt aufs Konto, nicht in ‚Deine Zuschläge'."** Beides ist richtig und heisst
+fast gleich:
+
+| | |
+|---|---|
+| „Zuschlag — du hast gewonnen" | die **Käufer**-Seite → Konto → Deine Pakete (so prüft es A1) |
+| „Deine Zuschläge" | die **Verkäufer**-Seite |
+
+⚠️ Zwei Rollen im selben Konto machen das unlesbar. **Der Name „Deine Zuschläge" ist zu nah an der
+Meldung** — er gehört überdacht, sobald jemand anderes als Zaur die App benutzt.
+
+### ⚠️ Ungeklärt: warum die Meldung an einem alten Zuschlag scheiterte
+
+Der Käufer war ein gelöschtes Konto (`geloescht-7760a71b`). Mein Verdacht ist `already_paid` — die
+Zuschläge vom 16.08. liefen über echte Stripe-Testzahlungen. **Belegt ist das nicht**, und genau
+deshalb war der `[object Object]`-Fund der wichtigere: Nach dem OTA sagt es die Meldung selbst.
+
+---
+
 ## 89. Anschlusspunkt für den nächsten Chat (Stand 25.08.2026, Nacht)
 
 **Hier anfangen.** Löst Abschnitt 87 ab (davor 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach
@@ -11532,9 +11603,9 @@ der Motor.
   (Push-Rückfall abgeschaltet)
 - **`r2-delete`:** Version **26**, unverändert
 - **Build:** weiterhin **`1.0.0 (1)`** in TestFlight
-- **Letzter OTA:** „Regal bleibt bei Live sichtbar; Show vormerken; Zuschläge und Nichtzahler"
-  (26.08.), Gruppe `b5ae0b1c-f5e7-4a8c-83ae-26231f5cfc77`, Commit `dfc36dd`. Davor `4d5611c8-…`
-  (Altersabfrage), `bf93024e-…` (Preis-Hinweis), `e3d9696e-…` (Show-Ware) — **vier in zwei Tagen**
+- **Letzter OTA:** „Echte Fehlermeldungen statt object Object; Artikelkarte im Chat" (26.08.),
+  Gruppe `8dab0f44-e5c4-4023-bf75-ae3a885856e2`, Commit `7824d81`. Davor `b5ae0b1c-…`,
+  `4d5611c8-…` (Altersabfrage), `bf93024e-…`, `e3d9696e-…` — **fünf in zwei Tagen**
 - **Git:** siehe `git log` — an diesen zwei Tagen ist zu viel passiert, als dass eine Kennung hier
   lange stimmt. ⚠️ Diese Zeile stand am 25.08. schon einmal veraltet da; **eine Commit-ID im
   Fliesstext veraltet schneller als jede andere Angabe in diesem Dokument**
