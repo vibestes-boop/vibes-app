@@ -50,9 +50,14 @@ was gilt.
 > Zwei grüne Läufe, null geprüfte Dateien, drei echte Typfehler erst danach. Gemessen: **1833
 > Dateien gegen 0**. Steht im [`LEITFADEN.md`](LEITFADEN.md).
 >
-> ⚠️ **Sechs Punkte stehen ungeprüft auf dem Gerät (A27–A32), alle von einem Abend.** Zwei OTAs an
-> einem Abend, und ein OTA wirkt erst beim übernächsten Start — die Zeile unten im Konto muss
-> **`bf93024e`** zeigen.
+> ⚠️ **Neun Punkte stehen ungeprüft auf dem Gerät (A31–A39), aus zwei Abenden.** A27–A30 sind am
+> 25.08. abgehakt. **A33 zuerst** — die Altersabfrage ist der einzige offene Punkt, der einen
+> Geldweg blockiert. Sieben OTAs an einem Abend, und ein OTA wirkt erst beim übernächsten Start —
+> die Zeile unten im Konto muss **`ebc42a4e`** zeigen.
+>
+> ⚠️ **Und die Prüfliste selbst war die Falle:** A27–A39 standen bis zum 26.08. nicht in Abschnitt
+> 56, sondern verstreut in 89, 90, 91, 92 und 94 — die neuesten im **abgelösten** Anschlusspunkt.
+> Wer *0 → 95 → 56* las, fand die aktuelle Arbeit nicht. Nachgetragen; die Lehre steht in 56.
 >
 > **Neu am 23./24.08.2026 (die grosse Runde)** — Verkäufer-Profil umsortiert (76), `comment_reply`
 > freigeschaltet (77), Push-App-Filter an vier Direktwegen (78), Chat-Tastatur auf den UI-Thread
@@ -6791,11 +6796,23 @@ neunundachtzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20,
 24.08.: **A21–A25**, Highlights, der Story-Ring und das gewanderte „+"; dazu **A26** und **E9** aus
 dem Story-Aufräumer, Abschnitt 85).
 
-⚠️ **Sechs kamen am 25.08. dazu — A27 bis A32, alle in Gruppe A**, alle aus Abschnitt 88 (Show-Ware
-auffindbar, Merken-Umschalter, der Preis-Hinweis am Regal). Vier davon sind gegen **Metro** gesehen,
-aber noch nicht gegen TestFlight; zwei sind ganz offen. **A31 und A32 kosten zusammen fünf Minuten
-und brauchen keine Vorbereitung** — A32 hat seine Testdatenlage sogar schon, weil ein preisloser
-Artikel seit dem 21.08. im Regal liegt.
+⚠️ **Dreizehn kamen an zwei Abenden dazu — A27 bis A39, dazu B14.** A27–A30 (Show-Ware auffindbar,
+Abschnitt 88) sind am 25.08. am Gerät gesehen und abgehakt; **offen sind neun: A31 bis A39.** Sie
+stammen aus fünf Abschnitten — 88 (Merken-Umschalter, Preis-Hinweis am Regal), **90** (Altersabfrage),
+91 (Startseite bei laufender Sendung), 92 (Sendung vormerken) und 94 (Konto als Liste, Käufer-Weg).
+
+**A33 zuerst** — es ist der einzige offene Punkt, der einen **Geldweg** blockiert: Seit dem 25.08.
+kann niemand bieten, bevor er sein Geburtsdatum genannt hat, auch Zaurs eigenes Konto nicht.
+**A31, A32 und A34 kosten zusammen zehn Minuten** und brauchen keine Vorbereitung — A32 hat seine
+Testdatenlage schon, weil ein preisloser Artikel seit dem 21.08. im Regal liegt.
+
+⚠️ **Diese dreizehn standen bis zum 26.08. NICHT hier, sondern in den Abschnitten 89, 90, 91, 92
+und 94** — die neuesten ausgerechnet in **89, dem abgelösten Anschlusspunkt.** Wer der Anweisung
+oben folgte und *0 → 95 → 56* las, fand die aktuelle Arbeit also nirgends. Jeder Abschnitt hatte
+am Ende brav eine Tabelle „Neu auf der Prüfliste", und keine davon kam je hier an.
+
+> **Eine Sammelstelle sammelt nicht von selbst.** Wer einen Punkt aufschreibt, schreibt ihn **in
+> Abschnitt 56** — eine Tabelle im eigenen Abschnitt ist der Beleg, woher er kam, nicht sein Ort.
 
 Diese Liste gruppiert sie nach **Voraussetzung**, nicht nach Datum. Das ist die einzige Ordnung,
 die eine Frage beantwortet, die man wirklich hat: *Was kann ich jetzt gerade abräumen?*
@@ -6842,6 +6859,19 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A24 | **Mehrere Bilder in EINEM Highlight**: drei auswählen, anlegen, öffnen — drei Balken, Tipp rechts blättert weiter, Tipp links zurück, am Ende schliesst es. Angelegt wurden bisher nur Highlights mit **einem** Bild | 83 |
 | ~~A25~~ | ~~**Das „+" auf der eigenen Story-Scheibe**~~ — **hinfällig.** Das „+" gibt es nicht mehr; das Anlegen hat seit dem 24.08. eine eigene Kamera-Kachel, und die ist am Simulator belegt (Tipp öffnet den Bild-Wähler, auch wenn schon eine Story steht) | 81, Nachtrag |
 | A26 | **Der erste Lauf des Story-Aufräumers** (24.08.) — kein Telefon nötig, nur der SQL-Editor nach der nächsten vollen Stunde: `SELECT reason, status, count(*) FROM r2_delete_queue WHERE reason IN ('story_expired','story_deleted') GROUP BY reason, status;` Alles auf `deleted` ist richtig; etwas auf `error` sagt in `last_error`, warum — und wird **nie** wiederholt | 85 |
+| ~~A27~~ | ~~**Show-Ware im Regal**~~ — ✅ **25.08.2026 am Gerät gesehen** (Zaur). Karten mit Datums-Pille und „ab X €", Chip „In einer Show" in der Leiste. ⚠️ Das ✅ steht auf einer Sichtprüfung gegen **Metro**, nicht gegen TestFlight (89) | 88 |
+| ~~A28~~ | ~~**Die Artikelseite eines vorbereiteten Artikels**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
+| ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
+| ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
+| A31 | **Suche merken als Umschalter**: etwas suchen → Lesezeichen oben rechts antippen → wird **grün gefüllt**. App verlassen, zurück, dieselbe Suche tippen → muss **immer noch** grün sein. Nochmal antippen → wieder leer, und die Suche ist unter Aktivität → Gemerkt → Suchen verschwunden. ⚠️ Gegenprobe mit führendem Leerzeichen („ abaya"): Der Knopf muss trotzdem grün sein | 88 |
+| A32 | **Der Preis-Hinweis am eigenen Regal**: Einen Artikel ohne Sofortkauf-Preis anlegen (oder den bestehenden nehmen) — auf „Verkaufen" muss **„N kaufbar · 1 ohne Preis"** stehen, das zweite rot. Im Regal trägt die Zeile den Satz „Ohne Preis findet ihn niemand". Preis eintragen → beides verschwindet, und der Artikel taucht im Stöbern auf | 88 |
+| A33 | ⚠️ **Die Altersabfrage von vorne** — der einzige offene Punkt, der einen **Geldweg** blockiert: Bieten antippen → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal bieten, geht durch. Danach App neu starten und wieder bieten: Das Blatt darf **nicht** wiederkommen | 90 |
+| A34 | **Der 31. Februar**: 31/02/1990 eintragen — muss „Diesen Tag gibt es in dem Monat nicht" sagen, nicht stillschweigend auf den 3. März rutschen | 90 |
+| A35 | **Die Absage**: ein Konto mit Geburtsdatum vor 17 Jahren (per SQL-Editor setzen) — das Blatt muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder, und der Kauf-/Gebotsweg bleibt zu | 90 |
+| A36 | **Startseite bei laufender Sendung**: Live gehen → auf der Startseite muss **unter** der Show-Karte „Aus dem Regal" mit dem Raster stehen. ⚠️ Vorher prüfen, wie viele Follower das sendende Konto hat — der Start schickt ihnen einen Push | 91 |
+| A37 | **Sendung vormerken**: Termin auf „in 14 Minuten" legen, mit einem Konto vormerken, das dem Gastgeber **nicht** folgt → nach dem Cron muss die Erinnerung ankommen, und die Glocke ist wieder leer (verbraucht). ⚠️ Gegenprobe: ein Konto, das folgt **und** vormerkt, bekommt **eine** Meldung, nicht zwei | 92 |
+| A38 | **Das Konto als Liste**: Zwei Gruppen mit Haarlinien statt sechs Karten, Überschrift „Als Verkäufer" über den letzten zweien. Die Seite muss **ohne Scrollen** bis „Abmelden" reichen | 94 |
+| A39 | **Der Käufer-Weg am Stück**: Aus „Deine Zuschläge" schreiben → beim Käufer trägt die Nachricht eine **Artikelkarte mit Bild und Preis** → antippen → Artikelseite mit grünem **„Du hast den Zuschlag · 5 €"** → antippen → landet im Konto beim Paket. Und von dort die Paket-Zeile antippen → wieder auf der Artikelseite. **Der Kreis muss zu sein** | 94 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -6860,6 +6890,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | B11 | **Meldungs-Policy**: aus einer angemeldeten Sitzung `POST /rest/v1/notifications` mit fremdem Empfänger und Typ `gift` → erwartet **403 / 42501**. Gegenrichtung: Kommentieren, Erwähnen, Live-Gehen, Teilen müssen in **Serlo** weiter ankommen | 75 |
 | B12 | **Antwort auf einen Kommentar** (ausgerollt am 23.08., nur am Gerät ungeprüft): A kommentiert, B antwortet — bei A muss die Meldung stehen UND ein Push mit dem Titel „💬 Antwort auf deinen Kommentar" ankommen, nicht „Neue Aktivität auf Serlo". ⚠️ Gegenprobe: ein normaler Kommentar löst weiterhin **genau einen** Push aus, nicht zwei | 77 |
 | B13 | ⚠️ **Story-Trennung**: In Berkat eine Story aufnehmen — sie darf in **Serlos** Feed NICHT auftauchen, und Serlos Stories nicht in Berkats Ring. Ohne den `app`-Stempel hätte genau das gemischt (81) | zweites Konto bzw. beide Apps |
+| B14 | **Die Glocke von einem zweiten Konto**: vormerken, Verkäufer sieht „N warten", beim Auktionsstart kommt die Meldung und die Vormerkung verschwindet. ⚠️ Das ist **D3 ohne den Push** — wer D3 im großen Durchlauf macht, hat B14 miterledigt; umgekehrt nicht | 51, 89 |
 
 ### C — laufende Sendung, allein. Kein zweites Konto.
 
@@ -11396,6 +11427,9 @@ läuft noch der Stand ohne das Blatt und die Absage kommt als nackte Fehlermeldu
 | A34 | **Der 31. Februar**: 31/02/1990 eintragen — muss „Diesen Tag gibt es in dem Monat nicht" sagen, nicht stillschweigend auf den 3. März rutschen | A |
 | A35 | **Die Absage**: ein Konto mit Geburtsdatum vor 17 Jahren (per SQL-Editor setzen) — das Blatt muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder, und der Kauf-/Gebotsweg bleibt zu | A |
 
+⚠️ **Am 26.08. nach Abschnitt 56 nachgetragen.** Diese Tabelle ist der Beleg, woher die Punkte
+kamen — **gearbeitet wird aus Abschnitt 56**, sonst laufen zwei Listen auseinander.
+
 ---
 
 ## 91. Eine laufende Show nahm die Startseite mit (25.08.2026, nachts)
@@ -11738,8 +11772,9 @@ der Motor.
 
 ### ⚠️ Das Erste, was zu tun ist
 
-1. **Die Prüfliste hat einen Stau — A27 bis A39.** Dreizehn Punkte, alle aus zwei Abenden. Das ist
-   die Lage, vor der Abschnitt 3 warnt.
+1. **Die Prüfliste hat einen Stau — A31 bis A39.** Neun Punkte aus zwei Abenden (A27–A30 sind am
+   25.08. abgehakt). Das ist die Lage, vor der Abschnitt 3 warnt. ⚠️ Sie stehen seit dem 26.08.
+   **in Abschnitt 56**, wo sie hingehören — vorher lagen sie verstreut in 89, 90, 91, 92 und 94.
 2. **A33 zuerst** (Altersabfrage): der einzige offene Punkt, der einen Geldweg blockiert.
 3. **Der Strike-Weg wird erst am 28.08. ehrlich prüfbar** — der Melde-Knopf bleibt 48 Stunden nach
    dem Zuschlag grau. Das ist die Bremse, kein Fehler.
@@ -11920,6 +11955,10 @@ trägt, hätte den NULL-Fall nie erzeugt — also genau den, an dem der Typfehle
 | A31 | **Suche merken als Umschalter**: etwas suchen → Lesezeichen oben rechts antippen → wird **grün gefüllt**. App verlassen, zurück, dieselbe Suche tippen → muss **immer noch** grün sein. Nochmal antippen → wieder leer, und die Suche ist unter Aktivität → Gemerkt → Suchen verschwunden. ⚠️ Gegenprobe mit führendem Leerzeichen („ abaya"): Der Knopf muss trotzdem grün sein | A |
 | A32 | **Der Preis-Hinweis am eigenen Regal**: Einen Artikel ohne Sofortkauf-Preis anlegen (oder den bestehenden nehmen) — auf „Verkaufen" muss **„N kaufbar · 1 ohne Preis"** stehen, das zweite rot. Im Regal trägt die Zeile den Satz „Ohne Preis findet ihn niemand". Preis eintragen → beides verschwindet, und der Artikel taucht im Stöbern auf | A |
 | B14 | **Die Glocke von einem zweiten Konto**: vormerken, Verkäufer sieht „N warten", beim Auktionsstart kommt die Meldung und die Vormerkung verschwindet | B |
+
+⚠️ **Am 26.08. nach Abschnitt 56 nachgetragen** — samt A36–A39, die weiter unten in dieser Tabelle
+standen, obwohl dieser Abschnitt selbst längst abgelöst war. Diese Tabelle ist der Beleg, woher die
+Punkte kamen; **gearbeitet wird aus Abschnitt 56.**
 
 ⚠️ **Was dieses ✅ trägt und was nicht.** Es steht auf einer Sichtprüfung am Gerät, nicht auf einem
 Protokoll — die vier Punkte sind mit dem Seed durchgesehen worden, ohne dass etwas auffiel, und der
