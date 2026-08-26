@@ -274,6 +274,11 @@ was gilt.
   folgt: **Russisch wird die zweite Sprache der App**, nicht Englisch (Strategie § 7.5).
 - **Provision trägt bei dieser Größe nicht.** Break-even inkl. Arbeitszeit liegt bei ~8.000 €
   Umsatz im Monat; das Geld liegt in der eigenen Marge (Strategie § 6, § 7.1).
+  ⚠️ **Seit dem 27.08. ist das kein Einwand mehr gegen Provision** (96): Sie soll am Anfang nicht
+  tragen, sie soll den Verkäufer nicht abschrecken. **Ein Abo vor dem ersten Käufer verlangt
+  Vorleistung von dem, der das Risiko ohnehin trägt** — deshalb erst Provision, Abo später als
+  Wahl. Und der Käufer zahlt künftig **direkt an den Verkäufer** (Connect **Standard**, nicht die
+  Express-Kette aus 7), nicht mehr auf das Konto des Betreibers.
 - **Bitrate gedeckelt** auf 540p, bis Berkat die Rechnung trägt (`lib/videoQuality.ts`).
 - Die Regel „nichts Neues bauen, bis Phase 0 läuft" wurde am 15.08. **von Zaur aufgehoben**.
 
@@ -281,7 +286,7 @@ was gilt.
 
 | Datei | Wofür |
 |---|---|
-| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–95; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **95 der Anschlusspunkt** |
+| `HANDOFF.md` (hier) | Zustand, Entscheidungen, Fallen — Abschnitte 1–96; **56 ist die Prüfliste**, **73 der Sicherheits-Audit**, **95 der Anschlusspunkt**, **96 der Geldweg** |
 | [`LEITFADEN.md`](LEITFADEN.md) | Befehle, „muss ich bauen?", Fehlersuche nach Symptom |
 | [`WHATNOT-ANALYSE.md`](WHATNOT-ANALYSE.md) | Strategie, Psychologie, Phasenplan |
 | [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) | Verkäufer gewinnen, Erlösquellen, Kostenrechnung mit geprüften Tarifen |
@@ -11787,12 +11792,131 @@ der Motor.
   verdient über ein Abo, nicht über Provision. Damit ist Berkat **Werkzeug-Anbieter, kein
   Marktplatz**, und Sammelkorb/Bewertungen/Streitfall gelten nur für Verkäufer mit Kassen-Freigabe.
   **Gebaut ist davon nichts** — ein Abo braucht Stripe Subscriptions.
+  ⚠️ **Am 27.08. überarbeitet — siehe Abschnitt 96.** „Kein Connect" trug nicht: Wenn der Verkäufer
+  sein Geld selbst bekommen soll, ist Connect **Standard** genau der Weg dorthin, und er ist etwas
+  anderes als die Express-Marktplatzkette aus Abschnitt 7. Dazu die Reihenfolge beim Erlös (erst
+  Provision, Abo später als Wahl) und die Apple-Falle beim Abo.
 - **Verkaufen ist nicht altersgesperrt** (Abschnitt 90, bewusst aufgeschoben).
 - **Der Rest des Codes trägt das alte Fehler-Muster** `instanceof Error ? …` weiter. Umgestellt sind
   nur die Dateien vom 26.08.; ein `grep` findet die übrigen (Abschnitt 93).
 - **Die Warteschlange wiederholt nichts** (unverändert seit Abschnitt 84).
 - **Phase 0** — fünf Verkäufer, acht Wochen. Unverändert das eigentliche Risiko, und kein Code
   löst es.
+
+---
+
+## 96. Wer das Geld bekommt — und wann der Verkäufer zahlt (27.08.2026)
+
+Zaurs Satz, aus dem alles Weitere folgt: *„ich will aber nicht, dass Verkäufer meine Stripe
+nutzen."* Die Frage kam beim Einspielen der Kassen-Freigabe auf, also an der einzigen Stelle, an
+der heute sichtbar wird, dass jeder Euro über sein Konto läuft.
+
+**Gebaut ist davon nichts.** Dieser Abschnitt hält die Entscheidung und ihre Begründung fest,
+bevor sie beim nächsten Mal neu diskutiert wird.
+
+### Warum die naheliegende Lösung die schlechteste ist
+
+Der erste Gedanke ist ein Feld fürs Bankkonto: Der Verkäufer trägt seine IBAN ein, der Käufer
+überweist. Das kostet auf einen Schlag alles, was die App ausmacht — kein Bezahlen im Stream, kein
+Sammelkorb, keine Rückmeldung „bezahlt", kein Käuferschutz, keine Rückerstattung. Dazu lägen fremde
+Bankdaten in der Datenbank: volle Haftung ohne jeden Gegenwert.
+
+### Connect **Standard** ist nicht die Kette aus Abschnitt 7
+
+Abschnitt 7 führt „Stripe Connect (Express)" als Teil der großen Marktplatz-Kette, und daraus
+entstand am 26.08. die Entscheidung „kein Connect". Der Kurzschluss lag im Wort: **Standard und
+Express sind zwei verschiedene Dinge.**
+
+Bei **Standard** verbindet der Verkäufer sein **eigenes** Stripe-Konto. Die Zahlung entsteht auf
+seinem Konto — das Konto des Betreibers sieht das Geld nie, nicht für eine Sekunde. Er ist Händler,
+trägt seine Gebühren und seine Rückbuchungen selbst.
+
+Damit ist die ZAG-Frage nicht gelöst, sondern **sie stellt sich nicht mehr**: Wer nichts
+weiterleitet, braucht keine Erlaubnis dafür.
+
+**Zwei Dinge passen dabei auffällig gut:**
+
+| | |
+|---|---|
+| Der Sammelkorb gilt ohnehin **pro Verkäufer** | Genau die Einheit, die eine Direktzahlung braucht. Ein korbübergreifender Kauf bei drei Verkäufern ginge nicht — den gibt es hier aber gar nicht |
+| Der Code ändert sich weniger als gedacht | `create-checkout-session` erzeugt die Sitzung im Namen des Verkäufer-Kontos statt im eigenen. `product_orders`, der Webhook, die Adresse und der Übergang auf `paid` bleiben |
+
+⚠️ **Was Connect NICHT löst.** Ob Berkat rechtlich Marktplatz ist, entscheidet nicht der Geldfluss
+allein. DAC7/PStTG, § 25e UStG, LUCID und GPSR hängen daran, ob die Plattform Verkäufer und Käufer
+zusammenbringt — und das tut sie mit Feed, Suche und Kategorien. **Das ist eine Anwaltsfrage
+(F1-Familie), keine Architekturfrage.** Connect nimmt die ZAG-Erlaubnis ab, nicht die
+Marktplatz-Pflichten.
+
+### Der Einwand, der die Entscheidung gekippt hat
+
+Zaur, unmittelbar danach: *„ich denke daran, was der Verkäufer fühlen wird, anfangs ein Abo zu
+bezahlen, obwohl er noch keine Käufer hat."*
+
+Der Einwand trägt, und er ist keine Preisfrage. Der Verkäufer steckt zwei Stunden Sendezeit pro
+Woche in eine App, in der noch niemand zuschaut. Zahlt er dafür auch noch, hat er **zweimal**
+bezahlt, bevor irgendetwas passiert ist. Es trifft ausgerechnet die fünf Menschen aus Phase 0 — die
+dringendsten und die skeptischsten.
+
+> **Solange die Plattform leer ist, muss die Plattform vorleisten, nicht der Verkäufer.**
+
+Der Ausweg ist kein billigeres Abo, sondern eine **Reihenfolge**:
+
+| Wann | Was der Verkäufer zahlt |
+|---|---|
+| Phase 0 | nichts |
+| danach | **Provision** — nur wenn er verkauft |
+| ab spürbarem Umsatz | **Abo auf eigenen Wunsch**, weil es ihn dann billiger kommt |
+
+Provision wächst mit ihm: Verkauft er nichts, zahlt er nichts. Und das Abo wird vom Zwang zum
+**Angebot** — der Verkäufer wechselt selbst, sobald es sich für ihn rechnet, und in dem Moment ist
+es eine Ersparnis statt einer Hürde.
+
+⚠️ **Provision geht technisch ohne ZAG-Problem** — das war der Grund, warum sie bisher ausgeschlossen
+schien, und er stimmt nicht mehr. Bei Connect Standard zieht Stripe die Gebühr direkt ab und
+überweist sie der Plattform; weitergeleitet wird weiterhin nichts.
+
+⚠️ **Aber sie kostet rechtliche Distanz.** Ein reines Werkzeug-Abo lässt sich als „ich vermittle
+nicht, ich verkaufe Software" begründen. Wer am Verkauf mitverdient, vermittelt **gegen Entgelt** und
+rutscht deutlicher in die Marktplatz-Pflichten. Das ist der eigentliche Trade-off dieser
+Entscheidung — nicht die Höhe des Satzes.
+
+Die Rechnung aus [`STRATEGIE-VERKAEUFER-UND-GELD.md`](STRATEGIE-VERKAEUFER-UND-GELD.md) („Provision
+trägt bei dieser Größe nicht, Break-even ~8.000 €/Monat") bleibt richtig und ist trotzdem kein
+Einwand mehr: Sie **soll** am Anfang nicht tragen. Getragen wird die Phase aus der eigenen Marge.
+
+### ⚠️ Die Apple-Falle, die das Onboarding verortet
+
+**Ein Verkäufer-Abo ist für Apple ein digitaler Dienst.** Physische Ware ist von der
+In-App-Kauf-Pflicht ausgenommen, ein Abo nicht — in der iOS-App verkauft, greifen Apples 30 %.
+
+Daraus folgt eine Bauentscheidung, keine Marketingfrage: **Das Verkäufer-Onboarding samt Abo gehört
+ins Web**, nicht in die App. Das muss von Anfang an stimmen, weil es festlegt, wo dieser ganze
+Bereich lebt — nachträglich umzuziehen ist teuer.
+
+### Was aus der Kassen-Freigabe wird
+
+`berkat_sellers.checkout_enabled` bleibt und bekommt eine neue Bedeutung:
+
+| heute | danach |
+|---|---|
+| „darf über das Konto des Betreibers verkaufen" | „hat sein eigenes Stripe verbunden **und** ein laufendes Abo" |
+
+Derselbe Schalter, dieselbe Stelle im Code (`20260817120000` bleibt die einzige Wahrheit über den
+Kaufweg) — nur die Bedingung dahinter ändert sich. Die Freigabe für die Testware bleibt bis dahin
+richtig.
+
+### Was zu tun bleibt
+
+1. **Anwaltlich klären**, ob Feed und Suche Berkat zum Marktplatz machen — und ob Provision daran
+   etwas ändert. Das entscheidet über DAC7, § 25e UStG, LUCID und GPSR, also über Pflichten, deren
+   Bußgelder das Projekt überschreiten.
+2. **Connect Standard bauen**: OAuth-Anbindung, `stripeAccount` in `create-checkout-session`,
+   Verkäufer-Onboarding im Web.
+3. **Erst danach das Abo** (Stripe Billing, ebenfalls im Web).
+
+Nichts davon ist dringend, solange Phase 0 nicht läuft — es blockiert keinen der offenen
+Prüfpunkte. Aber die Reihenfolge steht fest: **Zahlungsweg vor Erlösmodell**, weil das Abo einen
+Verkäufer voraussetzt, der überhaupt etwas verdient.
 
 ---
 
