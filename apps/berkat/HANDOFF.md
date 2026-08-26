@@ -50,10 +50,20 @@ was gilt.
 > Zwei grüne Läufe, null geprüfte Dateien, drei echte Typfehler erst danach. Gemessen: **1833
 > Dateien gegen 0**. Steht im [`LEITFADEN.md`](LEITFADEN.md).
 >
-> ⚠️ **Neun Punkte stehen ungeprüft auf dem Gerät (A31–A39), aus zwei Abenden.** A27–A30 sind am
-> 25.08. abgehakt. **A33 zuerst** — die Altersabfrage ist der einzige offene Punkt, der einen
-> Geldweg blockiert. Sieben OTAs an einem Abend, und ein OTA wirkt erst beim übernächsten Start —
-> die Zeile unten im Konto muss **`ebc42a4e`** zeigen.
+> ⚠️ **Fünf Punkte stehen noch in Gruppe A (A32, A36–A39).** A27–A30 am 25.08. abgehakt, **A31 am
+> 27.08. vollständig**, und **A33–A35 sind nach B15 gewandert**: Ein einmal gesetztes Geburtsdatum
+> lässt sich nicht selbst ändern (`birth_date_locked`), also braucht die Altersabfrage ein
+> **frisches Konto** (97). Sieben OTAs an einem Abend, und ein OTA wirkt erst beim übernächsten
+> Start — die Zeile unten im Konto muss **`ebc42a4e`** zeigen.
+>
+> 🔴 **Neu am 27.08. und der wichtigste Fund des Tages: Der Sofortkauf steht NICHT hinter der
+> Altersschranke** (97). `20260825120000` hängt Trigger an `live_bids`, `berkat_offers` und
+> `berkat_tips` — `buy_now_live_auction` kommt an keiner davon vorbei und ist allein im Client
+> geschützt. Rechtlich ist ein Sofortkauf derselbe Vorgang wie ein Gebot. **Eine Zeile behebt es**,
+> der Vorschlag steht in 97.
+>
+> ✅ **Die Kassen-Freigabe ist eingespielt** (27.08.): „Kaufen · 85 €" steht an `amir32`s Artikeln,
+> und der Kauf legt sie in den Sammelkorb. **B1 damit zur Hälfte durch** — das Bezahlen fehlt noch.
 >
 > ⚠️ **Und die Prüfliste selbst war die Falle:** A27–A39 standen bis zum 26.08. nicht in Abschnitt
 > 56, sondern verstreut in 89, 90, 91, 92 und 94 — die neuesten im **abgelösten** Anschlusspunkt.
@@ -206,7 +216,7 @@ was gilt.
 | **Nachrichten** — Vorschau, Ungelesen, Fotos, Tagestrenner, Artikel-Bezug | ✅ gebaut (64–66, 72); am Gerät offen (A11/A12, B7) |
 | **Sicherheit** — Audit gegen die Produktions-Rechte, elf Migrationen | ✅ vier Löcher zu, alles von aussen gemessen (73) — **einschliesslich des Wächters gegen die Selbst-Beförderung zum Admin**, aus einer angemeldeten Sitzung belegt (403 / 42501) |
 | **Show-Ware auffindbar** — vorbereitete Artikel im Regal, in der Suche und in den Kategorien, mit Datum und „ab X €"; Glocke statt Kaufknopf | ✅ am Gerät gesehen, **ausgerollt am 25.08.2026** (88). Dabei gefunden: `20260824180000` erzeugt Regal-Artikel **ohne Preis** — die fallen jetzt aus dem Stöbern, aber **wer unsichtbar wird, erfährt es nicht** (88, Nachtrag) |
-| **Suche merken** — Lesezeichen in der Kopfzeile, auch bei Treffern, als Umschalter | ✅ gebaut und ausgerollt (88). ⚠️ Am Gerät offen: **A31** |
+| **Suche merken** — Lesezeichen in der Kopfzeile, auch bei Treffern, als Umschalter | ✅ gebaut und ausgerollt (88), **am 27.08.2026 am Simulator durchgespielt** — merken, Neustart, Leerzeichen-Gegenprobe, Zurückschalten samt Löschen unter Gemerkt (A31 in 56) |
 
 ### Was ausdrücklich NICHT geprüft ist
 
@@ -6802,7 +6812,8 @@ neunundachtzig Abschnitte und zwei Wochen (neun kamen am 23.08. dazu: A16–A20,
 dem Story-Aufräumer, Abschnitt 85).
 
 ⚠️ **Dreizehn kamen an zwei Abenden dazu — A27 bis A39, dazu B14.** A27–A30 (Show-Ware auffindbar,
-Abschnitt 88) sind am 25.08. am Gerät gesehen und abgehakt; **offen sind neun: A31 bis A39.** Sie
+Abschnitt 88) sind am 25.08. am Gerät gesehen, **A31 am 27.08. vollständig durchgespielt**;
+**offen sind acht: A32 bis A39.** Sie
 stammen aus fünf Abschnitten — 88 (Merken-Umschalter, Preis-Hinweis am Regal), **90** (Altersabfrage),
 91 (Startseite bei laufender Sendung), 92 (Sendung vormerken) und 94 (Konto als Liste, Käufer-Weg).
 
@@ -6868,11 +6879,11 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | ~~A28~~ | ~~**Die Artikelseite eines vorbereiteten Artikels**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
 | ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
 | ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
-| A31 | **Suche merken als Umschalter**: etwas suchen → Lesezeichen oben rechts antippen → wird **grün gefüllt**. App verlassen, zurück, dieselbe Suche tippen → muss **immer noch** grün sein. Nochmal antippen → wieder leer, und die Suche ist unter Aktivität → Gemerkt → Suchen verschwunden. ⚠️ Gegenprobe mit führendem Leerzeichen („ abaya"): Der Knopf muss trotzdem grün sein | 88 |
+| ~~A31~~ | ~~**Suche merken als Umschalter**~~ — ✅ **27.08.2026 am Simulator durchgespielt**, alle vier Proben: merken → **grün gefüllt** · App per `simctl terminate` **vollständig** beendet und neu gestartet → dieselbe Suche ist **immer noch grün** · Eingabe mit führendem Leerzeichen → **bleibt grün** · nochmal antippen → leer, und unter Gemerkt → Suchen ist der Eintrag **wirklich weg** (nur die ältere Suche „Parf" blieb stehen). ⚠️ Eine Einschränkung: Ob iOS das führende Leerzeichen überhaupt durchgereicht hat, ist am Bildschirm nicht zweifelsfrei zu sehen — die Normalisierung ist damit **wahrscheinlich**, nicht bewiesen | 88 |
 | A32 | **Der Preis-Hinweis am eigenen Regal**: Einen Artikel ohne Sofortkauf-Preis anlegen (oder den bestehenden nehmen) — auf „Verkaufen" muss **„N kaufbar · 1 ohne Preis"** stehen, das zweite rot. Im Regal trägt die Zeile den Satz „Ohne Preis findet ihn niemand". Preis eintragen → beides verschwindet, und der Artikel taucht im Stöbern auf | 88 |
-| A33 | ⚠️ **Die Altersabfrage von vorne** — der einzige offene Punkt, der einen **Geldweg** blockiert: Bieten antippen → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal bieten, geht durch. Danach App neu starten und wieder bieten: Das Blatt darf **nicht** wiederkommen | 90 |
-| A34 | **Der 31. Februar**: 31/02/1990 eintragen — muss „Diesen Tag gibt es in dem Monat nicht" sagen, nicht stillschweigend auf den 3. März rutschen | 90 |
-| A35 | **Die Absage**: ein Konto mit Geburtsdatum vor 17 Jahren (per SQL-Editor setzen) — das Blatt muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder, und der Kauf-/Gebotsweg bleibt zu | 90 |
+| ~~A33~~ | ⚠️ **Nach Gruppe B verschoben (27.08.)** — `birth_date_locked`: Ein einmal gesetztes Geburtsdatum lässt sich nicht selbst ändern, und Zaurs Konto ist längst `adult`. Das Blatt kommt dort nie wieder; der Punkt braucht ein **frisches Konto**. Siehe **B15** | 90, 97 |
+| ~~A34~~ | ⚠️ **In B15 aufgegangen (27.08.)** — der 31. Februar ist eine Probe **im** Altersblatt, und das kommt ohne frisches Konto nicht mehr | 90, 97 |
+| ~~A35~~ | ⚠️ **In B15 aufgegangen (27.08.)** — dito für die Absage unter 18 | 90, 97 |
 | A36 | **Startseite bei laufender Sendung**: Live gehen → auf der Startseite muss **unter** der Show-Karte „Aus dem Regal" mit dem Raster stehen. ⚠️ Vorher prüfen, wie viele Follower das sendende Konto hat — der Start schickt ihnen einen Push | 91 |
 | A37 | **Sendung vormerken**: Termin auf „in 14 Minuten" legen, mit einem Konto vormerken, das dem Gastgeber **nicht** folgt → nach dem Cron muss die Erinnerung ankommen, und die Glocke ist wieder leer (verbraucht). ⚠️ Gegenprobe: ein Konto, das folgt **und** vormerkt, bekommt **eine** Meldung, nicht zwei | 92 |
 | A38 | **Das Konto als Liste**: Zwei Gruppen mit Haarlinien statt sechs Karten, Überschrift „Als Verkäufer" über den letzten zweien. Die Seite muss **ohne Scrollen** bis „Abmelden" reichen | 94 |
@@ -6882,7 +6893,8 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 
 | | Was | Woher |
 |---|---|---|
-| B1 | **Der Kaufknopf am Regal-Artikel** — der letzte nie durchlaufene Geldweg. Braucht `checkout_enabled`; das SQL liegt in `supabase/_ops/kassen-freigabe-testware.sql` | 33, 54 |
+| B1 | ⚠️ **Zur Hälfte durch (27.08.)** — Kassen-Freigabe eingespielt, danach am Simulator: Der goldene **„Kaufen · 85 €"** steht an `amir32`s Artikel, der Tipp legt ihn in den Sammelkorb („Du hast den Zuschlag · 85 € · Im Paket bei amir32 · noch 23 h"). ⚠️ **Offen bleibt das Bezahlen** — Stripe-Kasse, Testkarte, Übergang auf `paid`. Der Korb dazu liegt bereit und läuft nach 24 h ab | 33, 54 |
+| B15 | **Die Altersabfrage von vorne** (war A33): Mit einem **frischen Konto** kaufen oder bieten → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal, geht durch. App neu starten: Das Blatt darf **nicht** wiederkommen. ⚠️ Zwei Proben gehören dazu: **der 31. Februar** (muss „Diesen Tag gibt es in dem Monat nicht" sagen) und ein Datum vor 17 Jahren (muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder). Die alten A34/A35 gehen darin auf | 90, 97 |
 | B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
 | B3 | **Bewertungen befüllen**: kaufen → versenden → „Ist angekommen" → Sterne → **Text**. Der Bewertungen-Reiter war noch nie mit Inhalt zu sehen | 18 |
 | B4 | ~~Merken-Herz und „Nachricht statt Kaufen" an fremden Angeboten~~ | ✅ 18.08. über die Testware |
@@ -11777,10 +11789,16 @@ der Motor.
 
 ### ⚠️ Das Erste, was zu tun ist
 
-1. **Die Prüfliste hat einen Stau — A31 bis A39.** Neun Punkte aus zwei Abenden (A27–A30 sind am
-   25.08. abgehakt). Das ist die Lage, vor der Abschnitt 3 warnt. ⚠️ Sie stehen seit dem 26.08.
-   **in Abschnitt 56**, wo sie hingehören — vorher lagen sie verstreut in 89, 90, 91, 92 und 94.
-2. **A33 zuerst** (Altersabfrage): der einzige offene Punkt, der einen Geldweg blockiert.
+1. **Die Prüfliste hat einen Stau — A32 bis A39.** Acht Punkte aus zwei Abenden (A27–A30 am 25.08.
+   abgehakt, A31 am 27.08.). Das ist die Lage, vor der Abschnitt 3 warnt. ⚠️ Sie stehen seit dem
+   26.08. **in Abschnitt 56**, wo sie hingehören — vorher lagen sie verstreut in 89, 90, 91, 92
+   und 94.
+2. 🔴 **Zuerst die Lücke aus Abschnitt 97 schliessen** — der **Sofortkauf** hat keinen
+   Server-Riegel gegen Minderjährige, nur einen im Client. Eine Zeile `IF NOT public.is_adult()`
+   in `buy_now_live_auction`, und der Kopf von `lib/useAgeGate.ts` gehört richtiggestellt: Er
+   behauptet, der Riegel liege auf dem Server — für diesen Weg stimmt das nicht.
+   ⚠️ Die Altersabfrage selbst (jetzt **B15**) braucht ein frisches Konto; auf Zaurs Konto kommt
+   das Blatt nie wieder.
 3. **Der Strike-Weg wird erst am 28.08. ehrlich prüfbar** — der Melde-Knopf bleibt 48 Stunden nach
    dem Zuschlag grau. Das ist die Bremse, kein Fehler.
 4. **Den Push-Rückfall gegenprüfen**: Er ist seit `20260826100000` weg. Probe 2 und 3 in der
@@ -11917,6 +11935,76 @@ richtig.
 Nichts davon ist dringend, solange Phase 0 nicht läuft — es blockiert keinen der offenen
 Prüfpunkte. Aber die Reihenfolge steht fest: **Zahlungsweg vor Erlösmodell**, weil das Abo einen
 Verkäufer voraussetzt, der überhaupt etwas verdient.
+
+---
+
+## 97. Der Sofortkauf steht nicht hinter der Altersschranke (27.08.2026)
+
+Gefunden beim Prüfen von B1, unmittelbar nachdem die Kassen-Freigabe eingespielt war. Der Ablauf
+war der vorgesehene: fremden Regal-Artikel öffnen → **„Kaufen · 85 €"** in Gold → antippen. Der Kauf
+lief durch, der Artikel landete im Sammelkorb — **und die Altersabfrage kam nie.**
+
+Auf diesem Konto ist das richtig (es ist längst `adult`). Beim Nachsehen fiel aber auf, dass es
+auch ohne dieses Konto durchgelaufen wäre.
+
+### Der Riegel deckt drei Wege ab, und der Sofortkauf ist keiner davon
+
+`20260825120000` hängt genau drei Trigger:
+
+| Trigger | Tabelle |
+|---|---|
+| `trg_adult_bid` | `live_bids` |
+| `trg_adult_offer` | `berkat_offers` |
+| `trg_adult_tip` | `berkat_tips` |
+
+Der Sofortkauf schreibt in **keine** davon. `buy_now_live_auction` setzt `live_auctions` auf
+`sold` und hängt den Artikel in den Korb — an `live_bids` kommt er nie vorbei. Damit steht dieser
+Weg **allein auf dem Client** (`app/listing/[id].tsx:389` und `:472`).
+
+⚠️ **Und der Kopf von `lib/useAgeGate.ts` behauptet das Gegenteil:**
+
+> „⚠️ DER RIEGEL LIEGT AUF DEM SERVER, NICHT HIER. […] Wer sie umgeht, kommt trotzdem nicht durch."
+
+Für Gebot, Preisvorschlag und Trinkgeld stimmt der Satz. Für den Sofortkauf nicht — und das ist
+die gefährlichere Sorte Kommentar: Er beschreibt eine Absicht als Zustand und nimmt dem nächsten
+Leser den Anlass nachzusehen.
+
+### Warum das zählt, obwohl kaum jemand eine RPC von Hand ruft
+
+Der Missbrauchsfall („Jugendlicher ruft `buy_now_live_auction` direkt") ist unrealistisch. Der
+realistische ist ein anderer: **ein alter Build.** Im Store liegt `1.0.0 (1)` vom 21.08., die
+Altersabfrage kam per OTA am 25.08. Wer den OTA nicht geladen hat, trägt den Client-Riegel nicht —
+und für genau diesen Fall existiert der Server-Riegel. Beim Bieten greift er, beim Sofortkauf
+nicht.
+
+Rechtlich ist der Sofortkauf dabei **derselbe Vorgang** wie ein Gebot: eine bindende
+Willenserklärung, §§ 107/108 BGB, bei einem Minderjährigen schwebend unwirksam. Die Begründung im
+Kopf von `useAgeGate.ts` trifft auf ihn Wort für Wort zu.
+
+### Was zu tun ist
+
+Eine Zeile in `buy_now_live_auction`, im selben Stil wie die drei Trigger:
+
+```sql
+IF NOT public.is_adult() THEN
+  RAISE EXCEPTION 'under_age';
+END IF;
+```
+
+Der Client übersetzt `under_age` bereits (`ageGateError`), es braucht also keine neue Meldung —
+der Käufer liest „Mitbieten geht erst ab 18". ⚠️ Bei der Gelegenheit gehört der Kopf von
+`useAgeGate.ts` richtiggestellt, sonst steht der falsche Satz weiter dort.
+
+**Nicht gebaut.** Es ist eine Migration und eine Entscheidung über einen Geldweg.
+
+### ⚠️ A33 ist auf Zaurs Konto nicht mehr prüfbar
+
+Dabei kam ein zweites heraus: `set_my_birth_date` kennt `birth_date_locked` — **ein einmal
+gesetztes Geburtsdatum lässt sich nicht selbst ändern.** Auf einem Konto, das die Frage schon
+beantwortet hat, kommt das Blatt nie wieder.
+
+A33 („die Altersabfrage von vorne") braucht damit ein **frisches Konto** und gehört nicht mehr in
+Gruppe A. In der Prüfliste entsprechend verschoben.
 
 ---
 
