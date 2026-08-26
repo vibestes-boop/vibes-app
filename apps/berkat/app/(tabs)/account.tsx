@@ -633,6 +633,34 @@ export default function AccountScreen() {
                 .filter(Boolean)
                 .join(' · ')}
             </Text>
+
+            {/* ⚠️ WAS DER OFFENE KORB KANN, STAND NIRGENDS (27.08.2026)
+                Am Gerät passiert: Zaur kaufte zwei Artikel bei DEMSELBEN
+                Verkäufer, zahlte den ersten sofort — und bekam zwei
+                Bestellungen mit zweimal Versand. Beides war mechanisch richtig
+                (`ensure_auction_cart` sucht `open`, ein bezahlter Korb ist zu),
+                aber 4,90 € zu teuer.
+
+                Die Rückfrage dafür gibt es (`pay()` oben) — sie hängt aber an
+                `sellerLive`. Beim Regal-Kauf sendet niemand, also kam sie nie.
+                Und gerade dort ist der Fall wahrscheinlich: Man stöbert und
+                findet zwei Sachen beim selben Anbieter.
+
+                Bewusst KEINE zweite Rückfrage: Ein Alert vor einem Geldweg
+                bremst und stellt eine Frage, die der Käufer nicht beantworten
+                kann. Was ihm fehlt, ist eine Auskunft — und sie lädt zum
+                Weiterstöbern ein, statt zu warnen. Der eingefrorene Korb sagt
+                seit dem 19.08. den Gegensatz („nimmt nichts mehr auf"); hier
+                stand die positive Hälfte nie.
+
+                Die Zeile beschreibt die REGEL, nicht den Bestand — sie braucht
+                deshalb keine Abfrage, wie viel der Verkäufer noch anbietet. */}
+            {cart.status === 'open' ? (
+              <Text style={styles.payHint}>
+                Was du in dieser Zeit noch bei {sellerNames[cart.seller_id] ?? 'diesem Verkäufer'}{' '}
+                kaufst, kommt in dasselbe Paket — ein Versand.
+              </Text>
+            ) : null}
           </View>
         ))
       )}

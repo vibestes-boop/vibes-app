@@ -61,8 +61,13 @@ was gilt.
 > Trigger. **Der Riegel hält** (97). Die Lehre daraus ist der Grund, warum der Abschnitt stehen
 > bleibt: **Wer prüft, ob ein Riegel greift, muss dem Schreibweg folgen, nicht der Trigger-Liste.**
 >
-> ✅ **Die Kassen-Freigabe ist eingespielt** (27.08.): „Kaufen · 85 €" steht an `amir32`s Artikeln,
-> und der Kauf legt sie in den Sammelkorb. **B1 damit zur Hälfte durch** — das Bezahlen fehlt noch.
+> ✅ **Die Kassen-Freigabe ist eingespielt, und B1 ist durch** (27.08.) — zweimal komplett: Kaufen →
+> Sammelkorb → Stripe → „Bezahlt · wird gepackt". **Der letzte nie gegangene Geldweg ist gegangen.**
+>
+> 💶 **Dabei fiel Abschnitt 98 an: zweimal Versand beim selben Verkäufer.** Wer den ersten Korb
+> sofort bezahlt, bekommt für den nächsten Kauf ein zweites Paket — 4,90 € zu viel, und nichts sagte
+> es ihm. Die Rückfrage dafür gab es, sie hing nur an „Verkäufer sendet gerade". Behoben mit einer
+> Auskunft statt einer Warnung. ⚠️ **Noch nicht ausgerollt.**
 >
 > ⚠️ **Und die Prüfliste selbst war die Falle:** A27–A39 standen bis zum 26.08. nicht in Abschnitt
 > 56, sondern verstreut in 89, 90, 91, 92 und 94 — die neuesten im **abgelösten** Anschlusspunkt.
@@ -6892,7 +6897,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 
 | | Was | Woher |
 |---|---|---|
-| B1 | ⚠️ **Zur Hälfte durch (27.08.)** — Kassen-Freigabe eingespielt, danach am Simulator: Der goldene **„Kaufen · 85 €"** steht an `amir32`s Artikel, der Tipp legt ihn in den Sammelkorb („Du hast den Zuschlag · 85 € · Im Paket bei amir32 · noch 23 h"). ⚠️ **Offen bleibt das Bezahlen** — Stripe-Kasse, Testkarte, Übergang auf `paid`. Der Korb dazu liegt bereit und läuft nach 24 h ab | 33, 54 |
+| ~~B1~~ | ~~**Der Kaufknopf am Regal-Artikel**~~ — ✅ **27.08.2026 zweimal komplett durchlaufen** (Zaur), nachdem die Kassen-Freigabe eingespielt war: goldener „Kaufen · X €" → Sammelkorb → Stripe → **„Bezahlt · wird gepackt"** bei 29 € und 85 €. Damit ist der letzte nie gegangene Geldweg gegangen. ⚠️ Dabei kam Abschnitt **98** heraus (zweimal Versand beim selben Verkäufer). Offen bleibt nur noch die Verkäufer-Seite: packen, Sendungsnummer, „versendet" | 33, 54, 98 |
 | B15 | **Die Altersabfrage von vorne** (war A33): Mit einem **frischen Konto** kaufen oder bieten → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal, geht durch. App neu starten: Das Blatt darf **nicht** wiederkommen. ⚠️ Zwei Proben gehören dazu: **der 31. Februar** (muss „Diesen Tag gibt es in dem Monat nicht" sagen) und ein Datum vor 17 Jahren (muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder). Die alten A34/A35 gehen darin auf | 90, 97 |
 | B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
 | B3 | **Bewertungen befüllen**: kaufen → versenden → „Ist angekommen" → Sterne → **Text**. Der Bewertungen-Reiter war noch nie mit Inhalt zu sehen | 18 |
@@ -12001,6 +12006,48 @@ beantwortet hat, kommt das Blatt nie wieder.
 
 A33 („die Altersabfrage von vorne") braucht damit ein **frisches Konto** und gehört nicht mehr in
 Gruppe A. In der Prüfliste entsprechend verschoben.
+
+---
+
+## 98. Zweimal Versand beim selben Verkäufer (27.08.2026)
+
+Beim zweiten B1-Durchlauf am Gerät passiert, und es ist kein Testartefakt: Zaur kaufte zwei Artikel
+bei **demselben** Verkäufer, wenige Minuten auseinander, und zahlte den ersten sofort. Ergebnis:
+**zwei Bestellungen, zweimal Versand** — 29 € und 85 € bei `amir32`, beide „Bezahlt · wird gepackt".
+
+Mechanisch ist alles richtig. `ensure_auction_cart` sucht einen Korb mit Status `open`; ein
+bezahlter Korb ist geschlossen (`close_cart_on_order_paid`), also entsteht ein zweiter. Nur ist das
+Ergebnis 4,90 € zu teuer — und trifft genau den Grund, aus dem es den Sammelkorb überhaupt gibt
+(Abschnitt 1: „Ohne das ist eine 5-€-Auktion wirtschaftlich unmöglich").
+
+### Die Rückfrage gab es, sie hing nur an der falschen Bedingung
+
+`pay()` in `app/(tabs)/account.tsx` fragt seit dem 19.08. nach — **wenn der Verkäufer gerade
+sendet** (`sellerLive`). Beim Regal-Kauf sendet niemand, also kam sie nie. Dabei ist der Fall dort
+sogar wahrscheinlicher: Man stöbert, findet zwei Sachen beim selben Anbieter und kauft nacheinander.
+Während einer Show ist das Fenster Minuten lang, im Regal **24 Stunden**.
+
+### Bewusst KEINE zweite Rückfrage
+
+Ein Alert vor einem Geldweg bremst und stellt eine Frage, die der Käufer nicht beantworten kann. Was
+ihm fehlt, ist keine Bestätigung, sondern eine **Auskunft** — und die lädt zum Weiterstöbern ein,
+statt zu warnen. Sie verkauft also, wo eine Rückfrage abschreckt.
+
+Der **eingefrorene** Korb sagt seit dem 19.08. bereits den Gegensatz („nimmt nichts mehr auf, was du
+danach gewinnst, kommt in ein neues"). Die positive Hälfte fehlte:
+
+> Was du in dieser Zeit noch bei *zaur* kaufst, kommt in dasselbe Paket — ein Versand.
+
+Eine Zeile unter dem Bezahl-Knopf, nur bei `status === 'open'`, im selben dezenten Ton wie der
+Versand-Hinweis darüber. ⚠️ Sie beschreibt die **Regel**, nicht den Bestand — deshalb braucht sie
+keine Abfrage, wie viel der Verkäufer noch anbietet, und kann nicht veralten.
+
+**Automatisch zusammenlegen wäre falsch.** Wenn der Verkäufer das erste Paket schon gepackt hat,
+zahlt er den zweiten Versand aus eigener Tasche. Die Entscheidung gehört dem Käufer — aber **bevor**
+Geld fliesst.
+
+`tsc` Exit 0, `expo export` sauber (10,9 MB, aus `apps/berkat` geprüft). Am Simulator gegen Metro
+gesehen. ⚠️ **Noch nicht ausgerollt** — der OTA steht aus.
 
 ---
 
