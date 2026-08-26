@@ -297,6 +297,10 @@ was gilt.
   Verkäufer** (Stripe Connect **Standard**), das Betreiber-Konto sieht das Geld nie. Vertrauen kommt
   aus Bürgen und Bewertungen, nicht aus einer Zusage. ⚠️ **Connect ist damit Voraussetzung von
   Phase 0**, nicht Nachbereitung — ohne ihn gibt es keine Antwort auf „wie bekomme ich mein Geld?".
+  ✅ **Gebaut am 27.08.** (Abschnitt 99) — Migration, zwei Functions geändert, eine neu, zwei
+  Web-Seiten, „Geld empfangen" im Konto. ⚠️ **Nichts davon eingespielt oder deployed**, und die
+  Ausroll-Reihenfolge in 99 ist nicht beliebig: Schritt 4 fasst den Geldweg an, der seit dem 27.08.
+  nachweislich läuft. Danach gilt **B16** — sofort gegenprobieren, sonst zurückrollen.
 - **Bitrate gedeckelt** auf 540p, bis Berkat die Rechnung trägt (`lib/videoQuality.ts`).
 - Die Regel „nichts Neues bauen, bis Phase 0 läuft" wurde am 15.08. **von Zaur aufgehoben**.
 
@@ -6902,6 +6906,9 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | | Was | Woher |
 |---|---|---|
 | ~~B1~~ | ~~**Der Kaufknopf am Regal-Artikel**~~ — ✅ **27.08.2026 zweimal komplett durchlaufen** (Zaur), nachdem die Kassen-Freigabe eingespielt war: goldener „Kaufen · X €" → Sammelkorb → Stripe → **„Bezahlt · wird gepackt"** bei 29 € und 85 €. Damit ist der letzte nie gegangene Geldweg gegangen. ⚠️ Dabei kam Abschnitt **98** heraus (zweimal Versand beim selben Verkäufer). Offen bleibt nur noch die Verkäufer-Seite: packen, Sendungsnummer, „versendet" | 33, 54, 98 |
+| B16 | 🔴 **Die Regressionsprobe nach dem Connect-Deploy** (99) — die wichtigste der Liste, weil sie einen Weg schützt, der schon läuft: Nach `supabase functions deploy create-checkout-session` **sofort** einen Regal-Artikel kaufen und bezahlen. Solange kein Verkäufer ein Stripe-Konto verbunden hat, muss alles exakt wie am 27.08. laufen — Kasse öffnet, `paid`, „wird gepackt". Weicht irgendetwas ab, **zurückrollen statt weitersuchen** | 99 |
+| B17 | **Der Verbinden-Weg von vorne** (99): Konto → Als Verkäufer → „Geld empfangen" → Stripes Onboarding → zurück. Danach muss die Zeile **„Stripe prüft"** oder **„bereit"** sagen, nicht mehr „nicht eingerichtet". ⚠️ Gegenprobe im Stripe-Dashboard unter Connect → Verbundene Konten: Dort muss genau **ein** neues Konto stehen, nicht zwei. Zwei hiessen, dass die Zeile nach dem Anlegen nicht gespeichert wurde | 99 |
+| B18 | **Die Direktzahlung selbst** — der eigentliche Zweck: Mit einem **zweiten** Konto bei dem verbundenen Verkäufer kaufen und bezahlen. Das Geld muss im Dashboard **auf dessen Konto** auftauchen, nicht auf dem der Plattform. ⚠️ Und die Bestellung muss trotzdem auf `paid` springen — das ist die Probe für den Connect-Webhook | 99 |
 | B15 | **Die Altersabfrage von vorne** (war A33): Mit einem **frischen Konto** kaufen oder bieten → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal, geht durch. App neu starten: Das Blatt darf **nicht** wiederkommen. ⚠️ Zwei Proben gehören dazu: **der 31. Februar** (muss „Diesen Tag gibt es in dem Monat nicht" sagen) und ein Datum vor 17 Jahren (muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder). Die alten A34/A35 gehen darin auf | 90, 97 |
 | B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
 | B3 | **Bewertungen befüllen**: kaufen → versenden → „Ist angekommen" → Sterne → **Text**. Der Bewertungen-Reiter war noch nie mit Inhalt zu sehen | 18 |
@@ -12152,6 +12159,92 @@ Geld fliesst.
 
 `tsc` Exit 0, `expo export` sauber (10,9 MB, aus `apps/berkat` geprüft). Am Simulator gegen Metro
 gesehen. ⚠️ **Noch nicht ausgerollt** — der OTA steht aus.
+
+---
+
+## 99. Connect Standard gebaut (27.08.2026)
+
+Die Entscheidung steht in 96, hier steht der Bau. **Nichts davon ist eingespielt,
+deployed oder am echten Geld geprüft** — es liegt vollständig im Arbeitsstand.
+
+### Was entstanden ist
+
+| Datei | Was sie tut |
+|---|---|
+| `supabase/migrations/20260827100000_berkat_stripe_connect.sql` | Tabelle `berkat_seller_stripe`, zwei Trigger, `get_my_stripe_connect()` |
+| `supabase/functions/stripe-connect-onboard/index.ts` | Konto anlegen (`type: 'standard'`) + Account Link; Aktion `refresh` als Netz |
+| `create-checkout-session` (geändert) | `Stripe-Account`-Header im Bestell- **und** Trinkgeld-Zweig |
+| `stripe-webhook` (geändert) | zweites Geheimnis für Connect, `account.updated`, `account.application.deauthorized` |
+| `apps/berkat-web/stripe-fertig.html`, `stripe-neu.html` | die zwei Rückkehr-Seiten |
+| `apps/berkat/lib/useStripeConnect.ts` + Zeile im Konto | „Geld empfangen" samt Zustand |
+
+### Fünf Entscheidungen, die man sonst falsch wiederholt
+
+**1. Kein OAuth.** Stripes Doku sagt wörtlich: „OAuth wird für neue
+Connect-Plattformen nicht empfohlen." Der heutige Weg ist `accounts.create` +
+Account Links — **keine `client_id`, keine Redirect-URI im Dashboard, kein
+`state`-Token**. ⚠️ Wer im Dashboard nach OAuth-Einstellungen sucht, findet sie
+nicht: Sie liegen unter „Onboarding-Optionen → OAuth" und sind ab Werk aus. Das
+ist kein Fehler, sondern der Hinweis, dass man den falschen Weg geht.
+
+**2. Eigene Tabelle statt zwei Spalten an `berkat_sellers`.** Dessen Lese-Policy
+ist mit Absicht `USING (true)` — Impressumsangaben MÜSSEN öffentlich sein. Jede
+neue Spalte dort wäre damit für jeden lesbar. Ein spaltenweises REVOKE wäre die
+schlechtere Antwort: Es hätte `berkat_sellers` zur **sechsten** Tabelle mit
+eingefrorener Spaltenliste gemacht (CLAUDE.md, Regel 11).
+
+**3. `checkout_enabled` bleibt die einzige Wahrheit.** Keiner der vier Wächter
+aus `20260823120000` wird angefasst. Neu ist nur, wer die Spalte pflegt:
+Betreiber und Testware weiter von Hand, verbundene Verkäufer per Trigger aus
+Stripes `charges_enabled`. ⚠️ Der Trigger schaltet **in beide Richtungen** —
+sperrt Stripe ein Konto, fällt der Kaufknopf weg. Eine Freigabe, die nur
+einschaltet, liesse Käufer bei jemandem bezahlen, der kein Geld mehr empfangen
+kann.
+
+**4. Der Bestellzweig hängt an `isAuctionCart`.** Ohne diese Bedingung würde ein
+**Serlo**-Produktkauf auf einem verbundenen Konto landen, sobald derselbe Mensch
+in beiden Apps verkauft — eine stille Änderung an Serlos Geldweg, und Serlo ist
+im App Store.
+
+**5. Der Rückweg geht über die Website, nicht per `berkat://`.** Stripe verlangt
+für Account Links öffentlich erreichbare http(s)-Adressen. Und die Seiten dort
+tragen **keinen** Deeplink-Knopf: Berkat öffnet Fremdseiten als Blatt über der
+App, und darin ist ein eigenes Schema tot — am 15.08. auf `bezahlt.html` schon
+einmal gelernt.
+
+⚠️ **Nebenbei gefunden und NICHT behoben:** `apps/berkat-web/abgebrochen.html`
+trägt genau diesen toten Knopf immer noch als grosse CTA, obwohl der Kommentar
+auf `bezahlt.html` seit dem 15.08. davor warnt. Eine Seite gefixt, die andere
+vergessen.
+
+### ⚠️ Die Ausroll-Reihenfolge ist nicht beliebig
+
+1. **Migration zuerst** — sonst ruft die App `get_my_stripe_connect()` ins Leere
+2. `supabase functions deploy stripe-connect-onboard`
+3. `supabase functions deploy stripe-webhook`
+4. 🔴 `supabase functions deploy create-checkout-session` — **der Eingriff in den
+   laufenden Geldweg.** Danach SOFORT einen Testkauf: Solange niemand ein Konto
+   verbunden hat, muss alles exakt wie vorher laufen. Diese Funktion trägt den
+   Weg, der am 27.08. zum ersten Mal komplett gelaufen ist (B1)
+5. Website hochladen (`wrangler pages deploy`), dann der OTA
+
+Danach im Dashboard: **Connect-Webhook** anlegen (dieselbe URL wie der
+bestehende Endpunkt) und sein `whsec_…` als `STRIPE_WEBHOOK_SECRET_CONNECT`
+setzen. ⚠️ **Ohne das ist der ganze Bau still tot**: Der Käufer zahlt, Stripe
+ruft an, die Signatur passt zu keinem bekannten Geheimnis → 400, und die
+Bestellung bleibt für immer auf `payment_requested`. Kein Absturz, keine
+Meldung — dieselbe Familie wie der R2-Aufräumer, der sieben Wochen nichts tat.
+
+### Was geprüft ist und was nicht
+
+✅ `tsc` über **1876 Dateien**, Exit 0 (aus `apps/berkat`, mit `--listFilesOnly`
+gegengezählt — aus der Wurzel wären es 0 gewesen) · `expo export` sauber · die
+Zeile „Geld empfangen — nicht eingerichtet" steht am Simulator, **und zwar ohne
+Absturz, obwohl die RPC noch gar nicht existiert**.
+
+❌ Alles Übrige. Kein Konto verbunden, keine Direktzahlung gelaufen, kein
+Webhook angekommen. Nach der Regel aus Abschnitt 86 gilt: **„Migration läuft
+durch" heisst bei Funktionen nicht „Funktion läuft."**
 
 ---
 

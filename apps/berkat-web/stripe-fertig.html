@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Konto verbunden — Berkat</title>
+    <!-- Landet man nur aus Stripes Onboarding. Gehört nicht in die Suche. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="Berkat">
+        <path d="M32 56 L32 18" fill="none" stroke="#E9A73C" stroke-width="3.2" stroke-linecap="round"/>
+        <ellipse cx="24" cy="46" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 24 46)"/>
+        <ellipse cx="40" cy="46" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 40 46)"/>
+        <ellipse cx="24.8" cy="35" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 24.8 35)"/>
+        <ellipse cx="39.2" cy="35" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 39.2 35)"/>
+        <ellipse cx="25.6" cy="24" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 25.6 24)"/>
+        <ellipse cx="38.4" cy="24" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 38.4 24)"/>
+        <ellipse cx="32" cy="13" rx="3.4" ry="7" fill="#E9A73C"/>
+      </svg>
+
+      <p class="eyebrow">Bei Stripe abgegeben</p>
+      <h1>Geschafft — dein Geld geht ab jetzt <em>direkt an dich</em>.</h1>
+      <p class="lead">
+        Käufer zahlen künftig auf dein eigenes Stripe-Konto. Berkat sieht das Geld
+        nicht, und du bekommst es ohne Umweg über uns.
+      </p>
+
+      <!--
+        ⚠️ EHRLICH BLEIBEN: „abgegeben" ist nicht „freigeschaltet".
+        Stripe prüft nach der Abgabe weiter, und bei Rückfragen bleibt
+        `charges_enabled` false, obwohl der Verkäufer sich fertig fühlt. Ein
+        „Alles erledigt!" hier wäre eine Zusage, die die Seite nicht halten kann
+        — der Verkäufer würde senden und sich wundern, warum niemand kaufen kann.
+        Deshalb sagt der Text, wer wirklich entscheidet, und wo der Stand steht.
+      -->
+      <ol class="steps">
+        <li>
+          <strong>Stripe schaut noch einmal drüber</strong>
+          <span>Meistens Minuten. Bei Rückfragen meldet Stripe sich per E-Mail.</span>
+        </li>
+        <li>
+          <strong>Den Stand siehst du in der App</strong>
+          <span>Unter „Konto“ → „Geld empfangen“. Erst wenn dort „Bereit“ steht, können Käufer bei dir bezahlen.</span>
+        </li>
+        <li>
+          <strong>Bis dahin läuft alles weiter</strong>
+          <span>Senden, Artikel einstellen, Nachrichten — nur der Kaufknopf wartet noch.</span>
+        </li>
+      </ol>
+
+      <!--
+        Kein `<a href="berkat://">`-Knopf. Berkat öffnet Fremdseiten als Blatt
+        ÜBER der App (SFSafariViewController / Custom Tab), und darin ist ein
+        eigenes Schema TOT — der Knopf sähe aus wie der Weg zurück und täte
+        nichts. Am 15.08.2026 auf `bezahlt.html` schon einmal gelernt; dieselbe
+        Lösung, dieselbe Reihenfolge: erst das, was wirklich funktioniert.
+      -->
+      <p class="cta-hint">
+        Tipp oben links auf <strong>Fertig</strong> — du bist sofort wieder in Berkat.
+      </p>
+      <p class="note">
+        Im Browser gelandet? <a href="berkat://account">Berkat öffnen</a>. Klappt auch
+        das nicht, wechsle von Hand zur App — deine Verbindung steht unabhängig davon.
+      </p>
+    </main>
+
+    <footer>
+      Berkat — Live-Auktionen
+      <nav>
+        <a href="/agb.html">Nutzungsbedingungen</a>
+        <a href="/widerruf.html">Widerruf</a>
+        <a href="/impressum.html">Impressum</a>
+        <a href="/datenschutz.html">Datenschutz</a>
+      </nav>
+    </footer>
+  </body>
+</html>

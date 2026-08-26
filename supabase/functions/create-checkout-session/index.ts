@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       // `title` trägt den Namen für Bestellungen ohne products-Zeile —
       // z. B. einen Berkat-Sammelkorb aus mehreren Auktionsartikeln.
       // `cart_id` unterscheidet die beiden Herkünfte, siehe unten.
-      .select('id, buyer_id, status, amount_eur, currency, product_id, title, cart_id')
+      .select('id, buyer_id, seller_id, status, amount_eur, currency, product_id, title, cart_id')
       .eq('id', body.order_id)
       .maybeSingle();
 
@@ -230,6 +230,36 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── ⚠️ WOHIN DAS GELD GEHT (27.08.2026, Übergabe 96) ────────────────────
+    //
+    // Hat der Verkäufer sein EIGENES Stripe-Konto verbunden, entsteht die
+    // Zahlung dort — das Konto des Betreibers sieht sie nie. Damit ist die
+    // ZAG-Frage vom Tisch: Wer nichts weiterleitet, braucht keine Erlaubnis.
+    //
+    // ⚠️ AUSDRÜCKLICH NUR FÜR BERKAT (`isAuctionCart`). Ein Nutzer kann in
+    // beiden Apps verkaufen; ohne diese Bedingung würde ein SERLO-Produktkauf
+    // plötzlich auf seinem verbundenen Konto landen — eine stille Änderung an
+    // Serlos Geldweg, und Serlo ist im App Store.
+    //
+    // ⚠️ `charges_enabled`, nicht bloss „Zeile vorhanden": Ein Konto, das
+    // Stripe noch prüft, kann nicht kassieren. Eine Session darauf würde
+    // fehlschlagen — und zwar erst vor dem Käufer.
+    //
+    // Fehlt die Verbindung, bleibt ALLES wie bisher: Die Zahlung läuft auf das
+    // Betreiber-Konto. Das ist der heutige Zustand für Zaur und die Testware,
+    // und dieser Zweig ändert ihn nicht.
+    let connectedAccount: string | null = null;
+    if (isAuctionCart && order.seller_id) {
+      const { data: sellerStripe } = await adminClient
+        .from('berkat_seller_stripe')
+        .select('stripe_account_id, charges_enabled')
+        .eq('user_id', order.seller_id)
+        .maybeSingle();
+      if (sellerStripe?.charges_enabled && sellerStripe.stripe_account_id) {
+        connectedAccount = sellerStripe.stripe_account_id;
+      }
+    }
+
     const pStripeRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
       method: 'POST',
       headers: {
@@ -237,6 +267,9 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Stripe-Version': STRIPE_API_VERSION,
         'Idempotency-Key': `product-order-${order.id}`,
+        // Der Header ist der ganze Unterschied zwischen „mein Geld" und
+        // „sein Geld". Ohne ihn: Plattform-Konto, wie seit jeher.
+        ...(connectedAccount ? { 'Stripe-Account': connectedAccount } : {}),
       },
       body: pform.toString(),
     });
@@ -323,6 +356,28 @@ Deno.serve(async (req) => {
     }
     tform.set('line_items[0][quantity]', '1');
 
+    // ── ⚠️ TRINKGELD IST DER ZWEITE GELDWEG (27.08.2026, Übergabe 96) ───────
+    //
+    // Er wurde beim Entwurf der Connect-Entscheidung zuerst übersehen, und er
+    // ist der heiklere von beiden: Ein Trinkgeld ist von vornherein Geld, das
+    // jemand anderem zugedacht ist. Läuft es über das Betreiber-Konto, nimmt
+    // der Betreiber es für den Streamer entgegen — genau das, was Connect
+    // vermeiden soll.
+    //
+    // Empfänger ist `tip.recipient_id`, nicht der Zahlende. Ohne verbundenes
+    // Konto bleibt es wie bisher.
+    let tipAccount: string | null = null;
+    {
+      const { data: recipientStripe } = await tipClient
+        .from('berkat_seller_stripe')
+        .select('stripe_account_id, charges_enabled')
+        .eq('user_id', tip.recipient_id)
+        .maybeSingle();
+      if (recipientStripe?.charges_enabled && recipientStripe.stripe_account_id) {
+        tipAccount = recipientStripe.stripe_account_id;
+      }
+    }
+
     const tRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
       method: 'POST',
       headers: {
@@ -332,6 +387,7 @@ Deno.serve(async (req) => {
         // Ein zweiter Tipp auf „Bezahlen" erzeugt dieselbe Stripe-Sitzung,
         // nicht eine zweite Abbuchung.
         'Idempotency-Key': `berkat-tip-${tip.id}`,
+        ...(tipAccount ? { 'Stripe-Account': tipAccount } : {}),
       },
       body: tform.toString(),
     });

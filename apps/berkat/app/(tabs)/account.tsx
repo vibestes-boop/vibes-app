@@ -23,6 +23,7 @@ import {
   Lock,
   MessageSquare,
   Package,
+  Wallet,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { supabase } from '../../lib/supabase';
@@ -43,6 +44,12 @@ import { onVacation } from '../../lib/useVacation';
 import { useMyRewards } from '../../lib/useRewards';
 import { useMyReviews } from '../../lib/useOrderReview';
 import { buildLabel } from '../../lib/buildInfo';
+import { errText } from '../../lib/errorText';
+import {
+  stripeConnectLabel,
+  useStartStripeConnect,
+  useStripeConnectState,
+} from '../../lib/useStripeConnect';
 import { RatingStars } from '../../components/RatingStars';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -204,6 +211,12 @@ export default function AccountScreen() {
   // — bei privat ist die Liste leer und es erscheint nichts.
   const { data: sellerRow } = useBerkatSeller(myUserId);
   const sellerMissing = missingBusinessFields(sellerRow ?? null);
+
+  // Geld empfangen (Connect Standard, Übergabe 96). Der Zustand kommt vom
+  // Server; hier wird nur angezeigt und angestossen.
+  const { data: stripeState = 'none' } = useStripeConnectState(myUserId);
+  const { start: startStripeConnect, isStarting: stripeStarting } =
+    useStartStripeConnect(myUserId);
   const sellerAway = onVacation(sellerRow?.vacation_until);
   const profile = useSession((s) => s.profile);
   const { serverNow } = useServerClock();
@@ -437,6 +450,47 @@ export default function AccountScreen() {
           machen. */}
       <Text style={styles.sectionLabel}>Als Verkäufer</Text>
       <View style={styles.linkGroup}>
+
+      {/* ── ⚠️ GELD EMPFANGEN — steht ganz oben, und zwar mit Grund.
+          Ohne verbundenes Stripe-Konto kann ein Verkäufer nichts verkaufen:
+          An seinen Artikeln steht „Nachricht schreiben" statt „Kaufen"
+          (`checkout_enabled`, gepflegt vom Trigger aus `20260827100000`).
+          Das ist die einzige Einstellung dieser Gruppe, ohne die der ganze
+          Rest folgenlos bleibt — Impressum und Versandsätze sind wertlos,
+          solange niemand bezahlen kann.
+
+          Der Zustand steht ausgeschrieben da statt als Haken: „Stripe prüft"
+          und „bereit" sind zwei verschiedene Dinge, und wer das verwechselt,
+          sendet einen Abend lang, ohne dass jemand kaufen kann. ─────────── */}
+      <Pressable
+        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        disabled={stripeStarting}
+        onPress={() => {
+          void startStripeConnect().catch((e) =>
+            Alert.alert('Das hat nicht geklappt', errText(e)),
+          );
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={`Geld empfangen — ${stripeConnectLabel(stripeState).text}`}
+      >
+        <Wallet size={19} color={ui.text} />
+        <Text style={styles.linkLabel}>Geld empfangen</Text>
+        {stripeStarting ? (
+          <ActivityIndicator size="small" color={ui.textMuted} />
+        ) : (
+          <Text
+            style={[
+              styles.linkWarn,
+              stripeConnectLabel(stripeState).tone === 'ok' && { color: ui.success },
+              stripeConnectLabel(stripeState).tone === 'muted' && { color: ui.textMuted },
+            ]}
+          >
+            {stripeConnectLabel(stripeState).text}
+          </Text>
+        )}
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
+
 
       {/* ── Anbieterangaben. Bis zum 19.08.2026 gab es dafür kein Formular:
           Die Spalten standen seit `20260816200000`, die RPC nahm jedes Feld

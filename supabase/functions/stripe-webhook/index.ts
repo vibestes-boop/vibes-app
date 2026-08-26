@@ -42,6 +42,21 @@ Deno.serve(async (req) => {
 
   const signature = req.headers.get('stripe-signature');
   const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+  // ── ⚠️ ZWEITES GEHEIMNIS FÜR CONNECT (27.08.2026, Übergabe 96) ────────────
+  //
+  // Seit Verkäufer ihr eigenes Stripe-Konto verbinden können, entsteht die
+  // Zahlung DORT — und damit feuern die Ereignisse auf dem verbundenen Konto,
+  // nicht auf dem der Plattform. Stripe schickt sie an einen eigenen
+  // **Connect-Endpunkt**, und der hat ein eigenes `whsec_…`.
+  //
+  // Ohne diese Zeile wäre der Bau still tot: Der Käufer zahlt, Stripe ruft an,
+  // die Signatur passt zu keinem bekannten Geheimnis → 400, und die Bestellung
+  // bleibt für immer auf `payment_requested`. Kein Absturz, keine Meldung.
+  // Dieselbe Familie wie der R2-Aufräumer, der sieben Wochen lang nichts tat.
+  //
+  // Beide Endpunkte dürfen auf DIESELBE URL zeigen; unterschieden werden sie
+  // allein durch das Geheimnis, mit dem die Signatur stimmt.
+  const connectSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET_CONNECT');
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
@@ -55,7 +70,13 @@ Deno.serve(async (req) => {
   // Raw body für Signatur-Check
   const raw = await req.text();
 
-  const sigOk = await verifyStripeSignature(raw, signature, webhookSecret);
+  // Erst das Plattform-Geheimnis, dann das für Connect. Fehlt das zweite,
+  // verhält sich alles wie vorher — ein nicht gesetztes Geheimnis darf keinen
+  // bestehenden Weg brechen.
+  let sigOk = await verifyStripeSignature(raw, signature, webhookSecret);
+  if (!sigOk && connectSecret) {
+    sigOk = await verifyStripeSignature(raw, signature, connectSecret);
+  }
   if (!sigOk) {
     console.warn('[stripe-webhook] invalid signature');
     return new Response(JSON.stringify({ error: 'invalid_signature' }), { status: 400 });
@@ -91,6 +112,19 @@ Deno.serve(async (req) => {
         break;
       case 'charge.refunded':
         await handleRefunded(admin, event);
+        break;
+      // ── Connect: Was Stripe über ein verbundenes Konto sagt ───────────────
+      // Der Hauptweg für `charges_enabled`. Die App fragt zwar beim Zurückkommen
+      // aus dem Onboarding auch selbst nach (`stripe-connect-onboard`, Aktion
+      // `refresh`), aber das ist das Netz — die Wahrheit kommt hier an, auch
+      // Tage später, wenn Stripe eine Prüfung abschliesst oder ein Konto sperrt.
+      case 'account.updated':
+        await handleAccountUpdated(admin, event);
+        break;
+      // Trennt der Verkäufer die Plattform wieder, fällt sein Kaufknopf weg —
+      // dafür sorgt der Trigger auf `berkat_seller_stripe` (20260827100000).
+      case 'account.application.deauthorized':
+        await handleAccountRemoved(admin, event);
         break;
       default:
         // Nicht-relevantes Event → ok quittieren damit Stripe kein Retry macht
@@ -461,6 +495,64 @@ async function handleExpired(admin: SupabaseClient, event: StripeEvent) {
     .update({ status: 'cancelled' })
     .eq('id', orderId)
     .eq('status', 'pending');
+}
+
+/**
+ * Connect: Stripe meldet den Zustand eines verbundenen Kontos.
+ *
+ * ⚠️ Geschrieben wird nach `stripe_account_id`, NICHT nach `user_id`. Das
+ * Ereignis kennt nur das Stripe-Konto; wem es gehört, weiss allein unsere
+ * Tabelle. Trifft es keine Zeile, gehört das Konto nicht zu Berkat — dann ist
+ * Nichtstun richtig, nicht ein Fehler.
+ *
+ * `charges_enabled` löst über den Trigger aus `20260827100000` den Kaufknopf
+ * aus. Deshalb steht hier keine zweite Stelle, die `checkout_enabled` setzt:
+ * Zwei Schreiber auf dieselbe Wahrheit laufen irgendwann auseinander.
+ */
+async function handleAccountUpdated(admin: SupabaseClient, event: StripeEvent) {
+  const acc = event.data.object as {
+    id: string;
+    charges_enabled?: boolean;
+    details_submitted?: boolean;
+    requirements?: { disabled_reason?: string | null };
+  };
+  if (!acc.id) return;
+
+  const { error } = await admin
+    .from('berkat_seller_stripe')
+    .update({
+      charges_enabled: Boolean(acc.charges_enabled),
+      details_submitted: Boolean(acc.details_submitted),
+      disabled_reason: acc.requirements?.disabled_reason ?? null,
+    })
+    .eq('stripe_account_id', acc.id);
+
+  if (error) {
+    console.error('[stripe-webhook] account.updated', acc.id, error.message);
+  }
+}
+
+/**
+ * Der Verkäufer hat die Plattform in seinem Stripe-Konto getrennt.
+ *
+ * Die Zeile fliegt raus; der DELETE-Trigger setzt `checkout_enabled` zurück.
+ * Ab dann steht an seinen Artikeln wieder „Nachricht schreiben" statt „Kaufen"
+ * — richtig so, denn er könnte kein Geld mehr empfangen.
+ */
+async function handleAccountRemoved(admin: SupabaseClient, event: StripeEvent) {
+  // Bei diesem Ereignis steht die Konto-ID im Umschlag, nicht im Objekt.
+  const accountId = (event as unknown as { account?: string }).account
+    ?? (event.data.object as { id?: string })?.id;
+  if (!accountId) return;
+
+  const { error } = await admin
+    .from('berkat_seller_stripe')
+    .delete()
+    .eq('stripe_account_id', accountId);
+
+  if (error) {
+    console.error('[stripe-webhook] deauthorized', accountId, error.message);
+  }
 }
 
 async function handleRefunded(admin: SupabaseClient, event: StripeEvent) {
