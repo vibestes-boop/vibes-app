@@ -56,11 +56,10 @@ was gilt.
 > **frisches Konto** (97). Sieben OTAs an einem Abend, und ein OTA wirkt erst beim übernächsten
 > Start — die Zeile unten im Konto muss **`ebc42a4e`** zeigen.
 >
-> 🔴 **Neu am 27.08. und der wichtigste Fund des Tages: Der Sofortkauf steht NICHT hinter der
-> Altersschranke** (97). `20260825120000` hängt Trigger an `live_bids`, `berkat_offers` und
-> `berkat_tips` — `buy_now_live_auction` kommt an keiner davon vorbei und ist allein im Client
-> geschützt. Rechtlich ist ein Sofortkauf derselbe Vorgang wie ein Gebot. **Eine Zeile behebt es**,
-> der Vorschlag steht in 97.
+> ⚠️ **Hier stand am 27.08. ein „Fund", den es nicht gibt** — „Der Sofortkauf steht nicht hinter der
+> Altersschranke". Falsch: `buy_now_live_auction` schreibt in `live_bids`, und dort hängt der
+> Trigger. **Der Riegel hält** (97). Die Lehre daraus ist der Grund, warum der Abschnitt stehen
+> bleibt: **Wer prüft, ob ein Riegel greift, muss dem Schreibweg folgen, nicht der Trigger-Liste.**
 >
 > ✅ **Die Kassen-Freigabe ist eingespielt** (27.08.): „Kaufen · 85 €" steht an `amir32`s Artikeln,
 > und der Kauf legt sie in den Sammelkorb. **B1 damit zur Hälfte durch** — das Bezahlen fehlt noch.
@@ -11793,12 +11792,9 @@ der Motor.
    abgehakt, A31 am 27.08.). Das ist die Lage, vor der Abschnitt 3 warnt. ⚠️ Sie stehen seit dem
    26.08. **in Abschnitt 56**, wo sie hingehören — vorher lagen sie verstreut in 89, 90, 91, 92
    und 94.
-2. 🔴 **Zuerst die Lücke aus Abschnitt 97 schliessen** — der **Sofortkauf** hat keinen
-   Server-Riegel gegen Minderjährige, nur einen im Client. Eine Zeile `IF NOT public.is_adult()`
-   in `buy_now_live_auction`, und der Kopf von `lib/useAgeGate.ts` gehört richtiggestellt: Er
-   behauptet, der Riegel liege auf dem Server — für diesen Weg stimmt das nicht.
-   ⚠️ Die Altersabfrage selbst (jetzt **B15**) braucht ein frisches Konto; auf Zaurs Konto kommt
-   das Blatt nie wieder.
+2. **Die Altersabfrage ist jetzt B15** und braucht ein **frisches Konto** — auf Zaurs Konto kommt
+   das Blatt nie wieder (`birth_date_locked`). ⚠️ Der „Sofortkauf ohne Riegel"-Fund vom 27.08. war
+   ein Fehlalarm, hier ist **nichts zu bauen** (97).
 3. **Der Strike-Weg wird erst am 28.08. ehrlich prüfbar** — der Melde-Knopf bleibt 48 Stunden nach
    dem Zuschlag grau. Das ist die Bremse, kein Fehler.
 4. **Den Push-Rückfall gegenprüfen**: Er ist seit `20260826100000` weg. Probe 2 und 3 in der
@@ -11938,64 +11934,64 @@ Verkäufer voraussetzt, der überhaupt etwas verdient.
 
 ---
 
-## 97. Der Sofortkauf steht nicht hinter der Altersschranke (27.08.2026)
+## 97. Ein Fehlalarm von mir — und warum er lehrreich ist (27.08.2026)
 
-Gefunden beim Prüfen von B1, unmittelbar nachdem die Kassen-Freigabe eingespielt war. Der Ablauf
-war der vorgesehene: fremden Regal-Artikel öffnen → **„Kaufen · 85 €"** in Gold → antippen. Der Kauf
-lief durch, der Artikel landete im Sammelkorb — **und die Altersabfrage kam nie.**
+⚠️ **Dieser Abschnitt hiess ursprünglich „Der Sofortkauf steht nicht hinter der Altersschranke"
+und war falsch.** Er stand rund zwanzig Minuten so da und ist in dieser Fassung sogar gepusht
+worden (`78522a6`). Was darin als Lücke beschrieben war, gibt es nicht. Der Text bleibt als
+Korrektur stehen, weil der **Fehlerweg** wiederholbar ist.
 
-Auf diesem Konto ist das richtig (es ist längst `adult`). Beim Nachsehen fiel aber auf, dass es
-auch ohne dieses Konto durchgelaufen wäre.
+### Was ich behauptet habe
 
-### Der Riegel deckt drei Wege ab, und der Sofortkauf ist keiner davon
+Beim Prüfen von B1 lief der Sofortkauf durch, ohne dass die Altersabfrage kam. Ich sah nach, fand
+in `20260825120000` genau drei Trigger — `trg_adult_bid` auf `live_bids`, `trg_adult_offer` auf
+`berkat_offers`, `trg_adult_tip` auf `berkat_tips` — und schloss daraus: Der Sofortkauf sei nicht
+gedeckt, weil er in keine dieser Tabellen schreibe.
 
-`20260825120000` hängt genau drei Trigger:
+### Warum das falsch ist
 
-| Trigger | Tabelle |
-|---|---|
-| `trg_adult_bid` | `live_bids` |
-| `trg_adult_offer` | `berkat_offers` |
-| `trg_adult_tip` | `berkat_tips` |
-
-Der Sofortkauf schreibt in **keine** davon. `buy_now_live_auction` setzt `live_auctions` auf
-`sold` und hängt den Artikel in den Korb — an `live_bids` kommt er nie vorbei. Damit steht dieser
-Weg **allein auf dem Client** (`app/listing/[id].tsx:389` und `:472`).
-
-⚠️ **Und der Kopf von `lib/useAgeGate.ts` behauptet das Gegenteil:**
-
-> „⚠️ DER RIEGEL LIEGT AUF DEM SERVER, NICHT HIER. […] Wer sie umgeht, kommt trotzdem nicht durch."
-
-Für Gebot, Preisvorschlag und Trinkgeld stimmt der Satz. Für den Sofortkauf nicht — und das ist
-die gefährlichere Sorte Kommentar: Er beschreibt eine Absicht als Zustand und nimmt dem nächsten
-Leser den Anlass nachzusehen.
-
-### Warum das zählt, obwohl kaum jemand eine RPC von Hand ruft
-
-Der Missbrauchsfall („Jugendlicher ruft `buy_now_live_auction` direkt") ist unrealistisch. Der
-realistische ist ein anderer: **ein alter Build.** Im Store liegt `1.0.0 (1)` vom 21.08., die
-Altersabfrage kam per OTA am 25.08. Wer den OTA nicht geladen hat, trägt den Client-Riegel nicht —
-und für genau diesen Fall existiert der Server-Riegel. Beim Bieten greift er, beim Sofortkauf
-nicht.
-
-Rechtlich ist der Sofortkauf dabei **derselbe Vorgang** wie ein Gebot: eine bindende
-Willenserklärung, §§ 107/108 BGB, bei einem Minderjährigen schwebend unwirksam. Die Begründung im
-Kopf von `useAgeGate.ts` trifft auf ihn Wort für Wort zu.
-
-### Was zu tun ist
-
-Eine Zeile in `buy_now_live_auction`, im selben Stil wie die drei Trigger:
+`buy_now_live_auction` schreibt sehr wohl in `live_bids`, unbedingt und vor allem anderen
+(`20260823150000`, Zeile 282):
 
 ```sql
-IF NOT public.is_adult() THEN
-  RAISE EXCEPTION 'under_age';
-END IF;
+INSERT INTO public.live_bids (auction_id, bidder_id, amount_cents)
+VALUES (a.id, v_uid, v_price);
 ```
 
-Der Client übersetzt `under_age` bereits (`ageGateError`), es braucht also keine neue Meldung —
-der Käufer liest „Mitbieten geht erst ab 18". ⚠️ Bei der Gelegenheit gehört der Kopf von
-`useAgeGate.ts` richtiggestellt, sonst steht der falsche Satz weiter dort.
+Damit greift `trg_adult_bid` beim Sofortkauf genauso wie beim Gebot. **Der Riegel liegt auf dem
+Server, der Kopf von `lib/useAgeGate.ts` hat die ganze Zeit recht gehabt**, und die von mir
+vorgeschlagene Zusatzprüfung wäre nicht nur überflüssig gewesen, sondern schädlich: Sie hätte
+verlangt, einen `SECURITY DEFINER`-Rumpf neu zu schreiben — genau das, wobei diese Funktion laut
+Übergabe 73 schon einmal `buy_now_gone`, den `live_bids`-Eintrag, `bid_count` und `ends_at`
+verloren hat.
 
-**Nicht gebaut.** Es ist eine Migration und eine Entscheidung über einen Geldweg.
+### Der eigentliche Punkt: Die Antwort stand zehn Zeilen über meinem `grep`
+
+Dieselbe Migration erklärt im Kopf ausdrücklich, warum sie Trigger statt RPC-Prüfungen wählt:
+
+> „**`live_bids` ist der Flaschenhals, durch den alles muss.** Gebot, Max-Gebot, **Sofortkauf** und
+> der eingelöste Preisvorschlag schreiben alle eine Zeile dorthin — Sofortkauf ausdrücklich."
+
+Ich hatte auf `CREATE TRIGGER` gegriffen statt die Datei zu lesen. Der `grep` lieferte eine
+vollständige, richtige Liste — und die falsche Antwort, weil die Frage nicht „welche Tabellen haben
+Trigger" lautete, sondern „durch welche Tabelle muss dieser Weg".
+
+> **Wer prüft, ob ein Riegel greift, muss dem SCHREIBWEG folgen, nicht der Trigger-Liste.**
+> Ein Riegel kann drei Tabellen weiter liegen und trotzdem halten — das ist bei einem Flaschenhals
+> sogar der Sinn der Sache.
+
+Und es ist derselbe Fehlertyp wie am 21.08. beim Sentry-Befund (Abschnitt 3): **eine Beobachtung,
+die zur Vermutung passt, für einen Beweis gehalten.** Damals war es eine Warnzeile im Build-Log,
+diesmal eine Trigger-Liste. Beide Male hätte ein Blick in die Datei selbst gereicht.
+
+### Was aus dem Abend trotzdem gültig bleibt
+
+- **B1 ist komplett durchlaufen** — Kaufknopf, Sammelkorb, Stripe, `paid`, „wird gepackt" (siehe
+  Prüfliste). Das war der Anlass des Ganzen und steht.
+- **`birth_date_locked` gilt** und ist unabhängig davon nachgelesen: Ein einmal gesetztes
+  Geburtsdatum lässt sich nicht selbst ändern (`ageGateError`, `set_my_birth_date`). A33–A35
+  brauchen deshalb ein frisches Konto und sind zu **B15** geworden.
+- **Keine Migration nötig.** Es gibt nichts zu schliessen.
 
 ### ⚠️ A33 ist auf Zaurs Konto nicht mehr prüfbar
 
