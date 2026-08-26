@@ -293,6 +293,10 @@ was gilt.
   Vorleistung von dem, der das Risiko ohnehin trägt** — deshalb erst Provision, Abo später als
   Wahl. Und der Käufer zahlt künftig **direkt an den Verkäufer** (Connect **Standard**, nicht die
   Express-Kette aus 7), nicht mehr auf das Konto des Betreibers.
+- **Kein Käuferschutz-Versprechen** (27.08.2026, Abschnitt 96): Der Käufer zahlt **direkt an den
+  Verkäufer** (Stripe Connect **Standard**), das Betreiber-Konto sieht das Geld nie. Vertrauen kommt
+  aus Bürgen und Bewertungen, nicht aus einer Zusage. ⚠️ **Connect ist damit Voraussetzung von
+  Phase 0**, nicht Nachbereitung — ohne ihn gibt es keine Antwort auf „wie bekomme ich mein Geld?".
 - **Bitrate gedeckelt** auf 540p, bis Berkat die Rechnung trägt (`lib/videoQuality.ts`).
 - Die Regel „nichts Neues bauen, bis Phase 0 läuft" wurde am 15.08. **von Zaur aufgehoben**.
 
@@ -6966,7 +6970,7 @@ Simulator dem Verkäufer (Abschnitt 9, am 19.08. so gelaufen).
 |---|---|
 | ~~F0~~ | ~~**Zwei Prüf-Blocker, die kein Test löst, sondern Bauen**~~ (21.08.2026) — ✅ **beide zu.** **Konto löschen** gebaut und am Gerät durchgeprüft am 24.08. (Abschnitt 84, Nachtrag); **Altersabfrage** gebaut, gegen echtes Postgres geprüft und ausgerollt am 25.08. (Abschnitt 90). ⚠️ Was daraus wurde, sind normale Prüfpunkte: **A33–A35**. ⚠️ Und eine Lücke bleibt offen und ist keine: **Verkaufen ist nicht altersgesperrt** — bewusst aufgeschoben, siehe 90 |
 | F1 | **AGB und Widerrufsbelehrung anwaltlich prüfen.** Beides sind Entwürfe. Eine fehlerhafte Belehrung verlängert die Frist auf zwölf Monate und vierzehn Tage (Abschnitt 25) |
-| F2 | **Käuferschutz-Zusage formulieren** — Entscheidung, kein Code (Abschnitt 54, Punkt 3) |
+| ~~F2~~ | ~~**Käuferschutz-Zusage formulieren**~~ — ✅ **entschieden am 27.08.2026: es gibt keine.** Bürgen statt Garantie, der Käufer zahlt direkt an den Verkäufer (96, Nachtrag). ⚠️ Was daraus folgt, ist **Arbeit, keine Erledigung**: Streitfall und Bürgen müssen umbeschriftet werden, bevor der erste fremde Verkäufer sendet |
 
 ### Die Regel, die diese Liste erzeugt hat
 
@@ -11819,8 +11823,12 @@ der Motor.
 - **Der Rest des Codes trägt das alte Fehler-Muster** `instanceof Error ? …` weiter. Umgestellt sind
   nur die Dateien vom 26.08.; ein `grep` findet die übrigen (Abschnitt 93).
 - **Die Warteschlange wiederholt nichts** (unverändert seit Abschnitt 84).
-- **Phase 0** — fünf Verkäufer, acht Wochen. Unverändert das eigentliche Risiko, und kein Code
-  löst es.
+- **Phase 0** — fünf Verkäufer, acht Wochen. Unverändert das eigentliche Risiko.
+  ⚠️ **Aber sie hat seit dem 27.08. eine Code-Voraussetzung** (96, Nachtrag): Ohne **Connect
+  Standard** gibt es keine Antwort auf „wie bekomme ich mein Geld?", und ohne die lädt man niemanden
+  ein. Weiterleiten über das Betreiber-Konto ist ZAG-pflichtig, also keine Zwischenlösung.
+  **Davor liegt eine Entscheidung, kein Code: Verspricht Berkat Käuferschutz?** Sie bestimmt die
+  Zahlungsarchitektur.
 
 ---
 
@@ -11933,9 +11941,105 @@ richtig.
    Verkäufer-Onboarding im Web.
 3. **Erst danach das Abo** (Stripe Billing, ebenfalls im Web).
 
-Nichts davon ist dringend, solange Phase 0 nicht läuft — es blockiert keinen der offenen
-Prüfpunkte. Aber die Reihenfolge steht fest: **Zahlungsweg vor Erlösmodell**, weil das Abo einen
-Verkäufer voraussetzt, der überhaupt etwas verdient.
+**Zahlungsweg vor Erlösmodell**, weil das Abo einen Verkäufer voraussetzt, der überhaupt etwas
+verdient.
+
+---
+
+## Nachtrag vom 27.08.2026 — drei Folgen, ein Widerspruch, und eine korrigierte Reihenfolge
+
+Am Tag nach der Entscheidung noch einmal durchgerechnet, nachdem der Geldweg zum ersten Mal
+komplett gelaufen war (98). Am Abzug geprüft: `create-checkout-session` kennt **kein**
+`stripeAccount`, **kein** `application_fee`, **kein** `transfer_data`. Drei Geldwege — Bestellung,
+Trinkgeld, Coins — laufen heute alle auf **ein** Konto, das des Betreibers. Der Versand steckt in
+`product_orders.shipping_cents` und wird dort mitkassiert.
+
+### Drei Folgen, die oben fehlen
+
+**1. Käuferschutz wird mit Direktzahlung unmöglich — und das ist die schwerste.** Wer das Geld nie
+hält, kann nichts erstatten, sondern nur sperren. Berkat hat aber Streitfall (67, 68), Bewertungen
+und Bürgen, und F2 in der Prüfliste heisst wörtlich „Käuferschutz-Zusage formulieren". Übrig bleibt
+die Kartenrückbuchung über Stripe — die trifft den Verkäufer, nicht die Plattform. Sauber, aber es
+ist **eine andere Zusage** als die, die eine enge Community erwartet.
+
+**2. Das Trinkgeld ist ein zweiter Geldweg** (`berkat_tips` → `create-checkout-session`, Zweig
+`tip_id`) und läuft ebenfalls über das Betreiber-Konto. Bei Direktzahlung muss es mit umgestellt
+werden — sonst nimmt der Betreiber weiterhin Geld für einen anderen entgegen, also genau das, was
+Connect vermeiden soll.
+
+**3. Bei Kleinbeträgen frisst die Gebühr die Auktion.** Stripe nimmt grob anderthalb Prozent plus
+einen festen Betrag je Zahlung; bei 5 € ist das ein spürbarer Anteil, und künftig trägt ihn der
+Verkäufer. Der Sammelkorb federt es ab — eine Zahlung statt drei. Das ist der zweite Grund, warum
+Abschnitt 98 mehr als Kosmetik ist.
+
+### ⚠️ Der Widerspruch: gebaut als Marktplatz, entschieden als Werkzeug
+
+Sammelkorb, Versandpauschalen, Bewertungen, Streitfall, Bürgen, Käufer-Benachrichtigungen,
+Kassen-Freigabe — das ist Marktplatz-Maschinerie. Ein reiner Software-Anbieter bräuchte nichts
+davon. Abschnitt 95 sagt es selbst, ohne die Folge zu ziehen: „Sammelkorb/Bewertungen/Streitfall
+gelten nur für Verkäufer mit Kassen-Freigabe."
+
+**Produktseitig ist längst entschieden, und zwar in Code: Berkat verspricht Obhut.** Die
+Zahlungsarchitektur soll dieses Versprechen zurücknehmen. Wer das nicht auflöst, baut eine App, die
+etwas anderes verspricht, als sie halten kann.
+
+Deshalb ist die erste Frage beim zweiten Verkäufer nicht „Standard oder Express", sondern:
+**Verspricht Berkat Käuferschutz — ja oder nein?** Die Antwort bestimmt die Zahlungsarchitektur,
+nicht umgekehrt. Ja heisst: Geld in der Hand, volle Marktplatz-Kette. Nein heisst: Connect Standard,
+und dann gehören Streitfall und Bürgen ehrlich umbeschriftet — von „wir regeln das" zu „wir zeigen,
+wem du trauen kannst".
+
+> ### ✅ Zaurs Entscheidung vom 27.08.2026: **KEIN Käuferschutz-Versprechen**
+>
+> Bürgen statt Garantie. Der Käufer zahlt **direkt an den Verkäufer** (Connect Standard), das
+> Betreiber-Konto sieht das Geld nie. Vertrauen kommt aus der Community — Bürgen, Bewertungen,
+> Sperren —, nicht aus einer Zusage der Plattform. Als Netz bleibt die **Kartenrückbuchung** über
+> Stripe, und die trifft den Verkäufer, der geliefert hat oder eben nicht.
+>
+> Das ist die Linie, die zur Strategie passt: In einer engen Diaspora-Community ist der soziale
+> Preis eines Betrugs höher als jede Erstattung — genau der Vorteil, den Whatnot strukturell nicht
+> hat (Abschnitt 1).
+>
+> ⚠️ **Der Preis dieser Entscheidung ist Text, und er ist fällig, bevor der erste fremde Verkäufer
+> sendet:** Streitfall (67, 68) und Bürgen (15) müssen umbeschriftet werden — von „wir regeln das"
+> zu „wir zeigen, wem du trauen kannst". Eine Oberfläche, die Obhut andeutet, die es nicht gibt, ist
+> schlimmer als gar keine (dieselbe Regel wie bei der Vorgabe, die nicht gespeichert wurde,
+> Abschnitt 3). **F2 in der Prüfliste ist damit beantwortet.**
+
+### ⚠️ Die Reihenfolge oben war falsch — Zaurs Einwand
+
+Hier stand zuerst: „Nichts davon ist dringend, solange Phase 0 nicht läuft." Zaur:
+
+> *„Es muss aber richtig gebaut werden — wie soll ich sonst Leute auf die App einladen?"*
+
+**Er hat recht, und der Satz war der Fehler.** Phase 0 **ist** das Einladen von Verkäufern, und die
+erste Frage jedes Verkäufers lautet „wie bekomme ich mein Geld?". Darauf gibt es heute keine
+Antwort, die trägt:
+
+| Weg | Warum er nicht geht |
+|---|---|
+| Betreiber kassiert und überweist weiter | Erlaubnispflichtig nach ZAG — die harte Linie aus Abschnitt 7, auch bei fünf Verkäufern |
+| Verkäufer hinterlegt eigene Stripe-Schlüssel | Fremde Zugangsdaten in der Datenbank, und Stripe sieht es nicht vor |
+| Abwarten | Kein Verkäufer sendet zwei Stunden für ein Vielleicht |
+
+**Connect Standard ist damit kein „später", sondern die Voraussetzung von Phase 0.** Was weiterhin
+später kommt: Abo, Provision, DAC7-Meldewege, Käuferschutz-Automatik.
+
+### Der Umfang, damit er nicht überschätzt wird
+
+Connect **Standard** ist klein, weil der Verkäufer sein Konto selbst bei Stripe anlegt und Stripe
+die Identitätsprüfung übernimmt — kein eigenes KYC, keine Formularstrecke:
+
+1. `berkat_sellers.stripe_account_id` (eine Spalte)
+2. OAuth-Anbindung „Mit Stripe verbinden" + Rückweg als Edge Function
+3. `stripeAccount` in `create-checkout-session`, im Bestell- **und** im Trinkgeld-Zweig
+4. `checkout_enabled` wird abgeleitet statt gesetzt: nur `true` mit verbundenem Konto
+
+⚠️ **Punkt 5, den man leicht übersieht und der alles Übrige wertlos macht:** Bei einer Zahlung auf
+dem verbundenen Konto feuern die Stripe-Ereignisse **dort**, nicht auf dem Plattform-Konto.
+`stripe-webhook` braucht einen **Connect-Endpunkt**, sonst wird eine Bestellung nie `paid` — der
+Käufer zahlt, und in der App bleibt alles offen. Genau die Sorte stiller Fehler, von der dieses
+Dokument voll ist (Abschnitt 86).
 
 ---
 
