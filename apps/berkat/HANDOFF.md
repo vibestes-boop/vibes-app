@@ -355,7 +355,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | **alle eingespielt**, keine Lücke — im Tracking **310** (Stand 24.08.2026, Abschnitt 87). ⚠️ Der 25.08. hat **keine** hinzugefügt: Abschnitt 88 kam ganz ohne Schema-Änderung aus, weil die Lese-Policy die neuen Zeilen längst erlaubte |
+| Migrationen | **alle eingespielt**, keine Lücke. Zuletzt `20260827100000` (Connect Standard) und `20260827140000` (Trigger-Korrektur), beide am 27.08. per `db push` — `migration list` zeigte davor beide Spalten lückenlos |
 | Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
@@ -12302,6 +12302,57 @@ stumm auf `payment_requested`. **Der Endpunkt gehört in dieselbe Umgebung wie d
 ❌ Weiterhin offen: keine Direktzahlung gelaufen, kein Connect-Webhook eingerichtet, kein
 `account.updated` angekommen. Nach der Regel aus Abschnitt 86 gilt: **„Migration läuft durch"
 heisst bei Funktionen nicht „Funktion läuft."**
+
+### 🔴 Der Trigger hat dem Betreiber die Freigabe genommen (27.08., behoben)
+
+Zaur bat um eine Nachanalyse des umgestellten Geldwegs — *„bestimmt gibt es dort
+Komplikationen"* — und die erste war bereits eingetreten.
+
+`berkat_sync_checkout_enabled()` schrieb bei **jedem** Ereignis:
+
+```sql
+ON CONFLICT (user_id) DO UPDATE SET checkout_enabled = NEW.charges_enabled;
+```
+
+Begründet war das mit „der Trigger schaltet in beide Richtungen — sperrt Stripe ein Konto, fällt
+der Kaufknopf weg". Das stimmt für eine **Sperre** und ist falsch für den **Anfang**: Ein frisch
+angelegtes Stripe-Konto trägt `charges_enabled = false`, bevor der Verkäufer ein einziges Feld
+ausgefüllt hat. Ein Tipp auf „Geld empfangen" genügte also, um eine **von Hand erteilte** Freigabe
+zu überschreiben — und der Betreiber hat seit `20260817120000` genau so eine (Bestandsschutz, weil
+sein Geld ohnehin auf sein eigenes Konto läuft).
+
+> ⚠️ **Ein Konto, das gerade erst entsteht, ist nicht gesperrt. Es ist noch gar nichts.**
+> Diese zwei Zustände zu verwechseln, kostete die Kassen-Freigabe des Betreibers — im selben
+> Augenblick, in dem er das neue Feature zum ersten Mal ausprobierte.
+
+Behoben in `20260827140000` (eingespielt): INSERT mit `false` lässt eine bestehende Freigabe in
+Ruhe, `false → true` schaltet ein, `true → false` sperrt weiterhin, und DELETE nimmt nur, wenn die
+Zeile zuletzt `true` trug.
+
+⚠️ **Die Migration stellt bewusst nichts wieder her.** Ein blindes
+`UPDATE … SET checkout_enabled = true` würde die ZAG-Schranke für alle öffnen. Wer betroffen ist,
+zeigt die Abfrage am Ende der Migration; zurückgesetzt wird gezielt je `user_id`.
+
+### Drei Komplikationen, die bleiben — alle erst mit dem zweiten Verkäufer scharf
+
+**1. Die Versand-Gutschrift geht zu Lasten des Verkäufers.**
+`get_cart_shipping_options_for_checkout` löst eine Gutschrift aus einer Einladung ein und gibt dann
+**alle Zonen zu 0** aus (`20260816130000`). Bisher folgenlos — das Geld war ohnehin das des
+Betreibers. Bei Direktzahlung verschenkt die Plattform den Versand **eines anderen**, ohne ihn zu
+erstatten. Es gibt keinen Mechanismus, der das ausgleicht.
+
+**2. Auf der Kartenabrechnung steht der Verkäufer, nicht Berkat.**
+Die logische Folge von direct charges und rechtlich richtig. Der Käufer sieht aber einen fremden
+Namen auf dem Kontoauszug und erkennt ihn nicht wieder — die häufigste Ursache unberechtigter
+Rückbuchungen. Mildern liesse es sich über `statement_descriptor`; **entschieden ist es nicht.**
+
+**3. Rechnungen kommen künftig vom Verkäufer.**
+`invoice_creation[enabled] = true` steht im Bestellzweig; bei direct charges erstellt Stripe die
+Rechnung im Namen des verbundenen Kontos. Ein gewerblicher Verkäufer mit fehlenden Steuerangaben
+verschickt damit fehlerhafte Rechnungen — mit seinem Namen darauf, aus dieser App heraus.
+
+⚠️ Keiner der drei blockiert heute etwas, weil es nur einen Verkäufer gibt. **Alle drei werden
+fällig, bevor der zweite dazukommt** — also genau in dem Moment, für den Connect gebaut wurde.
 
 ---
 
