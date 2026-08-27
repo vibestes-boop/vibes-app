@@ -12158,7 +12158,42 @@ zahlt er den zweiten Versand aus eigener Tasche. Die Entscheidung gehört dem K�
 Geld fliesst.
 
 `tsc` Exit 0, `expo export` sauber (10,9 MB, aus `apps/berkat` geprüft). Am Simulator gegen Metro
-gesehen. ⚠️ **Noch nicht ausgerollt** — der OTA steht aus.
+gesehen. ✅ **Ausgerollt am 27.08.**, Gruppe `d1813b29-1786-42b6-9cc8-084c7d54c1ed`.
+
+### Nachtrag vom 27.08. — „wenn ich auf Bezahlen klicke, passiert nichts"
+
+Von Zaur gemeldet, und es war **kein** Folgefehler des Connect-Deploys (B16 lief sauber). Der Korb
+war abgelaufen — auf der Karte stand „Fenster zu", der Bezahl-Knopf leuchtete aber weiter golden
+und liess sich antippen. Nachgestellt: **kein Kreisel, keine Meldung, gar nichts.**
+
+Die Ursache war nicht die fehlende Fehlerbehandlung — die gab es. `startCheckout` schrieb den Grund
+in `notice`, und `notice` wurde **ganz unten** gerendert, hinter allen Paketen und der Liste
+„Gekauft". Wer mitten auf der Seite tippt, sieht ans Seitenende geschriebene Auskunft nie.
+
+> **Eine Fehlermeldung, die woanders erscheint als die Handlung, ist keine.** Dieselbe Familie wie
+> „Der Server sagt: [object Object]" (93) — die Auskunft existiert und kommt trotzdem nicht an.
+
+Vier Dinge geändert, alle an derselben Karte:
+
+| | |
+|---|---|
+| Die Absage steht **an der Karte** | `payNotice: { cartId, message }` statt eines seitenweiten `notice` |
+| Der Knopf wird **grau und tot** | nicht bloss blasser: ein abgeschwächtes Gold sieht aus wie „lädt noch" |
+| Er heisst dann **„Fenster zu"** | statt „5 € bezahlen" über einem Weg, den es nicht mehr gibt |
+| Die Zeile darunter sagt, was gilt | „Die 24 Stunden sind vorbei … Der Verkäufer stellt die Artikel wieder ein" |
+
+⚠️ Und ein Fehler in **meinem eigenen Text von heute Vormittag**: Der Sammelkorb-Hinweis („Was du in
+dieser Zeit noch bei X kaufst …") stand auch am abgelaufenen Korb. Es gibt dort keine „diese Zeit"
+mehr. Jetzt an `!isWindowClosed` gebunden.
+
+⚠️ **Serverseitig ungeklärt geblieben:** `checkout_auction_cart` prüft `status <> 'open'`, aber auf
+`expired` setzt einen Korb nur `ensure_auction_cart` — also der **nächste Zuschlag** desselben
+Paares. Ein Korb, dessen `closes_at` vorbei ist, kann deshalb noch `open` sein. Ob die Absage von
+dort kam oder aus der Kasse, ist **nicht gemessen**; sichtbar war nur, dass nichts passierte. Der
+Fix macht die Antwort ab jetzt sichtbar — das ist der Punkt.
+
+`tsc` Exit 0, am Simulator gegengeprüft: grauer Knopf mit Begründung am abgelaufenen Korb, goldener
+„Bezahlen fortsetzen · 24 €" am frischen daneben.
 
 ---
 
@@ -12242,9 +12277,31 @@ gegengezählt — aus der Wurzel wären es 0 gewesen) · `expo export` sauber ·
 Zeile „Geld empfangen — nicht eingerichtet" steht am Simulator, **und zwar ohne
 Absturz, obwohl die RPC noch gar nicht existiert**.
 
-❌ Alles Übrige. Kein Konto verbunden, keine Direktzahlung gelaufen, kein
-Webhook angekommen. Nach der Regel aus Abschnitt 86 gilt: **„Migration läuft
-durch" heisst bei Funktionen nicht „Funktion läuft."**
+### Nachtrag vom 27.08. — ausgerollt, und zwei Funde beim Gegenprüfen
+
+✅ **Migration eingespielt, alle vier Functions deployed.** Danach **B16 bestanden**: frischer Kauf
+bei `amir32`, Kasse öffnet, `checkout.stripe.com` mit Versandarten und Apple Pay. Der Geldweg ist
+unversehrt.
+
+✅ **Und der Connect-Weg läuft bereits.** Nach einem Tipp auf „Geld empfangen" steht dort
+**„unvollständig"** statt „nicht eingerichtet" — die Function hat ein Stripe-Konto angelegt, das
+Onboarding blieb offen. Damit ist **B17 zur Hälfte** belegt.
+
+⚠️ 🔴 **DIE KASSE LÄUFT IN EINER SANDBOX, NICHT IM TEST-MODUS DES HAUPTKONTOS.** Auf der
+Bezahlseite steht sichtbar **„brandwerkx · Sandbox"**. Für Connect heisst das konkret: Das
+verbundene Konto entsteht **in der Sandbox** und taucht im Dashboard des Hauptkontos unter
+„Verbundene Konten" **nie** auf. Wer dort nachsieht und nichts findet, steht am falschen Ort —
+oben links auf **Sandbox** umschalten.
+
+Das ist wichtiger als es klingt: Alle Connect-Einstellungen, die im Hauptkonto gemacht werden
+(Onboarding-Optionen, Branding, **Webhook-Endpunkt**), gelten dort **nicht**. Ein Connect-Webhook,
+der im Hauptkonto angelegt wird, hört einer Sandbox-Zahlung nie zu — und die Bestellung bliebe
+stumm auf `payment_requested`. **Der Endpunkt gehört in dieselbe Umgebung wie der
+`STRIPE_SECRET_KEY`.**
+
+❌ Weiterhin offen: keine Direktzahlung gelaufen, kein Connect-Webhook eingerichtet, kein
+`account.updated` angekommen. Nach der Regel aus Abschnitt 86 gilt: **„Migration läuft durch"
+heisst bei Funktionen nicht „Funktion läuft."**
 
 ---
 

@@ -262,14 +262,28 @@ export default function AccountScreen() {
   const checkout = useCheckoutCart();
   const shippingFor = useShippingLookup();
   const [payingId, setPayingId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  /**
+   * ⚠️ Die Absage gehört AN DIE KARTE, nicht ans Seitenende (27.08.2026).
+   *
+   * Hier stand ein `notice: string | null`, gerendert ganz unten über
+   * „Abmelden" — also hinter allen Paketen und der Liste „Gekauft". Zaur
+   * meldete: *„wenn ich auf das Bezahlen klicke passiert nichts."* Es passierte
+   * etwas: Der Server lehnte ab, die App schrieb den Grund auf — nur eben
+   * ausserhalb des Sichtfelds, an einer Stelle, die niemand ansieht, der gerade
+   * mitten auf der Seite auf einen Knopf getippt hat.
+   *
+   * **Eine Fehlermeldung, die woanders erscheint als die Handlung, ist keine.**
+   * Dieselbe Familie wie „Der Server sagt: [object Object]" (Abschnitt 93) —
+   * die Auskunft existiert und kommt trotzdem nicht an.
+   */
+  const [payNotice, setPayNotice] = useState<{ cartId: string; message: string } | null>(null);
 
   const startCheckout = async (cartId: string) => {
     setPayingId(cartId);
-    setNotice(null);
+    setPayNotice(null);
     const result = await checkout(cartId);
     setPayingId(null);
-    if (!result.ok) setNotice(result.message);
+    if (!result.ok) setPayNotice({ cartId, message: result.message });
   };
 
   /**
@@ -287,6 +301,17 @@ export default function AccountScreen() {
    * Ein bereits eingefrorener Korb fragt NICHT noch einmal: Dort ist der Schaden
    * schon eingetreten, und eine Warnung wäre nur noch ein Vorwurf.
    */
+  /**
+   * Ist das 24-Stunden-Fenster vorbei?
+   *
+   * ⚠️ Dieselbe Rechnung wie `formatCartWindow` (`useAuction.ts`), das in
+   * diesem Fall „Fenster zu" schreibt. Der Knopf hat sich bis zum 27.08.2026
+   * nicht darum gekümmert: Er leuchtete weiter golden über einer Karte, auf der
+   * „Fenster zu" stand, und tat beim Tippen nichts.
+   */
+  const isWindowClosed = (c: { closes_at: string }) =>
+    new Date(c.closes_at).getTime() <= serverNow();
+
   const pay = async (cartId: string) => {
     const cart = carts.find((c) => c.id === cartId);
     const sellerLive = cart ? liveSellers?.has(cart.seller_id) : false;
@@ -662,8 +687,12 @@ export default function AccountScreen() {
             ) : null}
 
             <Pressable
-              style={[styles.payButton, payingId === cart.id && styles.payButtonBusy]}
-              disabled={payingId !== null}
+              style={[
+                styles.payButton,
+                payingId === cart.id && styles.payButtonBusy,
+                isWindowClosed(cart) && styles.payButtonDead,
+              ]}
+              disabled={payingId !== null || isWindowClosed(cart)}
               onPress={() => void pay(cart.id)}
               accessibilityRole="button"
               accessibilityLabel={
@@ -676,17 +705,33 @@ export default function AccountScreen() {
                 <ActivityIndicator color={ui.goldInk} />
               ) : (
                 <Text style={styles.payButtonText}>
-                  {cart.status === 'checkout_pending'
-                    ? `Bezahlen fortsetzen · ${formatEuro(cart.totalCents)}`
-                    : `${formatEuro(cart.totalCents)} bezahlen`}
+                  {isWindowClosed(cart)
+                    ? 'Fenster zu'
+                    : cart.status === 'checkout_pending'
+                      ? `Bezahlen fortsetzen · ${formatEuro(cart.totalCents)}`
+                      : `${formatEuro(cart.totalCents)} bezahlen`}
                 </Text>
               )}
             </Pressable>
+            {/* ⚠️ Bei zugefallenem Fenster sagt die Zeile, was gilt — ein
+                „zzgl. Versand · Adresse gibst du auf der Bezahlseite ein"
+                unter einem toten Knopf beschreibt einen Weg, den es nicht
+                mehr gibt. */}
             <Text style={styles.payHint}>
-              {[shippingHint(shippingFor(cart.seller_id, cart.shippingTier)), 'Adresse gibst du auf der Bezahlseite ein.']
-                .filter(Boolean)
-                .join(' · ')}
+              {isWindowClosed(cart)
+                ? 'Die 24 Stunden sind vorbei — dieses Paket lässt sich nicht mehr bezahlen. '
+                  + 'Der Verkäufer stellt die Artikel wieder ein.'
+                : [shippingHint(shippingFor(cart.seller_id, cart.shippingTier)), 'Adresse gibst du auf der Bezahlseite ein.']
+                    .filter(Boolean)
+                    .join(' · ')}
             </Text>
+
+            {/* Die Absage des Servers, dort wo getippt wurde. */}
+            {payNotice?.cartId === cart.id ? (
+              <Pressable onPress={() => setPayNotice(null)} style={styles.notice}>
+                <Text style={styles.noticeText}>{payNotice.message}</Text>
+              </Pressable>
+            ) : null}
 
             {/* ⚠️ WAS DER OFFENE KORB KANN, STAND NIRGENDS (27.08.2026)
                 Am Gerät passiert: Zaur kaufte zwei Artikel bei DEMSELBEN
@@ -709,7 +754,7 @@ export default function AccountScreen() {
 
                 Die Zeile beschreibt die REGEL, nicht den Bestand — sie braucht
                 deshalb keine Abfrage, wie viel der Verkäufer noch anbietet. */}
-            {cart.status === 'open' ? (
+            {cart.status === 'open' && !isWindowClosed(cart) ? (
               <Text style={styles.payHint}>
                 Was du in dieser Zeit noch bei {sellerNames[cart.seller_id] ?? 'diesem Verkäufer'}{' '}
                 kaufst, kommt in dasselbe Paket — ein Versand.
@@ -808,12 +853,6 @@ export default function AccountScreen() {
             );
           })}
         </>
-      ) : null}
-
-      {notice ? (
-        <Pressable style={styles.notice} onPress={() => setNotice(null)}>
-          <Text style={styles.noticeText}>{notice}</Text>
-        </Pressable>
       ) : null}
 
       <Pressable
@@ -1016,6 +1055,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   payButtonBusy: { opacity: 0.6 },
+  // ⚠️ Nicht bloss blasser, sondern GRAU. Ein abgeschwächtes Gold sieht aus
+  // wie „lädt noch"; der Knopf ist aber endgültig tot, und das darf man ihm
+  // ansehen, bevor man ihn antippt.
+  payButtonDead: { backgroundColor: ui.sunken, opacity: 1 },
   payButtonText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
   payHint: { fontSize: 11, color: ui.textMuted, textAlign: 'center' },
   notice: {
