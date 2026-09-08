@@ -18,48 +18,39 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { ActivityIndicator, Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell, Lock, MessageSquare, Search, ShoppingBag } from 'lucide-react-native';
-import { supabase } from '../../lib/supabase';
+import { ArrowUpRight, Bell, Heart, Lock, MessageSquare, Search, ShoppingBag, UsersRound } from 'lucide-react-native';
+import { useLiveShows, type LiveShow } from '../../lib/useLiveShows';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
 import { Avatar } from '../../components/Avatar';
-import { CategoryRail, RAIL_SHORT, RAIL_TALL, type RailItem } from '../../components/CategoryRail';
+import { CategoryRail, categoryRailMetrics, type RailItem } from '../../components/CategoryRail';
+import { HomeSkeleton } from '../../components/HomeSkeleton';
 import { StoryRail } from '../../components/StoryRail';
 import { useBerkatStories, useCreateStory } from '../../lib/useStories';
 import { LivePreview } from '../../components/LivePreview';
 import { UpcomingStrip } from '../../components/UpcomingStrip';
-import { SellerResults } from '../../components/SellerResults';
-import { SEARCH_MIN, useSellerSearch } from '../../lib/useSellerSearch';
 import { useUpcomingShows } from '../../lib/useSchedule';
 import { useCategories, useCategoryOptions } from '../../lib/useCategories';
 import {
   useCategoryListings,
-  useListingSearch,
   useShopCount,
   useShopListings,
   type Listing,
 } from '../../lib/useListings';
-import { ListingResults } from '../../components/ListingResults';
 import { ListingCard } from '../../components/ListingCard';
 import { useSavedCounts, useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { ui, radius, ratio, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
+import { PressFeedback } from '../../components/PressFeedback';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 
-type LiveShow = {
-  id: string;
-  host_id: string;
-  title: string | null;
-  viewer_count: number | null;
-  thumbnail_url: string | null;
-  category: string | null;
-  women_only: boolean;
-};
 
 /**
  * Sentinel für „keine Kategorie gewählt".
@@ -88,31 +79,12 @@ type GridItem = LiveShow | Spacer | ShelfItem;
  */
 const SHELF_PREVIEW = 8;
 
-function useLiveShows() {
-  return useQuery({
-    queryKey: ['berkat', 'shows'],
-    refetchInterval: 20_000,
-    queryFn: async (): Promise<LiveShow[]> => {
-      // Frauen-Only-Shows filtert die RLS auf live_sessions selbst heraus —
-      // hier ist bewusst kein zusätzlicher Filter, sonst gäbe es zwei
-      // Wahrheiten über dieselbe Grenze.
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .select('id, host_id, title, viewer_count, thumbnail_url, category, women_only')
-        .eq('status', 'active')
-        // `live_sessions` teilt sich Berkat mit Serlo. Ohne diesen Filter
-        // standen hier auch ganz normale Serlo-Lives — ohne Artikel, ohne
-        // Gebote, in einer reinen Auktions-App.
-        .eq('app', 'berkat')
-        .order('viewer_count', { ascending: false })
-        .limit(60);
-      if (error) throw error;
-      return (data ?? []) as LiveShow[];
-    },
-  });
-}
-
 export default function HomeScreen() {
+  const reducedMotion = useReducedMotion();
+  const isFocused = useIsFocused();
+  const [railCompact, setRailCompact] = useState(false);
+  const { fontScale } = useWindowDimensions();
+  const { tall: RAIL_TALL, short: RAIL_SHORT } = categoryRailMetrics(fontScale);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -126,35 +98,27 @@ export default function HomeScreen() {
   // den Avatar zeigte. Seit die Kamera-Kachel das Anlegen übernimmt, gibt es
   // diese Scheibe nicht mehr — und eine Scheibe MIT Story bringt Bild und Name
   // aus ihrer eigenen Gruppe mit.
-  const { data: storyGroups = [] } = useBerkatStories();
+  const { data: storyGroups = [], refetch: refetchStories } = useBerkatStories();
   const createStory = useCreateStory();
-  const { data: unread = 0 } = useUnreadCount(userId);
+  const { data: unread = 0, refetch: refetchUnread } = useUnreadCount(userId, isFocused);
   // Zweites Abzeichen, eigene Quelle: Nachrichten sind keine Meldungen. Wer
   // eine Frage zur Lieferadresse bekommt, findet sie sonst nur, wenn er zufällig
   // ins Konto geht — bis zum 16.08.2026 war das der einzige Weg dorthin.
-  const { data: unreadMessages = 0 } = useUnreadMessageCount(userId);
-  const { data: shows = [], isLoading, refetch } = useLiveShows();
+  const { data: unreadMessages = 0, refetch: refetchMessages } = useUnreadMessageCount(userId, isFocused);
+  const { data: shows = [], isLoading, isError: showsError, refetch } = useLiveShows(isFocused);
   const { data: upcoming = [], refetch: refetchUpcoming } = useUpcomingShows();
 
   // Der Kreisel gehört NUR zum Ziehen von Hand. Hinge er an isRefetching,
   // würde er alle 20 Sekunden beim automatischen Abruf aufspringen — die Liste
   // sähe dauernd aus, als hinge sie fest.
   const [pulling, setPulling] = useState(false);
-  const pullToRefresh = useCallback(async () => {
-    setPulling(true);
-    try {
-      await Promise.all([refetch(), refetchUpcoming()]);
-    } finally {
-      setPulling(false);
-    }
-  }, [refetch, refetchUpcoming]);
   const profiles = useProfiles(shows.map((s) => s.host_id));
 
   // Was in jeder Show gerade läuft. Die Uhr des Servers gilt auch hier: Der
   // Countdown auf den Karten darf nicht daran hängen, wie das Handy gestellt ist.
   const { serverNow } = useServerClock();
   const showIds = useMemo(() => shows.map((s) => s.id), [shows]);
-  const previews = useShowPreviews(showIds, serverNow);
+  const previews = useShowPreviews(showIds, serverNow, isFocused);
 
   // EIN Takt für die ganze Liste. Ein eigener Zähler je Karte wären sechzig
   // Uhren für dieselbe Sekunde; hier tickt die Liste, und jede Karte rechnet
@@ -165,10 +129,10 @@ export default function HomeScreen() {
   );
   const [, tick] = useState(0);
   useEffect(() => {
-    if (!hasRunning) return;
+    if (!isFocused || !hasRunning) return;
     const timer = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(timer);
-  }, [hasRunning]);
+  }, [isFocused, hasRunning]);
 
   // Beim Zurückwechseln auf diesen Reiter sofort nachladen. Expo Router hält
   // die Reiter im Speicher — ohne das stand die Startseite nach einem
@@ -182,34 +146,21 @@ export default function HomeScreen() {
         firstFocus.current = false;
         return;
       }
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'shows'] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'show-previews'] });
+      // enabled kann bereits einen Abruf gestartet haben; nicht abbrechen
+      // und neu senden, sondern diesen Abruf für die Rückkehr mitbenutzen.
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'shows'] }, { cancelRefetch: false });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'show-previews'] }, { cancelRefetch: false });
       // Auch der Sendeplan: Wer gerade im Verkaufen-Reiter einen Termin
       // eingetragen hat, soll ihn beim Zurückwechseln sofort oben stehen sehen.
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows'] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows'] }, { cancelRefetch: false });
       // Und die beiden Abzeichen oben rechts. Sie hingen sonst bis zu 30 bzw.
       // 60 Sekunden hinterher, weil beide Quellen serverseitig entstehen und
       // der Reiter im Speicher bleibt.
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'notifications-unread'] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'unread-messages'] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'notifications-unread'] }, { cancelRefetch: false });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'unread-messages'] }, { cancelRefetch: false });
     }, [queryClient]),
   );
 
-  const [search, setSearch] = useState('');
-  // Die Suche im Raster filtert nur, was OHNEHIN geladen ist — also die
-  // laufenden Shows. Diese hier fragt den Server nach Menschen und findet sie
-  // deshalb auch, wenn gerade niemand sendet.
-  const {
-    data: foundSellers = [],
-    isFetching: searching,
-    error: searchError,
-  } = useSellerSearch(search);
-  // Die zweite Hälfte derselben Suche: Artikel nach Titel. Läuft parallel zur
-  // Verkäufer-Suche — wer „Teekanne" tippt, meint keinen Benutzernamen.
-  const { data: foundListings = [] } = useListingSearch(search);
-  /** Irgendein Treffer im Kopf — egal ob Mensch oder Ware. */
-  const hasSearchHits = foundSellers.length > 0 || foundListings.length > 0;
-  const searchingSellers = search.trim().length >= SEARCH_MIN;
   const [filter, setFilter] = useState(ALL);
 
   /**
@@ -230,10 +181,10 @@ export default function HomeScreen() {
   const { groups: categoryGroups } = useCategoryOptions();
   // Die Zähler für die Entdeckungs-Leiste. Derselbe Abruf, den der
   // Kategorien-Reiter ohnehin macht — React Query gibt beiden dieselbe Antwort.
-  const { data: counted = [] } = useCategories();
+  const { data: counted = [], isLoading: categoriesLoading, refetch: refetchCategories } = useCategories(isFocused);
   // Nur die Zahl, keine Zeile (`head: true`) — sie beantwortet im Leerzustand
   // die Frage „gibt es hier überhaupt etwas zu tun?".
-  const { data: shopCount = 0 } = useShopCount();
+  const { data: shopCount = 0, refetch: refetchShopCount } = useShopCount();
   const categoryNames = useMemo(() => {
     const map = new Map<string, string>();
     for (const parent of categoryGroups) {
@@ -283,7 +234,7 @@ export default function HomeScreen() {
 
   // Erst ab zwei Kategorien lohnt eine Leiste — vorher gäbe es nichts zu
   // wählen, und das Polster oben wäre nur Leere.
-  const railOn = categories.length > 1;
+  const railOn = categories.length > 1 || categoriesLoading;
   const scrollY = useRef(new Animated.Value(0)).current;
   const RAIL_TRAVEL = RAIL_TALL - RAIL_SHORT;
   const railShift = scrollY.interpolate({
@@ -298,17 +249,10 @@ export default function HomeScreen() {
   });
 
 
-  const visible = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return shows.filter((show) => {
-      if (filter !== ALL && show.category !== filter) return false;
-      if (!needle) return true;
-      const host = profiles[show.host_id]?.username ?? '';
-      return (
-        (show.title ?? '').toLowerCase().includes(needle) || host.toLowerCase().includes(needle)
-      );
-    });
-  }, [shows, search, filter, profiles]);
+  const visible = useMemo(
+    () => shows.filter((show) => filter === ALL || show.category === filter),
+    [shows, filter],
+  );
 
   /**
    * Der Ruhezustand: keine laufende Show im Raster und keine Suche.
@@ -339,9 +283,9 @@ export default function HomeScreen() {
    * ein Grund MEHR zu bleiben, kein Grund, alles andere wegzunehmen. Whatnot
    * zeigt beides untereinander.
    */
-  const browsing = !searchingSellers && !search;
+  const browsing = isFocused;
   /** Niemand sendet — nur noch für die Überschrift und den Leerzustand. */
-  const idle = browsing && visible.length === 0;
+  const idle = visible.length === 0;
   /** Die Kategorie und ihre Kinder — „Mode" muss auch zeigen, was unter „Abaya" liegt. */
   const filterSlugs = useMemo(() => {
     if (filter === ALL) return [];
@@ -352,9 +296,13 @@ export default function HomeScreen() {
   // Zwei Quellen, eine Fläche: ohne Filter das ganze Regal, mit Filter die
   // Kategorie. Immer nur eine davon ist aktiv (`enabled`), es läuft also nie
   // ein Abruf für Zeilen, die niemand sieht.
-  const { data: wholeShelf = [] } = useShopListings(SHELF_PREVIEW, browsing && filter === ALL);
-  const { data: categoryShelf = [] } = useCategoryListings(browsing ? filterSlugs : []);
-  const shelf = filter === ALL ? wholeShelf : categoryShelf.slice(0, SHELF_PREVIEW);
+  const wholeShelfQuery = useShopListings(SHELF_PREVIEW, browsing && filter === ALL);
+  const categoryShelfQuery = useCategoryListings(filterSlugs, browsing);
+  const shelfQuery = filter === ALL ? wholeShelfQuery : categoryShelfQuery;
+  const categoryShelf = categoryShelfQuery.data ?? [];
+  const shelf = useMemo(() => (shelfQuery.data ?? []).slice(0, SHELF_PREVIEW), [shelfQuery.data]);
+  const shelfLoading = browsing && shelfQuery.isLoading;
+  const homeError = showsError || (browsing && shelfQuery.isError);
   // Eigener Aufruf statt einer gemeinsamen Liste mit den Show-Gastgebern: Die
   // Kette läuft profiles → visible → idle → shelf, ein Ring wäre die Folge.
   // React Query hält beide Antworten ohnehin im selben Zwischenspeicher, und
@@ -378,6 +326,30 @@ export default function HomeScreen() {
   const { data: savedIds } = useSavedIds(userId);
   const toggleSaved = useToggleSaved(userId);
   const { data: saveCounts } = useSavedCounts(shelf.map((l) => l.id));
+
+  // Aktualisiert die sichtbare Quelle, einschließlich Regal, Stories und Zähler.
+  // refetch() umgeht enabled: die ausgeblendete Kategorie-/Gesamtquelle deshalb
+  // ausdrücklich auslassen. Ein laufender Gesten-Abruf wird nicht doppelt gestartet.
+  const refreshingHome = useRef(false);
+  const refetchShelf = shelfQuery.refetch;
+  const pullToRefresh = useCallback(async () => {
+    if (refreshingHome.current) return;
+    refreshingHome.current = true;
+    setPulling(true);
+    try {
+      await Promise.all([
+        refetch(), refetchUpcoming(), refetchStories(), refetchCategories(), refetchShopCount(),
+        ...(browsing ? [refetchShelf()] : []),
+        ...(userId ? [refetchUnread(), refetchMessages()] : []),
+        queryClient.invalidateQueries({ queryKey: ['berkat', 'show-previews'] }),
+        queryClient.invalidateQueries({ queryKey: ['berkat', 'saved-counts'] }),
+      ]);
+    } finally {
+      refreshingHome.current = false;
+      setPulling(false);
+    }
+  }, [browsing, userId, refetch, refetchUpcoming, refetchStories, refetchCategories,
+    refetchShopCount, refetchShelf, refetchUnread, refetchMessages, queryClient]);
 
   // Zwei Spalten, jede Karte `flex: 1`: Bleibt in der letzten Reihe ein Platz
   // frei, zieht sich die einzelne Karte über die volle Breite — samt Vorschau.
@@ -431,57 +403,16 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {/* ⚠️ EINE Zeile für Marke, Suche und die zwei Knöpfe.
-          Vorher waren es zwei — Kopfzeile, darunter das Suchfeld — und das
-          kostete rund 46 Punkte Höhe, bevor der erste Inhalt kam. Auf einer
-          Startseite, die stöbern soll, ist das die teuerste Fläche überhaupt.
-
-          ⚠️ DER PREIS: Das Wortzeichen „berkat" ist weg, das Ährenzeichen
-          bleibt. Beides plus Suchfeld plus zwei Knöpfe geht auf 393 Punkten
-          nicht auf — dem Suchfeld blieben unter 180 Punkte, und ein Suchfeld,
-          in das kein Suchbegriff sichtbar hineinpasst, ist keins.
-          Wer das Wortzeichen zurückwill, bekommt das Suchfeld schmal; die
-          Entscheidung gehört Zaur, nicht dem Layout. */}
-      <View style={styles.header}>
-        <BerkatMark size={26} color={ui.brand} />
-
-        {/* ⚠️ Der Platzhalter trägt seit dem 22.08.2026 den MARKENNAMEN.
-            Zwei Gründe, und der zweite wiegt schwerer als der erste:
-
-            1. Seit die Kopfzeile mit dem Suchfeld in einer Zeile liegt, ist das
-               Wortzeichen „berkat" weg (Abschnitt 68) — die Marke stand auf der
-               Startseite nirgends mehr. Whatnot löst genau das genauso: „Whatnot
-               durchsuchen" (Analyse 13).
-            2. „Show oder Verkäufer" war seit dem 18.08. schlicht FALSCH. Die
-               Suche findet seit Abschnitt 23 auch Artikel — sie zählte also zwei
-               von drei Dingen auf, die sie kann, und ausgerechnet das häufigste
-               fehlte.
-
-            Das Lupensymbol daneben sagt „suchen" bereits; der Platzhalter darf
-            deshalb den Namen tragen statt einer Aufzählung, die nie vollständig
-            wird. */}
-        <View style={styles.searchWrap}>
-          <Search size={17} color={ui.textMuted} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Berkat durchsuchen"
-            placeholderTextColor={ui.textMuted}
-            style={styles.searchInput}
-            returnKeyType="search"
-          />
+      <View key={fontScale} style={styles.header}>
+        <View style={styles.wordmark} accessible accessibilityRole="text" accessibilityLabel="Berkat">
+          <BerkatMark size={26} color={ui.brand} />
+          <Text style={styles.brandName}>berkat</Text>
         </View>
 
-        {/* Rechts außen zwei Knöpfe, wie bei Whatnot: Posteingang und Glocke.
-            Sie sehen gleich aus, sind aber nicht dasselbe — links steht, was
-            ein MENSCH geschrieben hat, rechts, was BERKAT gemeldet hat. Der
-            Posteingang steht davor, weil eine Frage des Verkäufers zur
-            Lieferadresse dringender ist als ein Paket mit 24 Stunden Zeit. */}
         <View style={styles.headerActions}>
-          <Pressable
-            hitSlop={8}
+          <PressFeedback
             onPress={() => router.push('/messages')}
-            style={styles.iconButton}
+            style={[styles.iconButton]}
             accessibilityRole="button"
             accessibilityLabel={
               unreadMessages > 0 ? `Nachrichten, ${unreadMessages} ungelesen` : 'Nachrichten'
@@ -490,28 +421,36 @@ export default function HomeScreen() {
             <MessageSquare size={21} color={ui.text} />
             {unreadMessages > 0 ? (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>
+                <Text allowFontScaling={false} style={styles.badgeText}>
                   {unreadMessages > 9 ? '9+' : unreadMessages}
                 </Text>
               </View>
             ) : null}
-          </Pressable>
+          </PressFeedback>
 
-          <Pressable
-            hitSlop={8}
+          <PressFeedback
             onPress={() => router.push('/notifications')}
-            style={styles.iconButton}
+            style={[styles.iconButton]}
             accessibilityRole="button"
             accessibilityLabel={unread > 0 ? `Meldungen, ${unread} neue` : 'Meldungen'}
           >
             <Bell size={21} color={ui.text} />
             {unread > 0 ? (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+                <Text allowFontScaling={false} style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
               </View>
             ) : null}
-          </Pressable>
+          </PressFeedback>
         </View>
+      </View>
+
+      <View style={styles.searchArea}>
+        <PressFeedback onPress={() => router.push('/search')}
+          accessibilityRole="button" accessibilityLabel="Berkat durchsuchen"
+          style={[styles.searchWrap]}>
+          <Search size={19} color={ui.textMuted} />
+          <Text style={styles.searchPlaceholder}>Berkat durchsuchen</Text>
+        </PressFeedback>
       </View>
 
       {/* Die Leiste trägt jetzt alle Kategorien und ist damit auch dann voll,
@@ -544,7 +483,12 @@ export default function HomeScreen() {
         progressViewOffset={railOn ? RAIL_TALL : 0}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: true,
+          listener: (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+            setRailCompact(event.nativeEvent.contentOffset.y >= RAIL_TRAVEL * 0.5);
+          },
         })}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
         numColumns={2}
         columnWrapperStyle={{ gap: space.md }}
@@ -553,48 +497,37 @@ export default function HomeScreen() {
           paddingTop: railOn ? RAIL_TALL : 0,
           paddingBottom: insets.bottom + space.xl,
         }}
-        // Der Sendeplan steht ÜBER dem Raster, nicht darin: Er beantwortet eine
-        // andere Frage („wann kommt wieder was?") als die Karten („was läuft
-        // jetzt?"). Bei aktiver Suche verschwindet er — ein Termin ist kein
-        // Suchtreffer.
+        // Ohne Ware steht der Sendeplan im Kopf; sonst folgt er dem Regal.
         ListHeaderComponent={
-          // Wer sucht, sucht selten eine laufende Show — er sucht einen
-          // Menschen. Deshalb steht die Trefferliste an derselben Stelle, an
-          // der sonst der „Demnächst"-Streifen steht.
-          searchingSellers ? (
-            <View>
-              <SellerResults
-                sellers={foundSellers}
-                loading={searching}
-                // Ohne den Fehler kann die Trefferliste „nicht angemeldet" nicht
-                // von „nichts gefunden" unterscheiden — und sagte bisher das
-                // Falsche.
-                error={searchError}
-                onSignIn={() => router.push('/login')}
-                query={search.trim()}
-                onSelect={(sellerId) => router.push(`/seller/${sellerId}`)}
-              />
-              {/* Artikel-Treffer darunter — rendert bei null Treffern nichts,
-                  die Verkäufer-Box erklärt den Leerfall schon. */}
-              <ListingResults
-                listings={foundListings}
-                onSelect={(auctionId) => router.push(`/listing/${auctionId}`)}
-                // ⚠️ Dieselbe Verkabelung wie beim Regal-Raster weiter unten.
-                // Ohne sie konnte man auf DIESEM Bildschirm merken, wenn man
-                // scrollte — aber nicht, wenn man suchte.
-                savedIds={savedIds}
-                onToggleSaved={(auctionId, saved) =>
-                  userId ? toggleSaved.mutate({ auctionId, saved }) : router.push('/login')
-                }
-              />
-            </View>
-          ) : search ? null : (
-            <View>
-              {/* ⚠️ Der Ring steht ÜBER dem Termin-Streifen und über dem Regal.
-                  Er ist das Einzige auf dieser Seite, das sich täglich ändert —
-                  und genau dafür ist er da: Die App soll nicht tot aussehen,
-                  wenn gerade niemand sendet. Er rendert sich selbst weg, wenn
-                  es nichts zu zeigen gibt. */}
+            <View key={fontScale}>
+              {homeError ? (
+                <View style={styles.loadNotice} accessibilityLiveRegion="polite">
+                  <Text style={styles.shelfBody}>
+                    Ein Teil der Startseite konnte nicht geladen werden.
+                  </Text>
+                  <PressFeedback onPress={pullToRefresh} disabled={pulling}
+                    accessibilityRole="button" accessibilityState={{ busy: pulling, disabled: pulling }}
+                    style={styles.loadRetry}>
+                    <Text style={styles.loadRetryText}>{pulling ? 'Wird aktualisiert …' : 'Erneut laden'}</Text>
+                  </PressFeedback>
+                </View>
+              ) : null}
+              <View style={styles.shortcuts}>
+                <PressFeedback onPress={() => router.push('/saved')}
+                  accessibilityRole="button" accessibilityLabel="Merkliste öffnen"
+                  style={[styles.shortcut]}>
+                  <Heart size={18} color={ui.brand} />
+                  <Text style={styles.shortcutText}>Gemerkt</Text>
+                  <ArrowUpRight size={14} color={ui.textMuted} />
+                </PressFeedback>
+                <PressFeedback onPress={() => router.push('/following')}
+                  accessibilityRole="button" accessibilityLabel="Gefolgte Profile öffnen"
+                  style={[styles.shortcut]}>
+                  <UsersRound size={18} color={ui.brand} />
+                  <Text style={styles.shortcutText}>Gefolgt</Text>
+                  <ArrowUpRight size={14} color={ui.textMuted} />
+                </PressFeedback>
+              </View>
               <StoryRail
                 groups={storyGroups}
                 myUserId={userId ?? null}
@@ -610,7 +543,7 @@ export default function HomeScreen() {
               {/* Ein Termin gehört zu keiner Kategorie — bei gesetztem Filter
                   wäre der Streifen eine Antwort auf eine nicht gestellte
                   Frage. */}
-              {filter === ALL ? (
+              {filter === ALL && shelf.length === 0 ? (
                 <UpcomingStrip
                   shows={upcoming}
                   // `?tab=shows`: Wer auf einen TERMIN tippt, will den Termin sehen
@@ -620,69 +553,60 @@ export default function HomeScreen() {
                 />
               ) : null}
 
-              {/* Die Zeile über der Ware. Sie muss sein: Ohne sie stünden im
-                  Show-Raster plötzlich Artikel, und niemand wüsste, warum sich
-                  die Startseite anders verhält als eben noch. Der Satz sagt
-                  beides — dass gerade niemand sendet, und dass es trotzdem
-                  etwas gibt. Bei gesetztem Filter nennt er die Kategorie, sonst
-                  stünde „Gerade ist niemand live" über einem Regal, das nur
-                  einen Ausschnitt zeigt. */}
-              {idle && shelf.length > 0 ? (
+              {idle && (shelf.length > 0 || shelfLoading) ? (
                 <View style={styles.shelfHead}>
-                  <Text style={styles.shelfTitle}>
-                    {filter === ALL
-                      ? 'Gerade ist niemand live'
-                      : `Nichts live in ${categoryNames.get(filter) ?? 'dieser Kategorie'}`}
-                  </Text>
-                  <Text style={styles.shelfBody}>
-                    Aus dem Regal — rund um die Uhr kaufbar, auch ohne Sendung.
-                  </Text>
+                  <View style={styles.sectionRow}>
+                    <Text accessibilityRole="header" style={styles.shelfTitle}>
+                      {filter === ALL ? 'Entdecken' : categoryNames.get(filter) ?? 'Entdecken'}
+                    </Text>
+                    <PressFeedback
+                      onPress={() => router.push(filter === ALL ? '/shop' : `/category/${filter}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel={filter === ALL ? 'Alle Angebote ansehen' : 'Alle Angebote dieser Kategorie ansehen'}
+                      style={[styles.sectionLink]}>
+                      <Text style={styles.sectionLinkText}>Alle ansehen</Text>
+                      <ArrowUpRight size={16} color={ui.brand} />
+                    </PressFeedback>
+                  </View>
+                  <Text style={styles.shelfBody}>Zum Stöbern. Zum Behalten.</Text>
+                </View>
+              ) : null}
+              {!idle ? (
+                <View style={styles.shelfHead}>
+                  <Text accessibilityRole="header" style={styles.shelfTitle}>Jetzt live</Text>
                 </View>
               ) : null}
             </View>
-          )
         }
         ListEmptyComponent={
-          isLoading ? null : (
+          isLoading || shelfLoading ? (
+            browsing ? <HomeSkeleton /> : (
+              <View style={styles.empty} accessibilityRole="progressbar" accessibilityLabel="Startseite wird geladen">
+                <ActivityIndicator color={ui.brand} />
+              </View>
+            )
+          ) : homeError ? null : (
             <View style={styles.empty}>
               <BerkatMark size={40} color={ui.sunken} />
               <Text style={styles.emptyTitle}>
-                {searchingSellers && hasSearchHits
-                  ? 'Keine laufende Show'
-                  : search || filter !== ALL
-                    ? 'Nichts gefunden'
-                    : 'Gerade ist niemand live'}
+                {filter !== ALL ? 'Hier ist es noch ruhig' : 'Gerade ist niemand live'}
               </Text>
               <Text style={styles.emptyBody}>
-                {/* ⚠️ Dieser Leerzustand gehört dem SHOW-Raster, die Treffer
-                    stehen im Kopf darüber — beides muss zusammenpassen. Am
-                    18.08.2026 am Gerät gesehen: Die Artikelsuche fand
-                    „Kaffeetasse", und darunter stand „Nichts gefunden. Versuch
-                    es mit einem anderen Wort." Zwei Wahrheiten auf einem
-                    Bildschirm, und der Satz schickt jemanden weg, der schon
-                    gefunden hat. Wer hier eine dritte Trefferart einbaut, muss
-                    sie in `hasSearchHits` mit aufnehmen. */}
-                {searchingSellers && hasSearchHits
-                  ? foundSellers.length > 0 && foundListings.length > 0
-                    ? 'Aber die Treffer oben — Verkäufer und Artikel.'
-                    : foundListings.length > 0
-                      ? 'Aber die Artikel oben — tipp auf einen, um ihn dir anzusehen.'
-                      : 'Aber die Verkäufer oben — tipp auf einen, um zu sehen, was er anbietet.'
-                  : search || filter !== ALL
-                  ? 'Versuch es mit einem anderen Wort.'
-                  : // Steht ein Termin an, ist „schau später wieder rein" die
-                    // falsche Auskunft — es gibt ja eine Antwort, und sie steht
-                    // direkt darüber.
-                    upcoming.length > 0
-                    ? 'Aber der nächste Termin steht schon oben — folge dem Verkäufer, dann erinnern wir dich.'
-                    : // Dieselbe Regel eine Ebene weiter: Liegt etwas im Regal,
-                      // ist „schau später wieder rein" wieder die falsche
-                      // Auskunft. Es gibt etwas zu tun, es steht nur zwei
-                      // Bildschirme entfernt.
-                      shopCount > 0
-                      ? 'Aber es liegt etwas im Regal — rund um die Uhr kaufbar, auch ohne Sendung.'
-                      : 'Schau später wieder rein — oder mach unter „Verkaufen" selbst die erste Show auf.'}
+                {filter !== ALL
+                    ? 'In dieser Kategorie gibt es gerade keine Angebote. Entdecke die anderen Kategorien.'
+                    : upcoming.length > 0
+                      ? 'Der nächste Termin steht schon oben. Im Verkäuferprofil findest du mehr dazu.'
+                      : shopCount > 0
+                        ? 'Im Marktplatz kannst du auch ohne Live-Show stöbern.'
+                        : 'Schau später wieder rein oder starte unter „Verkaufen“ deine eigene Show.'}
               </Text>
+
+              {filter !== ALL ? (
+                <PressFeedback onPress={() => setFilter(ALL)} accessibilityRole="button"
+                  style={[styles.emptyCta]}>
+                  <Text style={styles.emptyCtaText}>Alle Kategorien entdecken</Text>
+                </PressFeedback>
+              ) : null}
 
               {/* ⚠️ Seit dem 18.08.2026 ist das der AUSNAHMEFALL, nicht der
                   Normalfall: Sendet niemand, füllt das Regal das Raster, und
@@ -690,9 +614,9 @@ export default function HomeScreen() {
                   nur noch, wer ein leeres Regal hat — oder dessen Regal-Abruf
                   gescheitert ist, während der Zähler noch eine Zahl kennt.
                   Genau dafür bleibt der Knopf stehen. */}
-              {!search && filter === ALL && shopCount > 0 ? (
-                <Pressable
-                  style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.7 }]}
+              {filter === ALL && shopCount > 0 ? (
+                <PressFeedback
+                  style={[styles.emptyCta]}
                   onPress={() => router.push('/shop')}
                   accessibilityRole="button"
                   accessibilityLabel={`Alle ${shopCount} Angebote ansehen`}
@@ -701,7 +625,7 @@ export default function HomeScreen() {
                   <Text style={styles.emptyCtaText}>
                     {shopCount === 1 ? '1 Angebot ansehen' : `${shopCount} Angebote ansehen`}
                   </Text>
-                </Pressable>
+                </PressFeedback>
               ) : null}
             </View>
           )
@@ -727,14 +651,13 @@ export default function HomeScreen() {
                   selbst; sendet jemand, hier unten.
 
                   ⚠️ Die Überschrift steht NUR im Sende-Fall. Ohne Show trägt
-                  sie schon der Kopf („Gerade ist niemand live / Aus dem
-                  Regal") — zweimal derselbe Satz auf einem Bildschirm wäre
+                  sie schon der Kopf („Direkt kaufen") — zweimal derselbe Satz auf einem Bildschirm wäre
                   Lärm. */}
               {!idle ? (
                 <View style={styles.shelfHead}>
-                  <Text style={styles.shelfTitle}>Aus dem Regal</Text>
+                  <Text style={styles.shelfTitle}>Direkt kaufen</Text>
                   <Text style={styles.shelfBody}>
-                    Rund um die Uhr kaufbar — auch während gesendet wird.
+                    Entdecke Artikel — auch zwischen den Shows.
                   </Text>
                 </View>
               ) : null}
@@ -754,10 +677,17 @@ export default function HomeScreen() {
                 </View>
               ) : null}
 
+              {filter === ALL ? (
+                <UpcomingStrip
+                  shows={upcoming}
+                  onSelect={(hostId) => router.push(`/seller/${hostId}?tab=shows`)}
+                />
+              ) : null}
+
               {filter !== ALL ? (
             categoryShelf.length > shelf.length ? (
-              <Pressable
-                style={({ pressed }) => [styles.shelfMore, pressed && { opacity: 0.7 }]}
+              <PressFeedback
+                style={[styles.shelfMore]}
                 onPress={() => router.push(`/category/${filter}`)}
                 accessibilityRole="button"
                 accessibilityLabel={`Alle ${categoryShelf.length} Angebote in dieser Kategorie ansehen`}
@@ -766,18 +696,18 @@ export default function HomeScreen() {
                 <Text style={styles.emptyCtaText}>
                   Alle {categoryShelf.length} in {categoryNames.get(filter) ?? 'dieser Kategorie'}
                 </Text>
-              </Pressable>
+              </PressFeedback>
             ) : null
           ) : shopCount > shelf.length ? (
-            <Pressable
-              style={({ pressed }) => [styles.shelfMore, pressed && { opacity: 0.7 }]}
+            <PressFeedback
+              style={[styles.shelfMore]}
               onPress={() => router.push('/shop')}
               accessibilityRole="button"
               accessibilityLabel={`Alle ${shopCount} Angebote ansehen`}
             >
               <ShoppingBag size={16} color={ui.text} />
               <Text style={styles.emptyCtaText}>Alle {shopCount} Angebote ansehen</Text>
-            </Pressable>
+            </PressFeedback>
               ) : null}
             </View>
           )
@@ -801,7 +731,7 @@ export default function HomeScreen() {
               : null;
           return (
             <View style={styles.card}>
-            <Pressable
+            <PressFeedback kind="card"
               onPress={() => router.push(`/live/${item.id}`)}
               accessibilityRole="button"
               accessibilityLabel={item.title ?? 'Live-Show'}
@@ -844,7 +774,7 @@ export default function HomeScreen() {
               <Text numberOfLines={2} style={styles.cardTitle}>
                 {item.title ?? 'Ohne Titel'}
               </Text>
-            </Pressable>
+            </PressFeedback>
 
             {/* ⚠️ AUSSERHALB des Karten-Knopfes, nicht darin.
                 Whatnot macht die Kategorie zu einem Link (blau, anklickbar) —
@@ -861,7 +791,7 @@ export default function HomeScreen() {
                 der Startseite ist schon die passende Liste, sie muss nur
                 enger werden. */}
             {item.category ? (
-              <Pressable
+              <PressFeedback
                 onPress={() => setFilter(item.category!)}
                 hitSlop={6}
                 accessibilityRole="button"
@@ -870,7 +800,7 @@ export default function HomeScreen() {
                 <Text style={styles.cardCategory}>
                   {categoryNames.get(item.category) ?? item.category}
                 </Text>
-              </Pressable>
+              </PressFeedback>
             ) : null}
             </View>
           );
@@ -879,14 +809,17 @@ export default function HomeScreen() {
 
       {railOn ? (
         <Animated.View
-          style={[styles.railWrap, { transform: [{ translateY: railShift }] }]}
+          style={[styles.railWrap, { transform: [{ translateY: reducedMotion ? 0 : railShift }] }]}
           pointerEvents="box-none"
         >
           <CategoryRail
+            key={fontScale}
             items={categories}
             active={filter}
             onSelect={setFilter}
             progress={railProgress}
+            compact={!reducedMotion && railCompact}
+            loading={categoriesLoading}
           />
         </Animated.View>
       ) : null}
@@ -896,17 +829,18 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadNotice: { padding: space.md, marginBottom: space.md, borderRadius: radius.md, backgroundColor: ui.card },
+  loadRetry: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: space.md },
+  loadRetryText: { fontSize: 14, fontWeight: '600', color: ui.brand },
   screen: { flex: 1, backgroundColor: ui.bg },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingTop: space.sm,
-    paddingBottom: space.xs,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: space.lg, paddingTop: space.xs,
   },
-  headerActions: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 2 },
-  iconButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  wordmark: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  brandName: { fontSize: 24, fontWeight: '700', letterSpacing: -0.8, color: ui.brand },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  iconButton: { width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
     top: 3,
@@ -921,21 +855,24 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10, fontWeight: '800', color: ui.goldInk },
 
-  // Nimmt, was zwischen Zeichen und Knöpfen übrig bleibt. 38 statt 42 Punkte
-  // hoch: Es steht jetzt neben zwei 34er-Knöpfen und soll die Zeile nicht
-  // aufblähen.
+  searchArea: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.md },
   searchWrap: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    height: 38,
-    borderRadius: radius.pill,
-    backgroundColor: ui.sunken,
+    flexDirection: 'row', alignItems: 'center', gap: space.sm,
+    paddingHorizontal: space.lg, minHeight: 46,
+    borderRadius: radius.pill, backgroundColor: ui.card,
+    borderWidth: 1, borderColor: ui.line,
   },
-  searchInput: { flex: 1, fontSize: 15, color: ui.text, padding: 0 },
+  searchPlaceholder: { flex: 1, minWidth: 0, fontSize: 15, color: ui.textMuted, paddingVertical: 10 },
+  shortcuts: { flexDirection: 'row', gap: space.sm, marginBottom: space.md },
+  shortcut: {
+    flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.sm,
+    paddingHorizontal: space.md, paddingVertical: space.sm,
+    borderRadius: radius.md, backgroundColor: ui.card,
+  },
+  shortcutText: { flex: 1, fontSize: 14, fontWeight: '600', color: ui.brand },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: space.md },
+  sectionLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  sectionLinkText: { color: ui.brand, fontSize: 13, fontWeight: '600' },
 
   /**
    * ⚠️ `overflow: 'hidden'` ist hier PFLICHT, nicht Kosmetik.
@@ -1016,7 +953,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.sm,
     marginTop: space.sm,
-    height: 44,
+    minHeight: 44,
+    paddingVertical: space.sm,
     paddingHorizontal: space.lg,
     borderRadius: radius.pill,
     borderWidth: 1.5,
@@ -1027,8 +965,8 @@ const styles = StyleSheet.create({
   /* Die Überschrift über der Ware. Kleiner als ein Leerzustand-Titel: Sie
      erklärt eine Fläche, die schon gefüllt ist — sie ist nicht selbst die
      Nachricht. */
-  shelfHead: { paddingTop: space.sm, paddingBottom: space.md, gap: 2 },
-  shelfTitle: { fontSize: 15, fontWeight: '700', color: ui.text },
+  shelfHead: { paddingTop: space.xs, paddingBottom: space.lg, gap: 2 },
+  shelfTitle: { flexGrow: 1, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, color: ui.text },
   shelfBody: { fontSize: 13, color: ui.textMuted, lineHeight: 18 },
   /* Wie `emptyCta`, nur zentriert unter dem Raster statt in einer leeren
      Fläche — dieselbe Kontur, weil es dieselbe Einladung ist. */
@@ -1044,7 +982,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.sm,
     marginTop: space.lg,
-    height: 44,
+    minHeight: 44,
+    paddingVertical: space.sm,
     paddingHorizontal: space.lg,
     borderRadius: radius.pill,
     borderWidth: 1.5,

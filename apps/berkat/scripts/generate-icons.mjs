@@ -17,8 +17,9 @@ import { PNG } from 'pngjs';
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const assetsDir = path.join(appRoot, 'assets');
 
-const GOLD = [233, 167, 60];
-const DEEP_GREEN = [14, 42, 34];
+// Entspricht ui.bg und ui.brand in theme/tokens.ts.
+const MARK = [245, 245, 245];
+const AUBERGINE = [46, 27, 51];
 const WHITE = [255, 255, 255];
 
 // ── Marke im 64×64-Koordinatensystem von mark.svg ────────────────────────────
@@ -115,28 +116,28 @@ function render({ size, coverage, fg, bg }) {
   return png;
 }
 
-function write(name, png) {
+function write(name, png, opaque = false) {
   const out = path.join(assetsDir, name);
-  fs.writeFileSync(out, PNG.sync.write(png, { colorType: 6, deflateLevel: 9, inputHasAlpha: true }));
+  fs.writeFileSync(out, PNG.sync.write(png, { colorType: opaque ? 2 : 6, deflateLevel: 9, inputHasAlpha: true }));
   console.log(`wrote assets/${name} (${png.width}×${png.height})`);
 }
 
 fs.mkdirSync(assetsDir, { recursive: true });
 
-// App-Icon: deckend, Gold auf Tiefgrün. iOS duldet keinen Alphakanal.
+// App-Icon: hell auf Aubergine, als RGB ohne Alphakanal exportiert.
 // coverage bezieht sich auf die längere Achse — die Ähre ist schmal und hoch,
 // also steuert die Höhe die Größe.
-write('icon.png', render({ size: 1024, coverage: 0.66, fg: GOLD, bg: DEEP_GREEN }));
+write('icon.png', render({ size: 1024, coverage: 0.66, fg: MARK, bg: AUBERGINE }), true);
 
 // Android adaptive icon: die äußeren ~33 % können beschnitten werden,
 // deshalb sitzt die Marke deutlich kleiner in der Fläche.
-write('android-icon-foreground.png', render({ size: 1024, coverage: 0.48, fg: GOLD, bg: null }));
+write('android-icon-foreground.png', render({ size: 1024, coverage: 0.48, fg: MARK, bg: null }));
 write('android-icon-monochrome.png', render({ size: 1024, coverage: 0.48, fg: WHITE, bg: null }));
 
 // Splash: Hintergrundfarbe kommt aus app.json, hier nur die Marke.
-write('splash-icon.png', render({ size: 1024, coverage: 0.72, fg: GOLD, bg: null }));
+write('splash-icon.png', render({ size: 1024, coverage: 0.72, fg: MARK, bg: null }));
 
 // Benachrichtigungen: Android färbt das Icon selbst ein, es zählt nur die Form.
 write('notification-icon.png', render({ size: 96, coverage: 0.82, fg: WHITE, bg: null }));
 
-write('favicon.png', render({ size: 64, coverage: 0.7, fg: GOLD, bg: DEEP_GREEN }));
+write('favicon.png', render({ size: 64, coverage: 0.7, fg: MARK, bg: AUBERGINE }), true);

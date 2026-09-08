@@ -168,7 +168,7 @@ function SlideToBid({
         if (!busy) onConfirm();
       }}
     >
-      <Text style={[styles.label, { color: ink }]} numberOfLines={1}>
+      <Text style={[styles.label, styles.slideLabel, { color: ink }]}>
         {label}
       </Text>
 
@@ -377,7 +377,8 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   center: { flexDirection: 'row', alignItems: 'center' },
   primary: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: space.sm,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -394,9 +395,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { fontSize: 16, fontWeight: '700' },
+  label: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  slideLabel: { marginHorizontal: KNOB + TRACK_PAD * 2 },
   secondary: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: space.sm,
     minWidth: 88,
     paddingHorizontal: space.lg,
     borderRadius: radius.pill,

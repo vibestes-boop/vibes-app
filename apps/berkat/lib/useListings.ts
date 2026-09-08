@@ -19,7 +19,7 @@
 // und alle vier Flächen haben sie.
 
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { SEARCH_MIN, useDebounced } from './useSellerSearch';
 
@@ -161,7 +161,7 @@ export type Listing = {
  * Doppelung zweimal schiefgegangen (ein Bild wurde geholt und weggeworfen,
  * weil der Zeilentyp es nicht trug).
  */
-const LISTING_COLUMNS =
+export const LISTING_COLUMNS =
   'id, seller_id, title, image_url, image_urls, buy_now_cents, start_price_cents, ' +
   'current_bid_cents, winner_id, women_only, ' +
   'accepts_offers, created_at, status, category, description, condition, size, postal_code, ' +
@@ -343,7 +343,7 @@ export function useShopCount() {
  * öffnet, will auch sehen, was in ihren Kindern liegt — sonst wäre „Mode" leer,
  * während unter „Abaya" drei Artikel hängen.
  */
-export function useCategoryListings(slugs: string[]) {
+export function useCategoryListings(slugs: string[], enabled = true) {
   // Stabiler Schlüssel: Ohne das Sortieren käme bei jeder Neuberechnung des
   // Aufrufers eine andere Reihenfolge und damit ein anderer Query-Key heraus —
   // die Abfrage liefe bei jedem Render neu.
@@ -351,7 +351,7 @@ export function useCategoryListings(slugs: string[]) {
 
   return useQuery({
     queryKey: ['berkat', 'category-listings', key],
-    enabled: slugs.length > 0,
+    enabled: enabled && slugs.length > 0,
     staleTime: 30_000,
     queryFn: async (): Promise<Listing[]> => {
       const { data, error } = await browseQuery()
@@ -365,22 +365,67 @@ export function useCategoryListings(slugs: string[]) {
 }
 
 /** Was dieser Verkäufer gerade dauerhaft anbietet — sein Regal. */
-export function useSellerListings(sellerId: string | undefined) {
+export function useSellerListings(sellerId: string | undefined, enabled = true) {
   return useQuery({
     // Der Schlüssel heißt weiter `standing`: `useStandingActions.invalidate()`
     // setzt ihn zurück, und ein Umbenennen wäre eine stille Regression an genau
     // der Stelle, die am 16.08. schon einmal falsch war.
     queryKey: ['berkat', 'standing', sellerId],
-    enabled: Boolean(sellerId),
+    enabled: enabled && Boolean(sellerId),
     staleTime: 30_000,
-    queryFn: async (): Promise<Listing[]> => {
+    queryFn: async ({ signal }): Promise<Listing[]> => {
       const { data, error } = await shelfQuery()
         .eq('seller_id', sellerId!)
         .order('created_at', { ascending: false })
-        .limit(60);
+        .limit(60).abortSignal(signal).retry(false);
       if (error) throw error;
       return asListings(data);
     },
+  });
+}
+
+type SellerListingsCursor = { createdAt: string; id: string } | null;
+type SellerListingsPage = { rows: Listing[]; next: SellerListingsCursor | undefined };
+const SELLER_PAGE_SIZE = 30;
+
+function withSellerListings(data: InfiniteData<SellerListingsPage, SellerListingsCursor>) {
+  const seen = new Set<string>();
+  const listings = data.pages.flatMap((page) => page.rows).filter((listing) => {
+    if (seen.has(listing.id)) return false;
+    seen.add(listing.id);
+    return true;
+  });
+  return { ...data, listings };
+}
+
+/** Profilseiten haben einen eigenen Cache unter dem bestehenden Invalidierungspräfix.
+ * Der Zeitstempel bleibt unverändert (inklusive Mikrosekunden); die ID löst
+ * Gleichstände. Neue/entfernte Angebote verschieben dadurch keine Offsets.
+ */
+export function useSellerListingPages(sellerId: string | undefined, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['berkat', 'standing', sellerId, 'pages'],
+    enabled: enabled && Boolean(sellerId),
+    staleTime: 30_000,
+    initialPageParam: null as SellerListingsCursor,
+    retry: (failures, error) => failures < 1 && (error as { code?: string }).code !== '42501',
+    queryFn: async ({ signal, pageParam }): Promise<SellerListingsPage> => {
+      if (!sellerId) throw new Error('seller_missing');
+      let query = shelfQuery().eq('seller_id', sellerId)
+        .order('created_at', { ascending: false }).order('id', { ascending: false });
+      if (pageParam) {
+        // Both values originate from typed database columns: timestamptz / uuid.
+        query = query.or(`created_at.lt.${pageParam.createdAt},and(created_at.eq.${pageParam.createdAt},id.lt.${pageParam.id})`);
+      }
+      const { data, error } = await query.limit(SELLER_PAGE_SIZE + 1).abortSignal(signal).retry(false);
+      if (error) throw error;
+      const fetched = asListings(data);
+      const rows = fetched.slice(0, SELLER_PAGE_SIZE);
+      const last = rows[rows.length - 1];
+      return { rows, next: fetched.length > SELLER_PAGE_SIZE && last ? { createdAt: last.created_at, id: last.id } : undefined };
+    },
+    getNextPageParam: (lastPage) => lastPage.next,
+    select: withSellerListings,
   });
 }
 
@@ -402,12 +447,13 @@ export function useSellerListings(sellerId: string | undefined) {
  * nicht" — dieselbe Sprache, die auch `buy_now_live_auction` seit
  * 20260816210000 spricht, damit die Existenz nicht über die Antwort durchsickert.
  */
-export function useListing(id: string | undefined) {
+export function useListing(id: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'listing', id],
-    enabled: Boolean(id),
+    enabled: enabled && Boolean(id),
     staleTime: 15_000,
-    queryFn: async (): Promise<Listing | null> => {
+    retry: (failures, error) => failures < 1 && (error as { code?: string }).code !== '42501',
+    queryFn: async ({ signal }): Promise<Listing | null> => {
       const { data, error } = await supabase
         .from('live_auctions')
         .select(LISTING_COLUMNS)
@@ -432,7 +478,7 @@ export function useListing(id: string | undefined) {
         // nachfragen. Laufende Show-Ware bleibt draussen: Die gehört in den
         // Raum, nicht auf eine stille Seite.
         .or('session_id.is.null,status.eq.sold')
-        .maybeSingle();
+        .abortSignal(signal).maybeSingle().retry(false);
       if (error) throw error;
       return (data as unknown as Listing) ?? null;
     },
@@ -547,8 +593,10 @@ export function listingPrice(
  * Eine leere Liste heißt wirklich „kein Bild", nie „Liste vergessen".
  */
 export function listingImages(l: Pick<Listing, 'image_url' | 'image_urls'>): string[] {
-  if (l.image_urls?.length) return l.image_urls;
-  return l.image_url ? [l.image_url] : [];
+  // Ignore empty/duplicate sources so gallery keys and counters describe pages.
+  const images = [...new Set((l.image_urls ?? []).filter(url => typeof url === 'string' && url.trim().length > 0))];
+  if (images.length) return images;
+  return l.image_url?.trim() ? [l.image_url] : [];
 }
 
 /**
@@ -562,23 +610,31 @@ export function listingImages(l: Pick<Listing, 'image_url' | 'image_urls'>): str
  *
  * `%` und `_` werden escaped — sonst wäre „100%" ein Joker statt einer Suche.
  */
-export function useListingSearch(query: string) {
+export function useListingSearch(query: string, enabled = true) {
   const settled = useDebounced(query.trim());
   const q = settled.replace(/[\\%_]/g, (m) => `\\${m}`);
 
-  return useQuery({
+  const isDebouncing = query.trim() !== settled;
+  const result = useQuery({
     queryKey: ['berkat', 'listing-search', settled],
-    enabled: settled.length >= SEARCH_MIN,
+    enabled: enabled && !isDebouncing && settled.length >= SEARCH_MIN,
+    // Query steuert die Wiederholung; der HTTP-Client wiederholt nicht zusätzlich.
+    retry: 1,
     staleTime: 30_000,
-    queryFn: async (): Promise<Listing[]> => {
+    queryFn: async ({ signal }): Promise<Listing[]> => {
       const { data, error } = await browseQuery()
         .ilike('title', `%${q}%`)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(20)
+        .abortSignal(signal).retry(false);
       if (error) throw error;
       return withVisibleShow(asListings(data));
     },
   });
+  return { ...result, isDebouncing,
+    data: isDebouncing ? undefined : result.data,
+    error: isDebouncing ? null : result.error,
+  };
 }
 
 /**

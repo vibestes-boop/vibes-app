@@ -78,10 +78,10 @@ export function useOffersForListing(auctionId: string | undefined, userId: strin
  * Bestell-Abzeichen. Fehler werden geschluckt: Ein fehlendes Abzeichen ist
  * ärgerlich, ein kaputter Reiter wäre schlimmer.
  */
-export function useOpenOfferCount(userId: string | null) {
+export function useOpenOfferCount(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'offer-count', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     staleTime: 20_000,
     refetchInterval: 60_000,
     queryFn: async (): Promise<number> => {
@@ -149,10 +149,10 @@ export type SellerOffer = Offer & {
  * `useSellerOffers`: PostgREST-Embeds sind in diesem Projekt schon einmal still
  * zu einer leeren Liste geworden.
  */
-export function useMyOpenOffers(userId: string | null) {
+export function useMyOpenOffers(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'my-offers', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     staleTime: 20_000,
     queryFn: async (): Promise<SellerOffer[]> => {
       const { data, error } = await supabase

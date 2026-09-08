@@ -10,13 +10,14 @@
 
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ShieldCheck } from 'lucide-react-native';
+import { ChevronDown, ShieldCheck } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { VOUCH_NOTE_MAX, type Vouch } from '../lib/useVouch';
 import { Avatar } from './Avatar';
 
 type Props = {
   vouches: Vouch[];
+  compactEmpty?: boolean;
   /** Bin ich selbst der Verkäufer? Dann gibt es hier nichts zu tun. */
   isSelf: boolean;
   myUserId: string | null;
@@ -39,6 +40,7 @@ function weightLabel(vouch: Vouch): string | null {
 
 export function VouchPanel({
   vouches,
+  compactEmpty = false,
   isSelf,
   myUserId,
   busy,
@@ -47,9 +49,20 @@ export function VouchPanel({
   onOpenProfile,
 }: Props) {
   const [writing, setWriting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [note, setNote] = useState('');
 
   const mine = myUserId ? vouches.find((v) => v.voucher_id === myUserId) : undefined;
+
+  if (compactEmpty && vouches.length === 0 && !expanded) {
+    return (
+      <Pressable style={s.compact} onPress={() => setExpanded(true)} accessibilityRole="button" accessibilityState={{ expanded: false }} accessibilityLabel="Noch keine Bürgschaften. Informationen anzeigen">
+        <ShieldCheck size={16} color={ui.textMuted} />
+        <Text style={s.compactText}>Noch keine Bürgschaften</Text>
+        <ChevronDown size={16} color={ui.textMuted} />
+      </Pressable>
+    );
+  }
 
   return (
     <View style={s.wrap}>
@@ -58,6 +71,11 @@ export function VouchPanel({
         <Text style={s.title}>Wer für ihn bürgt</Text>
       </View>
 
+      {compactEmpty && vouches.length === 0 ? (
+        <Pressable onPress={() => setExpanded(false)} style={{ minHeight: 44, justifyContent: 'center' }} accessibilityRole="button" accessibilityState={{ expanded: true }}>
+          <Text style={s.compactText}>Weniger anzeigen</Text>
+        </Pressable>
+      ) : null}
       {vouches.length === 0 ? (
         <Text style={s.empty}>
           {isSelf
@@ -163,6 +181,8 @@ export function VouchPanel({
 }
 
 const s = StyleSheet.create({
+  compact: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 48, paddingVertical: space.sm, marginTop: space.md },
+  compactText: { flex: 1, fontSize: 13, lineHeight: 19, color: ui.textMuted },
   wrap: {
     backgroundColor: ui.card,
     borderRadius: radius.lg,

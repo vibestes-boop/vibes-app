@@ -42,22 +42,21 @@ import { router, useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Bell, ChevronRight, Search, X } from 'lucide-react-native';
+import { ArrowRight, Bell, ChevronRight, Heart, RefreshCw, Search, X } from 'lucide-react-native';
 
 import { useSavedCounts, useSavedListings, useToggleSaved, type SavedListing } from '../lib/useSaved';
 import { useMyReminders, type MyReminder } from '../lib/useReminders';
 import { useSavedSearchActions, useSavedSearches } from '../lib/useSavedSearches';
 import { useUsernames } from '../lib/useAuction';
 import { ListingCard } from './ListingCard';
-import { BerkatMark } from './BerkatMark';
 import { radius, space, ui } from '../theme/tokens';
+import { PressFeedback } from './PressFeedback';
 
 /**
  * Der Lückenfüller der letzten Reihe.
@@ -94,14 +93,15 @@ type Props = {
 };
 
 export function SavedList({ userId, bottomInset }: Props) {
-  const { data: saved = [], isLoading, refetch } = useSavedListings(userId);
-  const { data: reminders = [], refetch: refetchReminders } = useMyReminders(userId);
-  const { data: searches = [], refetch: refetchSearches } = useSavedSearches(userId);
+  const { data: saved = [], isLoading, isError, refetch } = useSavedListings(userId);
+  const { data: reminders = [], isLoading: remindersLoading, isError: remindersError, refetch: refetchReminders } = useMyReminders(userId);
+  const { data: searches = [], isLoading: searchesLoading, isError: searchesError, refetch: refetchSearches } = useSavedSearches(userId);
   const { remove: removeSearch } = useSavedSearchActions(userId);
   const toggle = useToggleSaved(userId);
 
   const [slice, setSlice] = useState<Slice>('alle');
   const [pulling, setPulling] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Verkäufername und Merk-Zähler gehören zur Karte — ohne sie ist das Gitter
   // nur ein Bild. Beides sind Nachschlage-Abfragen über die ohnehin geladenen
@@ -141,6 +141,16 @@ export function SavedList({ userId, bottomInset }: Props) {
   }, [refetch, refetchReminders, refetchSearches]);
 
   const nothingAtAll = saved.length === 0 && reminders.length === 0 && searches.length === 0;
+  const hasVisibleData = (showItems && saved.length > 0) || (showReminders && reminders.length > 0) || (showSearches && searches.length > 0);
+  const loading = (showItems && isLoading) || (showReminders && remindersLoading) || (showSearches && searchesLoading);
+  const failed = (showItems && isError) || (showReminders && remindersError) || (showSearches && searchesError);
+  const emptyCopy = slice === 'vorgemerkt'
+    ? { title: 'Deine nächsten Entdeckungen', body: 'Mit der Glocke an einem vorbereiteten Artikel merkst du dir, was du in einer Show sehen möchtest.', action: 'Shows entdecken', target: '/(tabs)' as const }
+    : slice === 'suchen'
+      ? { title: 'Deine Suchen an einem Ort', body: 'Speichere eine Suche im Marktplatz. Hier kannst du sie jederzeit wieder öffnen.', action: 'Suche starten', target: '/shop' as const }
+      : slice === 'artikel'
+        ? { title: 'Platz für deine Favoriten', body: 'Tippe auf das Herz an einem Angebot. So findest du es hier schnell wieder.', action: 'Angebote entdecken', target: '/shop' as const }
+        : { title: 'Behalte deine Favoriten im Blick', body: 'Angebote, Vormerkungen und gespeicherte Suchen — hier ist alles, worauf du zurückkommen möchtest.', action: 'Entdecken', target: '/shop' as const };
 
   return (
     <FlatList
@@ -158,12 +168,12 @@ export function SavedList({ userId, bottomInset }: Props) {
       }
       ListHeaderComponent={
         <View style={styles.head}>
-          {nothingAtAll ? null : (
+          {nothingAtAll && slice === 'alle' ? null : (
             <View style={styles.pills}>
               {SLICES.map((sl) => {
                 const active = slice === sl.key;
                 return (
-                  <Pressable
+                  <PressFeedback
                     key={sl.key}
                     style={[styles.pill, active && styles.pillActive]}
                     onPress={() => setSlice(sl.key)}
@@ -174,11 +184,19 @@ export function SavedList({ userId, bottomInset }: Props) {
                     <Text style={[styles.pillText, active && styles.pillTextActive]}>
                       {sl.label}
                     </Text>
-                  </Pressable>
+                  </PressFeedback>
                 );
               })}
             </View>
           )}
+
+          {failed && hasVisibleData ? (
+            <PressFeedback onPress={() => void onPull()} style={styles.notice} accessibilityRole="button">
+              <RefreshCw size={16} color={ui.textMuted} />
+              <Text style={styles.noticeText}>Ein Teil fehlt gerade. Erneut laden</Text>
+            </PressFeedback>
+          ) : null}
+          {actionError ? <Text style={styles.actionError} accessibilityRole="alert">{actionError}</Text> : null}
 
           {/* ── Vorgemerkt. Steht ZUERST, weil es das Einzige hier mit einer Uhr
               ist: Ein gemerkter Artikel wartet, eine Vormerkung läuft ab. */}
@@ -188,9 +206,9 @@ export function SavedList({ userId, bottomInset }: Props) {
               {reminders.map((r: MyReminder) => {
                 const when = whenLabel(r.scheduledAt);
                 return (
-                  <Pressable
+                  <PressFeedback
                     key={r.auctionId}
-                    style={({ pressed }) => [styles.line, pressed && { opacity: 0.7 }]}
+                    style={[styles.line]}
                     onPress={() => router.push(`/listing/${r.auctionId}`)}
                     accessibilityRole="button"
                     accessibilityLabel={`${r.title}${when ? `, ${when}` : ''}`}
@@ -212,13 +230,13 @@ export function SavedList({ userId, bottomInset }: Props) {
                             ohne das WANN wäre sie eine Sammlung ohne Aussage. */}
                         <Text style={styles.lineWhen}>{when ?? 'Termin offen'}</Text>
                       </View>
-                      <Text numberOfLines={1} style={styles.lineTitle}>
+                      <Text numberOfLines={2} style={styles.lineTitle}>
                         {r.title}
                       </Text>
                       <Text style={styles.lineMeta}>{sellerNames[r.sellerId] ?? 'Verkäufer'}</Text>
                     </View>
                     <ChevronRight size={18} color={ui.textMuted} />
-                  </Pressable>
+                  </PressFeedback>
                 );
               })}
             </View>
@@ -241,43 +259,51 @@ export function SavedList({ userId, bottomInset }: Props) {
                 {/* Die Suche führt in den Marktplatz — `shop.tsx` nimmt `?q=`
                     entgegen. Eine gespeicherte Suche, die man nicht ausführen
                     kann, wäre ein Zettel ohne Stift. */}
-                <Pressable
-                  style={{ flex: 1, minWidth: 0 }}
+                <PressFeedback
+                  style={styles.searchAction}
                   onPress={() => router.push(`/shop?q=${encodeURIComponent(sq.query)}`)}
                   accessibilityRole="button"
                   accessibilityLabel={`Nach ${sq.query} suchen`}
                 >
-                  <Text numberOfLines={1} style={styles.lineTitle}>
+                  <Text numberOfLines={2} style={styles.lineTitle}>
                     {sq.query}
                   </Text>
                   <Text style={styles.lineMeta}>Du wirst benachrichtigt, wenn etwas passt</Text>
-                </Pressable>
-                <Pressable
-                  hitSlop={10}
-                  onPress={() => removeSearch.mutate(sq.id)}
+                </PressFeedback>
+                <PressFeedback
+                  style={styles.remove}
+                  disabled={removeSearch.isPending}
+                  accessibilityState={{ disabled: removeSearch.isPending, busy: removeSearch.isPending && removeSearch.variables === sq.id }}
+                  onPress={() => {
+                    setActionError(null);
+                    removeSearch.mutate(sq.id, { onError: () => setActionError('Die Suche konnte nicht entfernt werden. Versuch es noch einmal.') });
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={`Suche ${sq.query} löschen`}
                 >
-                  <X size={18} color={ui.textMuted} />
-                </Pressable>
+                  {removeSearch.isPending && removeSearch.variables === sq.id ? <ActivityIndicator size="small" color={ui.textMuted} /> : <X size={18} color={ui.textMuted} />}
+                </PressFeedback>
               </View>
             ))}
           </View>
         ) : null
       }
       ListEmptyComponent={
-        // ⚠️ Nur wenn WIRKLICH nichts da ist. Sonst stünde „noch nichts gemerkt"
-        // unter einer Liste mit drei Vormerkungen.
-        !nothingAtAll ? null : isLoading ? (
-          <ActivityIndicator style={{ marginTop: space.xl }} color={ui.textMuted} />
-        ) : (
+        hasVisibleData ? null : (
           <View style={styles.empty}>
-            <BerkatMark size={36} color={ui.sunken} />
-            <Text style={styles.emptyTitle}>Noch nichts gemerkt</Text>
+            <View style={styles.emptyIcon}>
+              {loading ? <ActivityIndicator color={ui.brand} /> : failed ? <RefreshCw size={28} color={ui.brand} /> : slice === 'suchen' ? <Search size={28} color={ui.brand} /> : slice === 'vorgemerkt' ? <Bell size={28} color={ui.brand} /> : <Heart size={28} color={ui.brand} />}
+            </View>
+            <Text style={styles.emptyTitle} accessibilityRole="header">{loading ? 'Wird geladen' : failed ? 'Gerade nicht erreichbar' : emptyCopy.title}</Text>
             <Text style={styles.emptyBody}>
-              Das Herz an einem Angebot, die Glocke an einem vorbereiteten Artikel oder eine
-              gespeicherte Suche im Marktplatz — alles drei findest du hier wieder.
+              {loading ? 'Deine Merkliste ist gleich da.' : failed ? 'Wir konnten diesen Bereich nicht vollständig laden. Versuch es gleich noch einmal.' : emptyCopy.body}
             </Text>
+            {!loading ? (
+              <PressFeedback style={[styles.emptyAction]} onPress={failed ? () => void onPull() : () => router.push(emptyCopy.target)} accessibilityRole="button">
+                <Text style={styles.emptyActionText}>{failed ? 'Erneut versuchen' : emptyCopy.action}</Text>
+                <ArrowRight size={17} color={ui.card} />
+              </PressFeedback>
+            ) : null}
           </View>
         )
       }
@@ -294,7 +320,11 @@ export function SavedList({ userId, bottomInset }: Props) {
             // Artikel trotzdem sichtbar bleibt, ist Absicht; das Etikett unten
             // links in `ListingCard` sagt, was mit ihm passiert ist.
             saved
-            onToggleSaved={() => toggle.mutate({ auctionId: item.id, saved: true })}
+            onToggleSaved={() => {
+              if (toggle.isPending) return;
+              setActionError(null);
+              toggle.mutate({ auctionId: item.id, saved: true }, { onError: () => setActionError('Der Artikel konnte nicht entfernt werden. Versuch es noch einmal.') });
+            }}
             saveCount={saveCounts?.get(item.id)}
           />
         );
@@ -313,22 +343,23 @@ const styles = StyleSheet.create({
   pills: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
   pill: {
     paddingHorizontal: space.md,
-    height: 32,
+    minHeight: 40,
+    paddingVertical: space.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: ui.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pillActive: { backgroundColor: ui.text, borderColor: ui.text },
+  pillActive: { backgroundColor: ui.brand, borderColor: ui.brand },
   pillText: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
   pillTextActive: { color: ui.bg },
 
   section: { gap: space.sm },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: ui.textMuted },
+  sectionLabel: { fontSize: 15, lineHeight: 21, fontWeight: '700', color: ui.text },
 
-  line: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  lineThumb: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: ui.sunken },
+  line: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: ui.card, padding: space.md, borderRadius: radius.lg },
+  lineThumb: { width: 56, height: 64, borderRadius: radius.md, backgroundColor: ui.sunken },
   searchIcon: {
     width: 48,
     height: 48,
@@ -338,9 +369,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   lineTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  lineWhen: { fontSize: 12, fontWeight: '700', color: ui.textMuted },
-  lineTitle: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 1 },
-  lineMeta: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
+  lineWhen: { flexShrink: 1, fontSize: 13, lineHeight: 19, fontWeight: '700', color: ui.textMuted },
+  lineTitle: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text, marginTop: space.xs },
+  lineMeta: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: space.xs },
+  searchAction: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
+  remove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  notice: { flexDirection: 'row', gap: space.sm, alignItems: 'center', backgroundColor: ui.card, borderRadius: radius.md, padding: space.md },
+  noticeText: { flex: 1, fontSize: 13, lineHeight: 19, color: ui.textMuted },
+  actionError: { fontSize: 13, lineHeight: 19, color: ui.live },
 
   empty: {
     alignItems: 'center',
@@ -348,6 +384,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     gap: space.sm,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: ui.text },
-  emptyBody: { fontSize: 13, color: ui.textMuted, textAlign: 'center', lineHeight: 19 },
+  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: ui.card, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm },
+  emptyTitle: { fontSize: 21, lineHeight: 28, fontWeight: '700', color: ui.text, textAlign: 'center' },
+  emptyBody: { fontSize: 15, color: ui.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 340 },
+  emptyAction: { minHeight: 48, paddingHorizontal: space.lg, paddingVertical: space.md, marginTop: space.md, borderRadius: radius.pill, backgroundColor: ui.brand, flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  emptyActionText: { flexShrink: 1, fontSize: 15, lineHeight: 21, fontWeight: '700', color: ui.card },
 });

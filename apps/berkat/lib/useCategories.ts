@@ -19,7 +19,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
-import { useCategoryListings } from './useListings';
+import { useBrowseListingPages } from './useBrowseListingPages';
 
 export type Category = {
   slug: string;
@@ -54,9 +54,10 @@ function toNumbers(rows: Category[]): Category[] {
 }
 
 /** Alle aktiven Kategorien, flach, mit Zählern. */
-export function useCategories() {
+export function useCategories(enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'categories'],
+    enabled,
     // Die Liste selbst ändert sich fast nie, die Zähler schon. Eine halbe
     // Minute ist der Kompromiss: frisch genug, dass „3 live" stimmt, ruhig
     // genug, dass ein Reiterwechsel keine Abfrage kostet.
@@ -80,8 +81,8 @@ export function useCategories() {
  * dieselbe Antwort, nur anders sortiert. React Query gibt beiden Aufrufern
  * denselben Zwischenspeicher.
  */
-export function useCategoryTree() {
-  const query = useCategories();
+export function useCategoryTree(enabled = true) {
+  const query = useCategories(enabled);
   const rows = query.data;
 
   const tree = useMemo((): CategoryNode[] => {
@@ -159,14 +160,15 @@ export type CategoryShow = {
  * leer. Frauen-Only filtert in beiden Fällen die RLS selbst; hier steht bewusst
  * kein zweiter Filter, sonst gäbe es zwei Wahrheiten über dieselbe Grenze.
  *
- * ⚠️ Die Angebots-Abfrage liegt seit dem 17.08.2026 in `useListings.ts`.
+ * Die Angebots-Abfrage nutzt `useBrowseListingPages` und weiterhin die zentrale
+ * Spaltenliste aus `useListings.ts`.
  * Vorher stand hier eine eigene Spaltenliste und ein eigener Zeilentyp
  * (`CategoryListing`) — dieselbe Tabellenzeile in einer zweiten, anderen
  * Fassung. Sie trug die `seller_id`, aber nicht die Beschreibung; der Typ im
  * Regal trug es umgekehrt. Genau daran ist die Beschreibung zwei Tage lang
  * unsichtbar geblieben.
  */
-export function useCategoryContent(slugs: string[]) {
+export function useCategoryContent(slugs: string[], enabled = true) {
   // Stabiler Schlüssel: Ohne das Sortieren käme bei jeder Neuberechnung des
   // Aufrufers eine andere Reihenfolge und damit ein anderer Query-Key heraus —
   // die Abfrage liefe bei jedem Render neu.
@@ -174,9 +176,10 @@ export function useCategoryContent(slugs: string[]) {
 
   const shows = useQuery({
     queryKey: ['berkat', 'category-shows', key],
-    enabled: slugs.length > 0,
+    enabled: enabled && slugs.length > 0,
     refetchInterval: 20_000,
-    queryFn: async (): Promise<CategoryShow[]> => {
+    retry: (failures, error) => failures < 1 && (error as { code?: string }).code !== '42501',
+    queryFn: async ({ signal }): Promise<CategoryShow[]> => {
       const { data, error } = await supabase
         .from('live_sessions')
         .select('id, host_id, title, viewer_count, thumbnail_url, women_only')
@@ -184,13 +187,13 @@ export function useCategoryContent(slugs: string[]) {
         .eq('app', 'berkat')
         .in('category', slugs)
         .order('viewer_count', { ascending: false })
-        .limit(40);
+        .limit(40).abortSignal(signal).retry(false);
       if (error) throw error;
       return (data ?? []) as CategoryShow[];
     },
   });
 
-  const listings = useCategoryListings(slugs);
+  const listings = useBrowseListingPages({ slugs }, enabled, 'category-listings');
 
   return { shows, listings };
 }

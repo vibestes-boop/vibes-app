@@ -8,8 +8,19 @@
 // den verhandelt wird — wer ihn auf einer Verwaltungsseite sucht, verhandelt
 // nicht mehr.
 
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useId, useState } from 'react';
+import {
+  ActivityIndicator,
+  InputAccessoryView,
+  Keyboard,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from 'react-native';
 import { Handshake } from 'lucide-react-native';
 
 import { formatEuro } from '../lib/useAuction';
@@ -46,6 +57,34 @@ function statusText(offer: Offer): string {
     case 'withdrawn':
       return 'zurückgezogen';
   }
+}
+
+// Die iOS-Dezimaltastatur hat keine Fertig-Taste. Sie schließt hier nur die
+// Eingabe; ein Preisvorschlag wird weiterhin ausschließlich über Senden abgegeben.
+function PriceInput(props: TextInputProps) {
+  const accessoryId = useId();
+  return (
+    <>
+      <TextInput
+        {...props}
+        inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
+      />
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={accessoryId} backgroundColor={ui.card}>
+          <View style={s.keyboardBar}>
+            <Pressable
+              onPress={Keyboard.dismiss}
+              style={s.keyboardDone}
+              accessibilityRole="button"
+              accessibilityLabel="Tastatur schließen"
+            >
+              <Text style={s.sendText}>Fertig</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
+    </>
+  );
 }
 
 export function OfferPanel({
@@ -149,10 +188,11 @@ export function OfferPanel({
           <Text style={s.hint}>Dein letzter Vorschlag wurde {statusText(mine)}.</Text>
         ) : null}
         <View style={s.row}>
-          <TextInput
+          <PriceInput
             value={draft}
             onChangeText={setDraft}
             placeholder="Dein Preis in €"
+            accessibilityLabel="Dein Preis in Euro"
             placeholderTextColor={ui.textMuted}
             keyboardType="decimal-pad"
             style={s.input}
@@ -166,6 +206,7 @@ export function OfferPanel({
             }}
             accessibilityRole="button"
             accessibilityLabel="Vorschlag senden"
+            accessibilityState={{ disabled: !draftOk || busy, busy }}
           >
             {busy ? (
               <ActivityIndicator color={ui.text} />
@@ -206,10 +247,11 @@ export function OfferPanel({
           {offer.status === 'pending' ? (
             counterFor === offer.id ? (
               <View style={s.counterBox}>
-                <TextInput
+                <PriceInput
                   value={counterDraft}
                   onChangeText={setCounterDraft}
                   placeholder="Dein Preis"
+                  accessibilityLabel="Dein Gegenvorschlag in Euro"
                   placeholderTextColor={ui.textMuted}
                   keyboardType="decimal-pad"
                   style={[s.input, { width: 96 }]}
@@ -292,9 +334,11 @@ const s = StyleSheet.create({
   hint: { fontSize: 12, color: ui.textMuted, lineHeight: 17 },
   warn: { fontSize: 12, color: ui.live },
 
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm },
   input: {
     flex: 1,
+    minWidth: 120,
+    minHeight: 48,
     backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
@@ -303,7 +347,8 @@ const s = StyleSheet.create({
     color: ui.text,
   },
   send: {
-    height: 42,
+    minHeight: 48,
+    paddingVertical: space.sm,
     paddingHorizontal: space.lg,
     borderRadius: radius.pill,
     borderWidth: 1.5,
@@ -312,6 +357,21 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   sendText: { fontSize: 14, fontWeight: '700', color: ui.text },
+  keyboardBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: ui.line,
+    paddingHorizontal: space.md,
+  },
+  keyboardDone: {
+    minHeight: 44,
+    minWidth: 64,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   off: { opacity: 0.45 },
 
   offerRow: {

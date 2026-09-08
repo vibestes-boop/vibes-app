@@ -46,10 +46,10 @@ export type MyBid = {
  * „Deine Pakete" beziehungsweise ist vorbei. Diese Liste beantwortet
  * ausschließlich „wo läuft gerade etwas für mich?".
  */
-export function useMyBids(userId: string | null | undefined) {
+export function useMyBids(userId: string | null | undefined, enabled = true) {
   const query = useQuery({
     queryKey: ['berkat', 'my-bids', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     // Eine laufende Auktion ändert sich im Sekundentakt; zwanzig Sekunden ist
     // der Takt, den auch die Startseite für Shows nimmt. Der Live-Raum selbst
     // hat Realtime — hier reicht es, beim Hinsehen richtig zu liegen.

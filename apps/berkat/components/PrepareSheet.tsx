@@ -20,7 +20,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -41,6 +40,8 @@ import { formatSlot, type PlannedShow } from '../lib/useSchedule';
 import { pickAndUpload } from '../lib/uploadImage';
 import type { PreparedAuction } from '../lib/usePrepared';
 import { radius, space, ui } from '../theme/tokens';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 
 /** Gespiegelt aus `prepare_live_auction` — dort wirft es `too_many_prepared`. */
 const MAX_PREPARED = 50;
@@ -110,6 +111,7 @@ export function PrepareSheet({
   onDiscard,
   onCancelPlan,
 }: Props) {
+  const reducedMotion = useReducedMotion();
   const [title, setTitle] = useState('');
   const [startPrice, setStartPrice] = useState('');
   const [increment, setIncrement] = useState('');
@@ -201,7 +203,7 @@ export function PrepareSheet({
   return (
     <Modal
       visible={plan !== null}
-      animationType="slide"
+      animationType={reducedMotion ? 'none' : 'slide'}
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
@@ -210,7 +212,7 @@ export function PrepareSheet({
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={s.headTitle}>Artikel vorbereiten</Text>
             {plan ? (
-              <Text numberOfLines={1} style={s.headSub}>
+              <Text style={s.headSub}>
                 {plan.title} · {formatSlot(plan.scheduled_at)}
               </Text>
             ) : null}
@@ -223,9 +225,9 @@ export function PrepareSheet({
               ist in dem Moment in der Datenbank, in dem er in der Liste
               erscheint. Der ehrliche Ausgang heißt deshalb „Fertig".
               Am Gerät gemeldet, 21.08.2026. */}
-          <Pressable hitSlop={10} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fertig">
+          <PressFeedback style={s.doneButton} hitSlop={10} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fertig">
             <Text style={s.done}>Fertig</Text>
-          </Pressable>
+          </PressFeedback>
         </View>
 
         <ScrollView
@@ -233,9 +235,9 @@ export function PrepareSheet({
           keyboardShouldPersistTaps="handled"
         >
           {notice ? (
-            <Pressable style={s.notice} onPress={onDismissNotice}>
+            <PressFeedback style={s.notice} onPress={onDismissNotice}>
               <Text style={s.noticeText}>{notice}</Text>
-            </Pressable>
+            </PressFeedback>
           ) : null}
 
           {/* ── Was schon bereitliegt. Steht ÜBER dem Formular: Wer das Blatt
@@ -284,7 +286,7 @@ export function PrepareSheet({
                       </Text>
                     ) : null}
                   </View>
-                  <Pressable
+                  <PressFeedback
                     hitSlop={8}
                     onPress={() => confirmDiscard(item)}
                     disabled={busy}
@@ -292,7 +294,7 @@ export function PrepareSheet({
                     accessibilityLabel={`${item.title} verwerfen`}
                   >
                     <X size={16} color={ui.textMuted} />
-                  </Pressable>
+                  </PressFeedback>
                 </View>
               ))}
               {/* Die eigentliche Auskunft dieses Blattes — sie sagt, wozu das
@@ -304,10 +306,10 @@ export function PrepareSheet({
           ) : (
             <View style={s.empty}>
               <Package size={26} color={ui.lineStrong} />
-              <Text style={s.emptyTitle}>Noch nichts vorbereitet</Text>
+              <Text style={s.emptyTitle}>Deine Artikel für die Show</Text>
               <Text style={s.emptyBody}>
-                Leg heute schon an, was du am Abend verkaufst — dann tippst du nicht vor
-                laufender Kamera. Deine Zuschauer sehen vorab, was kommt.
+                Wähle Artikel aus deinem Regal oder bereite unten einen neuen Artikel vor.
+                Deine Zuschauer können vorab sehen, was kommt.
               </Text>
             </View>
           )}
@@ -316,7 +318,7 @@ export function PrepareSheet({
               billigere Weg ist: Wer den Artikel schon einmal eingestellt hat,
               soll ihn nicht ein zweites Mal tippen. Erst wenn es ihn dort nicht
               gibt, ist das Formular darunter dran. ────────────────────────── */}
-          <Pressable
+          <PressFeedback
             style={s.shelfButton}
             onPress={() => setShelfOpen(true)}
             accessibilityRole="button"
@@ -329,7 +331,7 @@ export function PrepareSheet({
                 Was du schon anbietest — startet in der Show bei 1 €
               </Text>
             </View>
-          </Pressable>
+          </PressFeedback>
 
           {/* ── Das Formular. Gleiche Anordnung wie „Artikel auflegen" im
               Studio: Bild links, Titel rechts, darunter die Preise in einer
@@ -338,7 +340,7 @@ export function PrepareSheet({
             <Text style={s.cardTitle}>Artikel hinzufügen</Text>
 
             <View style={s.titleRow}>
-              <Pressable
+              <PressFeedback
                 style={s.picker}
                 onPress={addImage}
                 disabled={uploading}
@@ -359,7 +361,7 @@ export function PrepareSheet({
                   <ImagePlus size={20} color={ui.textMuted} />
                 )}
                 {imageUrl && !uploading ? (
-                  <Pressable
+                  <PressFeedback
                     onPress={() => setImageUrl(null)}
                     hitSlop={10}
                     style={s.thumbClear}
@@ -367,9 +369,9 @@ export function PrepareSheet({
                     accessibilityLabel="Bild entfernen"
                   >
                     <X size={13} color={ui.card} />
-                  </Pressable>
+                  </PressFeedback>
                 ) : null}
-              </Pressable>
+              </PressFeedback>
 
               <TextInput
                 value={title}
@@ -439,7 +441,7 @@ export function PrepareSheet({
               </Text>
             ) : null}
 
-            <Pressable
+            <PressFeedback
               style={[s.primary, !canSubmit && s.primaryOff]}
               disabled={!canSubmit}
               onPress={submit}
@@ -448,7 +450,7 @@ export function PrepareSheet({
             >
               <Plus size={17} color={ui.goldInk} />
               <Text style={s.primaryText}>Vorbereiten</Text>
-            </Pressable>
+            </PressFeedback>
           </View>
 
           {/* ── Den Abend absagen. Ganz unten und als Textzeile, nicht als rote
@@ -456,7 +458,7 @@ export function PrepareSheet({
               FLÄCHE ist das Löschen des Kontos (Abschnitt 59). Ein Termin ist
               zurücknehmbar, das darf nicht aussehen wie ein Notausgang. ───── */}
           {plan ? (
-            <Pressable
+            <PressFeedback
               style={s.cancelPlan}
               onPress={() => {
                 // ⚠️ `Alert.alert`, NICHT `Alert.prompt` — das gibt es nur auf
@@ -482,7 +484,7 @@ export function PrepareSheet({
               accessibilityLabel={`${plan.title} absagen`}
             >
               <Text style={s.cancelPlanText}>Diesen Termin absagen</Text>
-            </Pressable>
+            </PressFeedback>
           ) : null}
         </ScrollView>
       </View>
@@ -553,6 +555,7 @@ const s = StyleSheet.create({
   shelfButtonText: { fontSize: 15, fontWeight: '600', color: ui.text },
   shelfButtonHint: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
 
+  doneButton: { minWidth: 44, minHeight: 44, paddingHorizontal: space.sm, justifyContent: 'center', alignItems: 'center' },
   done: { fontSize: 16, fontWeight: '600', color: ui.brand },
   cancelPlan: { alignItems: 'center', paddingVertical: space.lg },
   cancelPlanText: { fontSize: 13, fontWeight: '600', color: ui.live },

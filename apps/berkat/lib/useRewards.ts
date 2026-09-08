@@ -72,10 +72,10 @@ const EMPTY: Rewards = {
   perks: [],
 };
 
-export function useMyRewards(userId: string | null) {
+export function useMyRewards(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'rewards', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<Rewards> => {

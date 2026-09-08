@@ -223,10 +223,10 @@ export function useBerkatNotifications(userId: string | null) {
 }
 
 /** Wie viele davon sind ungelesen — für das Abzeichen an der Glocke. */
-export function useUnreadCount(userId: string | null) {
+export function useUnreadCount(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'notifications-unread', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     // Meldungen entstehen SERVERSEITIG (Trigger, pg_cron, Webhook) — die App

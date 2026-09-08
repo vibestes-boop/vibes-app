@@ -19,6 +19,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -60,6 +61,7 @@ export default function ShelfScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pulling, setPulling] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,6 +107,15 @@ export default function ShelfScreen() {
           </Pressable>
         ) : null}
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: composerOpen }}
+          onPress={() => { Keyboard.dismiss(); setComposerOpen((open) => !open); }}
+          style={styles.createToggle}
+        >
+          <Text style={styles.createToggleText}>{composerOpen ? 'Formular einklappen' : '+ Neuen Artikel einstellen'}</Text>
+        </Pressable>
+        <View style={!composerOpen ? { display: 'none' } : undefined} accessibilityElementsHidden={!composerOpen} importantForAccessibility={composerOpen ? 'auto' : 'no-hide-descendants'}>
         <StandingComposer
           busy={actions.create.isPending}
           canWomenOnly={Boolean(myProfile?.women_only_verified)}
@@ -177,6 +188,7 @@ export default function ShelfScreen() {
           }
         />
 
+        </View>
         {/* Die kompakte Liste: Hier wird verwaltet, nicht gestöbert. Ein Tipp
             auf eine Zeile öffnet den Artikel so, wie ein Fremder ihn sieht —
             das ist die einzige Vorschau, die es gibt. Zurückziehen bleibt am
@@ -195,7 +207,7 @@ export default function ShelfScreen() {
               )
               .finally(() => setBusyId(null));
           }}
-          emptyText="Noch nichts drin. Trag oben den ersten Artikel ein — er ist dann rund um die Uhr kaufbar, auch wenn du nicht sendest."
+          emptyText="Noch nichts drin. Über „Neuen Artikel einstellen“ legst du dein erstes Angebot an — auch zwischen deinen Shows kaufbar."
         />
 
         {/* ── Was aus Sendungen übrig ist ────────────────────────────────────
@@ -213,6 +225,8 @@ export default function ShelfScreen() {
 }
 
 const styles = StyleSheet.create({
+  createToggle: { minHeight: 52, padding: space.md, marginBottom: space.md, borderRadius: radius.pill, backgroundColor: ui.brand, justifyContent: 'center', alignItems: 'center' },
+  createToggleText: { fontSize: 15, fontWeight: '700', color: ui.card, textAlign: 'center' },
   screen: { flex: 1, backgroundColor: ui.bg },
   header: {
     flexDirection: 'row',

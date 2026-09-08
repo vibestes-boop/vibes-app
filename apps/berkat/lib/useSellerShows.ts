@@ -29,12 +29,12 @@ export type AnnouncedShow = {
   women_only: boolean;
 };
 
-export function useSellerShows(sellerId: string | undefined) {
+export function useSellerShows(sellerId: string | undefined, enabled = true, includePast = true) {
   const past = useQuery({
     queryKey: ['berkat', 'seller-past-shows', sellerId],
-    enabled: Boolean(sellerId),
+    enabled: enabled && includePast && Boolean(sellerId),
     staleTime: 60_000,
-    queryFn: async (): Promise<PastShow[]> => {
+    queryFn: async ({ signal }): Promise<PastShow[]> => {
       const { data, error } = await supabase
         .from('live_sessions')
         .select('id, title, thumbnail_url, started_at, ended_at, women_only')
@@ -42,7 +42,7 @@ export function useSellerShows(sellerId: string | undefined) {
         .eq('app', 'berkat')
         .eq('status', 'ended')
         .order('started_at', { ascending: false })
-        .limit(20);
+        .limit(20).abortSignal(signal).retry(false);
       if (error) throw error;
       return (data ?? []) as PastShow[];
     },
@@ -50,9 +50,9 @@ export function useSellerShows(sellerId: string | undefined) {
 
   const announced = useQuery({
     queryKey: ['berkat', 'seller-announced-shows', sellerId],
-    enabled: Boolean(sellerId),
+    enabled: enabled && Boolean(sellerId),
     staleTime: 60_000,
-    queryFn: async (): Promise<AnnouncedShow[]> => {
+    queryFn: async ({ signal }): Promise<AnnouncedShow[]> => {
       const { data, error } = await supabase
         .from('scheduled_lives')
         .select('id, title, scheduled_at, women_only')
@@ -61,7 +61,7 @@ export function useSellerShows(sellerId: string | undefined) {
         .in('status', ['scheduled', 'reminded'])
         .gt('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
-        .limit(10);
+        .limit(10).abortSignal(signal).retry(false);
       if (error) throw error;
       return (data ?? []) as AnnouncedShow[];
     },

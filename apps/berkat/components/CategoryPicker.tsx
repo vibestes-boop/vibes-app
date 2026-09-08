@@ -14,9 +14,10 @@
 // unterste Ebene würde nur dazu führen, dass alle die erste Unterkategorie
 // nehmen.
 
-import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useCategoryOptions } from '../lib/useCategories';
 import { ui, radius, space } from '../theme/tokens';
+import { PressFeedback } from './PressFeedback';
 
 type Props = {
   /** Slug der gewählten Kategorie — Ober- oder Unterkategorie. */
@@ -36,13 +37,14 @@ export function CategoryPicker({
   label = 'Kategorie',
 }: Props) {
   const { groups } = useCategoryOptions();
+  const { fontScale } = useWindowDimensions();
   if (groups.length === 0) return null;
 
   const open = groups.find((group) => group.slug === openParent);
 
   return (
     <>
-      <Text style={s.label}>{label}</Text>
+      <Text key={`label-${fontScale}`} style={s.label}>{label}</Text>
 
       <ScrollView
         horizontal
@@ -57,8 +59,8 @@ export function CategoryPicker({
           const active =
             value === group.slug || group.children.some((child) => child.slug === value);
           return (
-            <Pressable
-              key={group.slug}
+            <PressFeedback
+              key={`${group.slug}-${fontScale}`}
               onPress={() => {
                 if (openParent === group.slug) {
                   // Zweiter Tipp: zuklappen und abwählen. Ohne das gäbe es
@@ -75,7 +77,7 @@ export function CategoryPicker({
               accessibilityState={{ selected: active, expanded: openParent === group.slug }}
             >
               <Text style={[s.pillText, active && s.pillTextOn]}>{group.name}</Text>
-            </Pressable>
+            </PressFeedback>
           );
         })}
       </ScrollView>
@@ -90,8 +92,8 @@ export function CategoryPicker({
           {open.children.map((child) => {
             const active = value === child.slug;
             return (
-              <Pressable
-                key={child.slug}
+              <PressFeedback
+                key={`${child.slug}-${fontScale}`}
                 // Zweiter Tipp auf dasselbe Kind fällt auf die Oberkategorie
                 // zurück statt auf gar nichts — das ist der Schritt, den man
                 // meint, wenn man „doch nicht so genau" denkt.
@@ -101,7 +103,7 @@ export function CategoryPicker({
                 accessibilityState={{ selected: active }}
               >
                 <Text style={[s.childText, active && s.childTextOn]}>{child.name}</Text>
-              </Pressable>
+              </PressFeedback>
             );
           })}
         </ScrollView>
@@ -112,7 +114,7 @@ export function CategoryPicker({
           gefragt hat (sechste Whatnot-Analyse, 19.08.2026). */}
       {value ? null : (
         <View style={s.hintWrap}>
-          <Text style={s.hint}>Ohne Kategorie findet dich niemand, der dich noch nicht kennt.</Text>
+          <Text key={fontScale} style={s.hint}>Wähle die passende Kategorie, damit Käufer deinen Artikel beim Stöbern finden.</Text>
         </View>
       )}
     </>
@@ -126,7 +128,8 @@ const s = StyleSheet.create({
 
   pill: {
     paddingHorizontal: space.md,
-    height: 34,
+    minHeight: 44,
+    paddingVertical: space.sm,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
@@ -139,7 +142,8 @@ const s = StyleSheet.create({
   // einen Blick klar bleibt, welche Reihe die übergeordnete ist.
   childPill: {
     paddingHorizontal: space.md,
-    height: 30,
+    minHeight: 44,
+    paddingVertical: space.sm,
     justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,

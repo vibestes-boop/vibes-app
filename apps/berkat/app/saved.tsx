@@ -11,7 +11,7 @@
 // Zurück-Pfeil und die Aufforderung, sich anzumelden.
 
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Heart } from 'lucide-react-native';
 
@@ -27,24 +27,24 @@ export default function SavedScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/account')} style={styles.back}>
+        <Pressable onPress={() => goBack('/(tabs)/account')} style={styles.back} accessibilityRole="button" accessibilityLabel="Zurück">
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Gemerkt</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">Gemerkt</Text>
         <View style={styles.back} />
       </View>
 
       {!myUserId ? (
-        <View style={styles.empty}>
-          <Heart size={36} color={ui.sunken} />
+        <ScrollView contentContainerStyle={[styles.empty, { paddingBottom: insets.bottom + space.xl }]}>
+          <View style={styles.emptyIcon}><Heart size={28} color={ui.brand} /></View>
           <Text style={styles.emptyTitle}>Melde dich an</Text>
           <Text style={styles.emptyBody}>
-            Deine Merkliste hängt an deinem Konto — sonst wäre sie beim nächsten Gerät weg.
+            Speichere deine Favoriten und finde sie auf jedem Gerät wieder.
           </Text>
-          <Pressable style={styles.emptyBtn} onPress={() => router.push('/login')}>
+          <Pressable style={styles.emptyBtn} onPress={() => router.push('/login')} accessibilityRole="button">
             <Text style={styles.emptyBtnText}>Anmelden</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       ) : (
         <SavedList userId={myUserId} bottomInset={insets.bottom} />
       )}
@@ -61,21 +61,22 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
     paddingBottom: space.md,
   },
-  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
 
-  empty: { alignItems: 'center', paddingTop: space.xl * 2, paddingHorizontal: space.lg, gap: space.sm },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: ui.text },
-  emptyBody: { fontSize: 13, color: ui.textMuted, textAlign: 'center', lineHeight: 19 },
+  empty: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingTop: space.xl, paddingHorizontal: space.xl, gap: space.sm },
+  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: ui.card, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm },
+  emptyTitle: { fontSize: 21, lineHeight: 28, fontWeight: '700', color: ui.text, textAlign: 'center' },
+  emptyBody: { fontSize: 15, color: ui.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 340 },
   emptyBtn: {
     marginTop: space.sm,
-    height: 44,
+    minHeight: 48,
+    paddingVertical: space.md,
     paddingHorizontal: space.xl,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: ui.lineStrong,
+    backgroundColor: ui.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyBtnText: { fontSize: 14, fontWeight: '700', color: ui.text },
+  emptyBtnText: { fontSize: 15, lineHeight: 21, fontWeight: '700', color: ui.card },
 });

@@ -28,11 +28,13 @@
 // Und nichts davon ist eine Frist: Es gibt keinen Streak, keinen Countdown,
 // keine Erinnerung.
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Check, ChevronRight } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { ui, radius, space } from '../theme/tokens';
+import { PressFeedback } from './PressFeedback';
 
 export type StartStep = {
   key: string;
@@ -148,6 +150,8 @@ export function SellerStart({
   steps: StartStep[];
   onOpen: (target: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleSteps = expanded ? steps : steps.filter((step) => !step.done).slice(0, 1);
   const done = steps.filter((s) => s.done).length;
 
   // Restlos weg, sobald alles steht. Eine Karte, die dauerhaft „4 von 4" sagt,
@@ -167,7 +171,7 @@ export function SellerStart({
         <View style={[s.barFill, { width: `${(done / steps.length) * 100}%` }]} />
       </View>
 
-      {steps.map((step, index) => {
+      {visibleSteps.map((step, index) => {
         const row = (
           <>
             <View style={[s.mark, step.done && s.markDone]}>
@@ -188,21 +192,29 @@ export function SellerStart({
         // Nur offene Schritte mit Ziel sind antippbar. Ein erledigter Schritt
         // als Knopf würde jemanden zurückschicken, der schon fertig ist.
         return !step.done && step.target ? (
-          <Pressable
+          <PressFeedback kind="card"
             key={step.key}
-            style={({ pressed }) => [s.row, index > 0 && s.rowSplit, pressed && s.rowPressed]}
+            style={[s.row, index > 0 && s.rowSplit]}
             onPress={() => onOpen(step.target!)}
             accessibilityRole="button"
             accessibilityLabel={`${step.label} — ${step.hint}`}
           >
             {row}
-          </Pressable>
+          </PressFeedback>
         ) : (
           <View key={step.key} style={[s.row, index > 0 && s.rowSplit]}>
             {row}
           </View>
         );
       })}
+      <PressFeedback
+        onPress={() => setExpanded((value) => !value)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        style={s.toggle}
+      >
+        <Text style={s.toggleText}>{expanded ? 'Weniger anzeigen' : 'Alle Schritte ansehen'}</Text>
+      </PressFeedback>
     </View>
   );
 }
@@ -216,7 +228,9 @@ const s = StyleSheet.create({
     padding: space.lg,
     marginBottom: space.md,
   },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  toggle: { minHeight: 44, justifyContent: 'center' },
+  toggleText: { fontSize: 12, fontWeight: '600', color: ui.brand },
+  head: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 16, fontWeight: '700', color: ui.text },
   count: { fontSize: 12, fontWeight: '700', color: ui.textMuted },
 
@@ -232,7 +246,6 @@ const s = StyleSheet.create({
 
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: 11 },
   rowSplit: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.line },
-  rowPressed: { opacity: 0.6 },
   mark: {
     width: 22,
     height: 22,

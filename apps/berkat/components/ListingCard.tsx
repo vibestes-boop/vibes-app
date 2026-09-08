@@ -24,8 +24,8 @@
 // Rechtsfolge danebensteht.
 
 import type { ReactNode } from 'react';
-import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ProductPhoto } from './ProductPhoto';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { CalendarClock, Camera, Heart, Lock } from 'lucide-react-native';
 
 import { formatEuro } from '../lib/useAuction';
@@ -39,6 +39,7 @@ import {
 } from '../lib/useListings';
 import { formatSlot } from '../lib/useSchedule';
 import { radius, ratio, space, ui } from '../theme/tokens';
+import { PressFeedback } from './PressFeedback';
 
 type Props = {
   listing: Listing;
@@ -50,10 +51,10 @@ type Props = {
   sellerName?: string | null;
   /**
    * `grid` zum Stöbern („was soll ich mir ansehen?" — das Bild IST der Inhalt),
-   * `row` zum Arbeiten („welches davon meine ich?" — das Bild ist nur
+   * `search` für größere Suchzeilen, `row` zum Arbeiten („welches davon meine ich?" — das Bild ist nur
    * Wiedererkennung). Die Regel steht in HANDOFF 18.
    */
-  layout?: 'grid' | 'row';
+  layout?: 'grid' | 'row' | 'search';
   /** Eigener Artikel — bekommt eine ruhige Markierung statt eines Kaufwegs. */
   mine?: boolean;
   /**
@@ -78,7 +79,7 @@ type Props = {
    */
   trailing?: ReactNode;
   /**
-   * Das Merken-Herz (nur `grid`, nur fremde Artikel). Beides zusammen setzen:
+   * Das Merken-Herz (in `grid` und `search`, nur fremde Artikel). Beides zusammen setzen:
    * Ohne `onToggleSaved` erscheint kein Herz — auf dem eigenen Regal und in
    * Listen ohne Merk-Funktion soll die Karte nichts versprechen.
    */
@@ -97,6 +98,7 @@ export function ListingCard({
   saveCount,
   onToggleSaved,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
   const imageCount = listingImages(listing).length;
   const meta = listingMeta(listing, conditionLabel(listing.condition));
   // Nur das Etikett, nicht der ganze Satz: Die Rechtsfolge („kein
@@ -130,31 +132,24 @@ export function ListingCard({
   // statt sieht, bekommt sonst „Kleid, ab 1 €" — und hält es für kaufbar.
   const label = `${listing.title}, ${priceText}${
     show ? `, in einer Sendung am ${formatSlot(show.scheduled_at)}` : ''
-  }${sellerName ? `, von ${sellerName}` : ''}`;
+  }${sellerName ? `, von ${sellerName}` : ''}${kind ? `, ${kind}` : ''}`;
 
-  if (layout === 'row') {
+  if (layout === 'row' || layout === 'search') {
     return (
-      <View style={s.rowWrap}>
-        <Pressable
-          style={({ pressed }) => [s.row, pressed && s.pressed]}
+      <View key={fontScale} style={[s.rowWrap, layout === 'search' && s.searchCard]}>
+        <PressFeedback kind="card"
+          style={[s.row]}
           onPress={onPress}
           accessibilityRole="button"
           accessibilityLabel={label}
         >
-          <View style={s.rowThumb}>
-            {listing.image_url ? (
-              <Image
-                source={{ uri: listing.image_url }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                transition={120}
-              />
-            ) : null}
+          <View style={[s.rowThumb, layout === 'search' && s.searchPhoto]}>
+            <ProductPhoto uri={listing.image_url} style={StyleSheet.absoluteFill} compact />
           </View>
 
           <View style={{ flex: 1, minWidth: 0 }}>
             <View style={s.titleRow}>
-              <Text numberOfLines={2} style={s.rowTitle}>
+              <Text numberOfLines={2} style={[s.rowTitle, layout === 'search' && s.searchTitle]}>
                 {listing.title}
               </Text>
               {listing.women_only ? <Lock size={12} color={ui.success} /> : null}
@@ -164,7 +159,7 @@ export function ListingCard({
                 (`useSellerListings` bleibt beim Regal), aber ein Preis, der
                 nur in einem von zwei Layouts stimmt, ist eine Falle, die
                 still auf ihren Tag wartet. */}
-            <Text style={s.rowPrice}>{priceText}</Text>
+            <Text style={[s.rowPrice, layout === 'search' && s.searchPrice]}>{priceText}</Text>
             {show ? (
               <Text numberOfLines={1} style={s.rowShow}>
                 In der Sendung {formatSlot(show.scheduled_at)}
@@ -180,7 +175,7 @@ export function ListingCard({
               </Text>
             ) : null}
             {meta ? (
-              <Text numberOfLines={1} style={s.meta}>
+              <Text numberOfLines={2} style={s.meta}>
                 {meta}
               </Text>
             ) : null}
@@ -189,30 +184,35 @@ export function ListingCard({
                 Meta-Zeile zu hängen wäre falsch: Die ist einzeilig gekürzt, und
                 ausgerechnet die Rechtsangabe würde als Erstes abgeschnitten. */}
             {kind ? <Text style={[s.kind, s.kindAlone]}>{kind}</Text> : null}
+            {mine && layout === 'search' ? <Text style={s.searchOwn}>Deins</Text> : null}
           </View>
-        </Pressable>
+        </PressFeedback>
 
+        {layout === 'search' && onToggleSaved && !mine ? (
+          <PressFeedback onPress={onToggleSaved} accessibilityRole="button"
+            accessibilityLabel={saved ? 'Artikel aus Merkliste entfernen' : 'Artikel merken'}
+            accessibilityState={{ selected: saved }}
+            style={[s.searchSave]}>
+            <Heart size={20} color={saved ? ui.brand : ui.textMuted} fill={saved ? ui.brand : 'none'} />
+          </PressFeedback>
+        ) : null}
         {trailing ?? null}
       </View>
     );
   }
 
   return (
-    <Pressable
-      style={({ pressed }) => [s.cell, pressed && s.pressed]}
+    <PressFeedback kind="card"
+      // iOS kann nach einem Schriftwechsel alte Textmaße behalten. Nur diese
+      // zustandsfreie Karte neu aufbauen; Filter und Listenposition bleiben stehen.
+      key={fontScale}
+      style={[s.cell]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
       <View style={s.thumb}>
-        {listing.image_url ? (
-          <Image
-            source={{ uri: listing.image_url }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={140}
-          />
-        ) : null}
+        <ProductPhoto uri={listing.image_url} style={StyleSheet.absoluteFill} />
         {listing.women_only ? (
           <View style={s.lock}>
             <Lock size={11} color={ui.successInk} />
@@ -272,7 +272,7 @@ export function ListingCard({
             Gemerkt ist eine Bestätigung, keine Dringlichkeit (rot) und kein
             Kauf (gold). */}
         {!mine && onToggleSaved ? (
-          <Pressable
+          <PressFeedback
             style={[s.heart, saveCount && saveCount > 0 ? s.heartWide : null]}
             hitSlop={6}
             onPress={onToggleSaved}
@@ -295,13 +295,17 @@ export function ListingCard({
             {saveCount && saveCount > 0 ? (
               <Text style={s.heartCount}>{saveCount}</Text>
             ) : null}
-          </Pressable>
+          </PressFeedback>
         ) : null}
 
         {/* Mehr als ein Foto: die Zahl sagt „hier gibt es mehr zu sehen" —
             und nur dann. Eine „1" wäre Lärm. */}
         {imageCount > 1 ? (
-          <View style={s.countPill}>
+          <View style={[
+            s.countPill,
+            (show || listing.status === 'sold' || listing.status === 'cancelled') &&
+              { bottom: space.sm + 30 * fontScale },
+          ]}>
             <Camera size={10} color={ui.overlayMuted} />
             <Text style={s.countPillText}>{imageCount}</Text>
           </View>
@@ -309,39 +313,9 @@ export function ListingCard({
 
       </View>
 
-      {/* ⚠️ Verkäufer UND Anbietertyp in EINER Zeile.
-          Bis zum 22.08.2026 standen sie an entgegengesetzten Enden des Blocks:
-          der Name ganz oben, „Privatverkauf" ganz unten — losgelöst, wo es wie
-          ein Nachtrag wirkte. Dabei gehören beide zusammen: WER verkauft und
-          ALS WAS. Eine Zeile weniger auf einer Karte, die sechs hatte.
-
-          ⚠️ Die Aufteilung ist nicht beliebig: Der NAME schrumpft
-          (`flexShrink`), das Etikett nicht. Ein langer Benutzername kürzt sich
-          also selbst, statt die Angabe abzuschneiden, die die Rechtsfolge
-          trägt (Art. 246d § 1 EGBGB). Dieselbe Regel wie im Posteingang, wo
-          der Name schrumpft und die Uhrzeit stehen bleibt. */}
-      {/* ⚠️ Diese drei Zeilen stehen IMMER, auch wenn sie leer bleiben.
-          Bis zum 22.08.2026 waren Byline und Meta-Zeile an ihren Inhalt
-          gebunden und der Titel wuchs frei auf ein oder zwei Zeilen. In einem
-          zweispaltigen Raster heißt das: Zwei Karten nebeneinander sind
-          verschieden hoch, und damit stehen Preis und Meta-Zeile der linken
-          Karte auf einer anderen Höhe als die der rechten. Nichts fluchtet,
-          und der Abstand zur nächsten Reihe ist links ein anderer als rechts.
-
-          Genau das ist der Grund, warum das Raster „unfertig" aussieht — nicht
-          die Gestaltung der einzelnen Karte, sondern dass keine zwei gleich
-          sind (Analyse 14). Eine feste Höhe kostet bei einzeiligen Titeln eine
-          Leerzeile; sie ist der Preis dafür, dass das Raster ein Raster ist. */}
-      <View style={s.byline}>
-        {sellerName ? (
-          <Text numberOfLines={1} style={s.seller}>
-            {sellerName}
-          </Text>
-        ) : null}
-        {sellerName && kind ? <Text style={s.bylineDot}>·</Text> : null}
-        {kind ? <Text style={s.kind}>{kind}</Text> : null}
-      </View>
-      <Text numberOfLines={2} style={s.title}>
+      {/* Zwei Titelzeilen halten Preise im Raster auf gleicher Höhe.
+          Die Höhe folgt der Systemschrift, damit größere Schrift Platz behält. */}
+      <Text numberOfLines={2} style={[s.title, { minHeight: 40 * fontScale }]}>
         {listing.title}
       </Text>
       {/* ⚠️ Der Preis bleibt UNTER dem Bild, nicht darauf.
@@ -358,21 +332,24 @@ export function ListingCard({
           zwei völlig verschiedene Zusagen. Ohne den Vorsatz sähe ein Kleid,
           das Freitag ab 1 € versteigert wird, aus wie ein Kleid für 1 €. */}
       <Text style={s.price}>{priceText}</Text>
-      <Text numberOfLines={1} style={s.meta}>
+      <Text numberOfLines={2} style={[s.meta, { minHeight: 32 * fontScale }]}>
         {meta ?? ' '}
       </Text>
-    </Pressable>
+      <View style={s.byline}>
+        {sellerName ? <Text numberOfLines={1} style={s.seller}>{sellerName}</Text> : null}
+        {kind ? <Text style={s.kind}>{kind}</Text> : null}
+      </View>
+    </PressFeedback>
   );
 }
 
 const s = StyleSheet.create({
-  pressed: { opacity: 0.7 },
 
   // ── Raster ───────────────────────────────────────────────────────────────
-  cell: { flex: 1 },
+  cell: { flex: 1, minWidth: 0, paddingBottom: space.sm },
   thumb: {
     aspectRatio: ratio.card,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: ui.sunken,
     overflow: 'hidden',
   },
@@ -429,9 +406,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 32,
+    minHeight: 32,
+    borderRadius: radius.pill,
     backgroundColor: ui.overlay,
   },
   // Mit Zahl wird aus dem Kreis eine Pille — die Breite kommt vom Inhalt.
@@ -451,29 +428,25 @@ const s = StyleSheet.create({
   },
   countPillText: { fontSize: 10, fontWeight: '700', color: ui.overlayMuted },
 
-  // Feste Höhen — siehe die Begründung am JSX. `lineHeight` MUSS dabei stehen:
-  // Ohne ihn rechnet iOS die Zeilenhöhe aus der Schrift, und `height` schneidet
-  // dann die zweite Zeile an, statt sie zu tragen.
-  byline: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-    marginTop: 6,
-    minHeight: 14,
-  },
-  seller: { flexShrink: 1, fontSize: 11, color: ui.textMuted },
-  bylineDot: { fontSize: 11, color: ui.textMuted },
+  // Anbietername und Typ bekommen eigene Zeilen, auch bei schmalen Karten.
+  byline: { gap: 2, marginTop: space.sm },
+  seller: { fontSize: 11, lineHeight: 15, color: ui.textMuted },
   title: {
-    fontSize: 14,
-    lineHeight: 18,
-    height: 36,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '600',
     color: ui.text,
-    marginTop: 1,
+    marginTop: space.sm,
   },
-  price: { fontSize: 15, fontWeight: '700', color: ui.text, marginTop: 2 },
+  price: { fontSize: 17, lineHeight: 23, fontWeight: '700', color: ui.text, marginTop: 4 },
 
   // ── Zeile ────────────────────────────────────────────────────────────────
+  searchCard: { backgroundColor: ui.card, padding: space.md, borderRadius: radius.lg },
+  searchPhoto: { width: 76, height: 94, borderRadius: radius.md },
+  searchTitle: { fontSize: 15, lineHeight: 21 },
+  searchPrice: { fontSize: 18, lineHeight: 24 },
+  searchOwn: { fontSize: 12, fontWeight: '600', color: ui.brand, marginTop: 4 },
+  searchSave: { width: 44, height: 44, alignSelf: 'flex-start', alignItems: 'center', justifyContent: 'center' },
   rowWrap: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   row: {
     flex: 1,
@@ -497,7 +470,7 @@ const s = StyleSheet.create({
   rowWarn: { fontSize: 12, fontWeight: '600', color: ui.live, marginTop: 2 },
 
   // ── Beides ───────────────────────────────────────────────────────────────
-  meta: { fontSize: 11, color: ui.textMuted, marginTop: 2 },
+  meta: { fontSize: 12, lineHeight: 16, color: ui.textMuted, marginTop: 2 },
   /* Bewusst unauffällig: Die Angabe MUSS dastehen, sie ist aber keine Werbung.
      Ein Privatverkauf ist nicht schlechter als ein gewerblicher — er hat nur
      andere Rechte, und die stehen auf der Artikelseite. */

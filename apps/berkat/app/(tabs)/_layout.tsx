@@ -16,6 +16,7 @@
 // der am schwersten zu finden sein darf.
 
 import { Tabs } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Activity, CircleUser, House, LayoutGrid, Radio } from 'lucide-react-native';
 import { StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -24,12 +25,13 @@ import { useOpenOrderCount } from '../../lib/useSellerOrders';
 import { ui, space } from '../../theme/tokens';
 
 export default function TabsLayout() {
+  const isFocused = useIsFocused();
   // Das eigene Profilbild für den Konto-Reiter.
   const avatarUrl = useSession((s) => s.profile?.avatar_url) ?? null;
   // Winzige Zählabfrage mit `head: true` — es wird keine einzige Zeile
   // übertragen. Sie hängt hier, weil das Layout immer gemountet ist.
   const myUserId = useSession((s) => s.userId);
-  const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
+  const { data: openOrders = 0 } = useOpenOrderCount(myUserId, isFocused);
 
   return (
     <Tabs

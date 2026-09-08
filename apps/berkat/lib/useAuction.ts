@@ -281,12 +281,13 @@ const EMPTY_PREVIEWS: Record<string, ShowPreview> = {};
 export function useShowPreviews(
   sessionIds: string[],
   serverNow: () => number,
+  enabled = true,
 ): Record<string, ShowPreview> {
   const ids = useMemo(() => Array.from(new Set(sessionIds)).sort(), [sessionIds]);
 
   const query = useQuery({
     queryKey: ['berkat', 'show-previews', ids.join(',')],
-    enabled: ids.length > 0,
+    enabled: enabled && ids.length > 0,
     // Gleicher Takt wie die Show-Liste. Schneller wäre teurer ohne Gewinn: der
     // Countdown zählt lokal herunter, vom Server kommt nur der Zustandswechsel.
     refetchInterval: 20_000,

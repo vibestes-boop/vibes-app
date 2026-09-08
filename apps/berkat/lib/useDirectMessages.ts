@@ -468,10 +468,10 @@ export function useConversations(myUserId: string | null) {
 }
 
 /** Ungelesenes für das Abzeichen im Konto. */
-export function useUnreadMessageCount(myUserId: string | null) {
+export function useUnreadMessageCount(myUserId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'unread-messages', myUserId],
-    enabled: Boolean(myUserId),
+    enabled: enabled && Boolean(myUserId),
     refetchInterval: 60_000,
     queryFn: async (): Promise<number> => {
       const { count, error } = await supabase

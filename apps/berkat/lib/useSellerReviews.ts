@@ -29,16 +29,16 @@ export type SellerReview = {
   reviewer_avatar: string | null;
 };
 
-export function useSellerReviews(sellerId: string | undefined, limit = 20) {
+export function useSellerReviews(sellerId: string | undefined, limit = 20, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'seller-reviews', sellerId, limit],
-    enabled: Boolean(sellerId),
+    enabled: enabled && Boolean(sellerId),
     staleTime: 60_000,
-    queryFn: async (): Promise<SellerReview[]> => {
+    queryFn: async ({ signal }): Promise<SellerReview[]> => {
       const { data, error } = await supabase.rpc('get_seller_reviews', {
         p_seller_id: sellerId!,
         p_limit: limit,
-      });
+      }).abortSignal(signal).retry(false);
       if (error) {
         if (__DEV__) console.warn('[Berkat] Bewertungen laden:', error.message);
         throw error;

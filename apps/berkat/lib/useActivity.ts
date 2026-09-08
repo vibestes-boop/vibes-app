@@ -56,20 +56,20 @@ function euro(cents: number | null | undefined): string {
   return `${Math.floor(value / 100)},${String(value % 100).padStart(2, '0')} €`;
 }
 
-export function useActivity(userId: string | null) {
-  return useQuery({
+export function useActivity(userId: string | null, enabled = true) {
+  const query = useQuery({
     queryKey: ['berkat', 'activity', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     staleTime: 20_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
-    queryFn: async (): Promise<ActivityItem[]> => {
+    queryFn: async (): Promise<{ items: ActivityItem[]; partial: boolean }> => {
       const me = userId!;
       const since14d = new Date(Date.now() - 14 * 24 * 3600_000).toISOString();
 
       // Wem ich folge — der Empfängerkreis für zwei der sechs Quellen. Steht
       // vorn, weil beide darauf warten müssen.
-      const { data: followRows } = await supabase
+      const { data: followRows, error: followError } = await supabase
         .from('follows')
         .select('following_id')
         .eq('follower_id', me)
@@ -131,6 +131,12 @@ export function useActivity(userId: string | null) {
           .limit(20),
       ]);
 
+      // A broken source must not look like an empty, successfully loaded feed.
+      // Keep useful results from the other sources and expose the partial state.
+      const sources = [wins, myBids, credits, perks, ...(following.length ? [live, listings] : [])];
+      const firstError = followError ?? sources.find((source) => source.error)?.error;
+      if (sources.every((source) => source.error)) throw firstError;
+      let partial = Boolean(firstError);
       const items: ActivityItem[] = [];
 
       // ── 1. Gewonnen ────────────────────────────────────────────────────────
@@ -165,12 +171,14 @@ export function useActivity(userId: string | null) {
         ...new Set(((myBids.data ?? []) as { auction_id: string }[]).map((b) => b.auction_id)),
       ];
       if (bidAuctionIds.length > 0) {
-        const { data: running } = await supabase
+        const { data: running, error: runningError } = await supabase
           .from('live_auctions')
           .select('id, title, image_url, current_bid_cents, current_bidder_id, seller_id, session_id, ends_at')
           .in('id', bidAuctionIds)
           .eq('status', 'running')
           .limit(20);
+
+        if (runningError) partial = true;
 
         for (const a of (running ?? []) as {
           id: string;
@@ -289,7 +297,8 @@ export function useActivity(userId: string | null) {
       }
 
       items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-      return items.slice(0, 60);
+      return { items: items.slice(0, 60), partial };
     },
   });
+  return { ...query, data: query.data?.items, hasPartialError: query.data?.partial ?? false };
 }

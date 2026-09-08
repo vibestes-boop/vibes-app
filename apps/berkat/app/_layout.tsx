@@ -18,6 +18,7 @@ import { useSessionBootstrap } from '../lib/session';
 import { usePushRegistration } from '../lib/usePush';
 import { MiniLivePlayer } from '../components/MiniLivePlayer';
 import { ui } from '../theme/tokens';
+import { useReducedMotion } from '../lib/useReducedMotion';
 
 type ProviderProps = { children: ReactNode };
 
@@ -45,6 +46,7 @@ function Bootstrap() {
 }
 
 export default function RootLayout() {
+  const reducedMotion = useReducedMotion();
   // QueryClient einmal pro App-Leben — nicht bei jedem Render neu, sonst
   // verliert jeder Re-Render den kompletten Cache.
   const [queryClient] = useState(
@@ -96,21 +98,21 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: ui.bg },
-              animation: 'slide_from_right',
+              animation: reducedMotion ? 'none' : 'slide_from_right',
             }}
           >
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="live/[id]" options={{ animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="login" options={{ animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="live/[id]" options={{ animation: reducedMotion ? 'none' : 'slide_from_bottom' }} />
+            <Stack.Screen name="login" options={{ animation: reducedMotion ? 'none' : 'slide_from_bottom' }} />
+            <Stack.Screen name="notifications" />
             {/* Alles, was aus dem Verkäufer-Sheet abgeht. Von rechts wie der
                 Rest — nur der Live-Raum und die Anmeldung kommen von unten. */}
             <Stack.Screen name="seller/[id]" />
             {/* Vollbild wie der Live-Raum, deshalb von unten. */}
-            <Stack.Screen name="story/[id]" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="story/[id]" options={{ animation: reducedMotion ? 'none' : 'slide_from_bottom' }} />
             <Stack.Screen name="messages/index" />
             <Stack.Screen name="messages/[id]" />
-            <Stack.Screen name="tip/[id]" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="tip/[id]" options={{ animation: reducedMotion ? 'none' : 'slide_from_bottom' }} />
           </Stack>
           {/* Liegt über allem, weil die verkleinerte Show über jedem Reiter
               weiterlaufen soll — nicht nur über der Startseite. */}

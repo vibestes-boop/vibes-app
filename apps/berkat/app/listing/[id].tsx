@@ -39,8 +39,11 @@
 // vollständig zu bauen."
 
 import { useCallback, useMemo, useState } from 'react';
-import { Image } from 'expo-image';
+import { ListingGallery } from '../../components/ListingGallery';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
+import { useListingDetail } from '../../lib/useListingDetail';
+import { ListingLoading, ListingPreviewStatus } from '../../components/ListingLoading';
 import {
   ActivityIndicator,
   Modal,
@@ -51,8 +54,6 @@ import {
   Text,
   View,
   useWindowDimensions,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -63,7 +64,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Heart,
-  Lock,
   MessageCircle,
   Package,
   Share2,
@@ -92,7 +92,6 @@ import {
 import {
   listingImages,
   listingPrice,
-  useListing,
   useSellerListings,
 } from '../../lib/useListings';
 import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
@@ -126,7 +125,8 @@ import { ListingCard } from '../../components/ListingCard';
 import { OfferPanel } from '../../components/OfferPanel';
 import { StandingComposer } from '../../components/StandingComposer';
 import { useSetShippingTier } from '../../lib/useShippingTier';
-import { radius, ratio, space, ui } from '../../theme/tokens';
+import { radius, space, ui } from '../../theme/tokens';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 
 /** Ein Hinweis, der einen Weg mitbringen kann statt nur einen Rat. */
 type Notice = { text: string; cta?: 'cart' };
@@ -178,6 +178,7 @@ function listedWhen(iso: string): string {
 }
 
 export default function ListingScreen() {
+  const reducedMotion = useReducedMotion();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
@@ -186,7 +187,8 @@ export default function ListingScreen() {
   // erst weit unten im Bearbeiten-Blatt (Frauen-Only-Schalter).
   const canWomenOnly = useSession((s) => Boolean(s.profile?.women_only_verified));
 
-  const { data: listing, isLoading, refetch } = useListing(id);
+  const focused = useIsFocused();
+  const { data: listing, isPreview, isLoading, isError, isFetching, refetch } = useListingDetail(id, focused);
   const sellerId = listing?.seller_id;
 
   const profiles = useProfiles([sellerId]);
@@ -234,18 +236,7 @@ export default function ListingScreen() {
   const [legalOpen, setLegalOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
 
-  // Galerie: EIN aktiver Index, gesetzt am ENDE der Scroll-Animation — nicht
-  // per onScroll. Das ist die Serlo-Lehre v1.26.8: Wer bei jedem Frame setzt,
-  // lässt die Punkte beim Blättern hin- und herspringen.
-  const { width: screenWidth } = useWindowDimensions();
-  const [imageIndex, setImageIndex] = useState(0);
-  const onGalleryEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const w = e.nativeEvent.layoutMeasurement.width || 1;
-      setImageIndex(Math.round(e.nativeEvent.contentOffset.x / w));
-    },
-    [],
-  );
+  const { fontScale } = useWindowDimensions();
 
   // Merken. Das Set kommt aus einer eigenen Mini-Abfrage (useSavedIds), damit
   // jede Fläche dieselbe Wahrheit liest; der Toggle setzt beide Schlüssel zurück.
@@ -255,7 +246,7 @@ export default function ListingScreen() {
 
   // „Mehr von diesem Verkäufer" — dieselbe Abfrage wie das Profil-Regal, der
   // aktuelle Artikel wird nur herausgefiltert.
-  const { data: sellerListings = [] } = useSellerListings(sellerId);
+  const { data: sellerListings = [] } = useSellerListings(sellerId, focused);
   const moreFromSeller = useMemo(
     () => sellerListings.filter((l) => l.id !== id).slice(0, 6),
     [sellerListings, id],
@@ -278,8 +269,8 @@ export default function ListingScreen() {
   // sähe sonst weiter einen Kaufknopf für etwas, das es nicht mehr gibt.
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-    }, [refetch]),
+      if (id) void refetch({ cancelRefetch: false });
+    }, [id, refetch]),
   );
 
   const mine = Boolean(myUserId && listing && myUserId === listing.seller_id);
@@ -538,18 +529,25 @@ export default function ListingScreen() {
   // AUCH für einen verkauften Artikel sinnvoll bleibt, wenn die Leiste unten
   // längst „Schon verkauft" sagt.
   const header = (
-    <View style={styles.header}>
-      <Pressable hitSlop={10} onPress={() => goBack('/shop')} style={styles.back}>
+    <View key={fontScale} style={styles.header}>
+      <Pressable
+        hitSlop={10}
+        onPress={() => goBack('/shop')}
+        style={styles.back}
+        accessibilityRole="button"
+        accessibilityLabel="Zurück"
+      >
         <ChevronLeft size={24} color={ui.text} />
       </Pressable>
       <View style={styles.back} />
       <Text style={styles.headerTitle}>Angebot</Text>
       <Pressable
         hitSlop={8}
-        style={styles.back}
+        style={[styles.back, (!listing || isPreview) && styles.off]}
         onPress={onToggleSaved}
+        disabled={!listing || isPreview}
         accessibilityRole="button"
-        accessibilityState={{ selected: isSaved }}
+        accessibilityState={{ selected: isSaved, disabled: !listing || isPreview }}
         accessibilityLabel={isSaved ? 'Nicht mehr merken' : 'Merken'}
       >
         <Heart
@@ -560,9 +558,11 @@ export default function ListingScreen() {
       </Pressable>
       <Pressable
         hitSlop={8}
-        style={styles.back}
+        style={[styles.back, !listing && styles.off]}
         onPress={onShare}
+        disabled={!listing}
         accessibilityRole="button"
+        accessibilityState={{ disabled: !listing }}
         accessibilityLabel="Angebot teilen"
       >
         <Share2 size={20} color={ui.text} />
@@ -574,9 +574,31 @@ export default function ListingScreen() {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         {header}
-        <View style={styles.center}>
-          <ActivityIndicator color={ui.brand} />
-        </View>
+        <ListingLoading />
+      </View>
+    );
+  }
+
+  if (isError && !listing) {
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
+        {header}
+        <ScrollView key={`load-error-${fontScale}`} contentContainerStyle={[styles.loadError, { paddingBottom: insets.bottom + space.xl }]}>
+          <BerkatMark size={38} color={ui.brand} />
+          <Text style={styles.emptyTitle}>Angebot gerade nicht erreichbar</Text>
+          <Text style={styles.emptyBody}>
+            Wir konnten die Details nicht laden. Versuch es bitte noch einmal.
+          </Text>
+          <Pressable
+            style={styles.emptyBtn}
+            onPress={() => void refetch({ cancelRefetch: false })}
+            disabled={isFetching}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isFetching, busy: isFetching }}
+          >
+            <Text style={styles.emptyBtnText}>{isFetching ? 'Wird geladen …' : 'Erneut laden'}</Text>
+          </Pressable>
+        </ScrollView>
       </View>
     );
   }
@@ -590,7 +612,7 @@ export default function ListingScreen() {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         {header}
-        <View style={styles.center}>
+        <View key={`empty-${fontScale}`} style={styles.center}>
           <BerkatMark size={38} color={ui.sunken} />
           <Text style={styles.emptyTitle}>Dieses Angebot gibt es nicht mehr</Text>
           <Text style={styles.emptyBody}>
@@ -624,6 +646,9 @@ export default function ListingScreen() {
       {header}
 
       <ScrollView
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={{
           // Die Leiste unten verdeckt NICHTS: Sie ist ein normales
           // Flex-Geschwister im Wurzel-View, keine schwebende Ebene, und die
@@ -635,60 +660,26 @@ export default function ListingScreen() {
           paddingBottom: space.xl,
         }}
       >
-        {/* ── Die Galerie. Hochkant (`ratio.card`) und volle Breite: Hier wird
-            gestöbert, und auf einer Stöber-Fläche IST das Bild der Inhalt
-            (HANDOFF 18). Geblättert wird seitenweise, der Punkt-Index folgt am
-            ENDE der Animation (onMomentumScrollEnd, Serlo-Lehre v1.26.8).
-
-            ⚠️ Die Höhe der EINZELBILDER muss der Höhe der Fläche folgen. Beim
-            Umstellen auf Hochformat am 18.08.2026 stand hier weiter
-            `height: screenWidth` — die Fläche war 4:5 hoch, die Bilder darin
-            quadratisch, und unter jedem Foto klaffte ein sandfarbener
-            Streifen. ──────────────────────────────────────────────────────── */}
-        <View style={styles.hero}>
-          {images.length > 0 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={onGalleryEnd}
+        {isError && !isPreview ? (
+          <View key={`refresh-error-${fontScale}`} style={styles.refreshError}>
+            <Text style={styles.emptyBody}>
+              Aktualisieren hat nicht geklappt. Du siehst den zuletzt geladenen Stand.
+            </Text>
+            <Pressable
+              style={styles.emptyBtn}
+              onPress={() => void refetch({ cancelRefetch: false })}
+              disabled={isFetching}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isFetching, busy: isFetching }}
             >
-              {images.map((url) => (
-                <Image
-                  key={url}
-                  source={{ uri: url }}
-                  style={{ width: screenWidth, height: screenWidth / ratio.card }}
-                  contentFit="cover"
-                  transition={160}
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={styles.heroEmpty}>
-              <BerkatMark size={44} color={ui.lineStrong} />
-            </View>
-          )}
-          {listing.women_only ? (
-            <View style={styles.heroLock}>
-              <Lock size={12} color={ui.successInk} />
-              <Text style={styles.heroLockText}>Frauen-Only</Text>
-            </View>
-          ) : null}
-          {/* Punkte nur, wenn es etwas zu blättern gibt — ein einzelner Punkt
-              wäre ein Versprechen ohne Inhalt. Auf `ui.overlay`, weil darunter
-              ein fremdes Foto liegt (Bestandsliste an `ui.overlay`). */}
-          {images.length > 1 ? (
-            <View style={styles.dots}>
-              {images.map((url, i) => (
-                <View key={url} style={[styles.dot, i === imageIndex && styles.dotOn]} />
-              ))}
-            </View>
-          ) : null}
-        </View>
+              <Text style={styles.emptyBtnText}>{isFetching ? 'Wird geladen …' : 'Erneut laden'}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <ListingGallery key={id} images={images} womenOnly={Boolean(listing.women_only)} active={focused} />
 
         <View style={styles.body}>
-          {/* ── Preis vor Titel. Bei einem Festpreis ist die Zahl die Frage,
-              die zuerst beantwortet werden muss. ─────────────────────────── */}
+          <Text key={`title-${fontScale}`} style={styles.title}>{listing.title}</Text>
           {/* ⚠️ „zzgl. Versand" GEHÖRT AN DEN PREIS, nicht hinter den Knopf.
               Der Versandsatz stand bisher unter dem Kaufknopf — gut formuliert
               („Kommt in dasselbe Paket, du zahlst nur einmal Versand"), aber zu
@@ -702,15 +693,14 @@ export default function ListingScreen() {
               Kaufpreis. Sie unverändert stehen zu lassen wäre die teuerste
               Zeile dieses Bildschirms: „1 €" gross oben, und darunter eine
               Auktion, die bei 80 € endet. */}
-          <View style={styles.priceRow}>
+          <View key={`priceRow-${fontScale}`} style={styles.priceRow}>
             <Text style={styles.price}>
               {upcoming
                 ? `ab ${formatEuro(listing.start_price_cents)}`
                 : formatEuro(listing.buy_now_cents)}
             </Text>
-            <Text style={styles.priceAdd}>zzgl. Versand</Text>
+            <Text style={styles.priceAdd}>{ship || 'zzgl. Versand'}</Text>
           </View>
-          <Text style={styles.title}>{listing.title}</Text>
 
           {/* Der Termin direkt unter dem Titel — vor Zustand, Ort und
               Beschreibung. Er ist bei diesem Artikel die Bedingung für alles
@@ -727,7 +717,7 @@ export default function ListingScreen() {
           ) : null}
 
           {meta.length ? (
-            <View style={styles.chips}>
+            <View key={`chips-${fontScale}`} style={styles.chips}>
               {meta.map((text) => (
                 <View key={text} style={styles.chip}>
                   <Text style={styles.chipText}>{text}</Text>
@@ -736,7 +726,7 @@ export default function ListingScreen() {
             </View>
           ) : null}
 
-          <Text style={styles.when}>{listedWhen(listing.created_at)}</Text>
+          <Text key={`when-${fontScale}`} style={styles.when}>{listedWhen(listing.created_at)}</Text>
 
           {/* ── Die Pflichtangabe nach Art. 246d § 1 EGBGB, mit Rechtsfolge.
               Steht ÜBER der Beschreibung und damit vor allem, was zum Kauf
@@ -764,6 +754,7 @@ export default function ListingScreen() {
           {kindNote ? (
             <Pressable
               style={styles.legalRow}
+              key={`legal-${fontScale}`}
               onPress={() => setLegalOpen((v) => !v)}
               accessibilityRole="button"
               accessibilityState={{ expanded: legalOpen }}
@@ -789,7 +780,7 @@ export default function ListingScreen() {
 
           {/* ── Die Beschreibung. Bis heute unsichtbar. ──────────────────── */}
           {listing.description ? (
-            <View style={styles.block}>
+            <View key={`description-${fontScale}`} style={styles.block}>
               <Text style={styles.blockLabel}>Beschreibung</Text>
               <Text style={styles.description}>{listing.description}</Text>
             </View>
@@ -813,7 +804,7 @@ export default function ListingScreen() {
               der, gäbe es keine Obergrenze — der Vorschlag wäre eine Zahl ohne
               Bezug. Preislose Regal-Zeilen entstehen seit `20260824180000`
               beim Freigeben vorbereiteter Ware; siehe Übergabe 88, Nachtrag. */}
-          {!gone && !upcoming && listing.buy_now_cents !== null ? (
+          {!isPreview && !gone && !upcoming && listing.buy_now_cents !== null ? (
             <OfferPanel
               offers={offers}
               isSeller={mine}
@@ -851,6 +842,7 @@ export default function ListingScreen() {
               Angebot; jetzt ist es eine Zeile auf der Seite, die man
               eigentlich sehen wollte. ────────────────────────────────────── */}
           <Pressable
+            key={`seller-${fontScale}`}
             style={({ pressed }) => [styles.sellerRow, pressed && styles.pressed]}
             onPress={() => sellerId && router.push(`/seller/${sellerId}`)}
             accessibilityRole="button"
@@ -901,7 +893,7 @@ export default function ListingScreen() {
 
           {/* ── Versand. Der Satz stand bisher nur im Live-Raum und im Regal,
               also überall außer dort, wo jemand gerade kauft. ─────────────── */}
-          <View style={styles.shipRow}>
+          <View key={`shipRow-${fontScale}`} style={styles.shipRow}>
             <Package size={15} color={ui.textMuted} />
             <Text style={styles.shipText}>
               {ship ? `${ship}. ` : ''}
@@ -1009,7 +1001,7 @@ export default function ListingScreen() {
           {/* ── Melden — leise, am Ende, wie bei Kleinanzeigen. `user_reports`
               meldet Menschen; das Angebot steht in der Notiz. Nicht am eigenen
               Artikel: sich selbst melden ist keine Handlung. ─────────────── */}
-          {!mine ? (
+          {!isPreview && !mine ? (
             <Pressable
               style={styles.reportLink}
               onPress={() => (needsLogin() ? null : setReportOpen(true))}
@@ -1048,8 +1040,9 @@ export default function ListingScreen() {
       ) : null}
 
       {/* ── Die Leiste. EIN Weg, und er steht immer an derselben Stelle. ──── */}
-      <View style={[styles.bar, { paddingBottom: insets.bottom + space.sm }]}>
-        {gone ? (
+      <View key={`bar-${fontScale}`} style={[styles.bar, { paddingBottom: insets.bottom + space.sm }]}>
+        {isPreview ? <ListingPreviewStatus loading={isFetching} failed={isError}
+          onRetry={() => void refetch({ cancelRefetch: false })} /> : gone ? (
           // Ein verkaufter oder zurückgezogener Artikel bleibt lesbar (die
           // Lese-Policy filtert nicht auf den Status). Das ist Absicht: Wer aus
           // einer Nachricht auf etwas kommt, das vor zehn Minuten weg ging,
@@ -1250,7 +1243,7 @@ export default function ListingScreen() {
           seinem Angebot arbeitet. ─────────────────────────────────────────── */}
       <Modal
         visible={editOpen}
-        animationType="slide"
+        animationType={reducedMotion ? 'none' : 'slide'}
         presentationStyle="pageSheet"
         onRequestClose={() => setEditOpen(false)}
       >
@@ -1339,7 +1332,7 @@ export default function ListingScreen() {
       <Modal
         visible={reportOpen}
         transparent
-        animationType="fade"
+        animationType={reducedMotion ? 'none' : 'fade'}
         onRequestClose={() => setReportOpen(false)}
       >
         <Pressable style={styles.reportBackdrop} onPress={() => setReportOpen(false)}>
@@ -1399,6 +1392,8 @@ export default function ListingScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: ui.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm },
+  loadError: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.sm },
+  refreshError: { margin: space.lg, padding: space.md, borderRadius: radius.md, backgroundColor: ui.card, alignItems: 'center', gap: space.sm },
 
   header: {
     flexDirection: 'row',
@@ -1407,32 +1402,16 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
     paddingBottom: space.sm,
   },
-  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
   pressed: { opacity: 0.7 },
 
-  hero: { width: '100%', aspectRatio: ratio.card, backgroundColor: ui.sunken },
-  heroEmpty: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  heroLock: {
-    position: 'absolute',
-    top: space.md,
-    left: space.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: ui.success,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  heroLockText: { fontSize: 11, fontWeight: '700', color: ui.successInk },
-
   body: { padding: space.lg, gap: space.md },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
+  priceRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: space.sm },
   price: { fontSize: 28, fontWeight: '700', color: ui.text },
   // Klein und gedämpft: Es ist eine Einschränkung, keine zweite Zahl.
   priceAdd: { fontSize: 13, color: ui.textMuted },
-  title: { fontSize: 18, fontWeight: '600', color: ui.text, marginTop: -space.sm, lineHeight: 24 },
+  title: { fontSize: 24, fontWeight: '600', color: ui.text, lineHeight: 31 },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: {
@@ -1456,7 +1435,7 @@ const styles = StyleSheet.create({
   },
   legalHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chevOpen: { transform: [{ rotate: '180deg' }] },
-  legalText: { fontSize: 13, fontWeight: '700', color: ui.text },
+  legalText: { flexShrink: 1, fontSize: 13, fontWeight: '700', color: ui.text },
   legalSub: { fontSize: 12, color: ui.textMuted, lineHeight: 17 },
   legalWarn: { fontSize: 12, color: ui.live, lineHeight: 17 },
 
@@ -1476,11 +1455,11 @@ const styles = StyleSheet.create({
     padding: space.md,
   },
   sellerName: { fontSize: 15, fontWeight: '700', color: ui.text },
-  sellerStats: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  sellerStats: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 2 },
   sellerStatText: { fontSize: 12, color: ui.textMuted },
 
   shipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
-  shipText: { flex: 1, fontSize: 12, color: ui.textMuted, lineHeight: 17 },
+  shipText: { flex: 1, flexShrink: 1, fontSize: 13, color: ui.textMuted, lineHeight: 20 },
 
   bar: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -1491,7 +1470,9 @@ const styles = StyleSheet.create({
   },
   off: { opacity: 0.45 },
   buy: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     backgroundColor: ui.gold,
     alignItems: 'center',
@@ -1515,13 +1496,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    height: 52,
+    minHeight: 52,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
     borderRadius: radius.pill,
     backgroundColor: ui.brand,
   },
-  contactText: { fontSize: 15, fontWeight: '700', color: ui.bg },
+  contactText: { flexShrink: 1, fontSize: 15, fontWeight: '700', color: ui.bg, textAlign: 'center' },
   ghost: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: ui.line,
@@ -1530,7 +1515,9 @@ const styles = StyleSheet.create({
   },
   ghostText: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
   goneBar: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
     alignItems: 'center',
@@ -1569,7 +1556,9 @@ const styles = StyleSheet.create({
   },
   showNoteText: { fontSize: 14, fontWeight: '700', color: ui.live, flexShrink: 1 },
   remind: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: ui.lineStrong,
@@ -1588,21 +1577,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  dots: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: space.md,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  /* Die Punkte liegen auf einem fremden Foto — deshalb `ui.overlay` als
-     Grundton (Bestandsliste an `ui.overlay` in tokens.ts) und der aktive in
-     Marken-Dunkelgrün, das auf der milchigen Fläche sicher trägt. */
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ui.overlay },
-  dotOn: { backgroundColor: ui.brand },
-
   sellerStatIconPair: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   /* Hellgrün wie im Verkäufer-Sheet: Eine Bürgschaft ist kein Kaufknopf. */
   vouchLine: { fontSize: 12, color: ui.success, marginTop: 3, fontWeight: '600' },
@@ -1616,7 +1590,9 @@ const styles = StyleSheet.create({
   ownRow: { flexDirection: 'row', gap: space.sm },
   editBtn: {
     flex: 1,
-    height: 52,
+    minHeight: 52,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: ui.lineStrong,
@@ -1676,7 +1652,7 @@ const styles = StyleSheet.create({
   },
   noticeBtnText: { fontSize: 13, fontWeight: '700', color: ui.text },
 
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text, marginTop: space.sm },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text, marginTop: space.sm, textAlign: 'center' },
   emptyBody: {
     fontSize: 14,
     color: ui.textMuted,
@@ -1686,7 +1662,8 @@ const styles = StyleSheet.create({
   },
   emptyBtn: {
     marginTop: space.md,
-    height: 44,
+    minHeight: 48,
+    paddingVertical: space.sm,
     paddingHorizontal: space.xl,
     borderRadius: radius.pill,
     borderWidth: 1.5,

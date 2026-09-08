@@ -8,13 +8,14 @@
 // Sie liegt auf der hellen Fläche (`ui`), nicht auf der Bühne: Man kommt zwar
 // aus dem Live-Raum hierher, aber das hier ist Stöbern, kein Zuschauen.
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Animated,
   Modal,
   Pressable,
   RefreshControl,
+  useWindowDimensions,
   Share,
   StyleSheet,
   Text,
@@ -23,31 +24,33 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useQuery } from '@tanstack/react-query';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Ban,
   CalendarClock,
   ChevronLeft,
+  ChevronDown,
   Coins,
   Flag,
-  Lock,
   MessageSquare,
   MoreHorizontal,
   Pencil,
   Radio,
   Share2,
+  ShoppingBag,
   ShieldCheck,
   Star,
   Tag,
   Truck,
 } from 'lucide-react-native';
 
-import { supabase } from '../../lib/supabase';
+import { useSellerProfile, useSellerLiveShow, useSellerSoldItems } from '../../lib/useSellerProfile';
+import { SellerSectionState } from '../../components/SellerSectionState';
+import { SellerShowEntry } from '../../components/SellerShowEntry';
 import { useSession } from '../../lib/session';
 import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { useFollow, useFollowCounts } from '../../lib/useFollow';
-import { formatEuro } from '../../lib/useAuction';
 import { formatRating, formatShipTime, useSellerStats } from '../../lib/useSellerStats';
 import { useBerkatSeller } from '../../lib/useBerkatSeller';
 import { useVouchActions, useVouches, vouchErrorText, vouchSummary } from '../../lib/useVouch';
@@ -74,40 +77,12 @@ import { LineupPreview } from '../../components/LineupPreview';
 import { ProfileEditSheet } from '../../components/ProfileEditSheet';
 import { RatingStars } from '../../components/RatingStars';
 import { VouchPanel } from '../../components/VouchPanel';
-import { StandingShelf } from '../../components/StandingShelf';
-import { standingErrorText, useStandingActions } from '../../lib/useStanding';
-import { useSellerListings } from '../../lib/useListings';
+import { SellerListingRow, SellerSoldRow, sellerShopStyles } from '../../components/SellerShopRow';
+import { sellerShopRows, type SellerShopRow } from '../../lib/sellerShopRows';
+import { useSellerListingPages } from '../../lib/useListings';
+import { SellerShopMore } from '../../components/SellerShopMore';
 import { BerkatMark } from '../../components/BerkatMark';
-import { radius, ratio, space, stage, ui } from '../../theme/tokens';
-
-type SellerProfile = {
-  id: string;
-  username: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
-  banner_url: string | null;
-  bio: string | null;
-};
-
-type SoldItem = {
-  id: string;
-  title: string;
-  image_url: string | null;
-  current_bid_cents: number | null;
-  settled_at: string | null;
-};
-
-// Dieselbe Falle wie im Show-Raster der Startseite, nur bei drei Spalten statt
-// zwei: Jede Zelle hat `flex: 1`, also zieht sich die letzte Reihe auf volle
-// Breite, wenn sie nicht voll ist — bei einem einzigen Artikel füllt der das
-// ganze Bild. Platzhalter besetzen die freien Spalten.
-//
-// `spacer: true` statt eines Vergleichs auf der id: TypeScript reduziert das
-// Literal in der Vereinigung zu `string`, die id taugt dann nicht mehr zur
-// Unterscheidung.
-const SPACER_ID = '__spacer__';
-type Spacer = { id: string; spacer: true };
-type GridItem = SoldItem | Spacer;
+import { radius, space, stage, ui } from '../../theme/tokens';
 
 /**
  * Kopfbild und Avatar (23.08.2026 — vorher 116 und 64).
@@ -160,7 +135,7 @@ const TABS: { key: ProfileTab; label: string }[] = [
   // erst darunter die gelaufenen Sendungen. „Live-Shows" las sich wie ein
   // Archiv — wer wissen wollte, wann der Verkäufer wiederkommt, tippte dort
   // zuletzt.
-  { key: 'shows', label: 'Termine & Shows' },
+  { key: 'shows', label: 'Shows' },
 ];
 
 /** Angekündigte und vergangene Sendungen in einer Liste. */
@@ -191,101 +166,28 @@ type ShowRow = {
   women_only: boolean;
 };
 
-/**
- * Was die eine Liste je nach Reiter trägt.
- *
- * Die Annotation ist Pflicht, nicht Kosmetik: Ohne sie leitet TypeScript aus
- * dem Ternär eine Vereinigung von ARRAYS ab (`A[] | B[] | C[]`), und FlatList
- * verlangt ein Array einer Vereinigung (`(A|B|C)[]`). Unterschieden werden die
- * drei danach über je ein Merkmal, das nur einer von ihnen hat: `kind` bei der
- * Show, `comment` bei der Bewertung, `spacer` beim Platzhalter.
- */
-type TabItem = GridItem | SellerReview | ShowRow;
-
-function padToGrid(items: SoldItem[], columns: number): GridItem[] {
-  const rest = items.length % columns;
-  if (items.length === 0 || rest === 0) return items;
-  const fillers: Spacer[] = Array.from({ length: columns - rest }, (_, i) => ({
-    id: `${SPACER_ID}-${i}`,
-    spacer: true,
-  }));
-  return [...items, ...fillers];
-}
-
-function useSellerProfile(id: string | undefined) {
-  return useQuery({
-    queryKey: ['berkat', 'seller-profile', id],
-    enabled: Boolean(id),
-    staleTime: 5 * 60_000,
-    queryFn: async (): Promise<SellerProfile | null> => {
-      // ⚠️ `banner_url` ist erst seit Migration 20260816170000 für Clients
-      // lesbar. `profiles` trägt seit dem 14.08. eine ausdrückliche
-      // Spaltenliste statt eines Tabellen-SELECT — eine Spalte, die dort fehlt,
-      // lässt die GANZE Abfrage mit 42501 scheitern, nicht nur sich selbst.
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, banner_url, bio')
-        .eq('id', id!)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as SellerProfile) ?? null;
-    },
-  });
-}
-
-/** Läuft dieser Verkäufer gerade? Dann ist der Weg zurück ins Live einen Knopf wert. */
-function useSellerLiveShow(id: string | undefined) {
-  return useQuery({
-    queryKey: ['berkat', 'seller-live', id],
-    enabled: Boolean(id),
-    refetchInterval: 30_000,
-    queryFn: async (): Promise<{ id: string; title: string | null } | null> => {
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .select('id, title')
-        .eq('host_id', id!)
-        .eq('status', 'active')
-        .eq('app', 'berkat')
-        .order('started_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as { id: string; title: string | null }) ?? null;
-    },
-  });
-}
-
-/** Was dieser Verkäufer zuletzt verkauft hat — die ehrlichste Auslage. */
-function useSellerSoldItems(id: string | undefined) {
-  return useQuery({
-    queryKey: ['berkat', 'seller-items', id],
-    enabled: Boolean(id),
-    staleTime: 60_000,
-    queryFn: async (): Promise<SoldItem[]> => {
-      const { data, error } = await supabase
-        .from('live_auctions')
-        .select('id, title, image_url, current_bid_cents, settled_at')
-        .eq('seller_id', id!)
-        .eq('status', 'sold')
-        .order('settled_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return (data ?? []) as SoldItem[];
-    },
-  });
-}
+type TabItem = SellerShopRow | SellerReview | ShowRow;
 
 export default function SellerScreen() {
   const { id, tab: wantedTab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const focused = useIsFocused();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [soldOpen, setSoldOpen] = useState(false);
+  const [tab, setTab] = useState<ProfileTab>(() => wantedTab === 'shows' || wantedTab === 'reviews' ? wantedTab : 'shop');
+  useEffect(() => { scrollY.setValue(0); }, [id, tab, scrollY]);
   const myUserId = useSession((s) => s.userId);
 
   const isSelf = Boolean(myUserId && id && myUserId === id);
 
-  const { data: profile, isLoading, refetch: refetchProfile } = useSellerProfile(id);
+  const profileQuery = useSellerProfile(id, focused);
+  const { data: profile, isLoading, refetch: refetchProfile } = profileQuery;
   const { data: stats, refetch: refetchStats } = useSellerStats(id);
-  const { data: liveShow, refetch: refetchLive } = useSellerLiveShow(id);
-  const { data: items = [], refetch: refetchItems } = useSellerSoldItems(id);
+  const liveQuery = useSellerLiveShow(id, focused);
+  const { data: liveShow, refetch: refetchLive } = liveQuery;
+  const soldQuery = useSellerSoldItems(id, focused && tab === 'shop' && soldOpen);
+  const { data: items = [], refetch: refetchItems } = soldQuery;
   const { data: vouches = [], refetch: refetchVouches } = useVouches(id, myUserId);
   // Die Kurzfassung für die Zeile am Namen — dieselbe Funktion wie auf der
   // Artikelseite, damit „wer bürgt" an beiden Orten gleich klingt.
@@ -320,10 +222,15 @@ export default function SellerScreen() {
   const { data: savedIds } = useSavedIds(myUserId);
 
   const toggleSaved = useToggleSaved(myUserId);
+  const onToggleSaved = useCallback((auctionId: string, saved: boolean) => {
+    if (myUserId) toggleSaved.mutate({ auctionId, saved });
+    else router.push('/login');
+  }, [myUserId, toggleSaved.mutate]);
 
-  const { data: standing = [], refetch: refetchStanding } = useSellerListings(id);
-  const standingActions = useStandingActions(id, myUserId);
-  const [standingBusyId, setStandingBusyId] = useState<string | null>(null);
+  const standingQuery = useSellerListingPages(id, focused && tab === 'shop');
+  const { refetch: refetchStanding } = standingQuery;
+  const standing = standingQuery.data?.listings ?? [];
+  const standingError = standingQuery.isFetchNextPageError ? null : standingQuery.error;
   const follow = useFollow(id, myUserId);
 
   const updateProfile = useUpdateProfile(myUserId);
@@ -339,9 +246,7 @@ export default function SellerScreen() {
    * nachträglich setzt, würde ihn auch dann zurückstellen, wenn der Besucher
    * inzwischen selbst weitergetippt hat.
    */
-  const [tab, setTab] = useState<ProfileTab>(() =>
-    wantedTab === 'shows' || wantedTab === 'reviews' ? wantedTab : 'shop',
-  );
+
   // Das Banner wird beim Auswählen sofort hochgeladen, aber erst beim
   // Speichern in die Datenbank geschrieben. Deshalb liegt der Zwischenstand
   // hier und nicht im Blatt — ein Blatt, das sich neu aufbaut, verlöre ihn.
@@ -414,8 +319,9 @@ export default function SellerScreen() {
     [createHighlight, highlightItems],
   );
 
-  const { data: reviews = [], refetch: refetchReviews } = useSellerReviews(id);
-  const { past: pastShows, announced } = useSellerShows(id);
+  const reviewsQuery = useSellerReviews(id, 20, focused && tab === 'reviews');
+  const { data: reviews = [], refetch: refetchReviews } = reviewsQuery;
+  const { past: pastShows, announced } = useSellerShows(id, focused, tab === 'shows');
   const sellerActions = useSellerActions(myUserId);
   const { data: blocked } = useMyBlocks(myUserId);
   const isBlocked = Boolean(id && blocked?.has(id));
@@ -445,43 +351,26 @@ export default function SellerScreen() {
     }
   }, [profile?.username]);
 
-  // ALLES nachladen, nicht nur live und verkauft.
-  //
-  // Bis zum 16.08.2026 holte dieser Ruf `refetchLive` und `refetchItems` —
-  // Regal, Kacheln, Bürgen und Follower blieben stehen. Dieselbe Familie wie
-  // der Fehler, bei dem ein zurückgezogenes Dauerangebot im Kategorien-Reiter
-  // hängenblieb: Was auf der Seite steht, muss auch nachladen können.
-  const refreshAll = useCallback(
+  // Der Profilkopf wird bei Rückkehr aktualisiert. Inhalte des gewählten
+  // Reiters laden über enabled; onPull aktualisiert sie ausdrücklich mit.
+  const refreshHeader = useCallback(
     () =>
       Promise.all([
-        refetchLive(),
-        refetchItems(),
-        refetchStanding(),
-        refetchStats(),
-        refetchVouches(),
-        refetchCounts(),
-        refetchProfile(),
-        // Am 16.08.2026 nachgetragen — die beiden fehlten, obwohl der Absatz
-        // darüber „ALLES nachladen" verspricht. Wer einen Termin ankündigt und
-        // danach sein Profil öffnet, sah ihn sonst bis zu einer Minute nicht:
-        // Ziehen-zum-Aktualisieren rührte die Show-Abfragen gar nicht an.
-        announced.refetch(),
-        pastShows.refetch(),
-        // Am 24.08.2026 gleich mitgenommen: Wer ein Highlight anlegt und danach
-        // zieht, muss es sehen. Genau die Sorte Auslassung, vor der der Absatz
-        // darüber warnt.
-        refetchHighlights(),
+        refetchLive({ cancelRefetch: false }),
+        refetchStats({ cancelRefetch: false }),
+        refetchVouches({ cancelRefetch: false }),
+        refetchCounts({ cancelRefetch: false }),
+        refetchProfile({ cancelRefetch: false }),
+        announced.refetch({ cancelRefetch: false }),
+        refetchHighlights({ cancelRefetch: false }),
       ]),
     [
       refetchLive,
-      refetchItems,
-      refetchStanding,
       refetchStats,
       refetchVouches,
       refetchCounts,
       refetchProfile,
       announced.refetch,
-      pastShows.refetch,
       refetchHighlights,
     ],
   );
@@ -529,40 +418,50 @@ export default function SellerScreen() {
     () => (announced.data ?? []).map((s) => s.id),
     [announced.data],
   );
-  const { byPlan: lineupByPlan } = usePreparedByPlan(announcedIds);
+  const { byPlan: lineupByPlan, isError: lineupError, isFetching: lineupFetching, refetch: refetchLineup } = usePreparedByPlan(announcedIds, focused && tab === 'shows');
 
   const listData = useMemo(
     (): TabItem[] =>
-      tab === 'shop' ? padToGrid(items, 3) : tab === 'reviews' ? reviews : showRows,
-    [tab, items, reviews, showRows],
+      tab === 'shop' ? sellerShopRows(standing, items, soldOpen) : tab === 'reviews' ? reviews : showRows,
+    [tab, standing, soldOpen, items, reviews, showRows],
   );
 
   const [pulling, setPulling] = useState(false);
+  const pullBusy = useRef(false);
   const onPull = useCallback(async () => {
+    if (pullBusy.current || tab === 'shop' && standingQuery.isFetching) return;
+    pullBusy.current = true;
     setPulling(true);
     try {
-      await refreshAll();
-    } finally {
-      setPulling(false);
-    }
-  }, [refreshAll]);
+      await Promise.all([
+        refreshHeader(),
+        ...(tab === 'shop' ? [refetchStanding({ cancelRefetch: false }), ...(soldOpen ? [refetchItems({ cancelRefetch: false })] : [])] : []),
+        ...(tab === 'reviews' ? [refetchReviews({ cancelRefetch: false })] : []),
+        ...(tab === 'shows' ? [pastShows.refetch({ cancelRefetch: false }), ...(announcedIds.length ? [refetchLineup({ cancelRefetch: false })] : [])] : []),
+      ]);
+    } finally { pullBusy.current = false; setPulling(false); }
+  }, [refreshHeader, tab, standingQuery.isFetching, soldOpen, refetchStanding, refetchItems, refetchReviews, pastShows.refetch, refetchLineup, announcedIds.length]);
 
   // Dieselbe Falle wie überall in Berkat: Stack-Bildschirme bleiben aufgebaut.
   // Wer von hier ins Studio geht, einen Artikel einstellt und zurückkommt, sähe
   // sonst den alten Stand.
   useFocusEffect(
     useCallback(() => {
-      void refreshAll();
-    }, [refreshAll]),
+      void refreshHeader();
+    }, [refreshHeader]),
   );
 
   const name = profile?.username ?? 'Verkäufer';
 
   return (
     <View style={styles.screen}>
-      {isLoading ? (
+      {isLoading || (!profile && profileQuery.isFetching) ? (
         <View style={[styles.center, { paddingTop: insets.top }]}>
           <ActivityIndicator color={ui.brand} />
+        </View>
+      ) : !profile && profileQuery.isError ? (
+        <View key={fontScale} style={[styles.center, { paddingTop: insets.top + 56, paddingHorizontal: space.lg }]}>
+          <SellerSectionState title="Profildaten" loading={profileQuery.isFetching} error={profileQuery.error} hasData={false} onRetry={() => void refetchProfile()} />
         </View>
       ) : !profile ? (
         <View style={[styles.center, { paddingTop: insets.top }]}>
@@ -570,19 +469,20 @@ export default function SellerScreen() {
           <Text style={styles.emptyTitle}>Diesen Verkäufer gibt es nicht mehr</Text>
         </View>
       ) : (
-        <FlatList
-          // `key` erzwingt einen Neuaufbau beim Reiterwechsel. FlatList darf
-          // `numColumns` zur Laufzeit nicht ändern — ohne den Schlüssel wirft
-          // es genau das als Fehler.
-          key={tab}
+        <Animated.FlatList
+          // A tab starts at its profile header; rows support mixed column counts.
+          key={`${id}:${tab}`}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+          scrollEventThrottle={16}
           data={listData}
           keyExtractor={(item) => item.id}
-          numColumns={tab === 'shop' ? 3 : 1}
-          columnWrapperStyle={tab === 'shop' ? { gap: space.xs } : undefined}
+          initialNumToRender={2}
+          maxToRenderPerBatch={4}
+          windowSize={5}
           contentContainerStyle={{
             paddingHorizontal: space.md,
             paddingBottom: insets.bottom + space.xl,
-            gap: space.xs,
+            gap: tab === 'shop' ? 0 : space.xs,
           }}
           refreshControl={
             <RefreshControl
@@ -596,7 +496,7 @@ export default function SellerScreen() {
             />
           }
           ListHeaderComponent={
-            <View>
+            <View key={fontScale}>
               {/* ── Kopfbild MIT Avatar und Namen darin ─────────────────────
                   Whatnots App legt beides in den Banner; die Kennzahlen
                   beginnen unmittelbar an seiner Unterkante. Das ist der ganze
@@ -618,7 +518,7 @@ export default function SellerScreen() {
                   In Phase 0 ist der Rückfall der REGELFALL, nicht der
                   Sonderfall: Fünf frische Verkäufer haben zuerst kein
                   Kopfbild. ─────────────────────────────────────────────────── */}
-              <View style={[styles.banner, { height: insets.top + BANNER_H }]}>
+              <View style={[styles.banner, { minHeight: insets.top + BANNER_H, paddingTop: insets.top + 56 }]}>
                 {profile.banner_url ? (
                   <Image
                     source={{ uri: profile.banner_url }}
@@ -647,12 +547,12 @@ export default function SellerScreen() {
                     Name-Oberkante 4,55 : 1 · Name-Mitte 5,63 : 1 · @-Name
                     7,33 : 1. Wer an diesen Zahlen dreht, rechnet sie nach —
                     das Auge misst 4,5 : 1 nicht. */}
-                <LinearGradient
+                {profile.banner_url ? <LinearGradient
                   colors={['rgba(11,21,18,0)', 'rgba(11,21,18,0.55)', 'rgba(11,21,18,0.95)']}
                   locations={[0, 0.35, 1]}
                   style={styles.bannerScrim}
                   pointerEvents="none"
-                />
+                /> : null}
 
                 <View style={styles.identity}>
                   {/* Heller Ring: Ohne ihn verschwimmt der Avatar-Rückfall
@@ -662,7 +562,7 @@ export default function SellerScreen() {
                     <Avatar uri={profile.avatar_url} name={profile.username} size={AVATAR} />
                   </View>
                   <View style={styles.identityText}>
-                    <Text numberOfLines={1} style={styles.name}>
+                    <Text numberOfLines={2} style={styles.name}>
                       {profile.display_name?.trim() || name}
                     </Text>
                     {/* Der @-Name steht klein darunter — aber nur, wenn oben
@@ -701,29 +601,37 @@ export default function SellerScreen() {
                 </View>
               ) : null}
 
-              {/* Die Kacheln direkt danach, VOR Bio und Knöpfe: Erst die
-                  Menschen, dann die Institution, dann alles Weitere. */}
-              <View style={styles.tiles}>
-                <Tile
-                  icon={<Star size={17} color={ui.text} />}
-                  value={formatRating(stats?.rating ?? null)}
-                  label={
-                    stats?.ratingCount
-                      ? `${stats.ratingCount} ${stats.ratingCount === 1 ? 'Bewertung' : 'Bewertungen'}`
-                      : 'Noch keine Bewertung'
-                  }
-                />
-                <Tile
-                  icon={<Truck size={17} color={ui.text} />}
-                  value={formatShipTime(stats?.shipHours ?? null)}
-                  label={stats?.shipSamples ? 'Versandzeit' : 'Noch nichts versendet'}
-                />
-                <Tile
-                  icon={<Tag size={17} color={ui.text} />}
-                  value={String(stats?.sold ?? 0)}
-                  label={stats?.sold === 1 ? 'Zuschlag' : 'Zuschläge'}
-                />
-              </View>
+              {/* Nur vorhandene Kennzahlen belegen Platz im Profilkopf. */}
+              {stats && (stats.ratingCount > 0 || stats.shipSamples > 0 || stats.sold > 0) ? (
+                <View style={styles.tiles}>
+                  {stats.ratingCount > 0 ? (
+                    <Tile
+                      icon={<Star size={16} color={ui.brand} />}
+                      value={formatRating(stats.rating)}
+                      label={`${stats.ratingCount} ${stats.ratingCount === 1 ? 'Bewertung' : 'Bewertungen'}`}
+                    />
+                  ) : null}
+                  {stats.shipSamples > 0 ? (
+                    <Tile
+                      icon={<Truck size={16} color={ui.brand} />}
+                      value={formatShipTime(stats.shipHours)}
+                      label="Versandzeit"
+                    />
+                  ) : null}
+                  {stats.sold > 0 ? (
+                    <Tile
+                      icon={<Tag size={16} color={ui.brand} />}
+                      value={String(stats.sold)}
+                      label={stats.sold === 1 ? 'Zuschlag' : 'Zuschläge'}
+                    />
+                  ) : null}
+                </View>
+              ) : stats ? (
+                <View style={styles.newSellerInfo}>
+                  <Star size={15} color={ui.textMuted} />
+                  <Text style={styles.newSellerText}>Noch keine Bewertungen oder Verkäufe</Text>
+                </View>
+              ) : null}
 
               {/* Die Bio steht unter der Kopfzeile statt daneben: Bis zu 300
                   Zeichen quetschen sich nicht neben ein 64er-Avatar. Und sie
@@ -762,6 +670,8 @@ export default function SellerScreen() {
                 </Text>
               ) : null}
 
+              <SellerSectionState title="Profildaten" loading={profileQuery.isFetching} error={profileQuery.error} hasData onRetry={() => void refetchProfile()} />
+
               {isSelf ? (
                 // Auf dem eigenen Profil ist „Folgen" sinnlos — hier steht der
                 // einzige Ort, an dem die Bio je gesetzt werden kann.
@@ -795,96 +705,27 @@ export default function SellerScreen() {
                   <Text style={styles.editText}>Profil bearbeiten</Text>
                 </Pressable>
               ) : (
-                <>
-                  {follow.canFollow ? (
-                    <Pressable
-                      onPress={() => follow.toggle()}
-                      disabled={follow.busy}
-                      style={[styles.followBtn, follow.isFollowing && styles.followBtnActive]}
-                      accessibilityRole="button"
-                    >
-                      <Text
-                        style={[styles.followText, follow.isFollowing && styles.followTextActive]}
-                      >
-                        {follow.isFollowing ? 'Du folgst' : 'Folgen'}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-
-                  {/* Beide Ziele gibt es seit dem 15.08., waren aber NUR aus
-                      dem Verkäufer-Sheet im Live-Raum erreichbar — also genau
-                      dann nicht, wenn niemand sendet. Whatnot stellt sie aufs
-                      Profil, und dort gehören sie hin. */}
-                  {myUserId && id ? (
-                    <View style={styles.contactRow}>
-                      <Pressable
-                        style={styles.contactBtn}
-                        onPress={() => router.push(`/messages/${id}`)}
-                        accessibilityRole="button"
-                      >
-                        <MessageSquare size={16} color={ui.text} />
-                        <Text style={styles.contactText}>Nachricht</Text>
-                      </Pressable>
-                      <Pressable
-                        style={styles.contactBtn}
-                        onPress={() => router.push(`/tip/${id}`)}
-                        accessibilityRole="button"
-                      >
-                        <Coins size={16} color={ui.text} />
-                        <Text style={styles.contactText}>Trinkgeld</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-                </>
+                <View style={styles.contactRow}>
+                  <Pressable
+                    onPress={() => myUserId ? follow.toggle() : router.push('/login')}
+                    disabled={follow.busy}
+                    style={({ pressed }) => [styles.followBtn, follow.isFollowing && styles.followBtnActive, pressed && styles.rowPressed]}
+                    accessibilityRole="button" accessibilityState={{ disabled: follow.busy, busy: follow.busy }}>
+                    <Text style={[styles.followText, follow.isFollowing && styles.followTextActive]}>{follow.isFollowing ? 'Du folgst' : 'Folgen'}</Text>
+                  </Pressable>
+                  {myUserId && id ? <Pressable
+                    style={({ pressed }) => [styles.contactBtn, pressed && styles.rowPressed]}
+                    onPress={() => router.push(`/messages/${id}`)} accessibilityRole="button">
+                    <MessageSquare size={16} color={ui.text} /><Text style={styles.contactText}>Nachricht</Text>
+                  </Pressable> : null}
+                </View>
               )}
 
-              {/* Läuft gerade etwas, ist das der wichtigste Knopf der Seite. */}
-              {liveShow ? (
-                <Pressable
-                  style={styles.liveBanner}
-                  onPress={() => router.push(`/live/${liveShow.id}`)}
-                  accessibilityRole="button"
-                >
-                  <View style={styles.liveDot} />
-                  <Text numberOfLines={1} style={styles.liveText}>
-                    {liveShow.title ?? 'Sendet gerade'}
-                  </Text>
-                  <Radio size={15} color={ui.liveInk} />
-                </Pressable>
-              ) : null}
-
-              {/* Dieselbe Fläche, zwei Zustände — wie bei der Live-Vorschau auf
-                  den Show-Karten (Abschnitt 8): Sendet er, steht hier der rote
-                  Streifen. Sendet er nicht und hat einen Termin angekündigt,
-                  steht hier der Termin.
-
-                  Er steht ÜBER den Reitern, weil „wann kommt der wieder?" die
-                  Frage ist, die den ganzen Sendeplan wertvoll macht — und weil
-                  der Folgen-Knopf direkt darüber die einzige Handlung ist, die
-                  daraus etwas macht. Bis zum 16.08.2026 lag die Antwort hinter
-                  dem dritten Reiter: Wer auf der Startseite eine Termin-Karte
-                  antippte, landete auf einer Seite voller Produkte und sah
-                  ausgerechnet das nicht, wofür er gekommen war.
-
-                  Live schlägt Termin. Beides gleichzeitig wäre zwar möglich
-                  (heute senden, morgen wieder), aber wer JETZT senden kann,
-                  soll nicht auf morgen verwiesen werden. */}
-              {!liveShow && nextPlanned ? (
-                <Pressable
-                  style={styles.soonBanner}
-                  onPress={() => setTab('shows')}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Nächster Termin: ${nextPlanned.title ?? 'Show'} ${showWhen(
-                    nextPlanned.scheduled_at,
-                  )}. Alle Termine anzeigen.`}
-                >
-                  <CalendarClock size={15} color={ui.text} />
-                  <Text numberOfLines={1} style={styles.soonText}>
-                    {nextPlanned.title ?? 'Nächste Show'}
-                  </Text>
-                  <Text style={styles.soonWhen}>{showWhen(nextPlanned.scheduled_at)}</Text>
-                </Pressable>
-              ) : null}
+              <SellerShowEntry live={liveQuery.isError ? null : liveShow} planned={tab === 'shows' || announced.isError ? null : nextPlanned}
+                onLive={(showId) => router.push(`/live/${showId}`)} onSchedule={() => setTab('shows')} />
+              {liveQuery.isError || (announced.isError && tab !== 'shows') ? <SellerSectionState title="Live-Status und Termine"
+                loading={liveQuery.isFetching || announced.isFetching} error={liveQuery.error ?? announced.error} hasData
+                onRetry={() => { void refetchLive(); void announced.refetch(); }} /> : null}
 
               {/* Das vollständige Bürgen-Feld: Namen, Gewicht, Sätze — und der
                   Knopf zum Selbst-Bürgen. Es steht bewusst WEITERHIN hier und
@@ -897,6 +738,8 @@ export default function SellerScreen() {
                   Community ist das der Teil, der entscheidet — er gehört nicht
                   hinter einen Reiter, den man erst antippen muss. */}
               <VouchPanel
+                key={id}
+                compactEmpty
                 vouches={vouches}
                 isSelf={isSelf}
                 myUserId={myUserId}
@@ -1004,85 +847,57 @@ export default function SellerScreen() {
                   Wer auf ein Profil kommt, während niemand sendet, soll etwas
                   TUN können. */}
               {tab !== 'shop' ? null : (
-              <StandingShelf
-                listings={standing}
-                isOwner={isSelf}
-                // ⚠️ Bis zum 23.08.2026 war dieses Regal die einzige
-                // Stöber-Fläche OHNE Merken-Herz — dieselben Artikel tragen
-                // eines auf `/shop`, in der Kategorie und auf der Startseite.
-                // Ausgerechnet auf dem Weg, den der „Demnächst"-Streifen und
-                // die Verkäufer-Suche nehmen, konnte man sich nichts merken.
-                savedIds={savedIds}
-                onToggleSaved={(auctionId, saved) =>
-                  myUserId ? toggleSaved.mutate({ auctionId, saved }) : router.push('/login')
-                }
-                // Auf dem Profil wird gestöbert, nicht verwaltet — hier trägt
-                // das Bild. Unter `/shelf` bleibt es die kompakte Liste.
-                layout="grid"
-                // Nur auf dem eigenen Profil. Bei einem Fremden ist „hat
-                // nichts" eine Auskunft, die niemand braucht — da bleibt das
-                // Regal unsichtbar.
-                emptyText={
-                  isSelf
-                    ? 'Noch nichts im Regal. Unter „Verkaufen" kannst du Artikel dauerhaft anbieten — die sind rund um die Uhr kaufbar, auch wenn du nicht sendest.'
-                    : null
-                }
-                busyId={standingBusyId}
-                // Kaufen und Anschreiben liegen seit dem 17.08.2026 auf der
-                // Artikelseite, zu der jede Karte führt. Auf dem Profil wäre
-                // beides ein Kaufweg ohne Beschreibung, ohne Versandkosten und
-                // ohne die Rechtsfolge der Anbieterkennzeichnung.
-                onCancel={(item) => {
-                  setStandingBusyId(item.id);
-                  void standingActions.cancel
-                    .mutateAsync(item.id)
-                    .then(() => setVouchNotice('Zurückgezogen.'))
-                    .catch((e: unknown) =>
-                      setVouchNotice(
-                        standingErrorText(e instanceof Error ? e.message : String(e)),
-                      ),
-                    )
-                    .finally(() => setStandingBusyId(null));
-                }}
-              />
+              <>
+              <SellerSectionState title="Angebote" loading={standingQuery.isLoading || standingQuery.isFetching && Boolean(standingError)}
+                error={standingError} hasData={standing.length > 0} onRetry={() => void refetchStanding()}
+                emptyTitle="Gerade keine Artikel im Shop" emptyBody={isSelf ? 'Unter „Verkaufen“ kannst du deinen nächsten Artikel einstellen.' : 'Schau bei den Shows vorbei oder komm später wieder.'}
+                actionLabel={isSelf ? 'Artikel einstellen' : 'Shows ansehen'} onAction={() => isSelf ? router.push('/(tabs)/sell') : setTab('shows')} />
+              {standing.length > 0 ? <View style={[sellerShopStyles.surface, sellerShopStyles.head]}>
+                <ShoppingBag size={16} color={ui.text} />
+                <Text style={sellerShopStyles.title}>Jetzt kaufbar</Text>
+                <Text style={sellerShopStyles.count} accessibilityLabel={standingQuery.hasNextPage ? `Mehr als ${standing.length} Angebote` : `${standing.length} Angebote`}>{standing.length}{standingQuery.hasNextPage ? '+' : ''}</Text>
+              </View> : null}
+              </>
               )}
-
-              {tab === 'shop' && items.length > 0 ? (
-                <Text style={styles.section}>Zuletzt verkauft</Text>
-              ) : null}
-            </View>
-          }
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <BerkatMark size={36} color={ui.sunken} />
-              <Text style={styles.emptyTitle}>
-                {tab === 'reviews'
-                  ? 'Noch keine Bewertung mit Text'
-                  : tab === 'shows'
-                    ? 'Noch keine Sendung'
-                    : 'Noch nichts verkauft'}
-              </Text>
-              {/* Auf dem eigenen Profil wäre „Schau bei der nächsten Show
-                  vorbei" eine Aufforderung an sich selbst, zuzuschauen. */}
-              <Text style={styles.emptyBody}>
-                {tab === 'reviews'
-                  ? // Die Kachel oben zählt ALLE Bewertungen, diese Liste zeigt
-                    // nur die mit Worten. Dass beides auseinandergeht, ist kein
-                    // Fehler und wird hier gesagt statt verschwiegen.
-                      isSelf
-                      ? 'Sterne allein stehen oben in der Kachel. Hier erscheinen sie, sobald jemand auch etwas dazuschreibt.'
-                      : `Bewertet wurde ${name} vielleicht schon — geschrieben hat bisher niemand.`
-                  : tab === 'shows'
-                    ? isSelf
-                      ? 'Kündige unter „Verkaufen" einen Termin an, dann steht er hier — und deine Follower bekommen 15 Minuten vorher eine Erinnerung.'
-                      : `${name} hat noch keinen Termin angekündigt.`
-                    : isSelf
-                      ? 'Sobald deine erste Auktion durch ist, steht sie hier — das ist die Auslage, die Fremde als Erstes lesen.'
-                      : `${name} hat hier noch keine Auktion abgeschlossen. Schau bei der nächsten Show vorbei.`}
-              </Text>
+              {tab === 'reviews' ? <SellerSectionState title="Bewertungen" loading={reviewsQuery.isLoading || reviewsQuery.isError && reviewsQuery.isFetching}
+                error={reviewsQuery.error} hasData={reviews.length > 0} onRetry={() => void refetchReviews()}
+                emptyTitle="Noch keine Bewertung mit Text" emptyBody="Hier erscheinen Bewertungen, zu denen Käufer einen Text geschrieben haben." /> : null}
+              {tab === 'shows' ? <>
+                <Text style={styles.section}>Termine & vergangene Shows</Text>
+                <SellerSectionState title="Termine und Shows" loading={announced.isLoading || pastShows.isLoading || Boolean(announced.error || pastShows.error) && (announced.isFetching || pastShows.isFetching)}
+                  error={announced.error ?? pastShows.error} hasData={showRows.length > 0 || Boolean(liveShow)}
+                  onRetry={() => { void announced.refetch(); void pastShows.refetch(); }}
+                  emptyTitle="Noch kein Termin angekündigt" emptyBody={isSelf ? 'Plane deine nächste Show unter „Verkaufen“.' : 'Hier findest du kommende Termine und vergangene Shows.'}
+                  actionLabel={isSelf ? 'Show planen' : 'Zum Shop'} onAction={() => isSelf ? router.push('/(tabs)/sell') : setTab('shop')} />
+                {lineupError ? <SellerSectionState title="Show-Vorschau" loading={lineupFetching} error={lineupError} hasData onRetry={() => void refetchLineup()} /> : null}
+              </> : null}
             </View>
           }
           renderItem={({ item }) => {
+            if ('rowType' in item) {
+              if (item.rowType === 'listings') return <SellerListingRow cells={item.cells} mine={isSelf} savedIds={savedIds} onToggleSaved={onToggleSaved} />;
+              if (item.rowType === 'sold') return <SellerSoldRow cells={item.cells} />;
+              if (item.rowType === 'shop-footer') return <View style={[sellerShopStyles.surface, sellerShopStyles.foot]}>
+                <SellerShopMore hasMore={standingQuery.hasNextPage} fetching={standingQuery.isFetching || pulling} loadingMore={standingQuery.isFetchingNextPage}
+                  failed={standingQuery.isFetchNextPageError} onLoad={() => {
+                    if (focused && tab === 'shop' && standingQuery.hasNextPage && !standingQuery.isFetching && !pullBusy.current) {
+                      void standingQuery.fetchNextPage({ cancelRefetch: false });
+                    }
+                  }} />
+                <Text style={sellerShopStyles.hint}>{isSelf
+                  ? 'Diese Artikel bleiben kaufbar, auch wenn du nicht sendest.'
+                  : 'Kommt in dasselbe Paket wie deine Zuschläge — du zahlst nur einmal Versand.'}</Text>
+              </View>;
+              return <View key={fontScale}>
+                <Pressable onPress={() => setSoldOpen((open) => !open)} accessibilityRole="button" accessibilityState={{ expanded: soldOpen }}
+                  style={({ pressed }) => [styles.historyToggle, pressed && styles.rowPressed]}>
+                  <Text style={styles.historyLabel}>Verkaufte Artikel</Text><ChevronDown size={18} color={ui.textMuted} style={soldOpen ? { transform: [{ rotate: '180deg' }] } : undefined} />
+                </Pressable>
+                {soldOpen ? <SellerSectionState title="Verkaufte Artikel" loading={soldQuery.isLoading || soldQuery.isError && soldQuery.isFetching}
+                  error={soldQuery.error} hasData={items.length > 0} onRetry={() => void refetchItems()} emptyTitle="Noch keine verkauften Artikel"
+                  emptyBody="Hier erscheinen die zuletzt abgeschlossenen Auktionen." /> : null}
+              </View>;
+            }
             // ── Live-Shows ────────────────────────────────────────────────
             if ('kind' in item) {
               const soon = item.kind === 'announced';
@@ -1126,7 +941,7 @@ export default function SellerScreen() {
                     </View>
                   )}
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={styles.showTitle}>
+                    <Text numberOfLines={2} style={styles.showTitle}>
                       {item.title ?? (soon ? 'Angekündigte Show' : 'Show')}
                     </Text>
                     <Text style={styles.showMeta}>
@@ -1136,7 +951,7 @@ export default function SellerScreen() {
                       {item.when ? ` · ${item.when}` : ''}
                     </Text>
                   </View>
-                  {item.women_only ? <Lock size={13} color={ui.success} /> : null}
+                  {item.women_only ? <Text style={styles.womenLabel}>Nur Frauen</Text> : null}
                 </Pressable>
 
                 {/* Was an diesem Abend drankommt. Steht UNTER der Zeile und
@@ -1170,36 +985,14 @@ export default function SellerScreen() {
               );
             }
 
-            // ── Shop: zuletzt verkauft ────────────────────────────────────
-            // Der Platzhalter hält nur die Spalte offen.
-            if ('spacer' in item) return <View style={styles.cell} />;
-            return (
-            <View style={styles.cell}>
-              <View style={styles.thumb}>
-                {item.image_url ? (
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    transition={120}
-                  />
-                ) : null}
-                {item.current_bid_cents != null ? (
-                  <View style={styles.pricePill}>
-                    <Text style={styles.priceText}>{formatEuro(item.current_bid_cents)}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text numberOfLines={1} style={styles.cellTitle}>
-                {item.title}
-              </Text>
-            </View>
-            );
+            return null;
           }}
         />
       )}
 
-      {/* ── Die Kopfzeile liegt ÜBER der Liste, nicht davor (23.08.2026) ────
+      {/* Beim Scrollen wird die Kopfzeile deckend; der kompakte Name ersetzt
+          den Banner als Orientierung. Beide Überblendungen laufen nativ.
+          ── Die Kopfzeile liegt ÜBER der Liste, nicht davor (23.08.2026) ────
           Nur so kann das Kopfbild randlos bis unter die Statusleiste laufen.
           Der Preis dafür sind zwei Dinge, die beide hier gelöst sind:
 
@@ -1231,8 +1024,13 @@ export default function SellerScreen() {
         style={[styles.header, { paddingTop: insets.top }]}
         pointerEvents="box-none"
       >
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: ui.bg,
+          opacity: scrollY.interpolate({ inputRange: [0, BANNER_H - 48], outputRange: [0, 1], extrapolate: 'clamp' }),
+        }]} />
         <LinearGradient
-          colors={[ui.bg, ui.bgClear]}
+          // Unter Uhr und Akku deckend; erst unter der Safe Area ausblenden.
+          colors={[ui.bg, ui.bg, ui.bgClear]}
+          locations={[0, insets.top / (insets.top + 10), 1]}
           style={[styles.headerScrim, { height: insets.top + 10 }]}
           pointerEvents="none"
         />
@@ -1240,16 +1038,20 @@ export default function SellerScreen() {
           hitSlop={10}
           onPress={() => goBack('/(tabs)/')}
           style={[styles.headerBtn, styles.headerBtnOnImage]}
+          accessibilityRole="button"
+          accessibilityLabel="Zurück"
         >
           <ChevronLeft size={22} color={ui.text} />
         </Pressable>
-        {/* Der Name steht seit dem Umbau groß unter dem Avatar. Ihn hier ein
-            zweites Mal zu zeigen, wäre eine Dopplung — die Zeile bleibt leer. */}
-        <View style={styles.headerSpacer} />
+        <Animated.Text key={fontScale} accessible={false} numberOfLines={1} style={[styles.headerName, {
+          opacity: scrollY.interpolate({ inputRange: [BANNER_H - 80, BANNER_H - 48], outputRange: [0, 1], extrapolate: 'clamp' }),
+        }]}>{name}</Animated.Text>
 
         <Pressable
           hitSlop={8}
           onPress={() => void shareProfile()}
+          disabled={!profile}
+          accessibilityState={{ disabled: !profile }}
           style={[styles.headerBtn, styles.headerBtnOnImage]}
           accessibilityRole="button"
           accessibilityLabel="Profil teilen"
@@ -1283,6 +1085,10 @@ export default function SellerScreen() {
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
         <View style={styles.menuWrap}>
           <View style={styles.menu}>
+            <Pressable style={styles.menuRow} accessibilityRole="button" onPress={() => { setMenuOpen(false); router.push(`/tip/${id}`); }}>
+              <Coins size={18} color={ui.text} /><Text style={styles.menuText}>Trinkgeld geben</Text>
+            </Pressable>
+            <View style={styles.menuSplit} />
             <Pressable
               style={styles.menuRow}
               onPress={() => {
@@ -1424,7 +1230,7 @@ function Tile({
     <View style={styles.tile}>
       {icon}
       <Text style={styles.tileValue}>{value}</Text>
-      <Text numberOfLines={2} style={styles.tileLabel}>
+      <Text style={styles.tileLabel}>
         {label}
       </Text>
     </View>
@@ -1447,32 +1253,22 @@ const styles = StyleSheet.create({
     paddingBottom: space.sm,
   },
   headerScrim: { position: 'absolute', top: 0, left: 0, right: 0 },
-  headerSpacer: { flex: 1 },
-  headerBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerName: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text },
+  headerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   /* Die dritte registrierte Verwendung von `ui.overlay` — Symbole auf einem
      FREMDEN Bild, das niemand kontrolliert. Eintrag steht in `theme/tokens.ts`.
      Ohne sie wären Zurück, Teilen und Mehr über einem dunklen Bannerfoto
      unsichtbar; ein Verlauf allein reicht auf dieser Höhe nicht (gemessen). */
   headerBtnOnImage: { borderRadius: radius.pill, backgroundColor: ui.overlay },
 
-  tabs: {
-    flexDirection: 'row',
-    gap: space.xs,
-    marginTop: space.lg,
-    marginBottom: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ui.line,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabOn: { borderBottomColor: ui.brand },
-  tabText: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
-  tabTextOn: { color: ui.text, fontWeight: '700' },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, paddingTop: space.md, paddingBottom: space.lg },
+  tab: { minHeight: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.pill, backgroundColor: ui.card },
+  tabOn: { backgroundColor: ui.brand },
+  tabText: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.textMuted },
+  tabTextOn: { color: ui.card, fontWeight: '600' },
+  historyToggle: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.md, marginTop: space.sm },
+  historyLabel: { flex: 1, fontSize: 15, lineHeight: 22, fontWeight: '600', color: ui.textMuted },
+  womenLabel: { fontSize: 12, lineHeight: 18, color: ui.success, marginTop: space.xs },
 
   rowPressed: { opacity: 0.6 },
   // Trägt die Trennlinie für Zeile UND Artikel-Kacheln zusammen — siehe die
@@ -1594,7 +1390,7 @@ const styles = StyleSheet.create({
      Abschnitt 4, sondern seine Anwendung: Der Banner IST eine dunkle Fläche
      (Foto oder Markengrün), und `stage` ist die Palette für dunkle Flächen.
      Wer hier `ui.text` nähme, schriebe Dunkel auf Dunkel. */
-  name: { fontSize: 22, fontWeight: '700', color: stage.text },
+  name: { fontSize: 24, lineHeight: 30, fontWeight: '700', color: stage.text },
   handle: { fontSize: 13, color: stage.textMuted, marginTop: 1 },
 
   /* Hellgrün wie auf der Artikelseite und im Live-Kopf — dieselbe Auskunft
@@ -1608,7 +1404,7 @@ const styles = StyleSheet.create({
   },
   vouchLineText: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '600', color: ui.success },
 
-  bio: { fontSize: 13, color: ui.text, marginBottom: 3, lineHeight: 19 },
+  bio: { fontSize: 14, color: ui.text, marginBottom: space.sm, lineHeight: 21 },
   bioMore: { fontSize: 12, fontWeight: '700', color: ui.brand, marginBottom: space.sm },
 
   counts: { fontSize: 13, color: ui.textMuted, marginBottom: space.md },
@@ -1619,7 +1415,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    height: 44,
+    minHeight: 48,
+    paddingVertical: space.sm,
     borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: ui.lineStrong,
@@ -1634,68 +1431,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 42,
+    minHeight: 48,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.sm,
     borderRadius: radius.pill,
     backgroundColor: ui.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: ui.line,
   },
-  contactText: { fontSize: 14, fontWeight: '600', color: ui.text },
+  contactText: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.text, flexShrink: 1 },
 
   followBtn: {
-    height: 44,
+    flex: 1,
+    paddingHorizontal: space.sm,
+    minHeight: 48,
+    paddingVertical: space.sm,
     borderRadius: radius.pill,
     backgroundColor: ui.brand,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: space.md,
   },
   followBtnActive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: ui.lineStrong },
-  followText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  followText: { fontSize: 15, fontWeight: '700', color: ui.card },
   followTextActive: { color: ui.text },
 
-  liveBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    backgroundColor: ui.live,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    paddingVertical: 11,
-    marginBottom: space.md,
-  },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ui.liveInk },
-  liveText: { flex: 1, fontSize: 14, fontWeight: '700', color: ui.liveInk },
-
-  /* Bewusst NICHT rot und nicht gold: Rot ist in Berkat die laufende Uhr (live,
-     überboten), Gold der Kauf. Ein Termin ist beides nicht — er ist eine
-     Einladung. Deshalb dieselbe ruhige Fläche und dasselbe Marken-Grün für die
-     Zeit wie auf der „Demnächst"-Karte der Startseite: Dieselbe Auskunft soll
-     an beiden Orten gleich aussehen. */
-  soonBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    backgroundColor: ui.sunken,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    paddingVertical: 11,
-    marginBottom: space.md,
-  },
-  soonText: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '700', color: ui.text },
-  soonWhen: { fontSize: 13, fontWeight: '700', color: ui.brand },
-
   // `marginBottom`, seit die Kacheln vor der Bio stehen statt am Ende.
-  tiles: { flexDirection: 'row', gap: space.sm, marginBottom: space.md },
+  newSellerInfo: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.lg },
+  newSellerText: { flex: 1, fontSize: 12, lineHeight: 18, color: ui.textMuted },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ui.line },
   tile: {
-    flex: 1,
-    backgroundColor: ui.card,
-    borderRadius: radius.md,
-    padding: space.md,
+    flexGrow: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    minWidth: 90,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.sm,
     gap: 3,
   },
-  tileValue: { fontSize: 19, fontWeight: '700', color: ui.text, marginTop: 2 },
-  tileLabel: { fontSize: 11, color: ui.textMuted, lineHeight: 14 },
+  tileValue: { fontSize: 17, fontWeight: '700', color: ui.text },
+  tileLabel: { flexShrink: 1, fontSize: 12, color: ui.textMuted, lineHeight: 18 },
 
   vouchNotice: {
     fontSize: 13,
@@ -1721,25 +1496,6 @@ const styles = StyleSheet.create({
   },
   imprintLabel: { fontSize: 11, fontWeight: '700', color: ui.textMuted },
   imprintText: { fontSize: 12, color: ui.textMuted, lineHeight: 18 },
-
-  cell: { flex: 1 },
-  thumb: {
-    aspectRatio: ratio.card,
-    borderRadius: radius.sm,
-    backgroundColor: ui.sunken,
-    overflow: 'hidden',
-  },
-  pricePill: {
-    position: 'absolute',
-    left: 4,
-    bottom: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: radius.pill,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  priceText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
-  cellTitle: { fontSize: 11, color: ui.textMuted, marginTop: 3 },
 
   empty: { alignItems: 'center', paddingTop: 40, gap: space.sm },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: ui.text },

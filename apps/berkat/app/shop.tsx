@@ -1,52 +1,13 @@
-// Alles, was gerade kaufbar ist — über alle Verkäufer und Kategorien.
-//
-// Der Bildschirm, der aus einer Auktions-App einen Marktplatz macht: Bis hierher
-// war ein Dauerangebot nur über das Profil seines Verkäufers oder über eine
-// Kategorie erreichbar — und die Kategorie ist beim Einstellen freiwillig. Wer
-// ohne sie einstellte, legte seinen Artikel für die Allgemeinheit unauffindbar
-// ab.
-//
-// FILTER, SUCHE UND ORT — vollständig seit dem 18.08.2026 (nachts).
-// Nachdem 36 Testartikel im Regal lagen, war die alte Zurückhaltung nicht mehr
-// zu halten: 38 Artikel über 31 Unterkategorien, von 14 € bis 249 €, in zwölf
-// Städten. Ohne Filter findet dort niemand etwas.
-//
-// ⚠️ „Umkreis" heißt hier ORT, nicht Radius. Ein echter Umkreis („20 km um
-// 13353") braucht Geokoordinaten je Postleitzahl; die Tabelle trägt nur `city`
-// und `postal_code` als Text. Eine Ortsliste beantwortet dieselbe Frage für
-// den Fall, der zählt („ist das bei mir in der Nähe / kann ich es abholen"),
-// ohne eine Genauigkeit zu behaupten, die die Daten nicht hergeben.
-//
-// SUCHE UND SORTIERUNG — AB EINER SCHWELLE (seit 18.08.2026).
-// Hier stand bis dahin „bewusst ohne Filter und Suche", und die Begründung war
-// richtig: Eine Filterleiste über zwei Artikel ist keine Hilfe, sondern
-// Beschäftigung. Sie ist es aber immer noch, sobald fünfzig Artikel im Regal
-// liegen — dann ist ihr Fehlen das Problem (fünfte Whatnot-Analyse: deren
-// Shop-Liste hat Suche und Chips, und zwar seit sie Bestand haben).
-//
-// Aufgelöst über eine SCHWELLE statt eines Entweder-Oder: Unter `TOOLS_FROM`
-// Artikeln ist die Leiste nicht da, darüber schon. Damit gilt die alte
-// Begründung weiter, ohne die neue Anforderung zu blockieren.
-//
-// ⚠️ Gefiltert und sortiert wird IM CLIENT, über die geladenen Zeilen. Das ist
-// bei `useShopListings()` (Grenze 60) richtig und wird falsch, sobald das Regal
-// darüber hinauswächst: Dann sucht die Leiste in den ersten sechzig und
-// behauptet, das sei alles. Wer die Grenze anhebt, muss Suche und Sortierung
-// in dieselbe Abfrage schieben.
-//
-// Ein Stack-Bildschirm, kein sechster Reiter: Unten liegen schon fünf, und
-// „Kategorien" musste dafür bereits auf 10 pt verkleinert werden.
-//
-// Seit dem 17.08.2026 führt jede Karte auf `/listing/<id>` statt auf das Profil
-// des Verkäufers, und der Kaufknopf ist aus dem Raster verschwunden. Begründung
-// im Kopf von `components/ListingCard.tsx`.
-
-import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect, router, useLocalSearchParams } from 'expo-router';
+// Shop: serverseitige Auswahl, anschließend seitenweise Angebote.
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   Modal,
   RefreshControl,
@@ -55,6 +16,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -66,11 +28,12 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react-native';
-
 import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { formatEuro, useProfiles } from '../lib/useAuction';
-import { isShowItem, listingPrice, useShopListings, type Listing } from '../lib/useListings';
+import { type Listing } from '../lib/useListings';
+import { useBrowseListingPages, type BrowseSort } from '../lib/useBrowseListingPages';
+import { SellerShopMore } from '../components/SellerShopMore';
 import { useSavedIds, useToggleSaved, useSavedCounts } from '../lib/useSaved';
 import {
   normalizeQuery,
@@ -79,33 +42,19 @@ import {
   useSavedSearchActions,
 } from '../lib/useSavedSearches';
 import { useCategoryOptions } from '../lib/useCategories';
-import { conditionLabel } from '../lib/useBerkatSeller';
+import { CONDITIONS, conditionLabel } from '../lib/useBerkatSeller';
 import { ListingCard } from '../components/ListingCard';
 import { BerkatMark } from '../components/BerkatMark';
 import { radius, space, ui } from '../theme/tokens';
-
+import { useReducedMotion } from '../lib/useReducedMotion';
 const COLS = 2;
-
-/**
- * Ab wie vielen Artikeln Suche und Sortierung erscheinen.
- *
- * Acht ist eine volle Rasterseite: Darunter sieht man ohnehin alles auf einmal,
- * und ein Werkzeug für etwas, das man schon überblickt, ist nur eine Zeile
- * weniger Ware auf dem Schirm.
- */
-const TOOLS_FROM = 8;
-
-type Sort = 'neu' | 'guenstig' | 'teuer';
-
-const SORTS: { key: Sort; label: string }[] = [
+const priceSteps = [2500, 5000, 10000, 25000];
+const SORTS: { key: BrowseSort; label: string }[] = [
   { key: 'neu', label: 'Neueste' },
   { key: 'guenstig', label: 'Günstigste' },
   { key: 'teuer', label: 'Teuerste' },
 ];
-
-/** Dieselbe Platzhalter-Falle wie überall: `flex: 1` zieht die letzte Karte breit. */
 type Cell = Listing | { id: string; spacer: true };
-
 function padToGrid(items: Listing[]): Cell[] {
   const rest = items.length % COLS;
   if (items.length === 0 || rest === 0) return items;
@@ -117,18 +66,17 @@ function padToGrid(items: Listing[]): Cell[] {
     })),
   ];
 }
-
 export default function ShopScreen() {
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
-  const { data: listings = [], isLoading, refetch } = useShopListings();
-  const profiles = useProfiles(listings.map((l) => l.seller_id));
-  // Merken direkt von der Karte — der O(1)-Blick ins Set, siehe useSaved.ts.
+  const focused = useIsFocused();
+  const { fontScale } = useWindowDimensions();
+  const pullingRef = useRef(false);
   const { data: savedIds } = useSavedIds(myUserId);
   const toggleSaved = useToggleSaved(myUserId);
-  // Slug → Anzeigename. `live_auctions.category` trägt Slugs; ohne das stünde
-  // „gebetsteppiche" im Filter statt „Gebetsteppiche".
-  const { groups: categoryGroups } = useCategoryOptions();
+  const categories = useCategoryOptions();
+  const categoryGroups = categories.groups;
   const categoryNames = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of categoryGroups) {
@@ -137,96 +85,36 @@ export default function ShopScreen() {
     }
     return m;
   }, [categoryGroups]);
-
-  /**
-   * Kind-Slug → Eltern-Slug. Der Filter arbeitet auf OBERkategorien.
-   *
-   * Am 18.08.2026 zuerst mit Unterkategorien gebaut und am Gerät sofort
-   * verworfen: Das Blatt zeigte einunddreißig Einträge, davon zwanzig mit „1",
-   * und man scrollte an ihnen vorbei, bevor „Zustand" überhaupt sichtbar wurde.
-   * Zwölf Oberkategorien passen auf einen Blick und tragen Zahlen, die eine
-   * Entscheidung stützen („Mode 8"). Wer feiner filtern will, hat dafür den
-   * Kategorien-Reiter mit seinem Baum.
-   */
-  const parentOf = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const p of categoryGroups) {
-      m.set(p.slug, p.slug);
-      for (const c of p.children) m.set(c.slug, p.slug);
-    }
-    return m;
-  }, [categoryGroups]);
-
   const [pulling, setPulling] = useState(false);
-  // Ein Suchwort darf von außen kommen: Der Tipp auf eine „Das hast du
-  // gesucht"-Meldung landet hier MIT dem Wort, statt den Empfänger erneut
-  // tippen zu lassen. Als `useState`-Anfangswert, nicht als Effekt — ein
-  // Effekt würde die Suche auch dann zurücksetzen, wenn der Besucher
-  // inzwischen selbst weitergetippt hat (dieselbe Lehre wie beim
-  // Profil-Reiter, Abschnitt 13).
   const params = useLocalSearchParams<{ q?: string }>();
-  const [query, setQuery] = useState(typeof params.q === 'string' ? params.q : '');
+  const [query, setQuery] = useState(typeof params.q === 'string' ? params.q.slice(0, 100) : '');
   const [searchNotice, setSearchNotice] = useState<string | null>(null);
   const [savingSearch, setSavingSearch] = useState(false);
-  const [sort, setSort] = useState<Sort>('neu');
+  const [sort, setSort] = useState<BrowseSort>('neu');
   const [filterOpen, setFilterOpen] = useState(false);
-  /** `null` = alle. Getrennte Zustände statt eines Objekts: Jeder wird einzeln gesetzt. */
   const [cat, setCat] = useState<string | null>(null);
   const [cond, setCond] = useState<string | null>(null);
   const [size, setSize] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  /**
-   * „Nur Show-Ware" — Whatnots `In Show`-Chip.
-   *
-   * ⚠️ Er steht in der Leiste und NICHT im Filter-Blatt, und das ist derselbe
-   * Grund, aus dem dort der Filter-Knopf vor der Sortierung steht: Er
-   * verändert die Art dessen, was man sieht, nicht nur eine Eigenschaft.
-   * „Kann ich das jetzt kaufen oder muss ich Freitag dabei sein?" ist die
-   * gröbste Frage auf diesem Bildschirm — sie gehört an die Oberfläche.
-   *
-   * Bewusst ein **Schalter**, kein Dreifach-Wähler (alles / nur Regal / nur
-   * Show): Für „nur Regal" gibt es keinen Anlass, den jemand hat. Wer sofort
-   * kaufen will, sortiert nicht — er tippt auf das, was kein Datum trägt.
-   */
   const [onlyShow, setOnlyShow] = useState(false);
-
-  const activeFilters = [cat, cond, size, city, maxPrice].filter((v) => v !== null).length;
+  const activeFilters = [cat, cond, size?.trim() || null, city?.trim() || null, maxPrice].filter((v) => v !== null).length;
   const resetFilters = useCallback(() => {
     setCat(null);
     setCond(null);
     setSize(null);
     setCity(null);
     setMaxPrice(null);
-    // ⚠️ Gehört mit zurückgesetzt, obwohl er nicht im Blatt sitzt: Der
-    // Leerzustand verspricht „Filter zurücksetzen" und meint damit alles, was
-    // gerade eingrenzt. Einen Eingrenzer stehen zu lassen, den der Knopf nicht
-    // nennt, ist genau der Fehler, den der Leerzustand hier schon einmal
-    // hatte — jemand tippt und steht weiter vor einer leeren Fläche.
     setOnlyShow(false);
   }, []);
-
-  // Gespeicherte Suche. Die Meldung erzeugt der Server (Trigger
-  // `notify_saved_searches`); hier wird nur angelegt und entfernt.
   const { save: saveSearchMutation, remove: removeSearchMutation } =
     useSavedSearchActions(myUserId);
   const { data: savedSearches = [] } = useSavedSearches(myUserId);
-
-  /**
-   * Ist GENAU diese Suche schon gemerkt? Die Zeile, nicht nur ein Ja/Nein —
-   * zum Entfernen braucht es ihre Kennung.
-   *
-   * ⚠️ Verglichen wird über `normalizeQuery` auf BEIDEN Seiten, weil der
-   * eindeutige Index in der Datenbank auf `lower(btrim(query))` steht. Ohne
-   * dasselbe Rechnen im Client sähe „ Abaya " wie eine neue Suche aus, der
-   * Knopf stünde auf „nicht gemerkt", und das Antippen liefe in ein 23505.
-   */
   const savedSearchRow = useMemo(() => {
     const q = normalizeQuery(query).toLowerCase();
     if (q.length < 2) return null;
     return savedSearches.find((s) => normalizeQuery(s.query).toLowerCase() === q) ?? null;
   }, [savedSearches, query]);
-
   const saveSearch = useCallback(() => {
     const q = normalizeQuery(query);
     if (q.length < 2 || savingSearch) return;
@@ -235,8 +123,6 @@ export default function ShopScreen() {
     saveSearchMutation
       .mutateAsync(q)
       .then(() => {
-        // Erfolgs-Haptik: Das ist ein kleiner Peak — jemand hat gerade nichts
-        // gefunden und trotzdem etwas erreicht (Design-Gesetz 1 und 2 in einem).
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
           () => {},
         );
@@ -245,22 +131,6 @@ export default function ShopScreen() {
       .catch((err) => setSearchNotice(savedSearchError(err)))
       .finally(() => setSavingSearch(false));
   }, [query, savingSearch, saveSearchMutation]);
-
-  /**
-   * Der Umschalter — merken oder wieder vergessen.
-   *
-   * ⚠️ Bis zum 25.08.2026 gab es das Merken NUR im Leerzustand, mit der
-   * Begründung: „Eine erfolglose Suche ist die einzige, die es zu merken
-   * lohnt." Der Satz deckt einen von zwei Fällen ab. Der zweite ist bei
-   * gebrauchter Einzelware der Normalfall: Eine Suche mit vier Treffern merkt
-   * man sich, weil morgen ein FÜNFTER, besserer kommen könnte. Whatnots
-   * Ergebnisseite zeigt ihren „Saved"-Knopf deshalb auch über gefüllten
-   * Listen, nicht nur über leeren (Analyse 15).
-   *
-   * Und wer merken kann, muss vergessen können — sonst sammeln sich Suchen an,
-   * die man nicht mehr los wird, und jede schickt Push-Meldungen. Deshalb ein
-   * Umschalter und kein zweiter Anlege-Knopf.
-   */
   const toggleSavedSearch = useCallback(() => {
     if (!myUserId) {
       router.push('/login');
@@ -275,225 +145,55 @@ export default function ShopScreen() {
     setSearchNotice(null);
     removeSearchMutation
       .mutateAsync(savedSearchRow.id)
-      // Kein Erfolgs-Jubel beim Entfernen: Das ist kein Peak, sondern ein
-      // Aufräumen. Haptik gehört zu den Hochs (Design-Gesetz 3, „maßhalten").
       .then(() => setSearchNotice('Nicht mehr gemerkt.'))
       .catch((err) => setSearchNotice(savedSearchError(err)))
       .finally(() => setSavingSearch(false));
   }, [myUserId, savedSearchRow, savingSearch, saveSearch, removeSearchMutation]);
-
-  /**
-   * Die Auswahl entsteht AUS DEN DATEN, nicht aus einer festen Liste.
-   *
-   * Eine feste Liste hätte 31 Unterkategorien und sechs Zustände, von denen die
-   * meisten null Treffer liefern — Auswahlmöglichkeiten, die ins Leere führen,
-   * sind schlimmer als keine. Was hier steht, hat garantiert mindestens einen
-   * Artikel, und die Zahl daneben sagt wie viele.
-   */
-  const options = useMemo(() => {
-    const count = (get: (l: Listing) => string | null | undefined) => {
-      const map = new Map<string, number>();
-      for (const l of listings) {
-        const v = get(l);
-        if (v) map.set(v, (map.get(v) ?? 0) + 1);
-      }
-      return [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de'));
-    };
-    return {
-      // Auf die Oberkategorie gerollt — siehe `parentOf`.
-      cats: count((l) => (l.category ? (parentOf.get(l.category) ?? l.category) : null)),
-      conds: count((l) => l.condition),
-      /**
-       * ⚠️ Größen werden NICHT nach Häufigkeit sortiert, als einzige Gruppe.
-       *
-       * Bei Kategorie, Zustand und Ort sucht man das Naheliegende — die
-       * häufigste Wahl zuerst ist dort die richtige Reihenfolge. Bei Größen
-       * sucht man die EIGENE, und die ist so oft selten wie häufig. Eine nach
-       * Häufigkeit geordnete Liste zwingt dann, alles zu lesen; „38 · 40 · 42 ·
-       * M · One Size" findet man mit einem Blick.
-       *
-       * `numeric: true` sortiert „38" vor „40" vor „100" — ohne das käme die
-       * Zeichenkettenordnung heraus („100" vor „38").
-       */
-      sizes: count((l) => l.size).sort((a, b) =>
-        a[0].localeCompare(b[0], 'de', { numeric: true, sensitivity: 'base' }),
-      ),
-      cities: count((l) => l.city),
-    };
-  }, [listings, parentOf]);
-
-  /** Preisstufen, die zum Bestand passen — „bis 500 €" wäre bei 249 € Höchstpreis sinnlos. */
-  const priceSteps = useMemo(() => {
-    // Preislose Zeilen fallen raus, statt als 0 zu zählen: Sie sagen nichts
-    // über die Spanne des Bestands aus.
-    const known = listings
-      .map((l) => listingPrice(l).cents)
-      .filter((c): c is number => c !== null);
-    const top = Math.max(0, ...known);
-    return [2500, 5000, 10000, 25000].filter((c) => c < top);
-  }, [listings]);
-
-  // Die Werkzeuge hängen am GELADENEN Bestand, nicht am gefilterten — sonst
-  // verschwände die Suche, sobald sie wenige Treffer liefert, und man käme
-  // nicht mehr an sie heran, um den Suchbegriff zu ändern.
-  const showTools = listings.length >= TOOLS_FROM;
-
-  // Aus demselben Grund am geladenen Bestand: Sonst verschwände der Chip in
-  // dem Moment, in dem er eingeschaltet ist und die Liste nur noch Show-Ware
-  // zeigt — man käme nicht mehr heraus.
-  const hasShowItems = useMemo(() => listings.some(isShowItem), [listings]);
-
-  /**
-   * Ist die Liste gerade eingegrenzt — egal womit?
-   *
-   * ⚠️ Diese Variable ist die Antwort auf eine Warnung, die zwei Bildschirme
-   * weiter unten stand und die ich beim Bauen ausgelöst habe: „Wer hier eine
-   * dritte Art der Eingrenzung einbaut, muss sie in diese Bedingung
-   * aufnehmen." Die Bedingung war an DREI Stellen abgeschrieben (Trefferzahl
-   * im Kopf, Leerzustand, Text darin) — der Chip wäre also an zwei davon
-   * vergessen worden, und der Kopf hätte „38 Artikel" über vier Karten
-   * geschrieben. Genau der Fehler vom 18.08.2026, nur mit neuem Auslöser.
-   *
-   * Eine Warnung ist kein Riegel. Jetzt gibt es die Bedingung einmal.
-   */
+  const slugs = useMemo(() => {
+    if (!cat) return undefined;
+    const group = categoryGroups.find(group => group.slug === cat);
+    return [cat, ...(group?.children.map(child => child.slug) ?? [])];
+  }, [cat, categoryGroups]);
+  const pages = useBrowseListingPages({ slugs, query, condition: cond, size, city, maxPrice, onlyShow, sort }, focused);
+  const { isLoading, refetch } = pages;
+  const isError = pages.isError && !pages.isFetchNextPageError;
+  const listings = pages.data?.listings ?? [];
+  const profiles = useProfiles(listings.map(listing => listing.seller_id));
   const narrowedByFilter = activeFilters > 0 || onlyShow;
   const narrowed = Boolean(query.trim()) || narrowedByFilter;
-
-  const shown = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const found = listings.filter((l) => {
-      // Filter zuerst, Suche danach — beide verengen, die Reihenfolge ist für
-      // das Ergebnis gleich. Zusammen in EINEM Durchlauf, weil zwei Durchläufe
-      // über dieselbe Liste nichts gewinnen.
-      // Vergleich auf Elternebene: „Mode" muss auch „Abaya" durchlassen.
-      if (onlyShow && !isShowItem(l)) return false;
-      if (cat && (!l.category || (parentOf.get(l.category) ?? l.category) !== cat)) return false;
-      if (cond && l.condition !== cond) return false;
-      if (size && l.size !== size) return false;
-      if (city && l.city !== city) return false;
-      // ⚠️ `listingPrice`, nicht `buy_now_cents`. Bei Show-Ware ist der
-      // Sofortkauf-Preis freiwillig und meistens 0 — „bis 25 €" hätte sonst
-      // jeden vorbereiteten Artikel durchgelassen, auch den, der bei 300 €
-      // startet. Ein Filter, der stillschweigend das Falsche misst, ist
-      // schlimmer als keiner: Man glaubt, man habe eingegrenzt.
-      if (maxPrice !== null) {
-        const c = listingPrice(l).cents;
-        // ⚠️ Ohne Preis fliegt die Zeile RAUS, nicht rein. „Bis 25 €" ist eine
-        // Zusage; eine Zeile durchzulassen, von der man nicht weiss, was sie
-        // kostet, bricht sie. Im Zweifel weniger zeigen als falsch zusagen.
-        if (c === null || c > maxPrice) return false;
-      }
-      if (!needle) return true;
-      // Titel, Größe und Ort: die drei Dinge, nach denen jemand im Regal sucht —
-      // „Abaya", „42", „Berlin". Die Beschreibung bleibt draußen, sie würde bei
-      // drei Sätzen Fließtext zu viele Zufallstreffer liefern.
-      //
-      // Die Größe MUSS mit, seit es das Feld gibt (19.08.2026): Vorher stand sie
-      // im Titel und war damit auffindbar. Sie in eine eigene Spalte zu heben und
-      // die Suche nicht mitzuziehen hätte eine Fähigkeit weggenommen, die es
-      // schon gab — der Filter allein setzt voraus, dass jemand ihn öffnet.
-      const inTitle = l.title.toLowerCase().includes(needle);
-      const inSize = (l.size ?? '').toLowerCase().includes(needle);
-      const inCity = (l.city ?? '').toLowerCase().includes(needle);
-      return inTitle || inSize || inCity;
-    });
-
-    if (sort === 'neu') return found;
-    // `filter()` gibt bereits ein neues Feld zurück — hier darf also an Ort und
-    // Stelle sortiert werden, ohne den Zwischenspeicher von React Query
-    // umzustellen.
-    //
-    // ⚠️ Auch hier der wirksame Preis. Mit `buy_now_cents` hätte „Günstigste"
-    // die gesamte Show-Ware an den Anfang gezogen — nicht weil sie billig ist,
-    // sondern weil dort eine 0 steht, wo kein Sofortkauf angeboten wird.
-    //
-    // ⚠️ Zeilen ohne Preis stehen in BEIDEN Richtungen hinten. Ein unbekannter
-    // Preis hat keinen Platz auf einer Skala — ihn als 0 zu behandeln machte
-    // ihn zum billigsten, als Unendlich zum teuersten. Beides wäre erfunden.
-    const rank = (l: Listing) => listingPrice(l).cents;
-    return found.sort((a, b) => {
-      const x = rank(a);
-      const y = rank(b);
-      if (x === null && y === null) return 0;
-      if (x === null) return 1;
-      if (y === null) return -1;
-      return sort === 'guenstig' ? x - y : y - x;
-    });
-  }, [listings, query, sort, cat, cond, size, city, maxPrice, onlyShow, parentOf]);
-
-  // Wie oft andere sich einen Artikel gemerkt haben — nur die Summe, nie wer
-  // (`get_saved_counts`, `20260822120000`). Nur für die Artikel, die gerade
-  // in der Liste stehen; eine Zahl für sechzig ungesehene wäre Arbeit ohne
-  // Empfänger.
-  const { data: saveCounts } = useSavedCounts(shown.map((l) => l.id));
-
-  // Die Reiter- und Stapel-Falle aus HANDOFF 3: Expo Router hält Bildschirme
-  // aufgebaut. Wer ein Angebot kauft oder zurückzieht und zurückkommt, sähe es
-  // sonst noch.
-  useFocusEffect(
-    useCallback(() => {
-      void refetch();
-    }, [refetch]),
-  );
-
+  const resultCount = `${listings.length}${pages.hasNextPage ? '+' : ''}`;
+  const countIds = useMemo(() => listings.map((l) => l.id).sort(), [listings]);
+  const { data: saveCounts } = useSavedCounts(countIds);
   const onPull = useCallback(async () => {
+    if (pullingRef.current || pages.isFetching || pages.isDebouncing) return;
+    pullingRef.current = true;
     setPulling(true);
     try {
-      await refetch();
+      await refetch({ cancelRefetch: false });
     } finally {
+      pullingRef.current = false;
       setPulling(false);
     }
-  }, [refetch]);
-
+  }, [refetch, pages.isFetching, pages.isDebouncing]);
+  const loadMore = () => {
+    if (!pages.isFetching && !pages.isDebouncing && !pullingRef.current && pages.hasNextPage) {
+      void pages.fetchNextPage({ cancelRefetch: false });
+    }
+  };
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/categories')} style={styles.back}>
+      <View key={fontScale} style={styles.header}>
+        <Pressable onPress={() => goBack('/(tabs)/categories')} style={styles.back} accessibilityRole="button" accessibilityLabel="Zurück">
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Alle Angebote</Text>
-          {/* Die Zahl steht hier und nicht als Kachel: Sie beantwortet „lohnt
-              sich das Scrollen", und das ist eine Frage an die Überschrift. */}
           {listings.length > 0 ? (
             <Text style={styles.headerSub}>
-              {/* Wird eingegrenzt, zählt die Trefferzahl — „38 Artikel" über
-                  zwei Karten wäre eine Auskunft über etwas, das man gerade
-                  nicht sieht.
-
-                  ⚠️ Das galt zuerst nur für die SUCHE. Am 18.08.2026 am Gerät
-                  gesehen: Mit den Filtern „Mode" und „Berlin" standen zwei
-                  Karten da und darüber „38 Artikel". Die Bedingung dafür heisst
-                  seit dem 25.08. `narrowed` und steht an genau einer Stelle —
-                  siehe dort, warum.
-
-                  ⚠️ Und „rund um die Uhr" stimmt nur noch für das Regal. Liegt
-                  Show-Ware mit dabei, ist ein Teil der Liste eben NICHT rund um
-                  die Uhr zu haben, sondern Freitag um acht. Ein Untertitel, der
-                  etwas verspricht, das für die halbe Liste nicht gilt, ist
-                  keine Kleinigkeit — er ist der Grund, warum jemand auf ein
-                  Datum tippt und Kaufen erwartet. */}
-              {narrowed
-                ? shown.length === 1
-                  ? '1 Treffer'
-                  : `${shown.length} Treffer`
-                : hasShowItems
-                  ? `${listings.length} Artikel · Regal und kommende Shows`
-                  : `${listings.length} Artikel · rund um die Uhr`}
+              {`${resultCount} ${narrowed ? 'Treffer' : listings.length === 1 ? 'Angebot' : 'Angebote'}`}
             </Text>
           ) : null}
         </View>
-        {/* ── Suche merken. Steht in der Kopfzeile, wo bisher ein leerer
-            Platzhalter die Überschrift mittig hielt — also ohne eine einzige
-            neue Zeile Höhe.
-
-            ⚠️ Nur bei gesetzter Suche: Ohne Text gibt es nichts zu merken, und
-            ein Knopf, der garantiert ins Leere führt, ist dieselbe Sorte Lärm
-            wie ein Filter ohne Treffer (siehe `options` weiter oben).
-
-            Gefüllt in Grün heisst „gemerkt" — dieselbe Sprache wie das
-            Merken-Herz auf der Karte (`ListingCard`): Bestätigung, keine
-            Dringlichkeit (rot) und kein Kauf (Bernstein). */}
         {normalizeQuery(query).length >= 2 ? (
           <Pressable
             hitSlop={10}
@@ -518,22 +218,21 @@ export default function ShopScreen() {
           <View style={styles.back} />
         )}
       </View>
-
-      {showTools ? (
-        <View style={styles.tools}>
+        <View key={`tools-${fontScale}`} style={styles.tools}>
           <View style={styles.searchWrap}>
             <Search size={16} color={ui.textMuted} />
             <TextInput
+              maxLength={100}
               value={query}
               onChangeText={setQuery}
-              placeholder="Im Regal suchen"
+              placeholder="Artikel, Größe oder Ort suchen"
+              accessibilityLabel="Artikel, Größe oder Ort suchen"
               placeholderTextColor={ui.textMuted}
               style={styles.searchInput}
               returnKeyType="search"
               autoCorrect={false}
+              autoCapitalize="none"
             />
-            {/* Ohne diesen Knopf muss man zwölfmal die Rücktaste drücken, um
-                aus einer Suche wieder herauszukommen. */}
             {query ? (
               <Pressable
                 hitSlop={8}
@@ -545,16 +244,11 @@ export default function ShopScreen() {
               </Pressable>
             ) : null}
           </View>
-
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.sortRow}
           >
-            {/* Der Filter steht VOR der Sortierung: Er verändert, WAS man
-                sieht, die Sortierung nur die Reihenfolge. Die Zahl daneben ist
-                Pflicht — ein aktiver Filter, den man nicht sieht, erklärt
-                später ein halb leeres Regal nicht. */}
             <Pressable
               onPress={() => setFilterOpen(true)}
               style={[styles.chip, styles.filterChip, activeFilters > 0 && styles.chipOn]}
@@ -571,13 +265,7 @@ export default function ShopScreen() {
                 {activeFilters > 0 ? `Filter · ${activeFilters}` : 'Filter'}
               </Text>
             </Pressable>
-
-            {/* ⚠️ Nur wenn es Show-Ware GIBT. Ein Chip, der garantiert null
-                Treffer liefert, ist dieselbe Sorte Lärm wie eine feste
-                Kategorienliste mit leeren Einträgen — die Begründung dafür
-                steht ein paar Zeilen höher bei `options`. Heute ist der Chip
-                deshalb meistens gar nicht da, und das ist richtig so. */}
-            {hasShowItems ? (
+            {(
               <Pressable
                 onPress={() => setOnlyShow((v) => !v)}
                 style={[styles.chip, styles.filterChip, onlyShow && styles.chipOn]}
@@ -590,8 +278,7 @@ export default function ShopScreen() {
                 <CalendarClock size={14} color={onlyShow ? ui.bg : ui.text} />
                 <Text style={[styles.chipText, onlyShow && styles.chipTextOn]}>In einer Show</Text>
               </Pressable>
-            ) : null}
-
+            )}
             {SORTS.map((option) => {
               const on = option.key === sort;
               return (
@@ -607,11 +294,30 @@ export default function ShopScreen() {
               );
             })}
           </ScrollView>
+          {narrowedByFilter ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeRow}>
+              {[
+                cat ? { key: 'cat', label: categoryNames.get(cat) ?? cat, clear: () => setCat(null) } : null,
+                size ? { key: 'size', label: `Gr. ${size}`, clear: () => setSize(null) } : null,
+                cond ? { key: 'cond', label: conditionLabel(cond) ?? cond, clear: () => setCond(null) } : null,
+                city ? { key: 'city', label: city, clear: () => setCity(null) } : null,
+                maxPrice !== null ? { key: 'price', label: `bis ${formatEuro(maxPrice)}`, clear: () => setMaxPrice(null) } : null,
+                onlyShow ? { key: 'show', label: 'In einer Show', clear: () => setOnlyShow(false) } : null,
+              ].filter((filter) => filter !== null).map((filter) => (
+                <Pressable key={filter.key} onPress={filter.clear} style={styles.activeChip} accessibilityRole="button" accessibilityLabel={`Filter ${filter.label} entfernen`}>
+                  <Text style={styles.activeText}>{filter.label}</Text><X size={14} color={ui.brand} />
+                </Pressable>
+              ))}
+              <Pressable onPress={resetFilters} style={styles.resetAll} accessibilityRole="button"><Text style={styles.activeText}>Alle zurücksetzen</Text></Pressable>
+            </ScrollView>
+          ) : null}
         </View>
-      ) : null}
-
       <FlatList
-        data={padToGrid(shown)}
+        key={pages.filterKey}
+        data={padToGrid(listings)}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
         keyExtractor={(item) => item.id}
         numColumns={COLS}
         columnWrapperStyle={styles.row}
@@ -623,19 +329,18 @@ export default function ShopScreen() {
         refreshControl={
           <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={ui.textMuted} />
         }
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={isError ? (
+          <View style={styles.loadNotice} accessibilityRole="alert">
+            <Text style={styles.emptyBody}>{listings.length ? 'Aktualisieren hat nicht geklappt. Du siehst den zuletzt geladenen Stand.' : 'Die Angebote konnten nicht geladen werden.'}</Text>
+            <Pressable onPress={onPull} disabled={pages.isFetching} style={styles.clearCta} accessibilityRole="button" accessibilityState={{ disabled: pages.isFetching, busy: pages.isFetching }}><Text style={styles.clearCtaText}>{pages.isFetching ? 'Wird geladen …' : 'Erneut versuchen'}</Text></Pressable>
+          </View>
+        ) : null}
         ListEmptyComponent={
-          isLoading ? (
-            <ActivityIndicator style={{ marginTop: space.xl }} color={ui.textMuted} />
+          isError ? null : isLoading ? (
+            <ActivityIndicator style={{ marginTop: space.xl }} color={ui.textMuted} accessibilityLabel="Angebote werden geladen" />
           ) : narrowed ? (
-            // ⚠️ NICHT „Noch nichts im Regal": Das Regal ist voll, es passt nur
-            // nichts zur Auswahl. Derselbe Fehler wie am 18.08. auf der
-            // Startseite — ein Leerzustand, der über die falsche Menge redet
-            // und den Suchenden wegschickt.
-            //
-            // Suche und Filter können BEIDE schuld sein. Der Text nennt
-            // deshalb, was gerade eingegrenzt ist, und der Knopf räumt genau
-            // das weg — sonst tippt jemand „Suche zurücksetzen" und steht
-            // weiter vor einer leeren Fläche, weil noch ein Filter steht.
             <View style={styles.empty}>
               <BerkatMark size={36} color={ui.sunken} />
               <Text style={styles.emptyTitle}>
@@ -648,12 +353,8 @@ export default function ShopScreen() {
                     ? 'Gesucht wird in Titel, Größe und Ort. Versuch ein anderes Wort.'
                     : onlyShow && activeFilters === 0
                       ? // Der eine Fall, in dem der Grund NICHT „zu eng" ist,
-                        // sondern schlicht „gibt es gerade nicht". Ihn wie einen
-                        // zu engen Filter zu behandeln würde jemanden Knöpfe
-                        // drücken lassen, die nichts ändern können.
                         'Für kommende Sendungen ist gerade nichts vorbereitet.'
                       : 'Die Filter sind zu eng. Nimm einen davon weg.'}
-                {` Insgesamt liegen ${listings.length} Artikel bereit.`}
               </Text>
               <Pressable
                 style={({ pressed }) => [styles.clearCta, pressed && { opacity: 0.7 }]}
@@ -672,25 +373,6 @@ export default function ShopScreen() {
                       : 'Filter zurücksetzen'}
                 </Text>
               </Pressable>
-
-              {/* Der eigentliche Fund der neunten Analyse sitzt genau HIER:
-                  an der Stelle, an der jemand sonst weggeht. Eine erfolglose
-                  Suche ist die einzige, die es zu merken lohnt — deshalb steht
-                  der Knopf im Leerzustand und nicht neben dem Suchfeld.
-                  ⚠️ Nur bei gesetzter Suche: Ein leerer Filterzustand hat
-                  keinen Text, den man speichern könnte. */}
-              {/* ⚠️ Seit dem 25.08.2026 gibt es das Merken an ZWEI Stellen —
-                  hier und als Lesezeichen in der Kopfzeile. Das ist kein
-                  Versehen und auch keine Dublette: Es sind zwei verschiedene
-                  Momente. Oben ein stiller Umschalter für eine laufende Suche,
-                  hier das warme Angebot an der Stelle, an der jemand sonst
-                  weggeht.
-
-                  ⚠️ Sie müssen sich aber EINIG sein. Beide lesen deshalb
-                  `savedSearchRow`; ohne das böte dieser Knopf „Sag mir
-                  Bescheid" für etwas an, das oben schon grün gefüllt ist —
-                  zwei Aussagen über denselben Zustand, und genau die Sorte
-                  Widerspruch, die dieses Dokument sonst als Fehler führt. */}
               {normalizeQuery(query).length >= 2 ? (
                 <Pressable
                   style={({ pressed }) => [styles.notifyCta, pressed && { opacity: 0.7 }]}
@@ -716,20 +398,20 @@ export default function ShopScreen() {
                   </Text>
                 </Pressable>
               ) : null}
-
               {searchNotice ? <Text style={styles.notifyNotice}>{searchNotice}</Text> : null}
             </View>
           ) : (
             <View style={styles.empty}>
               <BerkatMark size={36} color={ui.sunken} />
-              <Text style={styles.emptyTitle}>Noch nichts im Regal</Text>
+              <Text style={styles.emptyTitle}>Hier kommen die Angebote zusammen</Text>
               <Text style={styles.emptyBody}>
-                Hier steht, was Verkäufer dauerhaft anbieten — auch wenn gerade niemand sendet.
-                Du kannst der Erste sein: unter „Verkaufen" → „Dein Regal".
+                Entdecke Angebote aus den Shops und kommenden Shows. Sobald etwas bereitsteht, findest du es hier.
               </Text>
             </View>
           )
         }
+        ListFooterComponent={<SellerShopMore hasMore={pages.hasNextPage} fetching={pages.isFetching || pulling}
+          loadingMore={pages.isFetchingNextPage} failed={pages.isFetchNextPageError} onLoad={loadMore} />}
         renderItem={({ item }) => {
           if ('spacer' in item) return <View style={{ flex: 1 }} />;
           const mine = myUserId === item.seller_id;
@@ -754,25 +436,17 @@ export default function ShopScreen() {
           );
         }}
       />
-
-      {/* ── Das Filter-Blatt. Dasselbe Muster wie das Wann-Blatt im Sendeplan
-          und das Bearbeiten-Blatt der Artikelseite: Die Entscheidungen wandern
-          eine Ebene tiefer, die Hauptfläche zeigt das Ergebnis.
-
-          Es wirkt SOFORT, ohne „Übernehmen": Man sieht die Trefferzahl unten
-          mitlaufen und schließt, wenn es passt. Ein Übernehmen-Knopf wäre eine
-          zweite Entscheidung über dieselbe Sache. ────────────────────────── */}
       <Modal
         visible={filterOpen}
-        animationType="slide"
+        animationType={reducedMotion ? 'none' : 'slide'}
         presentationStyle="pageSheet"
         onRequestClose={() => setFilterOpen(false)}
       >
-        <View style={styles.sheet}>
+        <KeyboardAvoidingView key={fontScale} style={styles.sheet} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
           <View style={styles.sheetHead}>
             <Text style={styles.sheetTitle}>Filter</Text>
             <Pressable
-              hitSlop={10}
+              style={styles.back}
               onPress={() => setFilterOpen(false)}
               accessibilityRole="button"
               accessibilityLabel="Schließen"
@@ -780,40 +454,25 @@ export default function ShopScreen() {
               <X size={22} color={ui.text} />
             </Pressable>
           </View>
-
-          <ScrollView contentContainerStyle={styles.sheetBody}>
+          <ScrollView contentContainerStyle={styles.sheetBody} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
             <FilterGroup
               label="Kategorie"
-              options={options.cats}
+              options={categoryGroups.map(group => group.slug)}
               value={cat}
               onChange={setCat}
               display={(slug) => categoryNames.get(slug) ?? slug}
             />
-            {/* Größe direkt nach der Kategorie: Wer „Mode" wählt, meint fast
-                immer als Nächstes seine Größe. Zustand und Ort verengen danach,
-                die Größe entscheidet. */}
-            <FilterGroup
-              label="Größe"
-              options={options.sizes}
-              value={size}
-              onChange={setSize}
-              display={(v) => v}
-            />
-            <FilterGroup
-              label="Zustand"
-              options={options.conds}
-              value={cond}
-              onChange={setCond}
-              display={(slug) => conditionLabel(slug) ?? slug}
-            />
-            <FilterGroup
-              label="Ort"
-              options={options.cities}
-              value={city}
-              onChange={setCity}
-              display={(c) => c}
-            />
-
+            {categories.isError && !categories.data ? <Pressable onPress={() => void categories.refetch({ cancelRefetch: false })} style={styles.clearCta} accessibilityRole="button"><Text style={styles.clearCtaText}>Kategorien erneut laden</Text></Pressable> : null}
+            <Text style={styles.groupLabel}>Größe</Text>
+            <TextInput value={size ?? ''} onChangeText={value => setSize(value || null)} maxLength={24}
+              placeholder="Zum Beispiel M, 38 oder One Size" accessibilityLabel="Nach Größe filtern"
+              placeholderTextColor={ui.textMuted} autoCorrect={false} style={styles.filterInput} />
+            <FilterGroup label="Zustand" options={CONDITIONS.map(condition => condition.slug)}
+              value={cond} onChange={setCond} display={slug => conditionLabel(slug) ?? slug} />
+            <Text style={styles.groupLabel}>Ort</Text>
+            <TextInput value={city ?? ''} onChangeText={value => setCity(value || null)} maxLength={80}
+              placeholder="Stadt eingeben" accessibilityLabel="Nach Ort filtern"
+              placeholderTextColor={ui.textMuted} autoCorrect={false} style={styles.filterInput} />
             {priceSteps.length > 0 ? (
               <>
                 <Text style={styles.groupLabel}>Preis</Text>
@@ -838,8 +497,7 @@ export default function ShopScreen() {
               </>
             ) : null}
           </ScrollView>
-
-          <View style={styles.sheetFoot}>
+          <View style={[styles.sheetFoot, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
             {activeFilters > 0 ? (
               <Pressable
                 style={({ pressed }) => [styles.footGhost, pressed && { opacity: 0.7 }]}
@@ -854,30 +512,16 @@ export default function ShopScreen() {
               onPress={() => setFilterOpen(false)}
               accessibilityRole="button"
             >
-              {/* Die Zahl ist der eigentliche Inhalt des Knopfes: Sie sagt, was
-                  die Auswahl gerade bewirkt, noch bevor man sie sieht. */}
               <Text style={styles.footPrimaryText}>
-                {shown.length === 0
-                  ? 'Keine Treffer'
-                  : shown.length === 1
-                    ? '1 Artikel zeigen'
-                    : `${shown.length} Artikel zeigen`}
+                Auswahl anzeigen
               </Text>
             </Pressable>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
 }
-
-/**
- * Eine Filtergruppe: Überschrift, darunter die Werte mit ihrer Anzahl.
- *
- * Ein Tipp auf den bereits gewählten Wert hebt ihn auf — sonst käme man ohne
- * „Zurücksetzen" nie wieder auf „alle", und für eine einzelne Gruppe gibt es
- * keinen eigenen Knopf dafür.
- */
 function FilterGroup({
   label,
   options,
@@ -886,17 +530,17 @@ function FilterGroup({
   display,
 }: {
   label: string;
-  options: [string, number][];
+  options: string[];
   value: string | null;
   onChange: (v: string | null) => void;
   display: (key: string) => string;
 }) {
-  if (options.length < 2) return null; // Eine einzige Wahl ist keine Wahl.
+  if (options.length === 0) return null;
   return (
     <>
       <Text style={styles.groupLabel}>{label}</Text>
       <View style={styles.groupRow}>
-        {options.map(([key, count]) => {
+        {options.map((key) => {
           const on = value === key;
           return (
             <Pressable
@@ -905,10 +549,10 @@ function FilterGroup({
               style={[styles.opt, on && styles.optOn]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
-              accessibilityLabel={`${display(key)}, ${count}`}
+              accessibilityLabel={display(key)}
             >
               <Text style={[styles.optText, on && styles.optTextOn]}>
-                {display(key)} <Text style={styles.optCount}>{count}</Text>
+                {display(key)}
               </Text>
             </Pressable>
           );
@@ -917,7 +561,6 @@ function FilterGroup({
     </>
   );
 }
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: ui.bg },
   header: {
@@ -927,12 +570,15 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
     paddingBottom: space.md,
   },
-  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
   headerSub: { textAlign: 'center', fontSize: 11, color: ui.textMuted, marginTop: 1 },
-
   row: { gap: space.md },
-
+  activeRow: { gap: space.sm, alignItems: 'center' },
+  activeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.pill, backgroundColor: ui.card, borderWidth: 1, borderColor: ui.line },
+  activeText: { fontSize: 12, fontWeight: '600', color: ui.brand },
+  resetAll: { minHeight: 44, justifyContent: 'center', paddingHorizontal: space.sm },
+  loadNotice: { padding: space.md, backgroundColor: ui.card, borderRadius: radius.lg, alignItems: 'center' },
   tools: { paddingHorizontal: space.md, paddingBottom: space.md, gap: space.sm },
   searchWrap: {
     flexDirection: 'row',
@@ -941,27 +587,24 @@ const styles = StyleSheet.create({
     backgroundColor: ui.sunken,
     borderRadius: radius.pill,
     paddingHorizontal: space.md,
-    height: 40,
+    minHeight: 44,
+    paddingVertical: space.sm,
   },
   searchInput: { flex: 1, fontSize: 15, color: ui.text, padding: 0 },
   sortRow: { gap: space.sm },
   chip: {
     paddingHorizontal: space.md,
-    height: 32,
+    minHeight: 44,
+    paddingVertical: space.sm,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
   },
-  // Dunkel, nicht gold: Eine Sortierung ist kein Kaufweg (theme/tokens).
   chipOn: { backgroundColor: ui.brand },
   chipText: { fontSize: 13, fontWeight: '600', color: ui.text },
   chipTextOn: { color: ui.bg },
-
   empty: { alignItems: 'center', paddingTop: space.xl * 2, paddingHorizontal: space.lg },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: ui.text, marginTop: space.md },
-  // Kontur, nicht Gold: Gold ist in Berkat der Kaufweg. „Sag mir Bescheid" ist
-  // eine Bitte, kein Kauf — dieselbe Unterscheidung wie beim Regal-Knopf auf
-  // der Startseite (Abschnitt 21).
   notifyCta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -981,7 +624,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 19,
   },
-
   emptyBody: {
     fontSize: 13,
     color: ui.textMuted,
@@ -991,7 +633,8 @@ const styles = StyleSheet.create({
   },
   clearCta: {
     marginTop: space.md,
-    height: 40,
+    minHeight: 44,
+    paddingVertical: space.sm,
     paddingHorizontal: space.lg,
     justifyContent: 'center',
     borderRadius: radius.pill,
@@ -999,11 +642,7 @@ const styles = StyleSheet.create({
     borderColor: ui.lineStrong,
   },
   clearCtaText: { fontSize: 14, fontWeight: '700', color: ui.text },
-
-  // Der Filter-Knopf trägt ein Symbol neben dem Wort — er ist kein Wert wie die
-  // Sortier-Chips, sondern ein Weg in ein Blatt.
   filterChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-
   sheet: { flex: 1, backgroundColor: ui.bg },
   sheetHead: {
     flexDirection: 'row',
@@ -1014,12 +653,12 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
   sheetBody: { padding: space.lg, paddingBottom: space.xl },
-
   groupLabel: { fontSize: 12, color: ui.textMuted, marginTop: space.lg, marginBottom: space.sm },
   groupRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   opt: {
     paddingHorizontal: space.md,
-    height: 34,
+    minHeight: 44,
+    paddingVertical: space.sm,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
@@ -1027,12 +666,10 @@ const styles = StyleSheet.create({
   optOn: { backgroundColor: ui.brand },
   optText: { fontSize: 13, fontWeight: '600', color: ui.text },
   optTextOn: { color: ui.bg },
-  // Die Anzahl blasser als der Name: Sie ist die Nebenauskunft, nicht das, was
-  // man liest, um zu entscheiden.
-  optCount: { fontWeight: '400', color: ui.textMuted },
-
+  filterInput: { minHeight: 48, borderRadius: radius.md, backgroundColor: ui.sunken, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: 15, color: ui.text },
   sheetFoot: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: space.sm,
     paddingHorizontal: space.lg,
     paddingTop: space.md,
@@ -1041,7 +678,8 @@ const styles = StyleSheet.create({
     borderTopColor: ui.line,
   },
   footGhost: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: space.sm,
     paddingHorizontal: space.lg,
     justifyContent: 'center',
     borderRadius: radius.pill,
@@ -1049,15 +687,15 @@ const styles = StyleSheet.create({
     borderColor: ui.lineStrong,
   },
   footGhostText: { fontSize: 15, fontWeight: '700', color: ui.text },
-  // Gold: Hier steht kein Kauf, aber der Weg zurück zur Ware — und es ist der
-  // einzige Hauptweg auf diesem Blatt.
   footPrimary: {
-    flex: 1,
-    height: 48,
+    flexGrow: 1,
+    flexBasis: 170,
+    minHeight: 48,
+    paddingVertical: space.sm,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: ui.gold,
   },
-  footPrimaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
+  footPrimaryText: { textAlign: 'center', flexShrink: 1, fontSize: 15, fontWeight: '700', color: ui.goldInk },
 });

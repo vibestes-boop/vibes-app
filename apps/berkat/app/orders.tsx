@@ -18,7 +18,7 @@
 
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Gift } from 'lucide-react-native';
 
@@ -36,7 +36,7 @@ export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
 
-  const { data: orders = [], refetch } = useSellerOrders(myUserId);
+  const { data: orders = [], refetch, isLoading, isError } = useSellerOrders(myUserId);
   // Eine Abfrage für alle Bestellungen — siehe die Begründung im Hook.
   const { data: disputes } = useIncomingDisputes(
     orders.map((o) => o.id),
@@ -113,12 +113,22 @@ export default function OrdersScreen() {
           </Pressable>
         ) : null}
 
-        {/* Der grüne Balken mit „N warten aufs Packen" ist am 16.08.2026 wieder
-            raus: Seit `SellerOrders` nach Zustand gruppiert, steht die Zahl
-            schon in der Überschrift „Zu packen (N)" — und ein drittes Mal am
-            Reiter-Abzeichen. Dreimal dieselbe Zahl ist keine Betonung, sondern
-            Lärm. */}
-        {orders.length === 0 ? (
+        {isError ? (
+          <View style={styles.notice} accessibilityRole="alert">
+            <Text style={styles.noticeText}>
+              {orders.length ? 'Bestellungen konnten nicht aktualisiert werden. Du siehst den zuletzt geladenen Stand.' : 'Bestellungen konnten nicht geladen werden.'}
+            </Text>
+            <Pressable accessibilityRole="button" onPress={() => void onPull()} style={styles.retry}>
+              <Text style={styles.retryText}>Erneut versuchen</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {isLoading && orders.length === 0 ? (
+          <View style={styles.empty}>
+            <ActivityIndicator color={ui.brand} />
+            <Text style={styles.emptyBody}>Bestellungen werden geladen …</Text>
+          </View>
+        ) : orders.length === 0 && !isError ? (
           <View style={styles.empty}>
             <BerkatMark size={38} color={ui.sunken} />
             <Text style={styles.emptyTitle}>Noch keine Bestellung</Text>
@@ -202,6 +212,9 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   noticeText: { fontSize: 13, color: ui.text, lineHeight: 19 },
+
+  retry: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  retryText: { fontSize: 14, fontWeight: '700', color: ui.brand },
 
   empty: { alignItems: 'center', paddingTop: 72, gap: space.sm },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text },

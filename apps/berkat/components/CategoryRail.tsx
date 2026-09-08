@@ -27,13 +27,27 @@
 // Geschwisters ändern noch auf dem JS-Thread laufen — und es soll folgen, nicht
 // umschalten.**
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { BerkatMark } from './BerkatMark';
 import { categoryArt } from '../theme/categoryArt';
 import { ui, radius, space } from '../theme/tokens';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 
-export const RAIL_TALL = 112;
-export const RAIL_SHORT = 44;
+export const RAIL_TALL = 132;
+export const RAIL_SHORT = 52;
+
+// Leiste und Listenpolster müssen dieselben Maße verwenden.
+export function categoryRailMetrics(fontScale: number) {
+  const scale = Math.max(1, fontScale);
+  return {
+    tall: RAIL_TALL + Math.ceil(49 * (scale - 1)),
+    short: RAIL_SHORT + Math.ceil(18 * (scale - 1)),
+    tileWidth: Math.ceil(96 * scale),
+    pillHeight: 44 + Math.ceil(18 * (scale - 1)),
+  };
+}
 
 export type RailItem = {
   /**
@@ -57,13 +71,7 @@ export type RailItem = {
    * Reihe von Namen ohne jede Auskunft darüber, wo sich das Hinsehen lohnt.
    */
   listingCount?: number;
-  /**
-   * `false` für Einträge, die keine Kategorie sind — heute nur „Für dich".
-   *
-   * Ein Symbol wäre dort eine Behauptung: Es gibt kein Bild für „alles". Bei
-   * Whatnot steht an dieser Stelle der eigene Avatar; bis Berkat den in der
-   * Leiste hat, bleibt die Fläche leer und die Kachel trägt nur ihren Namen.
-   */
+  /** Der allgemeine Einstieg trägt das Markenzeichen statt Kategorie-Artwork. */
   art?: false;
 };
 
@@ -81,23 +89,44 @@ type Props = {
    * wären genau der Bruch, den man als Zucken sieht.
    */
   progress: Animated.AnimatedInterpolation<number>;
+  compact: boolean;
+  loading?: boolean;
 };
 
-export function CategoryRail({ items, active, onSelect, progress }: Props) {
+export function CategoryRail({ items, active, onSelect, progress, compact, loading = false }: Props) {
+  const reducedMotion = useReducedMotion();
+  const { fontScale } = useWindowDimensions();
+  const metrics = categoryRailMetrics(fontScale);
+  const tilesRef = useRef<ScrollView>(null);
+  const pillsRef = useRef<ScrollView>(null);
+  const firstSlug = items[0]?.slug;
+  useEffect(() => {
+    // Auch beim Zurücksetzen aus einem Leerzustand den gewählten Einstieg zeigen.
+    if (active !== firstSlug) return;
+    tilesRef.current?.scrollTo({ x: 0, animated: false });
+    pillsRef.current?.scrollTo({ x: 0, animated: false });
+  }, [active, firstSlug]);
   // Die Kacheln sind schon halb weg, bevor die Pillen kommen — sonst lägen
   // beide gleichzeitig sichtbar übereinander und es sähe nach Doppelbild aus.
-  const tileOpacity = progress.interpolate({ inputRange: [0, 0.55], outputRange: [1, 0], extrapolate: 'clamp' });
-  const pillOpacity = progress.interpolate({ inputRange: [0.45, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+  const tileOpacity = reducedMotion ? 1 : progress.interpolate({ inputRange: [0, 0.55], outputRange: [1, 0], extrapolate: 'clamp' });
+  const pillOpacity = reducedMotion ? 0 : progress.interpolate({ inputRange: [0.45, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+
 
   return (
-    <View style={styles.wrap}>
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: tileOpacity }]}>
+    <View style={[styles.wrap, { height: metrics.tall }]}>
+      <Animated.View pointerEvents={compact ? "none" : "auto"} accessibilityElementsHidden={compact} importantForAccessibility={compact ? "no-hide-descendants" : "auto"} style={[StyleSheet.absoluteFill, { opacity: tileOpacity }]}>
         <ScrollView
+          ref={tilesRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.row}
         >
-          {items.map((item) => {
+          {loading ? [0, 1, 2, 3].map((key) => (
+            <View key={key} style={[styles.tile, { width: metrics.tileWidth }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <View style={[styles.tileArt, { backgroundColor: ui.sunken }]} />
+              <View style={styles.skeletonLabel} />
+            </View>
+          )) : items.map((item) => {
             const on = item.slug === active;
             const art = categoryArt(item.slug);
             const Icon = art.icon;
@@ -112,50 +141,28 @@ export function CategoryRail({ items, active, onSelect, progress }: Props) {
                   ? `${item.listingCount} kaufbar`
                   : null;
             return (
-              <Pressable
+              <PressFeedback kind="card"
                 key={item.slug}
                 onPress={() => onSelect(item.slug)}
-                style={[styles.tile, on && styles.tileActive]}
+                style={[styles.tile, { width: metrics.tileWidth }]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={line ? `${item.name}, ${line}` : item.name}
               >
-                {/* Zwei Zeilen, nicht eine: „Beauty & Duft" und „Bücher &
-                    Medien" enden sonst nach dem Kaufmanns-Und. Genau so stand
-                    es am 18.08.2026 am Gerät — „Beauty &…", „Haus & D…". */}
-                <Text
-                  numberOfLines={2}
-                  style={[
-                    styles.tileText,
-                    item.art === false && styles.tileTextSolo,
-                    on && styles.tileTextActive,
-                  ]}
-                >
-                  {item.name}
-                </Text>
-
-                {/* Die Bildfläche. Heute ein Symbol auf gedecktem Ton, später
-                    das freigestellte Foto — `categoryArt` entscheidet, diese
-                    Kachel bleibt gleich. */}
-                {item.art !== false ? (
-                  <View style={[styles.tileArt, { backgroundColor: on ? ui.bg : art.tint }]}>
-                    {art.photo ? (
-                      <Image
-                        source={art.photo}
-                        style={StyleSheet.absoluteFill}
-                        contentFit="contain"
-                        transition={120}
-                      />
-                    ) : (
-                      <Icon size={22} color={ui.brand} />
-                    )}
-                  </View>
-                ) : null}
-
-                {line ? (
-                  <Text style={[styles.tileCount, on && styles.tileCountActive]}>{line}</Text>
-                ) : null}
-              </Pressable>
+                <View style={[styles.tileArt, { backgroundColor: art.tint }, on && styles.tileActive, item.art === false && on && styles.discoveryActive]}>
+                  {item.art === false ? (
+                    <BerkatMark size={34} color={on ? ui.card : ui.brand} />
+                  ) : art.photo ? (
+                    <Image source={art.photo} style={styles.tilePhoto} contentFit="contain" transition={0} />
+                  ) : (
+                    <Icon size={30} color={ui.brand} />
+                  )}
+                </View>
+                <View style={styles.tileCaption}>
+                  <Text numberOfLines={2} style={[styles.tileText, on && styles.tileTextActive]}>{item.name}</Text>
+                  {line ? <Text style={styles.tileCount}>{line}</Text> : null}
+                </View>
+              </PressFeedback>
             );
           })}
         </ScrollView>
@@ -164,25 +171,27 @@ export function CategoryRail({ items, active, onSelect, progress }: Props) {
       {/* Die Pillen sitzen UNTEN in der Leiste. Wird sie nach oben
           geschoben, stehen sie genau dort, wo die Leiste endet — der
           Übergang braucht keine zweite Bewegung. */}
-      <Animated.View style={[styles.pillLayer, { opacity: pillOpacity }]}>
+      <Animated.View pointerEvents={compact ? "auto" : "none"} accessibilityElementsHidden={!compact} importantForAccessibility={!compact ? "no-hide-descendants" : "auto"} style={[styles.pillLayer, { opacity: pillOpacity, height: metrics.short }]}>
         <ScrollView
+          ref={pillsRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.rowShort}
+          contentContainerStyle={[styles.rowShort, { height: metrics.short }]}
         >
           {items.map((item) => {
             const on = item.slug === active;
             return (
-              <Pressable
+              <PressFeedback
                 key={item.slug}
                 onPress={() => onSelect(item.slug)}
-                style={[styles.pill, on && styles.pillActive]}
+                style={[styles.pill, { height: metrics.pillHeight }, on && styles.pillActive]}
                 accessibilityRole="button"
+                accessibilityState={{ selected: on }}
               >
                 <Text numberOfLines={1} style={[styles.pillText, on && styles.pillTextActive]}>
                   {item.name}
                 </Text>
-              </Pressable>
+              </PressFeedback>
             );
           })}
         </ScrollView>
@@ -194,43 +203,28 @@ export function CategoryRail({ items, active, onSelect, progress }: Props) {
 const styles = StyleSheet.create({
   wrap: { height: RAIL_TALL, backgroundColor: ui.bg, overflow: 'hidden' },
   pillLayer: { position: 'absolute', left: 0, right: 0, bottom: 0, height: RAIL_SHORT },
-  row: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'center' },
+  row: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'flex-start' },
   rowShort: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'center', height: RAIL_SHORT },
 
-  // Name oben, Bild darunter, Zahl unten — dieselbe Anordnung wie bei Whatnot
-  // und wie im Kategorien-Reiter. Schmaler als vorher (88 statt 104): Es sind
-  // jetzt zwölf Kacheln statt einer, und wer scrollen soll, muss am Rand sehen,
-  // dass da noch etwas kommt.
-  tile: {
+  tile: { width: 96, alignItems: 'center', gap: 4 },
+  tileArt: {
     width: 88,
-    height: 100,
+    height: 72,
     borderRadius: radius.md,
-    backgroundColor: ui.sunken,
-    padding: 8,
-    alignItems: 'center',
-    gap: 4,
     borderWidth: 2,
     borderColor: 'transparent',
-  },
-  tileActive: { backgroundColor: ui.gold, borderColor: ui.brand },
-  tileText: { fontSize: 12, fontWeight: '700', color: ui.text, textAlign: 'center' },
-  // „Für dich" trägt kein Bild und hätte sonst den Namen oben und darunter
-  // nichts. Ohne Bildfläche gehört der Text in die Mitte — die Kachel sieht
-  // dadurch anders aus als die Kategorien, und das ist richtig: Sie ist keine.
-  tileTextSolo: { flex: 1, fontSize: 14, textAlignVertical: 'center', paddingTop: 22 },
-  tileTextActive: { color: ui.goldInk },
-  // Die Bildfläche wächst in den freien Raum: Fehlt die Zahl unten, wird sie
-  // höher, statt eine Lücke zu lassen.
-  tileArt: {
-    flex: 1,
-    alignSelf: 'stretch',
-    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  tileCount: { fontSize: 10, color: ui.textMuted },
-  tileCountActive: { color: ui.goldInk, opacity: 0.75 },
+  tilePhoto: { width: '92%', height: '92%' },
+  tileActive: { borderColor: ui.brand },
+  discoveryActive: { backgroundColor: ui.brand },
+  tileCaption: { alignItems: 'center', gap: 2 },
+  skeletonLabel: { width: 52, height: 12, borderRadius: radius.sm, backgroundColor: ui.sunken, marginTop: 4 },
+  tileText: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: ui.text, textAlign: 'center' },
+  tileTextActive: { color: ui.brand },
+  tileCount: { fontSize: 11, lineHeight: 15, color: ui.textMuted },
 
   pill: {
     paddingHorizontal: space.lg,
@@ -239,7 +233,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
   },
-  pillActive: { backgroundColor: ui.gold },
+  pillActive: { backgroundColor: ui.brand },
   pillText: { fontSize: 13, fontWeight: '600', color: ui.text },
-  pillTextActive: { color: ui.goldInk },
+  pillTextActive: { color: ui.card },
 });

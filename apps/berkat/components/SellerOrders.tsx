@@ -393,6 +393,7 @@ function OpenOrder({
         value={tracking}
         onChangeText={setTracking}
         placeholder="Sendungsnummer"
+        accessibilityLabel="Sendungsnummer"
         placeholderTextColor={ui.textMuted}
         autoCapitalize="characters"
         autoCorrect={false}
@@ -404,6 +405,7 @@ function OpenOrder({
         // Ohne Nummer hat der Käufer nichts zu verfolgen, und der Zustand
         // `shipped` wäre eine Behauptung ohne Beleg.
         disabled={busy || !tracking.trim()}
+        accessibilityState={{ disabled: busy || !tracking.trim(), busy }}
         onPress={() => onShip(order.id, carrier, tracking.trim())}
         accessibilityRole="button"
       >
@@ -451,10 +453,9 @@ function DoneOrder({ order, buyerName }: { order: SellerOrder; buyerName: string
             </Text>
           </Pressable>
         ) : null}
-      </View>
-
-      <View style={[styles.donePill, { backgroundColor: status.bg }]}>
-        <Text style={[styles.statusText, { color: status.color }]}>{status.text}</Text>
+        <View style={[styles.donePill, { backgroundColor: status.bg }]}>
+          <Text style={[styles.statusText, { color: status.color }]}>{status.text}</Text>
+        </View>
       </View>
     </View>
   );
@@ -468,7 +469,7 @@ export function SellerOrders({ orders, busyId, onShip, disputes, onNotice }: Pro
   const checkShipping = useShippingCheck(useSession((s) => s.userId));
   const buyerNames = useUsernames(orders.map((o) => o.buyer_id));
 
-  const { open, done, lastCarrier } = useMemo(() => {
+  const { open, groups, lastCarrier } = useMemo(() => {
     // Womit dieser Verkäufer ZULETZT versendet hat.
     //
     // Ein Verkäufer benutzt fast immer denselben Zusteller — ihn bei jeder
@@ -488,7 +489,11 @@ export function SellerOrders({ orders, busyId, onShip, disputes, onNotice }: Pro
     );
     return {
       open: orders.filter((o) => o.status === 'paid'),
-      done: orders.filter((o) => o.status !== 'paid'),
+      groups: [
+        { key: 'shipped', title: 'Unterwegs', orders: orders.filter((o) => o.status === 'shipped') },
+        { key: 'delivered', title: 'Zugestellt', orders: orders.filter((o) => o.status === 'delivered') },
+        { key: 'other', title: 'Weitere Bestellungen', orders: orders.filter((o) => !['paid', 'shipped', 'delivered'].includes(o.status)) },
+      ].filter((group) => group.orders.length > 0),
       lastCarrier: known?.tracking_carrier ?? CARRIERS[0],
     };
   }, [orders]);
@@ -533,30 +538,28 @@ export function SellerOrders({ orders, busyId, onShip, disputes, onNotice }: Pro
         </>
       ) : null}
 
-      {done.length > 0 ? (
-        <>
-          <Text style={[styles.sectionLabel, open.length > 0 && { marginTop: space.xl }]}>
-            Erledigt ({done.length})
-          </Text>
+      {groups.map((group, groupIndex) => (
+        <View key={group.key} style={open.length > 0 || groupIndex > 0 ? { marginTop: space.xl } : undefined}>
+          <Text style={styles.sectionLabel}>{group.title} ({group.orders.length})</Text>
           <View style={styles.doneCard}>
-            {done.map((order, index) => (
+            {group.orders.map((order, index) => (
               <View key={order.id} style={index > 0 ? styles.doneSplit : undefined}>
                 <DoneOrder order={order} buyerName={buyerNames[order.buyer_id] ?? '…'} />
               </View>
             ))}
           </View>
-        </>
-      ) : null}
+        </View>
+      ))}
     </>
   );
 }
 
 const styles = StyleSheet.create({
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: ui.textMuted,
-    marginBottom: space.sm,
+    fontSize: 17,
+    fontWeight: '700',
+    color: ui.text,
+    marginBottom: space.md,
   },
   // Rot, weil es eine Frist ist — jemand wartet auf Antwort. Dieselbe
   // Begründung wie beim Symbol in der Meldungsliste.
@@ -707,7 +710,8 @@ const styles = StyleSheet.create({
   carriers: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   carrierChip: {
     paddingHorizontal: space.md,
-    height: 32,
+    minHeight: 44,
+    paddingVertical: 8,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
@@ -730,13 +734,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    height: 46,
+    minHeight: 52,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
     borderRadius: radius.pill,
     backgroundColor: ui.gold,
     marginTop: space.xs,
   },
   shipButtonOff: { opacity: 0.45 },
-  shipButtonText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
+  shipButtonText: { flexShrink: 1, textAlign: 'center', fontSize: 15, fontWeight: '700', color: ui.goldInk },
 
   // ── Erledigt: eine Karte, je Bestellung eine Zeile ───────────────────────
   doneCard: {
@@ -765,7 +771,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   doneName: { fontSize: 14, fontWeight: '700', color: ui.text },
-  donePill: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: radius.pill },
+  donePill: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 9, paddingVertical: 3, borderRadius: radius.pill },
   trackText: { fontSize: 12, color: ui.textMuted, marginTop: 2 },
   trackLink: { color: ui.brand, fontWeight: '700', textDecorationLine: 'underline' },
 });

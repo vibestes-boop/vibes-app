@@ -7,7 +7,7 @@
 // solange Dauerangebote existieren.
 //
 // AUFBAU, abgeschaut am 16.08.2026 von Whatnot:
-//   • Drei Spalten statt zwei — halbiert die Scrollhöhe bei kurzen Namen.
+//   • Zwei Spalten geben den freigestellten Motiven ausreichend Fläche (06.09.2026).
 //   • Ein Tipp auf eine Kachel klappt ihre Unterkategorien VERTIKAL unter der
 //     Zeile auf, ein zweiter schließt sie. Erst dadurch trägt die Seite
 //     zweiundsiebzig Kategorien, ohne zur Wand zu werden.
@@ -20,12 +20,12 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   FlatList,
   LayoutAnimation,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -40,6 +40,8 @@ import { useCategoryTree, type Category, type CategoryNode } from '../../lib/use
 import { BerkatMark } from '../../components/BerkatMark';
 import { categoryArt } from '../../theme/categoryArt';
 import { radius, space, ui } from '../../theme/tokens';
+import { PressFeedback } from '../../components/PressFeedback';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 
 // Auf Android muss die Layout-Animation einmalig freigeschaltet werden. Unter
 // der neuen Architektur gibt es die Methode nicht mehr — deshalb die Prüfung
@@ -48,7 +50,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const COLUMNS = 3;
+const COLUMNS = 2;
 
 // ⚠️ SYMBOL, FARBTON UND FOTO KOMMEN AUS `theme/categoryArt.ts` — EINE STELLE.
 //
@@ -92,11 +94,13 @@ function hasActivity(c: Category): boolean {
 }
 
 export default function CategoriesScreen() {
+  const reducedMotion = useReducedMotion();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const queryClient = useQueryClient();
-  const { tree, isLoading, refetch } = useCategoryTree();
+  const { tree, isLoading, refetch } = useCategoryTree(isFocused);
 
   const [sort, setSort] = useState<SortMode>('empfohlen');
   const [open, setOpen] = useState<string | null>(null);
@@ -115,7 +119,7 @@ export default function CategoriesScreen() {
   // beim Zurückwechseln die Zähler von vorhin da (HANDOFF 3, Reiter-Falle).
   useFocusEffect(
     useCallback(() => {
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'categories'] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'categories'] }, { cancelRefetch: false });
     }, [queryClient]),
   );
 
@@ -126,9 +130,9 @@ export default function CategoriesScreen() {
     }
     // Die Animation wird VOR der Zustandsänderung angemeldet — sie beschreibt
     // den nächsten Layout-Durchlauf, nicht den vergangenen.
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!reducedMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpen((current) => (current === slug ? null : slug));
-  }, [router]);
+  }, [router, reducedMotion]);
 
   const sorted = useMemo((): CategoryNode[] => {
     const list = [...tree];
@@ -155,7 +159,7 @@ export default function CategoriesScreen() {
     }
   }, [tree, sort]);
 
-  // In Zeilen zu dritt zerlegen, statt `numColumns` zu benutzen: Die
+  // In Zeilen zu zweit zerlegen, statt `numColumns` zu benutzen: Die
   // Aufklapp-Liste muss zwischen zwei Zeilen liegen, und dafür muss die Zeile
   // selbst das Listenelement sein.
   const rows = useMemo(() => {
@@ -207,14 +211,14 @@ export default function CategoriesScreen() {
           accessibilityLabel="Artikel suchen"
         />
         {query.length > 0 ? (
-          <Pressable
+          <PressFeedback
             hitSlop={10}
             onPress={() => setQuery('')}
             accessibilityRole="button"
             accessibilityLabel="Suche leeren"
           >
             <X size={16} color={ui.textMuted} />
-          </Pressable>
+          </PressFeedback>
         ) : null}
       </View>
 
@@ -226,7 +230,7 @@ export default function CategoriesScreen() {
           Wichtig für die Auffindbarkeit: Die Kategorie ist beim Einstellen
           FREIWILLIG. Ein Angebot ohne Kategorie lag bis hierher in keiner Kachel
           und war damit für jeden unauffindbar, der den Verkäufer nicht kennt. */}
-      <Pressable
+      <PressFeedback
         style={styles.allRow}
         onPress={() => router.push('/shop')}
         accessibilityRole="button"
@@ -235,13 +239,13 @@ export default function CategoriesScreen() {
         <ShoppingBag size={17} color={ui.text} />
         <Text style={styles.allText}>Alles ansehen</Text>
         <ChevronRight size={17} color={ui.textMuted} />
-      </Pressable>
+      </PressFeedback>
 
       <View style={styles.sortRow}>
         {SORTS.map((option) => {
           const on = option.key === sort;
           return (
-            <Pressable
+            <PressFeedback
               key={option.key}
               onPress={() => setSort(option.key)}
               style={[styles.sortChip, on && styles.sortChipOn]}
@@ -249,7 +253,7 @@ export default function CategoriesScreen() {
               accessibilityState={{ selected: on }}
             >
               <Text style={[styles.sortText, on && styles.sortTextOn]}>{option.label}</Text>
-            </Pressable>
+            </PressFeedback>
           );
         })}
       </View>
@@ -287,9 +291,9 @@ export default function CategoriesScreen() {
                   const isOpen = tile.slug === open;
                   const children = tile.children.length;
                   return (
-                    <Pressable
+                    <PressFeedback kind="card"
                       key={tile.slug}
-                      style={[styles.tile, isOpen && styles.tileOpen]}
+                      style={[styles.tile]}
                       onPress={() => toggle(tile.slug, children > 0)}
                       accessibilityRole="button"
                       accessibilityState={{ expanded: isOpen }}
@@ -299,39 +303,11 @@ export default function CategoriesScreen() {
                           : `${tile.name}${text ? `, ${text}` : ''}`
                       }
                     >
-                      {/* Name OBEN, Bildfläche darunter — dieselbe Anordnung
-                          wie bei Whatnot. Dort sitzt in der Mitte ein
-                          gerendertes 3D-Objekt; hier steht vorerst das Symbol
-                          groß an genau dieser Stelle. Kommen die Bilder, wird
-                          nur der Inhalt von `tileArt` getauscht, das Raster
-                          bleibt wie es ist. */}
-                      <Text
-                        numberOfLines={2}
-                        style={[styles.tileName, isOpen && styles.tileNameOpen]}
-                      >
-                        {tile.name}
-                      </Text>
-
-                      {/* ⚠️ Die Bildfläche trägt jetzt den Farbton der
-                          Kategorie. Hier stand „bewusst keine eigene Farbe —
-                          ein grauer Kasten hinter einem Symbol sähe aus wie ein
-                          Bild, das nicht geladen hat." Der Einwand gilt für
-                          GRAU; die Töne in `categoryArt.ts` sind gedeckte
-                          Verwandte der Sandfläche und lesen sich als Fläche,
-                          nicht als Fehler.
-
-                          Ohne sie bestand das Raster aus zwölf weißen Kästen
-                          mit dünnen Strichsymbolen — der Grund, warum es neben
-                          Whatnots Kachelwand wie ein Einstellungs-Menü wirkte
-                          (Analyse 14). Rückgängig: `backgroundColor` streichen.
-
-                          Auf der aufgeklappten Kachel bleibt sie durchsichtig:
-                          Dort trägt schon die goldene Fläche die Aussage, und
-                          ein zweiter Ton darin wäre ein Fleck. */}
                       <View
                         style={[
                           styles.tileArt,
-                          { backgroundColor: isOpen ? 'transparent' : art.tint },
+                          { backgroundColor: art.tint },
+                          isOpen && styles.tileOpen,
                         ]}
                       >
                         {art.photo ? (
@@ -339,12 +315,16 @@ export default function CategoriesScreen() {
                             source={art.photo}
                             style={styles.tilePhoto}
                             contentFit="contain"
-                            transition={140}
+                            transition={0}
                           />
                         ) : (
-                          <Icon size={52} color={isOpen ? ui.goldInk : ui.brand} />
+                          <Icon size={52} color={ui.brand} />
                         )}
                       </View>
+
+                      <Text style={[styles.tileName, isOpen && styles.tileNameOpen]}>
+                        {tile.name}
+                      </Text>
 
                       {text ? (
                         <View style={styles.countRow}>
@@ -354,7 +334,6 @@ export default function CategoriesScreen() {
                             style={[
                               styles.tileCount,
                               live && styles.tileCountLive,
-                              isOpen && styles.tileCountOpen,
                             ]}
                           >
                             {text}
@@ -365,12 +344,12 @@ export default function CategoriesScreen() {
                         // sonst springt das Raster zeilenweise.
                         <View style={styles.countSpacer} />
                       )}
-                    </Pressable>
+                    </PressFeedback>
                   );
                 })}
 
-                {/* Füllt die letzte Zeile auf, damit zwei Kacheln nicht auf
-                    Drittelbreite gestreckt werden. */}
+                {/* Füllt die letzte Zeile auf, damit eine einzelne Kategorie
+                    dieselbe Breite wie die übrigen behält. */}
                 {row.tiles.length < COLUMNS
                   ? Array.from({ length: COLUMNS - row.tiles.length }, (_, i) => (
                       <View key={`spacer-${i}`} style={styles.spacer} />
@@ -383,7 +362,7 @@ export default function CategoriesScreen() {
                   {/* Zuerst „Alles" — wer eine Oberkategorie antippt, will oft
                       genau sie und nicht eines ihrer Kinder. Whatnot macht es
                       genauso („Alle Männermode"). */}
-                  <Pressable
+                  <PressFeedback
                     style={({ pressed }) => [styles.panelRow, pressed && styles.panelRowPressed]}
                     onPress={() => router.push(`/category/${expanded.slug}`)}
                     accessibilityRole="button"
@@ -393,10 +372,10 @@ export default function CategoriesScreen() {
                     </Text>
                     <PanelCount category={expanded} />
                     <ChevronRight size={16} color={ui.textMuted} />
-                  </Pressable>
+                  </PressFeedback>
 
                   {expanded.children.map((child) => (
-                    <Pressable
+                    <PressFeedback
                       key={child.slug}
                       style={({ pressed }) => [
                         styles.panelRow,
@@ -407,12 +386,12 @@ export default function CategoriesScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={child.name}
                     >
-                      <Text numberOfLines={1} style={styles.panelName}>
+                      <Text style={styles.panelName}>
                         {child.name}
                       </Text>
                       <PanelCount category={child} />
                       <ChevronRight size={16} color={ui.textMuted} />
-                    </Pressable>
+                    </PressFeedback>
                   ))}
                 </View>
               ) : null}
@@ -474,13 +453,15 @@ const styles = StyleSheet.create({
 
   sortRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: space.sm,
     paddingHorizontal: space.md,
     paddingVertical: space.md,
   },
   sortChip: {
     paddingHorizontal: space.lg,
-    height: 34,
+    minHeight: 34,
+    paddingVertical: space.sm,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
@@ -489,52 +470,29 @@ const styles = StyleSheet.create({
   sortText: { fontSize: 13, fontWeight: '600', color: ui.text },
   sortTextOn: { color: ui.bg },
 
-  row: { flexDirection: 'row', gap: space.sm, marginBottom: space.sm },
+  row: { flexDirection: 'row', gap: space.md, marginBottom: space.xl },
   spacer: { flex: 1 },
-
-  tile: {
-    flex: 1,
-    // War 104. Das Bild braucht Platz, sonst ist es wieder nur ein Symbol mit
-    // anderem Inhalt — bei Whatnot füllt die Illustration rund 60 % der Kachel.
-    minHeight: 152,
-    backgroundColor: ui.card,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: ui.line,
-    padding: space.sm,
-    gap: 5,
-  },
-  // Die Fläche fürs Bild. Vorerst trägt sie das Symbol groß und mittig;
-  // sobald es 3D-Bilder je Kategorie gibt, kommen sie genau hierher — ohne
-  // dass sich am Raster etwas ändert. Deshalb hat sie schon jetzt keine
-  // eigene Farbe: Ein grauer Kasten hinter einem Symbol sähe aus wie ein
-  // Bild, das nicht geladen hat.
+  tile: { flex: 1, minWidth: 0, gap: 6 },
+  // Eine Bildfläche; Name und Bestand stehen direkt auf dem Seitenhintergrund.
   tileArt: {
-    flex: 1,
-    minHeight: 56,
-    borderRadius: radius.sm,
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  // Das freigestellte Foto füllt die Fläche, ohne zu beschneiden — bei einem
-  // freigestellten Objekt ist der Rand die Form, ein `cover` würde sie kappen.
-  tilePhoto: { width: '100%', height: '100%' },
-  // Gold ist in Berkat der Kauf — hier ist es das Äquivalent zu Whatnots
-  // gelber Kachel: der eine Ort, an dem man gerade steht.
-  tileOpen: { backgroundColor: ui.gold, borderColor: ui.brand },
-  // ⚠️ Zwei Zeilen fest, auch bei einem Wort. Ohne das beginnt die Bildfläche
-  // in jeder Kachel woanders: „Mode" ist einzeilig, „Taschen & Accessoires"
-  // zweizeilig — und in derselben Reihe standen die Symbole dann auf zwei
-  // Höhen. Dieselbe Ursache wie beim zerrissenen Angebots-Raster (Analyse 14).
-  tileName: { fontSize: 13, lineHeight: 17, height: 34, fontWeight: '700', color: ui.text },
-  tileNameOpen: { color: ui.goldInk },
+  tilePhoto: { width: '90%', height: '90%' },
+  tileOpen: { borderColor: ui.brand },
+  tileName: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: ui.text },
+  tileNameOpen: { color: ui.brand },
   countRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  countSpacer: { height: 15 },
+  countSpacer: { height: 17 },
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: ui.live },
-  tileCount: { flex: 1, fontSize: 11, color: ui.textMuted },
+  tileCount: { flex: 1, fontSize: 12, lineHeight: 17, color: ui.textMuted },
   tileCountLive: { color: ui.live, fontWeight: '700' },
-  tileCountOpen: { color: ui.goldInk, opacity: 0.8 },
 
   panel: {
     backgroundColor: ui.card,

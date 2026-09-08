@@ -107,10 +107,10 @@ export function useMyOrder(orderId: string | undefined, userId: string | null) {
   });
 }
 
-export function useMyOrders(userId: string | null) {
+export function useMyOrders(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'my-orders', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     staleTime: 15_000,
     // Der Verkäufer kann jederzeit auf „versendet" stellen; beim Öffnen des
     // Reiters soll das ankommen. Die Verkabelung sitzt im Wurzel-Layout.

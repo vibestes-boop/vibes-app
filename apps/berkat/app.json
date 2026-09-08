@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0E2A22"
+      "backgroundColor": "#2E1B33"
     },
     "ios": {
       "bundleIdentifier": "com.berkat.app",
@@ -30,7 +30,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
-        "backgroundColor": "#0E2A22"
+        "backgroundColor": "#2E1B33"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -63,14 +63,14 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 180,
           "resizeMode": "contain",
-          "backgroundColor": "#0E2A22"
+          "backgroundColor": "#2E1B33"
         }
       ],
       [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#0E2A22"
+          "color": "#2E1B33"
         }
       ],
       "expo-web-browser",

@@ -21,6 +21,8 @@ import {
   Platform,
   Pressable,
   Share,
+  ScrollView,
+  useWindowDimensions,
   StyleSheet,
   Text,
   TextInput,
@@ -210,6 +212,7 @@ export default function LiveAuctionRoom() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight, fontScale } = useWindowDimensions();
   const myUserId = useSession((s) => s.userId);
 
   const { serverNow } = useServerClock();
@@ -325,23 +328,17 @@ export default function LiveAuctionRoom() {
   const [viewersOpen, setViewersOpen] = useState(false);
   const [earningsOpen, setEarningsOpen] = useState(false);
 
-  // ⚠️ NUR für den sicheren Rand unten, nicht für Layout-Sprünge.
-  // `KeyboardAvoidingView` mit `behavior="padding"` legt die VOLLE Höhe des
-  // Tastatur-Rahmens als Polster an — und dieser Rahmen reicht auf Geräten mit
-  // Home-Indikator bis an die Bildschirmkante. Der sichere Rand steckt also
-  // bereits darin. Wer ihn zusätzlich addiert, schiebt das Auktions-Blatt um
-  // weitere 34 pt hoch, und zwischen Eingabefeld und Tasten klafft eine Lücke,
-  // die nach einem Fehler aussieht (am Gerät gemeldet, 21.08.2026).
-  //
-  // `willShow` statt `didShow`: Das Polster soll sich MIT der Tastatur bewegen,
-  // nicht danach — sonst zuckt das Blatt am Ende der Animation noch einmal.
-  // Android kennt die Ereignisse nicht zuverlässig und bekommt ohnehin kein
-  // Polster (`behavior` ist dort `undefined`); dort bleibt der Rand immer.
+  // Beim Schreiben gehört die verfügbare Höhe dem Chat. Der Artikelbereich
+  // kehrt nach dem Schließen der Tastatur zurück; Gebotslogik und Live-Verbindung
+  // laufen im Raum weiter. iOS meldet den Beginn, Android das Ende der Animation.
   const [keyboardUp, setKeyboardUp] = useState(false);
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    const show = Keyboard.addListener('keyboardWillShow', () => setKeyboardUp(true));
-    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardUp(false));
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => {
+      setKeyboardUp(true);
+    });
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => {
+      setKeyboardUp(false);
+    });
     return () => {
       show.remove();
       hide.remove();
@@ -441,6 +438,7 @@ export default function LiveAuctionRoom() {
   // wenn er deutlich waagerecht ist — sonst würde jedes Antippen des
   // Eingabefelds als Wisch gelten.
   const chatX = useRef(new Animated.Value(0)).current;
+  const chatHistoryRef = useRef<ScrollView>(null);
   const slideChat = useCallback(
     (hidden: boolean) => {
       setChatHidden(hidden);
@@ -954,6 +952,14 @@ export default function LiveAuctionRoom() {
             style={[styles.chatColumn, { transform: [{ translateX: chatX }] }]}
             {...chatPan.panHandlers}
           >
+            <ScrollView
+              ref={chatHistoryRef}
+              onContentSizeChange={() => chatHistoryRef.current?.scrollToEnd({ animated: false })}
+              style={styles.chatHistory}
+              contentContainerStyle={{ gap: 4 }}
+              keyboardShouldPersistTaps="handled"
+              indicatorStyle="white"
+            >
             {notice ? (
               <Pressable style={styles.notice} onPress={() => setNotice(null)}>
                 <Text style={styles.noticeText}>{notice}</Text>
@@ -1010,6 +1016,7 @@ export default function LiveAuctionRoom() {
               })}
             </View>
 
+            </ScrollView>
             <View style={styles.chatInputRow}>
               <TextInput
                 ref={chatInputRef}
@@ -1038,7 +1045,7 @@ export default function LiveAuctionRoom() {
             </Pressable>
           ) : null}
 
-          <View style={styles.rail}>
+          <ScrollView style={styles.railScroll} contentContainerStyle={styles.rail} indicatorStyle="white" keyboardShouldPersistTaps="handled">
             <Pressable
               style={styles.railItem}
               // Ohne Klammer bekäme `sendHeart` das Berührungs-Ereignis als
@@ -1098,15 +1105,21 @@ export default function LiveAuctionRoom() {
                 </Text>
               </Pressable>
             ) : null}
-          </View>
+          </ScrollView>
 
           {/* Nach der Leiste, damit die Herzen davor fliegen und nicht dahinter.
               Berührungen lässt die Ebene durch, die Knöpfe bleiben bedienbar. */}
           <FloatingHearts reactions={hearts.reactions} />
         </View>
 
-        <View style={{ paddingBottom: keyboardUp ? 0 : insets.bottom || space.xs }}>
+        {!keyboardUp ? <ScrollView
+          style={{ flexGrow: 0, maxHeight: (windowHeight - insets.top - insets.bottom) * 0.7 }}
+          contentContainerStyle={{ paddingTop: space.sm, paddingBottom: insets.bottom || space.xs }}
+          keyboardShouldPersistTaps="handled"
+          indicatorStyle="white"
+        >
           <AuctionPanel
+            detailsMaxHeight={fontScale > 1.3 ? undefined : Math.max(120, (windowHeight - insets.top - insets.bottom) * 0.52 - 240)}
             auction={active}
             upcoming={upcoming}
             secondsLeft={secondsLeft}
@@ -1130,7 +1143,7 @@ export default function LiveAuctionRoom() {
             onMaxBid={!isHost && active ? () => setMaxOpen(true) : undefined}
             myMaxCents={myMax ?? null}
           />
-        </View>
+        </ScrollView> : null}
       </KeyboardAvoidingView>
 
       {/* Über allem, weil der Punkt in Bildschirmkoordinaten kommt und sonst
@@ -1306,9 +1319,9 @@ const styles = StyleSheet.create({
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: stage.liveInk },
   viewerText: { fontSize: 12, fontWeight: '700', color: stage.liveInk },
   closeButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1329,10 +1342,11 @@ const styles = StyleSheet.create({
   wozText: { fontSize: 10, fontWeight: '700', color: stage.successInk },
   giveawayWrap: { alignSelf: 'flex-end', marginTop: space.sm, marginRight: space.md },
 
-  middle: { flex: 1, flexDirection: 'row', alignItems: 'flex-end' },
-  chatColumn: { flex: 1, paddingLeft: space.md, paddingBottom: space.xs, gap: 4 },
+  middle: { flex: 1, minHeight: 0, flexDirection: 'row', alignItems: 'flex-end' },
+  chatColumn: { flex: 1, maxHeight: '100%', paddingLeft: space.md, paddingBottom: space.xs, gap: 4 },
   // Trägt den Abstand der Spalte weiter: Durch die Klammer sind die Kommentare
   // ein Kind statt fünf, und der `gap` der Spalte greift zwischen ihnen nicht mehr.
+  chatHistory: { flexGrow: 0, flexShrink: 1 },
   chatTapArea: { gap: 4 },
   chatLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, maxWidth: '94%' },
   chatBubble: {
@@ -1361,7 +1375,8 @@ const styles = StyleSheet.create({
   chatText: { fontSize: 13, fontWeight: '600', color: stage.text },
   chatInputRow: { marginTop: 2, marginRight: space.sm },
   chatInput: {
-    height: 34,
+    minHeight: 44,
+    paddingVertical: 10,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: stage.lineStrong,
@@ -1385,8 +1400,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
 
+  railScroll: { flexGrow: 0, flexShrink: 0, maxHeight: '100%' },
   rail: { paddingRight: space.sm, paddingBottom: space.md, gap: 14 },
-  railItem: { alignItems: 'center', gap: 2 },
+  railItem: { minWidth: 44, minHeight: 44, alignItems: 'center', gap: 2 },
   railIcon: {
     width: RAIL_ICON,
     height: RAIL_ICON,

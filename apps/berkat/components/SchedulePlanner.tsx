@@ -20,11 +20,11 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -32,6 +32,8 @@ import { CalendarClock, ChevronRight, ImagePlus, X } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { pickAndUpload } from '../lib/uploadImage';
 import { formatSlot, formatUntil, MAX_WEEKS, type PlannedShow } from '../lib/useSchedule';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 
 /** Abendplätze. Live-Auktionen laufen, wenn die Leute zu Hause sind. */
 const TIMES = [17, 18, 19, 20, 21, 22];
@@ -88,6 +90,10 @@ type Props = {
 };
 
 export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, onOpen }: Props) {
+  const reducedMotion = useReducedMotion();
+  // Remeasure static labels/choices after a native font-size change without
+  // remounting the scroll views, text input or local form state.
+  const { fontScale } = useWindowDimensions();
   const [title, setTitle] = useState('');
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -184,21 +190,19 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
       {!bare ? (
         <View style={s.head}>
           <CalendarClock size={18} color={ui.text} />
-          <Text style={s.title}>Nächsten Termin ankündigen</Text>
+          <Text key={fontScale} style={s.title}>Nächsten Termin ankündigen</Text>
         </View>
       ) : null}
       {/* Ein Satz statt dreier Zeilen. Dass ein fester Abend die Leute
           wiederbringt, ist wahr — aber es erklärt, bevor jemand gefragt hat
           (sechste Whatnot-Analyse). */}
-      <Text style={s.body}>Wer dir folgt, wird 15 Minuten vorher erinnert.</Text>
+      <Text key={`body-${fontScale}`} style={s.body}>Wer dir folgt, wird 15 Minuten vorher erinnert.</Text>
 
-      {/* Bild links, Titel rechts — dieselbe Anordnung wie bei „Artikel
-          auflegen" und „Dauerhaft anbieten". Drei Formulare im selben Reiter,
-          die unterschiedlich aussehen, sind der Grund, warum am 16.08.2026
-          niemand fand, wo ein Dauerangebot sein Foto bekommt. */}
+      <Text key={`section-${fontScale}`} style={s.sectionLabel}>Deine Show</Text>
       <View style={s.titleRow}>
-        <Pressable
-          style={s.picker}
+        <PressFeedback
+          key={`photo-entry-${fontScale}`}
+          style={s.photoEntry}
           disabled={uploading}
           onPress={() => {
             setUploading(true);
@@ -218,8 +222,10 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
               .finally(() => setUploading(false));
           }}
           accessibilityRole="button"
-          accessibilityLabel={coverUrl ? 'Bild ändern' : 'Bild wählen'}
+          accessibilityLabel={coverUrl ? 'Titelbild ändern' : 'Titelbild hinzufügen'}
+          accessibilityState={{ disabled: uploading, busy: uploading }}
         >
+          <View style={s.picker}>
           {coverUrl ? (
             <Image
               source={{ uri: coverUrl }}
@@ -233,9 +239,17 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
           ) : coverUrl ? null : (
             <ImagePlus size={20} color={ui.textMuted} />
           )}
-        </Pressable>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text key={`title-${fontScale}`} style={s.photoTitle}>{uploading ? 'Bild wird hochgeladen …' : coverUrl ? 'Titelbild ändern' : 'Titelbild hinzufügen'}</Text>
+            <Text key={`hint-${fontScale}`} style={s.photoHint}>Zeige, was die Zuschauer in deiner Show erwartet.</Text>
+          </View>
+        </PressFeedback>
 
+        <Text key={fontScale} style={s.label}>Titel der Show</Text>
         <TextInput
+          accessibilityLabel="Titel der Show"
+          multiline
           value={title}
           onChangeText={setTitle}
           placeholder="Parfüm-Abend ab 1 €"
@@ -250,26 +264,26 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
           wählt, bekommt serverseitig das Cover seiner letzten Show — deshalb
           steht hier „meistens", nicht „immer". */}
       {!coverUrl && !uploading ? (
-        <Text style={s.photoHint}>Ohne Bild nehmen wir das Cover deiner letzten Show.</Text>
+        <Text key={`photo-${fontScale}`} style={s.photoHint}>Ohne Bild nehmen wir das Cover deiner letzten Show.</Text>
       ) : null}
-      {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
+      {uploadError ? <Text key={`error-${fontScale}`} style={s.warn}>{uploadError}</Text> : null}
 
       {/* Eine antippbare Zeile statt elf Kacheln: Die Hauptseite sagt, was
           gewählt ist; geändert wird im Blatt darunter. */}
-      <Pressable
+      <PressFeedback
         style={s.whenRow}
         onPress={() => setWhenOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={`Wann: ${whenSummary} — ändern`}
       >
-        <Text style={s.whenLabel}>Wann?</Text>
-        <Text style={s.whenValue} numberOfLines={1}>
+        <Text key={`label-${fontScale}`} style={s.whenLabel}>Wann?</Text>
+        <Text key={`value-${fontScale}`} style={s.whenValue}>
           {whenSummary}
         </Text>
         <ChevronRight size={18} color={ui.textMuted} />
-      </Pressable>
+      </PressFeedback>
 
-      <Pressable
+      <PressFeedback
         style={[s.primary, !canPlan && s.primaryOff]}
         disabled={!canPlan}
         onPress={() => {
@@ -280,18 +294,19 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
         }}
         accessibilityRole="button"
         accessibilityLabel="Termin eintragen"
+        accessibilityState={{ disabled: !canPlan, busy: !!busy || uploading }}
       >
-        <Text style={s.primaryText}>
+        <Text key={fontScale} style={s.primaryText}>
           {tooSoon ? 'Dieser Zeitpunkt ist schon vorbei' : 'Ankündigen'}
         </Text>
-      </Pressable>
+      </PressFeedback>
 
       {plans.length > 0 ? (
         <View style={s.list}>
           {plans.map((plan) => (
-            <Pressable
+            <PressFeedback kind="card"
               key={plan.id}
-              style={({ pressed }) => [s.planRow, pressed && onOpen ? { opacity: 0.7 } : null]}
+              style={[s.planRow]}
               onPress={onOpen ? () => onOpen(plan.id) : undefined}
               disabled={!onOpen}
               accessibilityRole={onOpen ? 'button' : undefined}
@@ -317,7 +332,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                   {formatSlot(plan.scheduled_at)} · {formatUntil(plan.scheduled_at)}
                 </Text>
               </View>
-              <Pressable
+              <PressFeedback
                 onPress={() => onCancel(plan.id)}
                 hitSlop={10}
                 accessibilityRole="button"
@@ -325,8 +340,8 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                 style={s.cancel}
               >
                 <X size={16} color={ui.textMuted} />
-              </Pressable>
-            </Pressable>
+              </PressFeedback>
+            </PressFeedback>
           ))}
         </View>
       ) : null}
@@ -337,30 +352,31 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
           sie stehen nur eine Ebene tiefer. ──────────────────────────────── */}
       <Modal
         visible={whenOpen}
-        animationType="slide"
+        animationType={reducedMotion ? 'none' : 'slide'}
         presentationStyle="pageSheet"
         onRequestClose={() => setWhenOpen(false)}
       >
         <View style={s.sheet}>
           <View style={s.sheetHead}>
-            <Text style={s.sheetTitle}>Wann sendest du?</Text>
-            <Pressable
+            <Text key={fontScale} style={s.sheetTitle}>Wann sendest du?</Text>
+            <PressFeedback
+              style={s.sheetClose}
               hitSlop={10}
               onPress={() => setWhenOpen(false)}
               accessibilityRole="button"
               accessibilityLabel="Schließen"
             >
               <X size={22} color={ui.text} />
-            </Pressable>
+            </PressFeedback>
           </View>
           <ScrollView contentContainerStyle={s.sheetBody}>
-            <Text style={s.label}>Tag</Text>
+            <Text key={`day-${fontScale}`} style={s.label}>Tag</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row}>
               {days.map((day) => {
                 const active = day.offset === dayOffset;
                 return (
-                  <Pressable
-                    key={day.offset}
+                  <PressFeedback
+                    key={`${day.offset}-${fontScale}`}
                     onPress={() => {
                       setDayOffset(day.offset);
                       // „In 30 Minuten" gibt es nur für heute — an einem anderen Tag
@@ -374,12 +390,12 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                   >
                     <Text style={[s.dayLabel, active && s.tileTextActive]}>{day.label}</Text>
                     <Text style={[s.daySub, active && s.tileSubActive]}>{day.sub}</Text>
-                  </Pressable>
+                  </PressFeedback>
                 );
               })}
             </ScrollView>
 
-            <Text style={s.label}>Uhrzeit</Text>
+            <Text key={`time-${fontScale}`} style={s.label}>Uhrzeit</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row}>
               {/* Spontan zuerst — wer heute noch senden will, hat es eiliger als der,
                   der den nächsten Samstag plant. Nur für heute. */}
@@ -387,8 +403,8 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                 ? SOON.map((option) => {
                     const active = soon === option.minutes;
                     return (
-                      <Pressable
-                        key={option.minutes}
+                      <PressFeedback
+                        key={`${option.minutes}-${fontScale}`}
                         onPress={() => {
                           setSoon(option.minutes);
                           // Eine spontane Sendung ist keine Reihe.
@@ -399,7 +415,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                         accessibilityState={{ selected: active }}
                       >
                         <Text style={[s.timeLabel, active && s.tileTextActive]}>{option.label}</Text>
-                      </Pressable>
+                      </PressFeedback>
                     );
                   })
                 : null}
@@ -407,8 +423,8 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
               {times.map((value) => {
                 const active = soon === null && value === effectiveHour;
                 return (
-                  <Pressable
-                    key={value}
+                  <PressFeedback
+                    key={`${value}-${fontScale}`}
                     onPress={() => {
                       setHour(value);
                       setSoon(null);
@@ -418,7 +434,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                     accessibilityState={{ selected: active }}
                   >
                     <Text style={[s.timeLabel, active && s.tileTextActive]}>{value}:00</Text>
-                  </Pressable>
+                  </PressFeedback>
                 );
               })}
             </ScrollView>
@@ -433,25 +449,24 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
               ].map((option) => {
                 const active = option.weekly === weekly;
                 return (
-                  <Pressable
-                    key={option.label}
+                  <PressFeedback
+                    key={`${option.label}-${fontScale}`}
                     onPress={() => setWeekly(option.weekly)}
                     style={[s.repeatTile, active && s.tileActive]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                   >
                     <Text style={[s.repeatLabel, active && s.tileTextActive]}>{option.label}</Text>
-                  </Pressable>
+                  </PressFeedback>
                 );
               })}
             </View>
             ) : null}
 
             {weekly && !tooSoon ? (
-              <Text style={s.repeatHint}>
+              <Text key={`repeat-${fontScale}`} style={s.repeatHint}>
                 Trägt {MAX_WEEKS} Termine ein, immer {DAY_LABELS[target.getDay()]} um{' '}
-                {String(effectiveHour).padStart(2, '0')}:00. Weiter als 30 Tage lässt der Server
-                nicht zu — danach einfach neu eintragen.
+                {String(effectiveHour).padStart(2, '0')}:00. Danach kannst du eine neue Terminreihe anlegen.
               </Text>
             ) : null}
 
@@ -459,17 +474,17 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                 Bei einem toten Zeitpunkt gesperrt: Wer hier „übernehmen"
                 könnte, trüge eine Auswahl nach draußen, die der Server
                 ohnehin ablehnt. */}
-            <Pressable
+            <PressFeedback
               style={[s.primary, tooSoon && s.primaryOff]}
               disabled={tooSoon}
               onPress={() => setWhenOpen(false)}
               accessibilityRole="button"
               accessibilityLabel="Auswahl übernehmen"
             >
-              <Text style={s.primaryText}>
+              <Text key={fontScale} style={s.primaryText}>
                 {tooSoon ? 'Dieser Zeitpunkt ist schon vorbei' : `Übernehmen: ${applyLabel}`}
               </Text>
-            </Pressable>
+            </PressFeedback>
           </ScrollView>
         </View>
       </Modal>
@@ -478,6 +493,9 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
 }
 
 const s = StyleSheet.create({
+  sectionLabel: { fontSize: 16, fontWeight: '600', color: ui.text, marginTop: space.lg, marginBottom: space.sm },
+  photoEntry: { flexDirection: 'row', alignItems: 'center', gap: space.md, borderWidth: 1, borderStyle: 'dashed', borderColor: ui.lineStrong, borderRadius: radius.lg, padding: space.md },
+  photoTitle: { fontSize: 14, fontWeight: '600', color: ui.brand },
   card: {
     backgroundColor: ui.card,
     borderRadius: radius.lg,
@@ -499,24 +517,9 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: ui.text,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'stretch', gap: space.sm },
-  titleInput: { flex: 1, minHeight: 64 },
-  // 64 statt der 76 im `StandingComposer`: Dort steht daneben ein mehrzeiliges
-  // Feld, hier ein einzeiliger Titel. Die Position ist dieselbe, die Höhe folgt
-  // dem Nachbarn.
-  picker: {
-    width: 64,
-    minHeight: 64,
-    marginTop: space.md,
-    borderRadius: radius.md,
-    backgroundColor: ui.sunken,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: ui.lineStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
+  titleRow: { gap: space.xs },
+  titleInput: { minHeight: 64, marginTop: space.xs, textAlignVertical: 'top' },
+  picker: { width: 72, height: 80, borderRadius: radius.md, backgroundColor: ui.sunken, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   photoHint: { fontSize: 11, color: ui.textMuted, marginTop: space.sm, lineHeight: 16 },
   warn: { fontSize: 12, color: ui.live, marginTop: space.sm },
 
@@ -541,7 +544,8 @@ const s = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.lg,
   },
-  sheetTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
+  sheetTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: ui.text },
+  sheetClose: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   sheetBody: { padding: space.lg, paddingBottom: space.xl * 2 },
 
   label: { fontSize: 12, color: ui.textMuted, marginTop: space.md },
@@ -549,6 +553,7 @@ const s = StyleSheet.create({
 
   dayTile: {
     minWidth: 62,
+    minHeight: 44,
     borderRadius: radius.md,
     backgroundColor: ui.sunken,
     paddingVertical: space.sm,
@@ -560,6 +565,8 @@ const s = StyleSheet.create({
   daySub: { fontSize: 11, color: ui.textMuted, marginTop: 1 },
 
   timeTile: {
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
     paddingVertical: space.sm,
@@ -577,12 +584,15 @@ const s = StyleSheet.create({
   repeatRow: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   repeatTile: {
     flex: 1,
+    minHeight: 44,
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
     paddingVertical: space.sm + 2,
+    paddingHorizontal: space.sm,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  repeatLabel: { fontSize: 13, fontWeight: '600', color: ui.text },
+  repeatLabel: { fontSize: 13, fontWeight: '600', color: ui.text, textAlign: 'center' },
   repeatHint: {
     fontSize: 11,
     color: ui.textMuted,
@@ -593,14 +603,16 @@ const s = StyleSheet.create({
 
   primary: {
     marginTop: space.lg,
-    height: 50,
+    minHeight: 50,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     backgroundColor: ui.gold,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryOff: { opacity: 0.45 },
-  primaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
+  primaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk, textAlign: 'center' },
 
   list: {
     marginTop: space.lg,

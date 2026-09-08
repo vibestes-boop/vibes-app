@@ -62,7 +62,7 @@ const PREPARED_COLUMNS =
  * Käufer soll ja gerade vorab sehen, was kommt. Die Frauen-Only-Schranke sitzt
  * am Artikel selbst — der Server vererbt sie beim Vorbereiten vom Termin.
  */
-export function usePreparedByPlan(planIds: string[]) {
+export function usePreparedByPlan(planIds: string[], enabled = true) {
   // Stabiler Schlüssel: Ohne das Sortieren käme bei jeder Neuberechnung des
   // Aufrufers eine andere Reihenfolge und damit ein anderer Query-Key heraus —
   // dieselbe Falle wie bei `useCategoryListings`.
@@ -70,7 +70,7 @@ export function usePreparedByPlan(planIds: string[]) {
 
   const query = useQuery({
     queryKey: ['berkat', 'prepared', key],
-    enabled: planIds.length > 0,
+    enabled: enabled && planIds.length > 0,
     staleTime: 30_000,
     queryFn: async (): Promise<PreparedAuction[]> => {
       const { data, error } = await supabase

@@ -6,11 +6,11 @@
 // Dieselbe Regel wie beim „Demnächst"-Streifen (Übergabe 62, Fund 6) und beim
 // Fuss-Knopf der Kategorie-Seite.
 //
-// Angemeldet ohne jede Story sieht man nur die Kamera-Kachel. Das ist Absicht:
-// Sie ist eine Einladung, keine Behauptung über andere.
+// Angemeldet ohne Story genügt ein kompakter Einstieg zum Hinzufügen.
+// Eigene Stories allein bleiben kompakt; fremde Stories bilden einen beschrifteten Ring.
 
 import { memo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Camera } from 'lucide-react-native';
 
@@ -78,13 +78,16 @@ type Props = {
  * etwas hineinstellt.
  */
 function AddTile({ dimmed, onPress }: { dimmed?: boolean; onPress: () => void }) {
+  const { fontScale } = useWindowDimensions();
+  const labelWidth = Math.ceil((SIZE + 6) * Math.max(1, fontScale));
   return (
     <Pressable
       onPress={onPress}
       disabled={dimmed}
-      style={({ pressed }) => [s.item, (pressed || dimmed) && s.itemPressed]}
+      style={({ pressed }) => [s.item, { width: labelWidth + 4 }, (pressed || dimmed) && s.itemPressed]}
       accessibilityRole="button"
       accessibilityLabel="Story hinzufügen"
+      accessibilityState={{ disabled: !!dimmed, busy: !!dimmed }}
     >
       {/* Gestrichelt, damit die Kachel als PLATZ lesbar ist und nicht als Bild,
           das nicht geladen hat — dieselbe Sprache wie die „Neu"-Scheibe bei den
@@ -93,7 +96,7 @@ function AddTile({ dimmed, onPress }: { dimmed?: boolean; onPress: () => void })
       <View style={s.add}>
         <Camera size={26} color={ui.brand} strokeWidth={1.8} />
       </View>
-      <View style={s.pill}>
+      <View style={[s.pill, { maxWidth: labelWidth }]}>
         <Text numberOfLines={1} style={s.pillText}>
           Hinzufügen
         </Text>
@@ -122,10 +125,12 @@ function Bubble({
   seen: boolean;
   onPress: () => void;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const labelWidth = Math.ceil((SIZE + 6) * Math.max(1, fontScale));
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [s.item, pressed && s.itemPressed]}
+      style={({ pressed }) => [s.item, { width: labelWidth + 4 }, pressed && s.itemPressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
@@ -153,7 +158,7 @@ function Bubble({
 
       {/* Der Name liegt AUF der Kreis-Unterkante statt darunter. Damit fällt die
           eigene Textzeile weg, und der Kreis nimmt sich ihren Platz. */}
-      <View style={s.pill}>
+      <View style={[s.pill, { maxWidth: labelWidth }]}>
         <Text numberOfLines={1} style={s.pillText}>
           {label}
         </Text>
@@ -186,50 +191,122 @@ function StoryRailInner({ groups, myUserId, busy, onOpen, onCreate }: Props) {
   // angemeldet → gar nichts rendern.
   if (others.length === 0 && !myUserId) return null;
 
+  // Eigene Story und Erstellung bleiben getrennte Aktionen, brauchen allein
+  // aber keinen großen Kreis-Streifen.
+  if (mine && others.length === 0) {
+    return (
+      <View style={s.personalRow}>
+        <Pressable onPress={() => onOpen(mine.userId)} accessibilityRole="button"
+          accessibilityLabel="Deine Story ansehen"
+          style={({ pressed }) => [s.personalStory, pressed && s.itemPressed]}>
+          <Avatar uri={mine.avatarUrl} name={mine.username} size={34} />
+          <Text style={s.personalLabel}>Deine Story</Text>
+        </Pressable>
+        <Pressable onPress={onCreate} disabled={busy} accessibilityRole="button"
+          accessibilityLabel="Story hinzufügen" accessibilityState={{ disabled: !!busy, busy: !!busy }}
+          style={({ pressed }) => [s.personalAdd, (pressed || busy) && s.itemPressed]}>
+          <Camera size={18} color={ui.brand} />
+          <Text style={s.addText}>{busy ? 'Wird hinzugefügt …' : 'Hinzufügen'}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Ohne Vorschauen braucht die Erstellung keine ganze Story-Reihe.
+  if (!mine && others.length === 0) {
+    return (
+      <Pressable
+        onPress={onCreate}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Story hinzufügen"
+        accessibilityState={{ disabled: !!busy, busy: !!busy }}
+        style={({ pressed }) => [s.compactAdd, (pressed || busy) && s.itemPressed]}
+      >
+        <View style={s.compactCamera}>
+          <Camera size={19} color={ui.brand} strokeWidth={1.8} />
+        </View>
+        <Text style={s.compactLabel}>{busy ? 'Story wird hinzugefügt …' : 'Story hinzufügen'}</Text>
+      </Pressable>
+    );
+  }
+
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={s.row}
-      style={s.wrap}
-    >
-      {/* Die Kamera-Kachel steht IMMER vorne, auch wenn schon eine Story steht.
-          Genau das war vorher nicht so, und deshalb kam man nach der ersten
-          Story nicht mehr an eine zweite (Begründung an `AddTile`). */}
-      {myUserId ? <AddTile dimmed={busy} onPress={onCreate} /> : null}
+    <View>
+      <Text accessibilityRole="header" style={s.heading}>Stories</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.row}
+        style={s.wrap}
+      >
+        {/* Die Kamera-Kachel steht IMMER vorne, auch wenn schon eine Story steht.
+            Genau das war vorher nicht so, und deshalb kam man nach der ersten
+            Story nicht mehr an eine zweite (Begründung an `AddTile`). */}
+        {myUserId ? <AddTile dimmed={busy} onPress={onCreate} /> : null}
 
-      {mine ? (
-        <Bubble
-          label="Deine Story"
-          coverUrl={coverOf(mine)}
-          avatarUrl={mine.avatarUrl}
-          name={mine.username}
-          // Die eigene Story ist nie „ungesehen" — man hat sie selbst gemacht.
-          seen={mine.seen}
-          onPress={() => onOpen(mine.userId)}
-        />
-      ) : null}
+        {mine ? (
+          <Bubble
+            label="Deine Story"
+            coverUrl={coverOf(mine)}
+            avatarUrl={mine.avatarUrl}
+            name={mine.username}
+            // Die eigene Story ist nie „ungesehen" — man hat sie selbst gemacht.
+            seen={mine.seen}
+            onPress={() => onOpen(mine.userId)}
+          />
+        ) : null}
 
-      {others.map((g) => (
-        <Bubble
-          key={g.userId}
-          label={g.username ?? 'Verkäufer'}
-          coverUrl={coverOf(g)}
-          avatarUrl={g.avatarUrl}
-          name={g.username}
-          seen={g.seen}
-          onPress={() => onOpen(g.userId)}
-        />
-      ))}
-    </ScrollView>
+        {others.map((g) => (
+          <Bubble
+            key={g.userId}
+            label={g.username ?? 'Verkäufer'}
+            coverUrl={coverOf(g)}
+            avatarUrl={g.avatarUrl}
+            name={g.username}
+            seen={g.seen}
+            onPress={() => onOpen(g.userId)}
+          />
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 export const StoryRail = memo(StoryRailInner);
 
 const s = StyleSheet.create({
+  heading: { fontSize: 18, fontWeight: '700', color: ui.text, marginBottom: space.xs },
+  personalRow: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space.md,
+    paddingBottom: space.sm, marginBottom: space.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ui.line,
+  },
+  personalStory: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 48, flexGrow: 1, paddingVertical: space.xs },
+  personalLabel: { fontSize: 13, lineHeight: 19, color: ui.brand, fontWeight: '500', flexShrink: 1 },
+  personalAdd: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 48, paddingVertical: space.xs, flexShrink: 1 },
+  addText: { fontSize: 13, lineHeight: 19, color: ui.brand, fontWeight: '500', flexShrink: 1 },
+  compactAdd: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingVertical: space.sm,
+    marginBottom: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.lineStrong,
+  },
+  compactCamera: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactLabel: { flex: 1, fontSize: 13, lineHeight: 19, color: ui.brand, fontWeight: '500' },
   wrap: { backgroundColor: ui.bg },
-  row: { paddingHorizontal: space.md, paddingTop: space.sm, gap: space.md },
+  row: { paddingTop: space.sm, paddingBottom: space.md, gap: space.md },
   // `paddingBottom` hält den Überstand der Pille im Element — ohne ihn würde
   // sie aus der Reihe herausragen und der Streifen darunter rückte hoch.
   item: { width: SIZE + 10, alignItems: 'center', paddingBottom: PILL_OVERHANG },
@@ -292,10 +369,8 @@ const s = StyleSheet.create({
   pill: {
     position: 'absolute',
     bottom: 0,
-    // ⚠️ Höchstens so breit wie der Kreis plus ein Hauch. Bei `SIZE + 10`
-    // spannte „Deine Story" die Pille über die ganze Zelle, und sie stand
-    // links und rechts über den Kreis hinaus — dann trägt nicht mehr der Kreis
-    // den Namen, sondern der Name den Kreis.
+    // Die Basisbreite folgt dem Kreis; die Komponente erweitert sie für
+    // große Systemschrift, damit die Aktionsnamen lesbar bleiben.
     maxWidth: SIZE + 6,
     paddingHorizontal: 6,
     paddingVertical: 2,

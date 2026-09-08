@@ -129,10 +129,10 @@ export function useSellerOrders(userId: string | null) {
  * nicht. Alles danach (`shipped`, `delivered`) ist erledigt und gehört nicht
  * ins Abzeichen — ein Abzeichen, das nie auf null geht, liest bald niemand mehr.
  */
-export function useOpenOrderCount(userId: string | null) {
+export function useOpenOrderCount(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'open-order-count', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     staleTime: 20_000,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,

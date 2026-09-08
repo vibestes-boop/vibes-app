@@ -8,10 +8,11 @@
 // `ListHeaderComponent`. Zwei ScrollViews ineinander sind auf Android der
 // sichere Weg zu einer Liste, die sich nicht mehr scrollen lässt.
 
-import { useCallback, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { Image } from 'expo-image';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Lock, ShoppingBag } from 'lucide-react-native';
 
@@ -23,6 +24,7 @@ import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { goBack } from '../../lib/nav';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
+import { SellerShopMore } from '../../components/SellerShopMore';
 import { ListingCard } from '../../components/ListingCard';
 import { radius, space, ui } from '../../theme/tokens';
 
@@ -31,7 +33,12 @@ export default function CategoryScreen() {
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
 
-  const { data: categories = [], tree } = useCategoryTree();
+  const focused = useIsFocused();
+  const { fontScale } = useWindowDimensions();
+  const [pulling, setPulling] = useState(false);
+  const pullBusy = useRef(false);
+  const categoryQuery = useCategoryTree(focused);
+  const { data: categories = [], tree } = categoryQuery;
 
   // Der Name steht schon im Zwischenspeicher des Reiters — ein eigener Aufruf
   // dafür wäre eine Abfrage für eine Überschrift. Fehlt er (Direktlink, kalter
@@ -50,7 +57,7 @@ export default function CategoryScreen() {
     return parent ? [slug, ...parent.children.map((child) => child.slug)] : [slug];
   }, [slug, tree]);
 
-  const { shows, listings } = useCategoryContent(slugs);
+  const { shows, listings } = useCategoryContent(slugs, focused && Boolean(categoryQuery.data));
 
   // Zwei Spalten, `flex: 1` je Zelle: Bleibt in der letzten Reihe ein Platz
   // frei, zöge sich der einzelne Artikel über die volle Breite. Der Platzhalter
@@ -58,34 +65,14 @@ export default function CategoryScreen() {
   // TypeScript reduziert das Literal in der Vereinigung sonst zu `string`
   // (dieselbe Falle wie im Show-Raster der Startseite).
   const gridItems = useMemo((): (Listing | { id: string; spacer: true })[] => {
-    const rows = listings.data ?? [];
+    const rows = listings.data?.listings ?? [];
     return rows.length % 2 === 1
       ? [...rows, { id: '__spacer__', spacer: true as const }]
       : rows;
   }, [listings.data]);
 
-  // Beim Zurückkommen neu laden.
-  //
-  // Expo Router hält auch STACK-Bildschirme aufgebaut, nicht nur Reiter — wer
-  // von hier aufs Profil geht, dort einen Artikel zurückzieht und zurückkommt,
-  // sah sonst weiter den Stand von vorhin. Am 16.08.2026 genau so passiert:
-  // „Fahrrad" stand nach dem Zurückziehen noch unter Sonstiges, und ein Tipp
-  // darauf führte auf ein Profil, auf dem er nicht mehr war.
-  //
-  // Das ist dieselbe Falle wie in HANDOFF 3 („Reiter-Bildschirme bleiben
-  // aufgebaut"), nur eine Ebene tiefer. `refetchOnWindowFocus` allein genügt
-  // nicht: Das feuert erst beim Wechsel aus dem Hintergrund der ganzen App.
-  const refetchShows = shows.refetch;
-  const refetchListings = listings.refetch;
-  useFocusEffect(
-    useCallback(() => {
-      void refetchShows();
-      void refetchListings();
-    }, [refetchShows, refetchListings]),
-  );
-
   const liveShows = shows.data ?? [];
-  const items = listings.data ?? [];
+  const items = listings.data?.listings ?? [];
 
   const sellerIds = useMemo(
     () => [...liveShows.map((s) => s.host_id), ...items.map((i) => i.seller_id)],
@@ -99,22 +86,59 @@ export default function CategoryScreen() {
   // danebenstehen. Begründung im Kopf von `components/ListingCard.tsx`.
   const { data: savedIds } = useSavedIds(myUserId);
   const toggleSaved = useToggleSaved(myUserId);
-  const loading = shows.isLoading || listings.isLoading;
+  const loading = categoryQuery.isLoading || shows.isLoading || listings.isLoading;
+  const hasError = categoryQuery.isError || shows.isError || (listings.isError && !listings.isFetchNextPageError);
+  const fetching = categoryQuery.isFetching || shows.isFetching || listings.isFetching;
+  const refresh = async () => {
+    if (fetching || listings.isDebouncing || pullBusy.current) return;
+    pullBusy.current = true;
+    setPulling(true);
+    try {
+      if (!categoryQuery.data) {
+        await categoryQuery.refetch({ cancelRefetch: false });
+      } else {
+        await Promise.all([
+          categoryQuery.refetch({ cancelRefetch: false }),
+          shows.refetch({ cancelRefetch: false }),
+          listings.refetch({ cancelRefetch: false }),
+        ]);
+      }
+    } finally {
+      pullBusy.current = false;
+      setPulling(false);
+    }
+  };
+  const loadMore = () => {
+    if (!listings.isFetching && !listings.isDebouncing && !pullBusy.current && listings.hasNextPage) {
+      void listings.fetchNextPage({ cancelRefetch: false });
+    }
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/categories')} style={styles.back}>
+      <View key={fontScale} style={styles.header}>
+        <Pressable
+          hitSlop={10}
+          onPress={() => goBack('/(tabs)/categories')}
+          style={styles.back}
+          accessibilityRole="button"
+          accessibilityLabel="Zurück"
+        >
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
-        <Text numberOfLines={1} style={styles.headerTitle}>
+        <Text numberOfLines={2} style={styles.headerTitle}>
           {title}
         </Text>
         <View style={styles.back} />
       </View>
 
       <FlatList
+        key={listings.filterKey}
         data={gridItems}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        refreshControl={<RefreshControl refreshing={pulling} onRefresh={refresh} tintColor={ui.textMuted} />}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{ gap: space.md }}
@@ -124,7 +148,27 @@ export default function CategoryScreen() {
           gap: space.lg,
         }}
         ListHeaderComponent={
-          liveShows.length === 0 ? null : (
+          <>
+          {hasError ? (
+            <View style={styles.error}>
+              <Text style={styles.emptyTitle}>Laden hat nicht geklappt</Text>
+              <Text style={styles.emptyBody}>
+                {items.length > 0 || liveShows.length > 0
+                  ? 'Ein Teil konnte nicht aktualisiert werden. Bereits geladene Inhalte bleiben sichtbar.'
+                  : 'Wir konnten diese Kategorie nicht vollständig laden. Versuch es bitte noch einmal.'}
+              </Text>
+              <Pressable
+                style={styles.retry}
+                onPress={refresh}
+                disabled={fetching}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: fetching, busy: fetching }}
+              >
+                <Text style={styles.retryText}>{fetching ? 'Wird geladen …' : 'Erneut laden'}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {liveShows.length === 0 ? null : (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Läuft gerade</Text>
               {liveShows.map((show) => {
@@ -171,20 +215,24 @@ export default function CategoryScreen() {
               {items.length > 0 ? (
                 <View style={styles.shelfHead}>
                   <ShoppingBag size={15} color={ui.text} />
-                  <Text style={styles.sectionLabel}>Jetzt kaufbar</Text>
+                  <Text style={styles.sectionLabel}>Angebote</Text>
                 </View>
               ) : null}
             </View>
-          )
+          )}
+          </>
         }
         ListEmptyComponent={
-          loading ? null : liveShows.length > 0 ? null : (
+          loading ? (
+            <View style={styles.empty}>
+              <ActivityIndicator color={ui.brand} accessibilityLabel="Kategorie wird geladen" />
+            </View>
+          ) : hasError || liveShows.length > 0 ? null : (
             <View style={styles.empty}>
               <BerkatMark size={38} color={ui.sunken} />
               <Text style={styles.emptyTitle}>Hier ist noch nichts</Text>
               <Text style={styles.emptyBody}>
-                Keine laufende Show und kein Dauerangebot in {title}. Unter „Verkaufen" kannst du
-                das ändern — ein Artikel hier ist rund um die Uhr kaufbar, auch ohne Sendung.
+                In {title} ist gerade kein Angebot und keine Show verfügbar. Entdecke weitere Kategorien oder schau später wieder vorbei.
               </Text>
             </View>
           )
@@ -214,13 +262,14 @@ export default function CategoryScreen() {
             />
           );
         }}
-        ListFooterComponent={
-          items.length > 0 ? (
-            <Text style={styles.footHint}>
-              Alles von einem Verkäufer kommt in dasselbe Paket — du zahlst nur einmal Versand.
-            </Text>
-          ) : null
-        }
+        ListFooterComponent={<>
+          <SellerShopMore hasMore={listings.hasNextPage} fetching={listings.isFetching || pulling}
+            loadingMore={listings.isFetchingNextPage} failed={listings.isFetchNextPageError} onLoad={loadMore} />
+          {items.length > 0 ? <Text style={styles.footHint}>
+            Alles von einem Verkäufer kommt in dasselbe Paket — du zahlst nur einmal Versand.
+          </Text> : null}
+        </>}
+
       />
     </View>
   );
@@ -236,7 +285,7 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
     paddingBottom: space.md,
   },
-  back: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
 
   section: { gap: space.sm },
@@ -249,6 +298,9 @@ const styles = StyleSheet.create({
     marginBottom: space.xs,
   },
   pressed: { opacity: 0.65 },
+  error: { backgroundColor: ui.card, borderRadius: radius.md, padding: space.lg, alignItems: 'center', gap: space.sm, marginBottom: space.md },
+  retry: { minHeight: 48, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: ui.lineStrong, alignItems: 'center', justifyContent: 'center' },
+  retryText: { fontSize: 15, fontWeight: '600', color: ui.text },
 
   showRow: {
     flexDirection: 'row',
@@ -297,7 +349,7 @@ const styles = StyleSheet.create({
   },
 
   empty: { alignItems: 'center', paddingTop: 72, gap: space.sm },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text, textAlign: 'center' },
   emptyBody: {
     fontSize: 14,
     color: ui.textMuted,

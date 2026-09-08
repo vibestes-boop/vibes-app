@@ -42,20 +42,26 @@ export function useDebounced(value: string, ms = 300): string {
   return settled;
 }
 
-export function useSellerSearch(query: string) {
+export function useSellerSearch(query: string, enabled = true) {
   const debounced = useDebounced(query.trim());
 
-  return useQuery({
+  const isDebouncing = query.trim() !== debounced;
+  const result = useQuery({
     queryKey: ['berkat', 'seller-search', debounced],
-    enabled: debounced.length >= SEARCH_MIN,
+    enabled: enabled && !isDebouncing && debounced.length >= SEARCH_MIN,
+    retry: (failures, error) => failures < 1 && (error as { code?: string }).code !== '42501',
     // Namen ändern sich selten; wer zweimal dasselbe tippt, soll nicht warten.
     staleTime: 60_000,
-    queryFn: async (): Promise<FoundSeller[]> => {
+    queryFn: async ({ signal }): Promise<FoundSeller[]> => {
       const { data, error } = await supabase.rpc('search_berkat_sellers', {
         p_query: debounced,
-      });
+      }).abortSignal(signal).retry(false);
       if (error) throw error;
       return (data ?? []) as FoundSeller[];
     },
   });
+  return { ...result, isDebouncing,
+    data: isDebouncing ? undefined : result.data,
+    error: isDebouncing ? null : result.error,
+  };
 }

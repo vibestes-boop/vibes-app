@@ -1,5 +1,631 @@
 # Berkat — Übergabe
 
+> **Verbindlicher Fokus – Nutzerkorrektur:** Nur App-Qualität, moderne Gestaltung,
+> Bedienbarkeit, Geschwindigkeit und sinnvolle Wiederkehr bearbeiten. Testprodukte,
+> Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
+> Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
+
+## Aktueller Teststand · 08.09.2026
+
+Der Nutzer möchte die bisherige Modernisierung sichern und auf seinem iPhone
+testen. Dieser Checkpoint auf Branch `berkat` umfasst den gesamten bislang
+uncommitteten Berkat-Stand: zwölf lokale 3D-Kategoriemotive, Markenassets,
+überarbeitete Hauptbereiche und Verkäuferprofile, Suche/Gefolgt, Lade-/Fehler-
+zustände, fokusgebundene Abfragen, Pagination, Galerie/Bildladen sowie
+gemeinsames Druckfeedback und reduzierte Bewegung. Die Detailnachweise folgen
+weiter unten. Keine Änderungen außerhalb `apps/berkat` in diesem Checkpoint.
+
+**Gerät bereit:** Das gekoppelte iPhone 16 Pro wurde über `devicectl` erkannt.
+Die installierte Berkat-Entwicklungsapp `com.berkat.app`, Version 1.0.0 (3),
+wurde mit der aktuellen Metro-Adresse geöffnet. Die native iPhone-Laufzeit
+ist verbunden; `HomeScreen` ist montiert und 70 `PressFeedback`-Instanzen sind
+aktiv. Das bestätigt den geladenen App-Code, nicht bereits die Sichtprüfung
+oder einen Leistungsbenchmark auf dem Gerät.
+
+**Jetzt testen:**
+
+1. Startseite/Kategorien: 3D-Motive, Abstände, horizontales Wischen und Auswahl.
+2. Suche/Shop/Profil: wechseln, ein Angebot öffnen und zurückgehen; Auswahl
+   und Listenposition beachten. Nur Bedienung und Darstellung beurteilen.
+3. Galerie: durch Bilder wischen und zurückgehen; Laden und Übergänge beachten.
+4. Konto/Aktivität: Bereiche wechseln, Merkliste öffnen, lokale Filter wählen.
+5. Verkaufen: Show-/Terminformular öffnen, Text eingeben, Kategorie und Zeitpunkt
+   wählen, wieder schließen. Zum reinen UI-Test nicht veröffentlichen/starten.
+6. Größere Systemschrift und „Bewegung reduzieren“ ausprobieren. Texte sollen
+   lesbar bleiben; lokale Eingaben und Auswahl sollen beim Wechsel erhalten bleiben.
+
+**Verbindung:** Metro läuft aus `apps/berkat` auf Port 8081. Bei der Übergabe
+war der Mac unter `172.20.10.2` erreichbar. Mac/Metro für diesen Test weiterlaufen
+lassen und die gemeinsame Netzwerkverbindung beibehalten. Nach einem Netzwechsel
+die aktuelle Adresse verwenden; eine alte gespeicherte Dev-Client-Adresse lädt
+sonst nicht den neuen Stand. Berkat verwendet einen eigenen Dev-Client, kein Expo Go.
+
+**Native Grenze:** Die aktuelle Oberfläche und lokale Kategorieassets werden
+über Metro geladen. Das bereits installierte Homescreen-Icon und der native
+Splash werden dadurch nicht ersetzt; die neuen Markenassets/App-Konfiguration
+brauchen dafür einen frisch gebauten und installierten iOS-Build. Für diesen
+UI-Test wurde weder ein neuer Build installiert noch OTA/TestFlight veröffentlicht.
+
+**Prüfungen:** 176 Tests, `npx tsc --noEmit`, iOS-Export nach
+`/private/tmp/berkat-iphone-commit-20260908` und `git diff --cached --check`
+am 08.09. vor dem Commit bestanden. Die Simulator-Prüfungen
+ersetzen den jetzt vorgesehenen physischen Gerätetest nicht. Anschließend stehen
+weitere Sheets und Story-/Live-Effekte an. Historische „Nächster Schritt“-Angaben
+in älteren Einträgen sind durch diesen Teststand und die jüngsten Einträge ersetzt.
+
+> **Konto/Aktivität/Verkaufsformulare · 08.09.2026:** 86 Druckziele in den
+> drei Tabs plus SellerStart, SavedList, CategoryPicker, SchedulePlanner und
+> PrepareSheet auf PressFeedback umgestellt; alte zusätzliche Deckkraftwechsel
+> entfernt. AST-Abgleich bestätigt unveränderte Aktions-, Disabled- und
+> Accessibility-Props. Show-/Termin-/Zeit-/Vorbereitungs-Modals berücksichtigen
+> reduzierte Bewegung. Kategorie-, Zeit-/Wiederholungs- und Schließen-Ziele
+> mindestens 44 pt; Terminbestätigung mit wachsender Mindesthöhe.
+> Native Zeitauswahl hatte beim Schriftwechsel abgeschnittene Texte: statische
+> Text-/Auswahlbereiche werden neu vermessen, Eingabe/ScrollViews/Zustand nicht
+> remountet. Konto → Merkliste/Filter/zurück und Aktivität → Vorschläge → Konto
+> → zurück geprüft. Lokaler Termintitel/Zeitauswahl bei iOS-Reduktion aus → an
+> und Schrift 1.118 ↔ 1.786 erhalten; Modals slide → none, nach Rückstellung
+> wieder slide. Kategorie Eltern/Kind/Abwählen und Schriftwechsel geprüft.
+> PrepareSheet blieb geschlossen, seine Präferenz/Modal-Props wurden gelesen.
+> 176 Tests (5 neue Formularfälle), TypeScript, iOS-Export und diff --check
+> bestanden. Keine Backend-Schreibaktion/Deploy/OTA/native Build oder neue
+> Abhängigkeit/Spalte. Vollständig neu geladen, Entwurf leer, OS-Reduktion aus,
+> Schrift 1.118; keine Probe-Globals/Listener installiert. Kein FPS-/Release-
+> Nachweis, höchste Schrift/Android/physische Gesten separat offen.
+> Showformular ebenfalls korrigiert: Fließ-/Covertext neu vermessen, einzeiliger
+> Titel explizit mit System-fontScale gesetzt (keine Doppelskalierung). Native
+> 1.118 → 1.786 → 1.118: Platzhalter passt sofort, eingegebener Titel bleibt.
+> Nächster Punkt: weitere Sheets und Story-/Live-Effekte. Keine Testprodukt-Prüfung.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-personal-feedback-quality
+
+> **Druckfeedback/Bewegung · 08.09.2026:** Gemeinsame PressFeedback-Komponente
+> in Home, Kategorien/Leiste, ListingCard, Galeriepfeilen und Bild-Retry.
+> Ein natives Press-Ziel ohne Layout-Hülle; Scale Karte .985/Control .97,
+> Opacity .86, Timing 80/160 ms ohne Überschwingen, useNativeDriver und
+> isInteraction false. Keine Animation beim bloßen Montieren. Disabled,
+> vorhandene Deckkraft/Transforms, Semantik und Callbacks erhalten; Abbruch
+> setzt zurück. Reduzierte Bewegung: sofortige Deckkraft, keine Skalierung.
+> useReducedMotion mit gemeinsamem OS-/AppState-Listener, konservativem Start,
+> Fehlerbehandlung und Schutz vor verspäteten Antworten. Root-Stack inklusive
+> eigener Bottom-Routen, Galerie-scrollTo, Kategorie-LayoutAnimation und
+> Shop-/Detail-Modals berücksichtigen Einstellung. Home-Leiste bei Reduktion
+> fest/groß, ohne Verschieben/Überblenden; lokale Kategorieassets ohne Fade.
+> Native iOS-Einstellung aus → an → aus ohne Neustart geprüft. Druck normal
+> mit Zwischenwerten, reduziert nur 1/0. Galerie deaktivierter Pfeil: kein
+> Aufruf; aktiv reduziert x370/animated false, normal animated true, jeweils
+> Bild 2/2. Kategoriepanel/Filterzustand über Settings-Wechsel erhalten.
+> 171 Tests (13 neu), TypeScript, iOS-Export, diff --check bestanden. Callback-
+> Zeitstempel teilweise gebündelt: kein FPS-/Dauer-/Release-Nachweis. Shop- und
+> Detail-Modals nicht separat nativ geöffnet, Root über Detailnavigation geprüft.
+> Physische Gesten, Android, höchste Schrift, volle reduzierte Home-Scrollstrecke
+> und Release-Messung offen. Messhilfen entfernt, App vollständig neu geladen,
+> echte Home sichtbar, OS-Reduktion wieder aus, Schrift unverändert 1.118.
+> Keine Backend-Schreibaktion/Deploy/OTA/native Build, neue Abhängigkeit/Spalte.
+> Nächster App-Schritt: Konto/Aktivität/Verkaufen mit gemeinsamem Feedback;
+> weitere Sheets und Story-/Live-Effekte separat auf Bewegungsreduktion prüfen.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-motion-quality
+
+> **Bildladen/Galerie · 08.09.2026:** ListingGallery aus Detailseite ausgelagert,
+> keyed nach Angebots-ID. Aktuelles Bild mit hoher Priorität, direkte Nachbarn
+> mit niedriger; maximal drei native Bildansichten, Ladefenster folgt onScroll.
+> Verdeckte Seite behält nur aktuelles Bild. ProductPhoto nutzt memory-disk,
+> URI-Recycling-Key, Downscaling und keine feste 120-ms-Einblendung mehr.
+> Nach 250 ms Ladefeedback, auf Karten stilles Symbol; Bildfehler mit eigenem
+> mindestens 48-pt-Retry. Versuchszustände getrennt, späte Ereignisse isoliert.
+> Auswahl nach URI bei neuer Reihenfolge erhalten, bei Entfernung begrenzt;
+> Breitenänderung richtet dasselbe Foto aus. listingImages entfernt leere/
+> doppelte Einträge. Galeriepfeile nur bei mehreren Bildern; Screenreader
+> sieht nur aktuelle Seite. Keine URL-Transformation/neue Abhängigkeit/Spalte.
+> Native lokale Acht-Bilder-Prüfung: 15-s-Ladehinweis, Bild 4 HTTP-503 → normale
+> Wiederholung erfolgreich, Schrift 1.118/1.786. Anfang/Mitte/Ende: 2/3/2
+> montierte ProductPhoto-Komponenten. Neun Bildanfragen inkl. Fehler+Retry;
+> Rückweg 8 → 1 ohne neue Anfrage. Reihenfolge 1/8 → 5/8 erhält dasselbe Foto,
+> Entfernung → passendes 5/7, leer → Zustand ohne Pfeile. Kein RAM-/FPS-Nachweis.
+> Native Galeriepfeile geprüft, Wisch-/Trägheitsgesten und native Rotation offen;
+> onScroll/Breitenänderung zusätzlich im Komponenten-Harness geprüft.
+> Lokaler Cache wiederhergestellt, QA-Global entfernt, vollständig neu geladen,
+> Server beendet. Echte Galerie 2/2 → Profil → zurück erhält Foto/URI. Schrift
+> wieder 1.118. 158 Tests (14 neu), TypeScript, iOS-Export, diff --check bestanden.
+> Keine Backend-Schreibaktion/Deploy/OTA/native Build. Physisches Gerät, Android,
+> höchste Schrift und Release-Messungen offen. Nächster App-Schritt: Bewegung
+> und Interaktionsfeedback vereinheitlichen, reduzierte Bewegung berücksichtigen.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-gallery-quality
+
+> **Übergänge/Artikelseite · 08.09.2026:** Öffnen eines geladenen öffentlichen
+> Angebots zeigt sofort eine Vorschau aus bestehenden Listen-Caches. Neuer
+> useListingDetail-Hook: neuester passender Treffer, nur women_only === false,
+> kein Schreiben in den Detailcache; echte Antwort inklusive null hat Vorrang,
+> 42501 verbirgt Vorschau. Haupt-Merken, Preisvorschlag, Melden und Hauptaktionen
+> erst nach Detailantwort. Netzfehler behält Vorschau mit Wiederholen, leere
+> Antwort zeigt Leerzustand. Direktaufruf ohne Cache mit statischem Ladegerüst.
+> useListing fokusgebunden/abbrechbar, bestehender Key/Filter; maximal ein
+> Query-Retry, keiner bei 42501, kein HTTP-Retry. Fokusrefetch teilt laufende
+> Anfrage. Verwandte Angebote ebenfalls fokusgebunden. 44-pt-Kopfaktionen;
+> Aktionsleisten mit Mindesthöhe. Titel/Metadaten/Galeriezähler bei Schriftwechsel
+> neu vermessen; Haupt-ScrollView/Galerie/Preisfeld bleiben montiert.
+> Native Prüfung: Vorschau → Fehler → reguläre Wiederholung mit echtem Backend,
+> Galerie 2/2 dabei erhalten. Detail → Profil → zurück: Ausschnitt/Offset 600;
+> Profilregal → Detail → zurück: Offset 650. Shop „Berlin“/„Günstigste“ → Detail
+> → zurück: sieben Treffer, Auswahl und Offset 1099 erhalten. Scrollpositionen
+> per temporären UI-Knöpfen erreicht, kein Fingerwisch-/Trägheitsnachweis.
+> Leere lokale Detailantwort entfernt Vorschau. Schrift 1.118/1.786 geprüft,
+> kalter Direktaufruf nur auf Query-/Komponentenebene. 144 Tests (18 neu),
+> TypeScript, iOS-Export und diff --check bestanden. Testhilfen/Wrapper entfernt,
+> vollständig neu geladen, echte Artikelseite sichtbar, Schrift wieder 1.118.
+> Keine Backend-Schreibaktion/Deploy/OTA/native Build. Keine neuen Spalten/
+> Migrationen/Abhängigkeiten. Physisches Gerät/Gesten, Android, höchste Schrift
+> und Release-/FPS-/RAM-Messungen offen. Nächster App-Schritt: Bildladeverhalten
+> und Galerie prüfen, leere Flächen/Bildwechsel und Fehlerzustände verbessern.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-navigation-quality
+
+> **Shop-/Kategorie-Pagination · 08.09.2026:** Shop und Kategorieangebote laden
+> jetzt seitenweise 30 statt maximal 60. Neuer useBrowseListingPages-Hook:
+> zwei begrenzte Abfragen für listed/Festpreis und scheduled/Startpreis,
+> höchstens 31 Kandidaten je Zweig, global zusammengeführt; bei Show-Filter
+> nur ein Zweig. Gemeinsamer Cursor mit exakten Mikrosekunden/ID, bei
+> Preisreihenfolge zusätzlich Betrag. Sichtbarer Termin per Inner Join vor
+> dem Seitenlimit. Suche (Titel/Größe/Ort), Kategorien samt Kindern, Zustand,
+> Größe/Ort und Maximalpreis wirken serverseitig vor dem Limit. Literale
+> Suchmuster samt Sonderzeichen maskiert; 300 ms Debounce, alte Treffer unter
+> neuen Filtern verborgen. Kategorien/Zustände aus vollständigen Optionen,
+> Größe/Ort als Eingabe; keine Teilbestands-Facettenzahlen. Mehr-Knopf und
+> Nachladefehler am Ende, Refreshfehler am Kopf, bestehende Karten erhalten.
+> Eigene Seitenkeys unter shop/category-listings, alte Home-Vorschau-Hooks
+> und Array-Caches erhalten. Fokus/Abbruchsignal, Query-Retry maximal einmal,
+> keiner bei 42501, kein zusätzlicher HTTP-Retry. Kategorie-Liveabfrage jetzt
+> ebenfalls fokusgebunden/abbrechbar. Keine neue Spalte/Migration/Abhängigkeit.
+> Schrift 1.118/1.786: Filterleisten neu vermessen, Abschluss mit Umbruch und
+> KeyboardAvoidingView/Seitenoffset; erfolgreich über sichtbarer Tastatur
+> betätigt. Native lokale Vorschau: Shop 30 → Fehler → Retry 60 → 90 → 95;
+> Suche und Größe+Ort erreichen Vorschau 95 direkt. Preisfolge über 60 global
+> korrekt, Show-Auswahl 32. Mode samt elf Kindern: 30 → Fehler → Retry 60 → 65;
+> Refreshfehler erhält 65 → reguläre Wiederholung erfolgreich. Keine doppelten
+> IDs. Stichproben jeweils 27 montierte Karten bei 95/65 geladenen. Kein
+> FPS-/RAM-Nachweis. Enden via temporären UI-Testknöpfen → scrollToEnd,
+> Refreshfehler via Testknopf am Refresh-Handler, keine echten Wisch-/Pull-
+> Gesten nachgewiesen. Echte Backend-Syntax zusätzlich lesend geprüft.
+> 126 Tests (33 neu + 93 bestehend), TypeScript, iOS-Export, diff --check
+> bestanden. Testknöpfe/Wrapper/Globals entfernt, vollständig neu geladen;
+> echter Shop 28, echter Mode-Filter/Kategorie 5, Schrift 1.118, Simulator auf
+> Mode, Tastatur zu. Keine Backend-Schreibaktion/Deploy/OTA/native Build.
+> Physisches Gerät, Android, höchste Schrift, Release-/Datenbankmessungen
+> bleiben offen. Nächster App-Schritt: Übergänge Liste → Artikelseite → Profil,
+> Rückkehrposition, Ladefeedback und Auswahl-Erhalt gemeinsam prüfen.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-browse-pagination
+
+> **Profil-Pagination · 08.09.2026:** Verkäuferprofil lädt Angebote jetzt
+> seitenweise (30 + 1) statt mit fester 60er-Grenze. Explizites „Weitere Angebote
+> laden“ im Regalabschluss; Nachladefehler/Wiederholen dort, Refreshfehler am
+> Kopf, vorhandene Karten bleiben erhalten. Zähler bis zum Ende mit Plus,
+> danach vollständig geladene Anzahl. Cursor created_at DESC + id DESC, exakte
+> Mikrosekunden, keine Offset-Verschiebung bei neuen/entfernten Angeboten.
+> useSellerListingPages in lib/useListings.ts, eigener Key unter bestehendem
+> standing-Präfix; alter useSellerListings und seine Array-Caches erhalten.
+> Gemeinsame Invalidierungen greifen weiter. Keine neue Spalte/Migration.
+> Gleichzeitige Nachladeanfragen geteilt, Refresh/Nachladen gegenseitig
+> gesperrt, Fokus/Shop-Reiter/Seller-Bindung und Abbruchsignal. Höchstens ein
+> Query-Retry, keiner bei 42501, kein zusätzlicher HTTP-Retry. SellerShopMore
+> mit dynamischer Höhe, vollständige Texte bei Schrift 1.118/1.786 geprüft.
+> Simulator: 30 → Nachladefehler → reguläre Wiederholung 60 → 65 vollständig;
+> Refreshfehler erhält 65 → reguläre Wiederholung 90+ → Fehler/Retry bei großer
+> Schrift → 95 vollständig. Keine doppelten IDs. Montierte Karten-Stichproben:
+> 23 von 65, 19 von 95. Keine FPS-/RAM-Aussage. Cursor-Syntax zusätzlich gegen
+> echtes Backend lesend geprüft. 93 Tests, TS, finaler iOS-Export und diff --check
+> bestanden. Scrollenden per temporären UI-Testknöpfen → scrollToEnd, Refresh-
+> Handler ebenfalls per Testknopf; kein Fingerwisch-/Pull-Gestennachweis.
+> Wrapper/Testknöpfe entfernt, App vollständig neu geladen, echte 6 Angebote,
+> Historie geschlossen, Schrift 1.118. Keine Backend-Schreibaktion/Deploy/OTA/
+> native Build. Physisches Gerät, Gesten, Android, höchste Schrift und Release-
+> Messung offen. 30er-Verkaufshistorie unverändert. Nächster App-Schritt: Shop
+> und Kategorien ebenfalls seitenweise laden; Show-Ware/Filter berücksichtigen.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-profile-pagination
+
+> **Virtuelle Profilangebote · 08.09.2026:** StandingShelf-Raster aus dem
+> Listenkopf entfernt; eine Animated.FlatList mit gemischten Reihen (2 aktuelle
+> Angebote / 3 Verkäufe), stabilen Schlüsseln und Platzhaltern. Durchgehende
+> Regalfläche/Anzahl/Versandhinweis, bestehende ListingCard samt Merken/Deins/
+> Navigation erhalten. Memoisierte Reihen, Renderfenster 5, initial 2 Reihen,
+> Gruppen zu 4; keine festen Zeilenhöhen. Verkaufshistorie bleibt aufklappbar.
+> Kopf wird beim Scrollen deckend und zeigt kompakten Namen, native Animation;
+> Name bei Schriftwechsel neu vermessen. Historienpreise auf ui.onImage.
+> Lokale Vorschau mit 60 Angeboten: montierte ListingCards am Anfang 12,
+> bei 4.200 pt 28, am Angebotsende ca. 11.016 pt 18. Abbau entfernter Reihen
+> nachgewiesen. Keine Aussage zu FPS/RAM oder Release-Leistung. CUA-Wischen/
+> Mausrad wirkungslos; Blättern über temporäre UI-Testknöpfe → scrollToOffset.
+> KEIN bestandener Fingerwisch-/Trägheitstest. Ende 60, Historie 30 auf/zu,
+> Rückkehr nach Detail, Reiter, Cache bei Netzfehler, neue erfolgreiche Abrufe,
+> Einzelkarte/Schrift 1.118/1.786 geprüft. Manueller Wiederholungs-Erfolg in
+> diesem Durchlauf nicht separat nachgewiesen. 70 Tests, TypeScript, finaler
+> iOS-Export, diff --check bestanden. Testknöpfe/Wrapper entfernt, vollständiger
+> App-Neustart entfernt Vorschau-Cache; echtes Profil mit 6 Angeboten, Historie
+> zu, Schrift 1.118. Keine Backend-Schreibaktion/Deploy/OTA/native Build.
+> Physisches Wischen, Android, höchste Schrift, Release-Messung offen.
+> Unveränderte Grenze 60 Angebote/30 Verkäufe; nächster funktionaler Schritt:
+> seitenweises Nachladen für größere Profilshops mit sauberem Fehlerzustand.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-seller-list-quality
+
+> **Verkäuferprofil · 08.09.2026:** 44-pt-Kopfaktionen, dynamische Bannerhöhe/
+> zweizeiliger Name, Folgen/Nachricht gemeinsam mit mindestens 48 pt. Trinkgeld
+> im bestehenden Mehr-Menü erreichbar. Ganze Reiter-Schalter Shop/Bewertungen/
+> Shows, stabile Schriftstärke und Umbruch bei Platzmangel. Schrift 1.118/1.786
+> geprüft. Shop zeigt aktuelle Angebote, Verkaufshistorie separat aufklappbar;
+> keine ungefragte „noch nichts verkauft“-Meldung unter vorhandenen Angeboten.
+> Leerer Shop mit Rückweg zu Shows/Verkaufen. Eigenständige Termin-/Live-Karte,
+> ausgeschriebenes Nur Frauen, Live-Vorrang; Termin → Show-Reiter ohne doppelte
+> Kopfkarte. Profil-/Shop-/Bewertungs-/Verkaufshistorien-/Show-Abfragen mit
+> unterscheidbaren Lade-/Fehler-/Leerzuständen, Wiederholen und Cache-Erhalt.
+> Profil-Netzfehler bedeutet nicht mehr „Verkäufer gibt es nicht mehr“.
+> Profil-Hooks nach lib/useSellerProfile.ts ausgelagert. Live-Polling an Fokus,
+> Inhalte an gewählten Reiter/aufgeklappte Historie gebunden; bestehende Cache-
+> Schlüssel/Standardaufrufe erhalten. Kopf-Refresh teilt laufende Requests;
+> Pull aktualisiert sichtbaren Inhalt und schützt vor gleichzeitigem Doppelstart.
+> Simulator: Suche/Profil, Reiter, Bewertungen-Netzfehler/Wiederholung, Shop-
+> Cachefehler, lokaler leerer Shop, Historie auf/zu, Shows-Fehler/Wiederholung,
+> Termin-Karte → Shows, Live-Karte (nur lokale Vorschau, keinen Raum betreten),
+> Mehr-Menü/Abbrechen. Über 80 s verdecktes Profil ohne erfasste Inhaltsabrufe.
+> 54 Tests, TypeScript aus apps/berkat, abschließender iOS-Export und diff --check
+> bestanden. Wrapper entfernt, echte Angebote/Profil geladen, Schrift wieder
+> 1.118; Simulator auf echtem Verkäuferprofil/Shop. Keine Follow-/Merk-/Zahlungs-/
+> Nachrichten-/Bürgschafts-/Upload-/Meldeaktion, kein Deploy/OTA/native Build.
+> Physisches Gerät, Android, höchste Schrift, tatsächlicher Live-Durchlauf und
+> lange Listen offen. Initialer Profilfehler nur auf Query-Ebene geprüft.
+> Nächster Schritt: Profilregal (derzeit bestehendes Raster im Listenkopf, bis
+> zu 60 Einträge) in virtuelle Liste übernehmen und Scrollverhalten prüfen.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-seller-profile-quality
+
+> **Gefolgte Profile · 08.09.2026:** Neuer Bildschirm `/following`, auf Home
+> neben „Gemerkt“ und im Kopf von Aktivität erreichbar. Home behält dieselbe
+> Höhe; Aktivität bleibt als Tab. Profilkarten → Verkäuferprofil, Entdecken →
+> `/search?tab=sellers`; Such-Startreiter validiert, Zurück-Label neutral.
+> Gemeinsame Serlo-/Berkat-Folgebeziehungen, deshalb „Profile“, kein erfundener
+> Verkäuferstatus. FK-Join mit öffentlichen Namen/Avataren, 30 + 1 Zeilen je
+> Anfrage, explizites Nachladen, stabile Reihenfolge, keine N+1-Abfragen oder
+> Gesamtzählung. Doppelte Kontakte bei verschobenen Offset-Seiten unterdrückt;
+> Refresh lädt Seiten neu. Fehlende Profile als deaktivierte Karte. Gast,
+> Laden/Leer/Fehler, Cache-Erhalt, Nachladefehler/Wiederholen. Fokus-/Kontobindung,
+> Abbruchsignal, begrenzte Query-Retries ohne verschachtelte HTTP-Retries.
+> Folge-Erfolg invalidiert eigene Liste/Aktivität; nur isolierter Callback-Test,
+> KEINE tatsächliche Folgeaktion. Simulator: Home-/Aktivität-Zugang, echte leere
+> Liste, Verkäufer-Suche, Profil/zurück, Schrift 1.118/1.786. Befüllung nur lokale
+> Vorschauantworten; Nachladefehler und erfolgreiche Wiederholung, Refreshfehler
+> mit Cache und anschließendes Laden echter Daten geprüft. Lange Wischgeste
+> unzuverlässig; Nachlade-Knopf mit lokal deduplizierter Vorschau geprüft, KEIN
+> bestandener Langlisten-Scrolltest. Wrapper entfernt, echte leere Liste geladen,
+> Schrift 1.118 wiederhergestellt. 36 Query-/Fokus-Tests, TypeScript, iOS-Export
+> und diff --check bestanden. Kein Deploy/OTA/native Build/Backend-Schreibvorgang.
+> Physisches Gerät, Android, höchste Schrift, echter Kontowechsel und manuelles
+> Scrollen offen. Nächster UI-Schritt: Verkäuferprofil mit klarerem Einstieg in
+> Shop und Termine/Live weiter verfeinern; keine Testprodukt-Prüfung. Bericht:
+> /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-following-quality
+
+> **Suche · 08.09.2026:** Eigener Bildschirm `/search` mit Artikel-/Verkäufer-/
+> Live-Reitern. Home öffnet ihn über das Suchfeld; gewählte Kategorie bleibt bei
+> Rückkehr erhalten. Artikel-/Profil-Navigation erhält Suchwort und Reiter.
+> Größere Suchkarten als ListingCard-Variante `search`, separate Merkfläche,
+> eigene Artikel mit „Deins“. Virtuelle Trefferlisten, Mindestlängenhinweis,
+> eigene Lade-/Leer-/Fehlerzustände, Wiederholen und Anmeldehinweis bei 42501.
+> Während Debounce keine alten Treffer/Fehler unter neuem Wort. Query-Start nur
+> im aktiven sichtbaren Suchbereich; Abbruchsignal an Supabase. Verschachtelte
+> HTTP-/Query-Retries im Netzfehlertest gefunden: für Suche und gemeinsame Live-
+> Abfrage jetzt nur Query-Retry, höchstens einmal; keine Wiederholung bei 42501.
+> `useLiveShows` nach lib ausgelagert, gemeinsamer Cache; Kategorie-Hook mit
+> optionalem enabled bei stabilem Schlüssel. Simulator: Artikel/Profil/zurück,
+> Kategorieerhalt, kurze/leere Eingaben, Treffer/Leerfälle, Artikel-Netzfehler
+> mit/ohne Cache, Verkäufer-Netzfehler, erfolgreiche Wiederholungen und simulierte
+> Berechtigungsantwort geprüft. Schrift 1.118/1.786, Softwaretastatur und Treffer-
+> Tipp geprüft; danach 1.118, Home/Für dich, keine Eingabe. Wrapper entfernt.
+> 27 Query-/Fokus-Tests, TypeScript, iOS-Export und diff --check bestanden.
+> Automatisierte Wischversuche nicht zuverlässig: manueller Langlisten-Scrolltest
+> offen. Physisches Gerät, Android, höchste Schrift, Gastwechsel und aktives Live
+> offen. Keine Merk-/Folge-/Nachrichten-/Kauf-/Datenänderung, kein Deploy/OTA/Build.
+> Nächster Produkt-Schritt: Einstieg zu gefolgten Verkäufern. Bericht:
+> /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-search-quality
+
+> **Startseiten-Hierarchie · 08.09.2026:** Marke und Suche mit eigenen Zeilen,
+> 44-pt-Kopfaktionen, Druckfeedback; Kopf bei Schriftwechsel neu aufgebaut.
+> Kompaktere 3D-Kategorien, zusammenhängende Namen/Zahlen, Marken-Einstieg;
+> native Scroll-Überblendung erhalten, kompakte Schalter mindestens 44 pt.
+> Home-Zugänge zu Gemerktem/Aktivität ohne neue Abfragen. Abschnittstitel und
+> „Alle ansehen“ mit passendem Kategorie-/Shop-Ziel. Eigene Story allein kompakt,
+> weitere Stories beschriftet; Story-Labelbreite wächst mit Systemschrift.
+> Statische Raster-/Kategorie-Platzhalter; Kategoriepolster beim Laden reserviert.
+> Doppelte Such-Leermeldung entfernt; leere Kategorien mit Rückweg und sichtbarem
+> aktivem Einstieg nach Reset. Kategorie-Zurück-Label neutral für Home-Einstieg.
+> Simulator: Schnellzugriffe, Kategorie/Ziel/zurück, Scrollen, Suchentwurf/löschen,
+> leere Kategorie/Reset und 20 s lokal verzögerter Abruf erfolgreich. Schrift
+> 1.118/1.786 geprüft und 1.118 wiederhergestellt. Story-Varianten mit lokalen,
+> anschließend entfernten Vorschauen geprüft; keine Story erstellt/angesehen.
+> Fetch-Wrapper entfernt. TypeScript/iOS-Export/diff --check bestanden.
+> Keine native Messung, kein physischer Durchlauf, kein Deploy/OTA/neuer Build.
+> Nächster UI-Schritt: Suche mit getrennten Artikel-/Verkäuferzuständen;
+> gefolgte Verkäufer als Wiederkehr-Zugang konkretisieren. Android, höchste
+> Schrift und aktive Live-Sitzung offen. Bericht:
+> /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-home-polish
+
+> **Bedienung & Ladezustände · 08.09.2026:** Detailseite: Preisfeld/Senden wurden
+> von iOS-Dezimaltastatur verdeckt. Native KeyboardInsets + handled taps/on-drag
+> ergänzt; OfferPanel mit gemeinsamer Preis-Eingabe und iOS-Fertig-Leiste (nur
+> Keyboard.dismiss), mindestens 48-pt-Eingabe/Senden, beschrifteten Feldern und
+> Senden-Zustand. Lokale Entwürfe geprüft/entfernt, nichts gesendet. Verkäuferprofil:
+> Statusleisten-Hintergrund unter Uhr/Akku deckend, Verlauf erst darunter; dunkles
+> Profil vorher/nachher geprüft. Zurück-Pfeile in Detail/Kategorie/Profil beschriftet.
+> Detail-Abruffehler getrennt von „gibt es nicht“; Wiederholen und Cache-Hinweis,
+> Merken/Teilen ohne Daten deaktiviert. Kategorieergebnisse mit Ladeanzeige und
+> Fehler/Wiederholen statt falscher Leere, vorhandene Karten bleiben sichtbar.
+> Simulator: Start→Kategorie→Detail→Profil/zurück und Konto→Merkliste→Detail/zurück;
+> Tastatur bei fontScale 1.118 und 1.786 geprüft, anschließend 1.118 wiederhergestellt.
+> Lokale Fetch-Fehler für Detail/Kategorie jeweils mit/ohne Cache geprüft; Wiederholen
+> nach Netzrückkehr erfolgreich, Instrumentierung entfernt. TypeScript/iOS-Export/
+> diff --check bestanden. iPhone per USB verbunden; iPhone-Synchronisierung beendet
+> sich sofort, keine Fernbedienung. Xcode-Einzelaufnahme funktioniert, zeigte eine
+> andere App, daher KEIN physischer Berkat-Durchlauf belegt. Physisches Gerät,
+> Android, höchste Schrift, Verkäufer-Gegenvorschlag und native Messungen offen.
+> Lokal, kein Deploy/OTA/neuer Build/Backend-Schreibvorgang.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-device-ui-quality
+
+> **Fokussteuerung & iPhone · 07.09.2026:** Periodische Bildschirmabfragen in Home,
+> Kategorien, Aktivität, Verkaufen und Konto über useIsFocused/optionales enabled
+> pausiert. Cache-Schlüssel erhalten; Rückkehr nutzt vorhandene Daten und frischen
+> Abruf. Expliziter Fokus-Refresh mit cancelRefetch:false teilt laufende Abfrage.
+> Bestellzahl wird einmal im sichtbaren TabsLayout gepollt; Verkaufen liest dessen
+> Cache ohne zweiten Timer. Home-Vorschau-Ticker nur sichtbar/bei laufender Auktion.
+> Live-Settlement und Subscriptions unverändert. 16 isolierte QueryObserver-Szenarien
+> plus Sammeltest bestanden (Node: 17), TypeScript/iOS-Export/diff --check bestanden.
+> Simulator: alle Tabs besucht, dann 65 s Home → 9 REST-Aufrufe, alle 200, keine
+> unsichtbaren Aktivitäts-/Verkäufer-/Kontoabfragen. Wechsel zu Aktivität im zweiten
+> 65-s-Fenster → 17 Aufrufe, alle 200; Cache sichtbar, Gebotsintervalle fortgesetzt,
+> Home pausiert. Erste Baseline wegen nativer -1009-Netzfehler verworfen; nach
+> Simulator-Neustart behoben. KEINE Vorher-Nachher-Prozentzahl oder Akku-Aussage.
+> Temporäre Fetch-Instrumentierung entfernt. iPhone 16 Pro verbunden/gepaart,
+> Xcode-Symbole fertig, aktuelle JS-Version läuft auf installiertem Build 1.0.0 (3).
+> Native Startzeit OFFEN: Instruments App Launch verweigert Debug-Zugriff und
+> verlangt Signierung mit get-task-allow. Kein gültiger Zeitwert; kein neuer Build.
+> Nächster Gerätetest benötigt Development-Signierung; optimiertes lokales Bundle
+> für repräsentative Messung, erster Frame/benutzbare Startseite getrennt ausweisen.
+> Android/aktive Live-Sitzung weiter offen. Lokal, kein Deploy/OTA/Datenänderungen.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-focus-quality
+
+> **Laufzeit & Schrift · 07.09.2026:** Home-Aktualisierung lädt jetzt sichtbares
+> Regal/Kategorie, Stories und Zähler mit; keine explizite Abfrage der ausgeblendeten
+> Angebotsquelle. Laufender manueller Abruf gegen Doppelstart geschützt. Ladezustand
+> berücksichtigt das Regal; Show-/Regal-Ausfall mit Wiederholen, vorhandene Karten
+> bleiben sichtbar. Vorschau-Teilmenge memoisiert. iOS-Schriftwechsel verursachte
+> veraltete Textmaße: Konto-Inhalt, ListingCard und Home-Kopf/-Leiste bei fontScale-
+> Änderung neu aufgebaut; Elternzustand bleibt erhalten. Unterkategorien umbrechbar.
+> Simulator 1.118 bis 2.143 geprüft und auf 1.118 zurückgestellt. Konto-/Kartenpreise
+> nach Wechsel korrekt. Temporärer UI-Zugang rief denselben Refresh-Handler auf;
+> lokal simulierte Angebotsfehler → sichtbarer Hinweis + Cache → Wiederholen erfolgreich.
+> Kategorie-Aktualisierung mit passendem Filter, ohne Gesamtregal-GET Limit 8 geprüft.
+> QA-Zugang/Fetch-Instrumentierung entfernt. TypeScript/iOS-Export/diff --check bestanden.
+> 30 s JS-rAF-Stichprobe inkl. Scrollen: p95 17,45 ms, max 19,10 ms, kein Abstand >34 ms.
+> KEIN nativer FPS-/Release-/Kaltstart-Benchmark. Nächster messbarer Ansatz: besuchte,
+> unsichtbare Reiter pollen weiter (Gebote/Verkäuferabfragen beobachtet). Fokussteuerung
+> prüfen. Höchste Schrift, Android und echte Live-Sitzung weiter offen. Lokal, kein Deploy.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-runtime-quality
+
+> **Suche, Konto, Aktivität, Merkliste · 07.09.2026:** Suche dauerhaft erreichbar;
+> aktive Filter einzeln entfernbar, größere Filterflächen, Fehler-/Wiederholen-Hinweis.
+> Merkzahlen-Abfrage an sortierten geladenen IDs statt wechselnden Ergebnissen:
+> lokales Filtern/Sortieren erzeugt keine zusätzlichen Schlüssel für dieselben Zähler.
+> Konto: Profil/Schnellzugriffe, Pakete/Käufe vor Einstellungen, abgelaufene Pakete
+> unter Käufen standardmäßig zugeklappt; Pull-to-refresh und ehrliche Queryzustände.
+> Aktivität/Merkliste: lesbare Tabs/Karten, hilfreiche Leerzustände und klare Fehler.
+> useActivity meldet Teilausfälle bei weiter sichtbaren Ergebnissen; Totalausfall wirft.
+> Simulator: Filter wählen/entfernen, leere Suche/zurücksetzen, Konto→Merkliste→Konto,
+> abgelaufene Pakete auf-/zuklappen, Aktivitätsereignisse und leere Gebote/Vormerkungen.
+> Keine Zahlungs-, Nachrichten-, Merk- oder Bürgschaftsaktionen ausgelöst.
+> TypeScript und diff --check bestanden. Fünf gemockte Hook-Szenarien durch Teilagent
+> erfolgreich. Echte Netzfehler, maximale Schrift, aktive Paket-/Gebotszustände und
+> Android-Gerät weiterhin offen. Keine Aussage über gemessene Bindungs-/Ladezeitwerte.
+
+> **Vorführbestand v1 · 07.09.2026:** Ursache der Bild-Titel-Widersprüche im lokalen
+> scripts/seed-berkat-shop.mjs gefunden. Nur ITEMS-Datenblock gelesen; Seed NICHT
+> ausgeführt. Lokale Prüfliste mit 36 Definitionen und 5 bereits beobachteten
+> Widersprüchen, kein aktueller DB-Export. Sechs nicht kaufbare Designbeispiele
+> mit vorhandenen Kategorie-Assets als HTML/JSON vorbereitet; keine echten
+> Produktfotos oder Verkäuferzuordnung erfunden. Assets/Demo-Kennzeichnung geprüft.
+> Ordner: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-vorfuehrbestand-v1
+> README beschreibt Übergang zu freigegebenen realen Fotos und genauen Artikel-IDs.
+> HTML visuell noch nicht verifiziert. Keine App-/Produktionsdaten verändert.
+
+> **Produktfoto-Fehlerzustände · 07.09.2026:** Neue ProductPhoto-Komponente für
+> ListingCard (Raster/Zeile) und Artikelgalerie. Fehlende Quelle: Kein Foto;
+> Ladefehler: Foto nicht verfügbar; in Galerie mit Erneut laden. Kleine Zeilen
+> nutzen kompaktes Kamera-Symbol. Quellenwechsel setzt Fehlerzustand zurück,
+> erneuter Versuch remountet das Bild. Simulator mit absichtlich fehlender lokaler
+> Datei, erneutem Fehler und Wechsel zu gültigem Asset geprüft. Temporäre QA
+> entfernt, Orders wiederhergestellt. Offen: reale Netzunterbrechung und erfolgreiche
+> Wiederholung derselben URL nach Netzrückkehr, Android. Keine Daten verändert.
+> Lokal, nicht veröffentlicht.
+
+> **Restmängel P2 · 07.09.2026:** ListingCard-Metadaten 12/16 pt, bis zwei Zeilen;
+> im Raster reservierte Zeilenhöhe passend zur Systemschrift. Doppelten Kategorie-
+> Hinweis im StandingComposer entfernt, CategoryPicker mit einer klaren Anweisung.
+> VouchPanel optional compactEmpty: leere Bürgschaften im Profil als aufklappbare
+> Zeile, vorhandene Bürgschaften unverändert vollständig. key=id setzt Zustand
+> beim Verkäuferwechsel zurück. Simulator: Startseiten-Metadaten sowie fremdes
+> Profil mit Auf-/Zuklappen geprüft. Shop beginnt sichtbar früher. Keine Bürgschaft
+> abgegeben, keine Nachricht gesendet. TypeScript erfolgreich; große Schrift,
+> befüllte Bürgschaften und Android noch prüfen. Lokal, nicht veröffentlicht.
+
+> **Gesamtdurchlauf · 07.09.2026:** Startseite → Kategorien/Mode → echte Artikel-
+> Galerie (2 Fotos) → fremdes Verkäuferprofil/Bewertungen → Verkaufen/Regal geprüft.
+> Regal-Neuanlage jetzt aufklappbar, bestehende Angebote sofort sichtbar; lokaler
+> Preisentwurf bleibt beim Einklappen erhalten (24,90 geprüft, danach entfernt).
+> Fremdes Bewertungsprofil erhält denselben sachlichen Leertext wie eigenes Profil.
+> Bericht: /Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/BERKAT-RESTMAENGEL-2026-09-07.md
+> Hauptbefund: unscharfe/Screenshot-Testbilder und Titel-Foto-Widersprüche prägen
+> den Eindruck. Keine Produktionsdaten verändert. TypeScript und diff --check
+> erfolgreich. Vollständige Geräte-/Live-/Uploadtests bleiben offen. Lokal.
+
+> **Live-Tastatur & Schrift · 07.09.2026:** Lokale QA mit echter iOS-Softwaretastatur:
+> Artikelbereich beim Schreiben ausgeblendet, nach Schließen zurück; nur lokaler
+> Text, nichts gesendet. Schrift 1.12 → 1.35 → 1.12 geprüft und wiederhergestellt.
+> BidButton nun minHeight statt fester Höhe; Beschriftung umbrechbar mit Platz
+> neben Ziehgriff. Dabei abgeschnittenes Eurozeichen durch flexShrink behoben.
+> Raum-Footer maximal 70 % der verfügbaren Bildschirmhöhe, bei Überlauf scrollbar;
+> ab fontScale > 1.3 keine zusätzliche innere Produkt-Höhenbegrenzung.
+> Temporäre QA-Ansicht entfernt, orders.tsx wiederhergestellt. Offen: maximale
+> Accessibility-Schrift, echter Live-Raum, Android-Gerät und Gebotsgeste nach Layout-
+> Änderung. Keine Gebote oder Nachrichten gesendet. Lokal, nicht veröffentlicht.
+
+> **Kleine Live-Displays · 07.09.2026:** Produktvorschau im AuctionPanel höhenbegrenzt
+> und scrollbar; Preis/Restzeit, Versand-/Anbieterhinweise und Gebotssteuerung
+> außerhalb des Scrollbereichs sichtbar. Chatverlauf und Aktionsleiste begrenzt
+> scrollbar; neue Chatinhalte scrollen zum Ende. Bei offener Tastatur blendet der
+> Raum den Artikelbereich aus, danach wieder ein (iOS will / Android did Events).
+> Lokale Vorschau mit 320×568 pt, fünf zweizeiligen Nachrichten, langem Artikeltitel
+> und zusätzlichem Zahlungshinweis visuell geprüft. Vorschau entfernt, Orders
+> wiederhergestellt. Keine Show, Gebote oder Nachrichten gesendet.
+> Offen: echter Raum mit Video, Tastaturwechsel, maximale Schrift und Android.
+> Lokal, nicht veröffentlicht.
+
+> **Live-Artikelkarte · 07.09.2026:** AuctionPanel mit eigener dunkler Fläche,
+> Produktfoto 72×88 in contain, zweizeiligem Titel und getrennter Preis-/Restzeitzeile.
+> Preis als Startpreis/Höchstgebot/Zuschlag beschriftet. Versand und Anbieterhinweis
+> größer, Folgebilder 36 pt und umbrechbare Reihe. Bildloser Artikel mit Package.
+> Live-Raum: Schließen und Rail-Ziele mindestens 44 pt, Chatfeld wächst mit Text.
+> Lokale temporäre Vorschau im Simulator: laufender Artikel mit langem Titel,
+> Zuschlag und Artikelpause geprüft. Vorschau vollständig entfernt, orders.tsx
+> wiederhergestellt. Keine Show gestartet, kein Gebot, keine Backend-Änderung.
+> TypeScript erfolgreich. Noch offen: Zusammenspiel mit echtem Video/Chat,
+> große Schrift/kleine Geräte, Host-/Sofortkaufzustände und Android. Lokal.
+
+> **Bestellübersicht · 07.09.2026:** SellerOrders trennt Zu packen / Unterwegs /
+> Zugestellt statt gemeinsamer Erledigt-Gruppe, unbekannte Status bleiben als
+> Weitere Bestellungen sichtbar. Größere Abschnittstitel, Status unter Käufername,
+> Zusteller-Chips mindestens 44 pt, Versandbutton mindestens 52 pt und umbrechbar.
+> Sendungsnummer beschriftet; Button mit disabled/busy-Accessibility-State.
+> OrdersScreen zeigt Lade-/Fehlerzustand mit Wiederholen; bei Aktualisierungsfehler
+> bleiben vorhandene Bestellungen mit Hinweis sichtbar. Keine Versandaktion ausgelöst.
+> TypeScript, iOS-Export und diff --check erfolgreich; bestehende Sentry-/LiveKit-
+> Exportwarnungen. Simulator: leerer Zustand geprüft. Belegte Statusgruppen,
+> Fehlerzustand und große Schrift noch visuell prüfen. Lokal, nicht veröffentlicht.
+
+> **Show-Vorbereitung · 07.09.2026:** SchedulePlanner mit größerem beschriftetem
+> Titelbild-Einstieg und eigenem mehrzeiligem Showtitel-Feld. Terminübersicht
+> umbrechbar; Wiederholungshinweis ohne Server-Implementierungsdetails. PrepareSheet:
+> Termin im Kopf umbrechbar, leerer Zustand mit direkter Erklärung zu Regal/Neuanlage.
+> Simulator: Terminformular und Zeitauswahl geöffnet, Darstellung geprüft; keine
+> Ankündigung, kein Upload. TypeScript geprüft. PrepareSheet mit echtem Termin,
+> lange Titel, große Schrift und Android noch visuell prüfen. Lokal.
+
+> **Formular-QA · 07.09.2026:** Vorbefüllten Edit-Modus mit einem echten eigenen
+> Angebot geprüft: Foto, Titel, Preis und acceptsOffers korrekt. 0,50 € sperrt
+> Speichern und zeigt fehlenden Mindestpreis; danach 7 € wiederhergestellt.
+> Auswahlmenü für Kamera/Mediathek geöffnet und abgebrochen; Uploadstatus endet
+> korrekt. Formular ohne Speichern geschlossen. Neue Fehlende-Angaben-Zeile
+> über Submit und disabled/busy-Accessibility-State; Foto-entfernen-Ziel größer
+> (28 pt + 8 pt hitSlop), Titelbild-Beschriftung 10 pt. TypeScript geprüft.
+> Nicht geprüft: tatsächlicher Upload, mehrere/acht Fotos, große Schrift im Formular.
+> Keine serverseitigen Daten verändert; lokal, nicht veröffentlicht.
+
+> **Angebotsformular · 07.09.2026:** StandingComposer mit eigenem Foto-Einstieg
+> (Covervorschau, Bildlimit, Uploadzustand), größeren Vorschaubildern und Bereichen
+> Fotos / Artikel & Preis / Verkauf & Versand. Titel, Preis und Größe dauerhaft
+> beschriftet und mit Accessibility-Labels; Frauen-Only in eigener Zeile.
+> Vorhandene Validierung, Uploadfunktion und Submit-Logik unverändert.
+> Simulator: leere Anlageansicht, Dezimalpreis eingegeben und wieder entfernt.
+> TypeScript erfolgreich. Offen: Fotopicker/Upload, volle Fotoliste, Bearbeiten,
+> große Schrift, Android. Kein Angebot angelegt, kein Foto hochgeladen.
+> Lokal, nicht veröffentlicht.
+
+> **Verkäuferübersicht · 07.09.2026:** SellerStart zeigt zunächst den nächsten
+> offenen Schritt; Gesamtliste aufklappbar, bestehende Fortschrittsberechnung
+> unverändert. Ohne aktive Show stehen offene Bestellungen/Preisvorschläge
+> oberhalb der Einrichtungshilfe (nur bei Zahl > 0). Direkter Regal-Einstieg
+> vor Show-/Termin-Aktionen. Bestehende Verwaltungslinks bleiben verfügbar.
+> Simulator: Übersicht ohne offene Aufgaben, Ein-/Ausklappen und Regalnavigation
+> erfolgreich; TypeScript geprüft. Offene-Aufgaben-Zustand, große Schrift und
+> aktive Show noch visuell prüfen. Keine Angebote erstellt, keine Show gestartet,
+> keine Nachrichten/Bestellungen verändert. Lokal, nicht veröffentlicht.
+
+> **Verkäuferprofil · 06.09.2026:** Kennzahlen nur bei vorhandenem Bestand
+> (Bewertungen, Versandproben, Zuschläge), als kompakte umbrechbare Zeile.
+> Ohne alle Werte kurze Erklärung statt drei leerer Kacheln. Ohne Bannerfoto
+> auberginefarbener Kopf ohne grünen Bildverlauf; Foto-Verlauf bleibt erhalten.
+> Bio 14/21 pt, Reitertexte zentriert, Bewertungs-Leertext aktualisiert.
+> Eigenes Profil mit einem Zuschlag und Bewertungsreiter im Simulator geprüft.
+> TypeScript und iOS-Export erfolgreich (abschließende reine Leertextänderung danach).
+> Noch prüfen: fremdes Profil, drei gefüllte Kennzahlen, vollständig leerer
+> Kennzahlenzustand, große Systemschrift. Lokal, nicht veröffentlicht.
+
+> **Markenassets · 06.09.2026:** Vorhandene Ährengeometrie beibehalten. Icon
+> und Favicon hell (#F5F5F5) auf Aubergine (#2E1B33), Splash/Android-Foreground
+> hell transparent. mark.svg aubergine für helle Flächen. App.json: Splash
+> (Legacy und Plugin), Adaptive-Icon-Hintergrund und Notification-Farbe vereinheitlicht.
+> generate-icons.mjs aktualisiert; Icon/Favicon jetzt echtes RGB ohne Alphakanal.
+> PNG-Abmessungen/Alpha und aufgelöste Expo-Konfiguration geprüft; Icon visuell geprüft.
+> Native Installation/Startbildschirm noch nicht am Gerät geprüft. Neuer nativer Build
+> erforderlich; keine Veröffentlichung, Buildnummern und Runtime unverändert.
+
+> **Kategorie-QA · 06.09.2026:** categoryRailMetrics skaliert Kachelbreite,
+> Titel-/Leistenhöhe und kompakten Filter mit fontScale; Home nutzt identische
+> Maße für Polster und Translation. Sortierchips umbrechbar und höhenflexibel.
+> Im Simulator fiel die sichtbare, aber nicht bedienbare kompakte Leiste auf:
+> compact wird jetzt über den Animated.event-Scrolllistener im Home gesetzt
+> und als Prop übergeben; Interpolation-Listener entfernt. Scrollübergang und
+> Mode-Auswahl danach erfolgreich geprüft. Größere Schrift (+1 Menüstufe) auf
+> Startseite/oberen Kategoriezeilen geprüft und zurückgestellt. App ist laut
+> app.json portrait-only; Querformat gehört nicht zum unterstützten Layout.
+> TypeScript erfolgreich. Android-Export geprüft, kein Android-Gerätetest.
+> Weiter offen: maximale Accessibility-Schrift, untere sechs Kategorien visuell,
+> Galerie-Wischgeste und echte Geräte. Nicht veröffentlicht.
+
+> **Detail-QA · 06.09.2026:** iOS-Simulator-Schrift um zwei Menü-Stufen erhöht
+> und danach um zwei Stufen zurückgestellt. Abgeschnittene Anbieterzeile und
+> Kontaktbeschriftung mit flexShrink/höhenflexiblem Kontaktknopf korrigiert.
+> Versandtext 13/20 pt mit Umbruch; vollständig nach Scrollen sichtbar.
+> Galerie mit zwei temporären lokalen Motiven geprüft: vor/zurück, 1/2 und 2/2,
+> deaktivierte Endtasten korrekt. Fixture restlos entfernt; echte Bilder wieder
+> sichtbar. Kein Upload/keine Datenbankänderung. TypeScript und diff --check
+> erfolgreich. Noch offen: Wischgeste, Rotation, maximale Accessibility-Schrift,
+> Android sowie große Schrift auf Kategorien/Startseite.
+
+> **Produktdetail · 06.09.2026:** Quadratische Galerie mit seitlichem Abstand,
+> Radius 16 und vollständigem Motiv (contain); bei mehreren Fotos Zähler und
+> 44-pt-Pfeiltasten zusätzlich zum Wischen. Index bei Artikel-/Breitenwechsel
+> zurückgesetzt. Titel vor Preis, vorhandener shippingHint direkt am Preis,
+> Preis-/Verkäuferzeilen umbrechbar. Kauf-/Angebotslogik unverändert.
+> Simulator: Artikel mit einem Foto, Titel, Preis, Versandhinweis geprüft.
+> TypeScript, iOS-Export und diff --check erfolgreich. Mehrbild-Navigation,
+> Rotation, große Schrift und Android noch visuell prüfen. Testartikel
+> „Wintermantel Wolle, Camel“ trägt ein unpassendes Modefoto; Daten nicht geändert.
+> Lokal umgesetzt, nicht veröffentlicht.
+
+> **Produktkarten · 06.09.2026:** Gemeinsame ListingCard im Raster: Titel/Preis/Details
+> vor Verkäufername und Anbietertyp; größere Typografie, Titelhöhe folgt fontScale,
+> Bildradius 16, größerer Merkbereich. Anbietertyp auch im Accessibility-Label.
+> Ohne image_url erscheint „Kein Foto“; Fotoanzahl wird bei Status-/Termin-Pille
+> nach oben versetzt. StandingComposer ergänzt konkrete Fototipps; keine automatische
+> Qualitätsbewertung und keine Änderung vorhandener Bilder. TypeScript, iOS-Export
+> und diff --check erfolgreich; normale Rasteransicht im Simulator gesehen.
+> Bestehende eigene Story samt separatem Hinzufügen-Einstieg ebenfalls sichtbar.
+> Offen: große Schrift, Badge-Kombinationen, fehlendes Foto und Formular visuell testen.
+> Lokal, nicht veröffentlicht.
+
+> **Startseite · 06.09.2026:** Story-Erstellung ohne vorhandene Stories als kompakte
+> Zeile; bestehende Story-Reihen behalten ihren separaten Hinzufügen-Einstieg.
+> Warenüberschrift „Direkt kaufen“ (mit Kategorie bei Filter); aktive Shows erhalten
+> „Jetzt live“. Sendeplan nach dem Regal, ohne Regal weiterhin im Kopf; bei Suche
+> und Kategorien ausgeblendet. Echte Angebotsdaten und bestehende ListingCard verwendet.
+> TypeScript, iOS-Export und diff --check erfolgreich. Simulator: ohne laufende Show,
+> Story-Einstieg visuell, Mode-Filter und Rückkehr zu Für dich geprüft.
+> Offene UI-Prüfung: vorhandene Stories, aktive/geplante Shows, große Schrift/Android.
+> Erste reale Angebote enthalten Screenshot/unscharfes Foto; deren Inhalte nicht geändert.
+> Lokal umgesetzt, nicht veröffentlicht. HTML-Entwurf unter `outputs/berkat-startseite-v3`
+> im Codex-Arbeitsverzeichnis dient nur als Layoutreferenz mit Beispieldaten.
+
+> **Kategorien-Redesign · 06.09.2026:** Nach Zaurs Freigabe ist das Raster
+> zweispaltig, mit großer einzelner Bildfläche und Name/Bestand darunter.
+> Alle zwölf Kategorien haben transparente 576-px-3D-Motive (zusammen 3,66 MB).
+> Die Startseite hat eine größere horizontale Bildleiste; Auswahl in Aubergine.
+> Lokal im Simulator: obere vier Motive, Aufklappen/Zuklappen und Auswahl über die
+> Startseitenleiste geprüft. TypeScript und iOS-Export aus `apps/berkat` erfolgreich.
+> **Nicht veröffentlicht.** Offen: vollständiger Scrollübergang, alle unteren
+> Kategorien im App-Screen, große Systemschrift, echte Geräte/Android und Performance.
+> Das ergänzt Anschlusspunkt 95; die Zahlungsarbeit dort bleibt unabhängig.
+
 **Stand: 26.08.2026** · Eigenständige Live-Auktions-App im Repo `vibes-app`, teilt sich das
 Supabase-Backend mit Serlo.
 
@@ -12353,6 +12979,45 @@ verschickt damit fehlerhafte Rechnungen — mit seinem Namen darauf, aus dieser 
 
 ⚠️ Keiner der drei blockiert heute etwas, weil es nur einen Verkäufer gibt. **Alle drei werden
 fällig, bevor der zweite dazukommt** — also genau in dem Moment, für den Connect gebaut wurde.
+
+### ✅ Die Website ist draußen und gemessen (27.08.)
+
+`wrangler pages deploy` hat die zwei Rückkehr-Seiten hochgeladen („Uploaded 2 files, 11 already
+uploaded"). **Danach abgerufen, nicht angenommen:** `stripe-fertig.html` liefert „Geschafft — dein
+Geld geht ab jetzt direkt an dich" samt der drei Schritte, `stripe-neu.html` liefert „Nichts
+verloren". Ohne diesen Schritt wäre das Ende des Onboardings eine 404 gewesen — ausgerechnet dort,
+wo jemand gerade seine Bankverbindung hinterlegt hat.
+
+### ⚠️ Die OAuth-Seite im Dashboard ist die FALSCHE Baustelle
+
+Am 27.08. stand Zaur auf `settings/connect/onboarding-options/oauth` und wollte dort die
+Umleitungs-URI eintragen — die Seite meldet „Keine Umleitungs-URIs eingerichtet" und klingt wie
+eine offene Aufgabe.
+
+**Sie ist keine.** „OAuth aktivieren" bleibt **aus**, die URI-Liste bleibt **leer**. Der Bau nutzt
+`accounts.create` + Account Links, und dort stehen `return_url` und `refresh_url` **im Code**
+(`stripe-connect-onboard/index.ts`). Wer hier etwas einträgt, konfiguriert einen Weg, den die App
+nie geht.
+
+> **Eine Dashboard-Seite, die etwas vermisst, ist noch keine Aufgabe.** Stripe zeigt sie jeder
+> Plattform, auch denen, die OAuth nie benutzen werden.
+
+### Der Connect-Webhook — der letzte fehlende Schritt
+
+⚠️ **In der SANDBOX anlegen, nicht im Hauptkonto** (oben links umschalten). Der
+`STRIPE_SECRET_KEY` arbeitet dort; ein Endpunkt im Hauptkonto hört einer Sandbox-Zahlung nie zu.
+
+| | |
+|---|---|
+| Weg | Sandbox → Entwickler/innen → Webhooks → Endpunkt hinzufügen |
+| Ziel | `https://llymwqfgujwkoxzqxrlm.supabase.co/functions/v1/stripe-webhook` |
+| ⚠️ Art | **„Verbundene Konten"**, nicht „eigenes Konto" — nur dann ist es der Connect-Endpunkt |
+| Ereignisse | `checkout.session.completed`, `…async_payment_succeeded`, `…async_payment_failed`, `checkout.session.expired`, `account.updated`, `account.application.deauthorized` |
+| Danach | `supabase secrets set STRIPE_WEBHOOK_SECRET_CONNECT=whsec_…` |
+
+Die URL darf dieselbe sein wie beim bestehenden Endpunkt — unterschieden werden die beiden allein
+durch das Geheimnis, mit dem die Signatur stimmt (`stripe-webhook/index.ts` probiert erst das
+Plattform-, dann das Connect-Geheimnis).
 
 ---
 

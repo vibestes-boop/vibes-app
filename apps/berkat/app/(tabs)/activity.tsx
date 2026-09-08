@@ -40,9 +40,10 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import {
+  ActivityIndicator,
   FlatList,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -52,7 +53,10 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  ArrowRight,
+  Camera,
   ChevronRight,
+  RefreshCw,
   Gavel,
   Gift,
   PartyPopper,
@@ -60,6 +64,7 @@ import {
   ShoppingBag,
   Sparkles,
   TrendingUp,
+  UsersRound,
 } from 'lucide-react-native';
 
 import { useSession } from '../../lib/session';
@@ -71,6 +76,7 @@ import { Avatar } from '../../components/Avatar';
 import { SavedList } from '../../components/SavedList';
 import { BerkatMark } from '../../components/BerkatMark';
 import { radius, space, ui } from '../../theme/tokens';
+import { PressFeedback } from '../../components/PressFeedback';
 
 type TabKey = 'neues' | 'gebote' | 'vorschlaege' | 'gemerkt';
 
@@ -123,18 +129,60 @@ function whenLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 }
 
+function ActivityState({ Icon, title, body, actionLabel, onAction, loading, failed, onRetry }: {
+  Icon: typeof Gavel;
+  title: string;
+  body: string;
+  actionLabel: string;
+  onAction: () => void;
+  loading?: boolean;
+  failed?: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <View style={styles.empty}>
+      <View style={styles.emptyIcon}>
+        {loading ? <ActivityIndicator color={ui.brand} /> : failed ? <RefreshCw size={28} color={ui.brand} /> : <Icon size={28} color={ui.brand} />}
+      </View>
+      <Text style={styles.emptyTitle} accessibilityRole="header">
+        {loading ? 'Wird geladen' : failed ? 'Gerade nicht erreichbar' : title}
+      </Text>
+      <Text style={styles.emptyBody}>
+        {loading ? 'Deine Aktivität ist gleich da.' : failed ? 'Wir konnten diesen Bereich nicht vollständig laden. Versuch es gleich noch einmal.' : body}
+      </Text>
+      {!loading ? (
+        <PressFeedback style={[styles.secondary]} onPress={failed ? onRetry : onAction} accessibilityRole="button">
+          <Text style={styles.secondaryText}>{failed ? 'Erneut versuchen' : actionLabel}</Text>
+          <ArrowRight size={17} color={ui.card} />
+        </PressFeedback>
+      ) : null}
+    </View>
+  );
+}
+
+function ActivityThumb({ uri, compact = false }: { uri: string | null; compact?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <View style={[styles.bidThumb, compact && styles.thumb]}>
+      <Camera size={compact ? 18 : 22} color={ui.textMuted} />
+      {uri && !failed ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={120} onError={() => setFailed(true)} /> : null}
+    </View>
+  );
+}
+
 export default function ActivityScreen() {
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const userId = useSession((s) => s.userId);
-  const { data: items = [], isLoading, refetch } = useActivity(userId);
+  const { data: items = [], isLoading, isError, hasPartialError, refetch } = useActivity(userId, isFocused);
   // Wo ich gerade mitbiete — eigener Takt, eigene Quelle. Läuft nichts, ist
   // die Liste leer und der Kopf rendert nicht.
-  const { bids, outbid, refetch: refetchBids } = useMyBids(userId);
+  const { bids, outbid, isLoading: bidsLoading, isError: bidsError, refetch: refetchBids } = useMyBids(userId, isFocused);
   // Dasselbe für Preisvorschläge: „ich habe etwas laufen und warte". Bis zum
   // 24.08.2026 hatte nur das Gebot hier einen Platz — der Vorschlag nicht,
   // obwohl er dieselbe Frage stellt. Begründung in `useMyOpenOffers`.
-  const { data: myOffers = [], refetch: refetchOffers } = useMyOpenOffers(userId);
+  const { data: myOffers = [], isLoading: offersLoading, isError: offersError, refetch: refetchOffers } = useMyOpenOffers(userId, isFocused);
 
   // Ein Gegenvorschlag ist der dringende Fall: Dort liegt der Ball beim Käufer.
   const counteredCount = useMemo(
@@ -157,10 +205,12 @@ export default function ActivityScreen() {
   // von vorhin da (HANDOFF 3).
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-      void refetchBids();
-      void refetchOffers();
-    }, [refetch, refetchBids, refetchOffers]),
+      if (!userId) return;
+      // enabled kann beim Fokus bereits laden. Diesen Abruf mitbenutzen.
+      void refetch({ cancelRefetch: false });
+      void refetchBids({ cancelRefetch: false });
+      void refetchOffers({ cancelRefetch: false });
+    }, [userId, refetch, refetchBids, refetchOffers]),
   );
 
   const userIds = useMemo(() => items.map((i) => i.userId), [items]);
@@ -174,9 +224,9 @@ export default function ActivityScreen() {
         <Text style={styles.emptyBody}>
           Hier steht, was bei deinen Verkäufern passiert und wo du gerade mitbietest.
         </Text>
-        <Pressable style={styles.primary} onPress={() => router.push('/login')}>
+        <PressFeedback style={styles.primary} onPress={() => router.push('/login')}>
           <Text style={styles.primaryText}>Anmelden</Text>
-        </Pressable>
+        </PressFeedback>
       </View>
     );
   }
@@ -184,29 +234,33 @@ export default function ActivityScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Aktivität</Text>
+        <Text style={styles.title} accessibilityRole="header">Aktivität</Text>
+        <PressFeedback onPress={() => router.push('/following')} accessibilityRole="button" accessibilityLabel="Gefolgte Profile öffnen"
+          style={[styles.followingLink]}>
+          <UsersRound size={18} color={ui.brand} /><Text style={styles.followingText}>Gefolgt</Text>
+        </PressFeedback>
       </View>
 
-      {/* Unterstrichene Textreiter statt Pillen — dieselbe Sprache wie Whatnot,
-          und sie kostet keine Höhe. Bei vier Wörtern reicht die Breite ohne
-          Scrollen; kommt ein fünftes dazu, muss das hier eine ScrollView werden. */}
-      <View style={styles.tabs}>
-        {TABS.map((t) => {
-          const active = tab === t.key;
-          return (
-            <Pressable
-              key={t.key}
-              style={styles.tab}
-              onPress={() => setTab(t.key)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={t.label}
-            >
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{t.label}</Text>
-              <View style={[styles.tabRule, active && styles.tabRuleActive]} />
-            </Pressable>
-          );
-        })}
+      <View style={styles.tabBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+          {TABS.map((t) => {
+            const active = tab === t.key;
+            const count = t.key === 'gebote' ? bids.length : t.key === 'vorschlaege' ? myOffers.length : 0;
+            return (
+              <PressFeedback
+                key={t.key}
+                style={[styles.tab, active && styles.tabActive]}
+                onPress={() => setTab(t.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`${t.label}${count > 0 ? `, ${count} offen` : ''}`}
+              >
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{t.label}</Text>
+                {count > 0 ? <Text style={[styles.tabCount, active && styles.tabLabelActive]}>{count}</Text> : null}
+              </PressFeedback>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {tab !== 'neues' ? null : (
@@ -228,23 +282,20 @@ export default function ActivityScreen() {
                 refreshControl={
           <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={ui.textMuted} />
         }
+        ListHeaderComponent={items.length > 0 && (isError || hasPartialError) ? (
+          <PressFeedback onPress={() => void onPull()} style={styles.retryBanner} accessibilityRole="button">
+            <RefreshCw size={16} color={ui.textMuted} />
+            <Text style={styles.retryText}>Ein Teil fehlt gerade. Erneut laden</Text>
+          </PressFeedback>
+        ) : null}
         ListEmptyComponent={
-          isLoading ? null : (
-            <View style={styles.empty}>
-              <BerkatMark size={38} color={ui.sunken} />
-              <Text style={styles.emptyTitle}>Noch ruhig hier</Text>
-              <Text style={styles.emptyBody}>
-                Folge einem Verkäufer, dann steht hier, wann er sendet und was er Neues anbietet.
-                Und sobald du mitbietest, siehst du hier sofort, wenn dich jemand überholt.
-              </Text>
-            </View>
-          )
+          <ActivityState Icon={Sparkles} title="Dein persönlicher Überblick" body="Folge Verkäufern, die dich interessieren. Ihre neuen Angebote und Shows erscheinen hier." actionLabel="Gefolgte Profile" onAction={() => router.push('/following')} loading={isLoading} failed={isError || hasPartialError} onRetry={() => void onPull()} />
         }
         renderItem={({ item }) => {
           const { Icon, tint } = look(item.kind);
           const who = item.userId ? profiles[item.userId] : null;
           return (
-            <Pressable
+            <PressFeedback kind="card"
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
               onPress={() => router.push(item.target as never)}
               accessibilityRole="button"
@@ -259,19 +310,12 @@ export default function ActivityScreen() {
                   Belohnungen kommen von Berkat, nicht von jemandem — die
                   behalten das Symbol. */}
               {item.imageUrl ? (
-                <View style={styles.thumb}>
-                  <Image
-                    source={{ uri: item.imageUrl }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    transition={120}
-                  />
-                </View>
+                <ActivityThumb key={item.imageUrl} uri={item.imageUrl} compact />
               ) : who ? (
-                <Avatar uri={who.avatarUrl} name={who.username} size={38} />
+                <Avatar uri={who.avatarUrl} name={who.username} size={48} />
               ) : (
-                <View style={[styles.iconWrap, { backgroundColor: `${tint}22` }]}>
-                  <Icon size={19} color={tint} />
+                <View style={[styles.iconWrap, { backgroundColor: `${tint}14` }]}>
+                  <Icon size={22} color={tint} />
                 </View>
               )}
 
@@ -281,7 +325,7 @@ export default function ActivityScreen() {
                       Bild oder ein Gesicht steht — sonst fehlte die Auskunft,
                       um welche Art Ereignis es geht. */}
                   {who || item.imageUrl ? <Icon size={13} color={tint} /> : null}
-                  <Text numberOfLines={1} style={styles.rowTitle}>
+                  <Text numberOfLines={2} style={styles.rowTitle}>
                     {item.title}
                   </Text>
                 </View>
@@ -295,7 +339,7 @@ export default function ActivityScreen() {
                   {whenLabel(item.at)}
                 </Text>
               </View>
-            </Pressable>
+            </PressFeedback>
           );
         }}
       />
@@ -313,16 +357,10 @@ export default function ActivityScreen() {
           }
         >
           {bids.length === 0 ? (
-            <View style={styles.empty}>
-              <BerkatMark size={38} color={ui.sunken} />
-              <Text style={styles.emptyTitle}>Du bietest gerade nirgends mit</Text>
-              <Text style={styles.emptyBody}>
-                Sobald du in einer Show mitbietest, steht hier, ob du noch führst — auch wenn du
-                die App längst zugemacht hast.
-              </Text>
-            </View>
+            <ActivityState Icon={Gavel} title="Deine Gebote im Blick" body="Wenn du in einer Show mitbietest, siehst du hier den aktuellen Stand und findest direkt zurück." actionLabel="Shows entdecken" onAction={() => router.push('/(tabs)')} loading={bidsLoading} failed={bidsError} onRetry={() => void onPull()} />
           ) : (
             <View style={styles.bidsBlock}>
+              {bidsError ? <PressFeedback onPress={() => void onPull()} style={styles.retryBanner} accessibilityRole="button"><RefreshCw size={16} color={ui.textMuted} /><Text style={styles.retryText}>Stand konnte nicht aktualisiert werden. Erneut laden</Text></PressFeedback> : null}
                           <Text style={styles.bidsLabel}>
                             {outbid > 0
                               ? outbid === 1
@@ -331,24 +369,20 @@ export default function ActivityScreen() {
                               : 'Du bietest gerade mit'}
                           </Text>
                           {bids.map((bid) => (
-                            <Pressable
+                            <PressFeedback kind="card"
                               key={bid.auctionId}
-                              style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
+                              style={[styles.bidRow]}
                               // Zum Live-Raum, nicht zum Artikel: Wer überboten wurde, will
                               // dorthin, wo er wieder bieten kann.
                               onPress={() =>
-                                bid.sessionId ? router.push(`/live/${bid.sessionId}`) : undefined
+                                router.push(bid.sessionId ? `/live/${bid.sessionId}` : `/listing/${bid.auctionId}`)
                               }
                               accessibilityRole="button"
                               accessibilityLabel={`${bid.title}, ${
                                 bid.leading ? 'du führst' : 'überboten'
                               }, aktuell ${formatEuro(bid.currentCents)}`}
                             >
-                              {bid.imageUrl ? (
-                                <Image source={{ uri: bid.imageUrl }} style={styles.bidThumb} contentFit="cover" />
-                              ) : (
-                                <View style={styles.bidThumb} />
-                              )}
+                              <ActivityThumb key={bid.imageUrl ?? bid.auctionId} uri={bid.imageUrl} />
                               <View style={{ flex: 1, minWidth: 0 }}>
                                 <View style={styles.bidTitleRow}>
                                   {/* Der Zustand zuerst, nicht der Titel: „Überboten" ist
@@ -362,7 +396,7 @@ export default function ActivityScreen() {
                                     <Text style={styles.bidSoon}>startet noch</Text>
                                   ) : null}
                                 </View>
-                                <Text numberOfLines={1} style={styles.bidTitle}>
+                                <Text numberOfLines={2} style={styles.bidTitle}>
                                   {bid.title}
                                 </Text>
                                 <Text style={styles.bidMeta}>
@@ -374,7 +408,7 @@ export default function ActivityScreen() {
                                 </Text>
                               </View>
                               <ChevronRight size={18} color={ui.textMuted} />
-                            </Pressable>
+                            </PressFeedback>
                           ))}
                         </View>
           )}
@@ -393,16 +427,10 @@ export default function ActivityScreen() {
           }
         >
           {myOffers.length === 0 ? (
-            <View style={styles.empty}>
-              <BerkatMark size={38} color={ui.sunken} />
-              <Text style={styles.emptyTitle}>Kein Vorschlag offen</Text>
-              <Text style={styles.emptyBody}>
-                Bei Artikeln im Regal kannst du einen Preis vorschlagen. Solange der Verkäufer
-                nicht geantwortet hat, findest du ihn hier wieder.
-              </Text>
-            </View>
+            <ActivityState Icon={ShoppingBag} title="Deine Preisvorschläge" body="Vorschlag gesendet? Hier findest du die Antwort und kannst die Verhandlung fortsetzen." actionLabel="Angebote entdecken" onAction={() => router.push('/shop')} loading={offersLoading} failed={offersError} onRetry={() => void onPull()} />
           ) : (
             <View style={styles.bidsBlock}>
+              {offersError ? <PressFeedback onPress={() => void onPull()} style={styles.retryBanner} accessibilityRole="button"><RefreshCw size={16} color={ui.textMuted} /><Text style={styles.retryText}>Stand konnte nicht aktualisiert werden. Erneut laden</Text></PressFeedback> : null}
                             <Text style={styles.bidsLabel}>
                               {counteredCount > 0
                                 ? counteredCount === 1
@@ -413,20 +441,16 @@ export default function ActivityScreen() {
                                   : 'Deine Vorschläge laufen'}
                             </Text>
                             {myOffers.map((offer) => (
-                              <Pressable
+                              <PressFeedback kind="card"
                                 key={offer.id}
-                                style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.7 }]}
+                                style={[styles.bidRow]}
                                 onPress={() => router.push(`/listing/${offer.auction_id}`)}
                                 accessibilityRole="button"
                                 accessibilityLabel={`${offer.title}, ${
                                   offer.status === 'countered' ? 'Gegenvorschlag' : 'wartet auf Antwort'
                                 }, dein Vorschlag ${formatEuro(offer.amount_cents)}`}
                               >
-                                {offer.image_url ? (
-                                  <Image source={{ uri: offer.image_url }} style={styles.bidThumb} contentFit="cover" />
-                                ) : (
-                                  <View style={styles.bidThumb} />
-                                )}
+                                <ActivityThumb key={offer.image_url ?? offer.id} uri={offer.image_url} />
                                 <View style={{ flex: 1, minWidth: 0 }}>
                                   <View style={styles.bidTitleRow}>
                                     {/* Der Zustand zuerst, wie bei den Geboten. Rot nur beim
@@ -442,7 +466,7 @@ export default function ActivityScreen() {
                                       {offer.status === 'countered' ? 'Gegenvorschlag' : 'Wartet auf Antwort'}
                                     </Text>
                                   </View>
-                                  <Text numberOfLines={1} style={styles.bidTitle}>
+                                  <Text numberOfLines={2} style={styles.bidTitle}>
                                     {offer.title}
                                   </Text>
                                   <Text style={styles.bidMeta}>
@@ -453,7 +477,7 @@ export default function ActivityScreen() {
                                   </Text>
                                 </View>
                                 <ChevronRight size={18} color={ui.textMuted} />
-                              </Pressable>
+                              </PressFeedback>
                             ))}
                           </View>
           )}
@@ -468,21 +492,13 @@ export default function ActivityScreen() {
 }
 
 const styles = StyleSheet.create({
-  // ── Die Reiter. Unterstrich statt Pille: Er trägt die Auswahl, ohne eine
-  // Fläche zu belegen — bei vier Wörtern nebeneinander zählt jeder Punkt.
-  tabs: {
-    flexDirection: 'row',
-    paddingHorizontal: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ui.line,
-  },
-  tab: { flex: 1, alignItems: 'center', paddingTop: space.xs, gap: space.xs },
-  tabLabel: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
-  tabLabelActive: { color: ui.text, fontWeight: '700' },
-  // Der Strich liegt IMMER da, nur durchsichtig — sonst springt die Zeile um
-  // zwei Punkte, sobald man den Reiter wechselt.
-  tabRule: { height: 2, alignSelf: 'stretch', backgroundColor: 'transparent', borderRadius: 1 },
-  tabRuleActive: { backgroundColor: ui.text },
+  tabBar: { paddingBottom: space.sm },
+  tabs: { paddingHorizontal: space.lg, gap: space.xs, minWidth: '100%' },
+  tab: { flexGrow: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.md, paddingVertical: space.sm, gap: 6, borderRadius: radius.pill },
+  tabActive: { backgroundColor: ui.brand },
+  tabLabel: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.textMuted },
+  tabLabelActive: { color: ui.card, fontWeight: '700' },
+  tabCount: { fontSize: 12, fontWeight: '700', color: ui.textMuted },
 
   // ── Gebote und Vorschläge. Bis zum Register-Umbau ein Block ÜBER dem Strom,
   // mit Trennlinie darunter — die trennte ihn von den Ereignissen. Seit beide
@@ -494,25 +510,27 @@ const styles = StyleSheet.create({
     paddingBottom: space.md,
     gap: space.sm,
   },
-  bidsLabel: { fontSize: 12, fontWeight: '700', color: ui.textMuted },
-  bidRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  bidThumb: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: ui.sunken },
-  bidTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  bidState: { fontSize: 12, fontWeight: '700' },
+  bidsLabel: { fontSize: 14, lineHeight: 20, fontWeight: '700', color: ui.textMuted, marginBottom: space.xs },
+  bidRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: ui.card, padding: space.md, borderRadius: radius.lg },
+  bidThumb: { width: 64, height: 72, borderRadius: radius.md, backgroundColor: ui.sunken, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  bidTitleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.xs },
+  bidState: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
   // Grün heißt „alles gut, nichts zu tun". Rot ist in Berkat die laufende Uhr
   // und die Dringlichkeit — überboten zu sein ist genau das.
   bidLeading: { color: ui.success },
   bidOutbid: { color: ui.live },
-  bidSoon: { fontSize: 11, color: ui.textMuted },
+  bidSoon: { fontSize: 12, lineHeight: 18, color: ui.textMuted },
   // Warten ist kein Zustand, der eine Farbe verdient — weder Entwarnung noch Alarm.
   offerWaiting: { color: ui.textMuted },
-  bidTitle: { fontSize: 14, fontWeight: '600', color: ui.text, marginTop: 1 },
-  bidMeta: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
+  bidTitle: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text, marginTop: space.xs },
+  bidMeta: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: space.xs },
 
   screen: { flex: 1, backgroundColor: ui.bg },
   gate: { alignItems: 'center', justifyContent: 'center', gap: space.sm, padding: space.xl },
 
-  header: { paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.md },
+  header: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.md, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  followingLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm },
+  followingText: { fontSize: 14, fontWeight: '600', color: ui.brand },
   title: { fontSize: 26, fontWeight: '700', color: ui.text, letterSpacing: -0.4 },
 
   row: {
@@ -526,8 +544,8 @@ const styles = StyleSheet.create({
   },
   rowPressed: { backgroundColor: ui.card },
   iconWrap: {
-    width: 38,
-    height: 38,
+    width: 48,
+    height: 48,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -535,26 +553,32 @@ const styles = StyleSheet.create({
   // Eckig, nicht rund: Ein Avatar ist ein Kreis, eine Ware ist es nicht.
   // Der Formunterschied trägt die Bedeutung, ohne dass ein Wort nötig wäre.
   thumb: {
-    width: 38,
-    height: 38,
+    width: 48,
+    height: 48,
     borderRadius: radius.sm,
     backgroundColor: ui.sunken,
     overflow: 'hidden',
   },
-  body: { flex: 1, gap: 2 },
+  body: { flex: 1, minWidth: 0, gap: space.xs },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  rowTitle: { flexShrink: 1, fontSize: 15, fontWeight: '700', color: ui.text },
+  rowTitle: { flexShrink: 1, fontSize: 15, lineHeight: 21, fontWeight: '700', color: ui.text },
   rowBody: { fontSize: 14, color: ui.text, lineHeight: 19 },
   rowMeta: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
 
-  emptyWrap: { flexGrow: 1, justifyContent: 'center' },
+  emptyWrap: { flexGrow: 1, justifyContent: 'center', paddingVertical: space.xl },
   empty: { alignItems: 'center', gap: space.sm, paddingHorizontal: space.xl },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text, marginTop: space.sm },
-  emptyBody: { fontSize: 14, color: ui.textMuted, textAlign: 'center', lineHeight: 20 },
+  emptyIcon: { width: 72, height: 72, borderRadius: 24, backgroundColor: ui.card, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm },
+  emptyTitle: { fontSize: 21, lineHeight: 28, fontWeight: '700', color: ui.text, textAlign: 'center' },
+  emptyBody: { fontSize: 15, color: ui.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 340 },
+  secondary: { minHeight: 48, paddingVertical: space.md, paddingHorizontal: space.lg, marginTop: space.md, backgroundColor: ui.brand, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  secondaryText: { fontSize: 15, lineHeight: 21, fontWeight: '700', color: ui.card, flexShrink: 1 },
+  retryBanner: { margin: space.md, padding: space.md, borderRadius: radius.md, backgroundColor: ui.card, flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  retryText: { flex: 1, fontSize: 13, lineHeight: 19, color: ui.textMuted },
 
   primary: {
     marginTop: space.md,
-    height: 48,
+    minHeight: 48,
+    paddingVertical: space.md,
     paddingHorizontal: space.xl,
     borderRadius: radius.pill,
     backgroundColor: ui.gold,

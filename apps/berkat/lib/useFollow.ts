@@ -53,6 +53,8 @@ export function useFollow(targetUserId: string | undefined, myUserId: string | n
       // alte Stand, während der Knopf schon „Du folgst" sagt.
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', targetUserId] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', myUserId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'following', myUserId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'activity', myUserId] });
     },
   });
 

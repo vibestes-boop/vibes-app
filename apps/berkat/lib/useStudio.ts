@@ -32,10 +32,10 @@ export function euroToCents(input: string): number | null {
   return Math.round(value * 100);
 }
 
-export function useMyActiveShow(userId: string | null) {
+export function useMyActiveShow(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'my-show', userId],
-    enabled: Boolean(userId),
+    enabled: enabled && Boolean(userId),
     refetchInterval: 15_000,
     queryFn: async (): Promise<MyShow | null> => {
       const { data, error } = await supabase

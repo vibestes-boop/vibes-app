@@ -6,16 +6,17 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -87,10 +88,15 @@ import { useSellerShows } from '../../lib/useSellerShows';
 // Nur noch zum Zählen — bearbeitet wird das Regal auf `/shelf`.
 import { useSellerListings } from '../../lib/useListings';
 import { ui, radius, space } from '../../theme/tokens';
+import { PressFeedback } from '../../components/PressFeedback';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 
 const DURATIONS = [20, 30, 60];
 
 export default function SellScreen() {
+  const reducedMotion = useReducedMotion();
+  const { fontScale } = useWindowDimensions();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const myUserId = useSession((s) => s.userId);
@@ -99,7 +105,7 @@ export default function SellScreen() {
   const myProfile = useSession((s) => s.profile);
 
   const { serverNow } = useServerClock();
-  const { data: show, isLoading } = useMyActiveShow(myUserId);
+  const { data: show, isLoading } = useMyActiveShow(myUserId, isFocused);
   const createShow = useCreateShow(myUserId);
   const endShow = useEndShow(myUserId);
   const setCover = useSetShowCover(myUserId);
@@ -187,10 +193,12 @@ export default function SellScreen() {
     [standing],
   );
   const shelfPriced = standing.length - shelfUnpriced;
-  const { data: openOrders = 0 } = useOpenOrderCount(myUserId);
+  // Das sichtbare Tab-Abzeichen besitzt den Timer. Hier nur denselben Cache
+  // beobachten, damit kein zweiter Timer für dieselbe Zahl entsteht.
+  const { data: openOrders = 0 } = useOpenOrderCount(myUserId, false);
   // ⚠️ Der Hook lag seit dem 18.08.2026 ungenutzt herum — sein eigener Kommentar
   // sagt „die Zahl für das Abzeichen", und das Abzeichen gab es nie.
-  const { data: openOffers = 0 } = useOpenOfferCount(myUserId);
+  const { data: openOffers = 0 } = useOpenOfferCount(myUserId, isFocused);
   // Wie viele Menschen eine Erinnerung bekommen, wenn ein Termin ansteht.
   // Berkat kennt kein „Show merken" wie Whatnot — die Erinnerung geht an die
   // Follower. Die Zahl beantwortet dieselbe Frage: Wen erreiche ich damit?
@@ -360,9 +368,9 @@ export default function SellScreen() {
         <Text style={styles.gateBody}>
           Zum Verkaufen brauchst du ein Konto. Deins von Serlo gilt hier auch.
         </Text>
-        <Pressable style={styles.primaryButton} onPress={() => router.push('/login')}>
+        <PressFeedback style={styles.primaryButton} onPress={() => router.push('/login')}>
           <Text style={styles.primaryButtonText}>Anmelden</Text>
-        </Pressable>
+        </PressFeedback>
       </View>
     );
   }
@@ -390,9 +398,9 @@ export default function SellScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {notice ? (
-          <Pressable style={styles.notice} onPress={() => setNotice(null)}>
+          <PressFeedback style={styles.notice} onPress={() => setNotice(null)}>
             <Text style={styles.noticeText}>{notice}</Text>
-          </Pressable>
+          </PressFeedback>
         ) : null}
 
         {!show ? (
@@ -402,6 +410,25 @@ export default function SellScreen() {
               nichts — kein Hinweis, was zuerst dran ist. Bei fünf Leuten, die
               man einzeln geholt hat, entscheidet das, ob sie ein zweites Mal
               senden. */}
+          {openOrders > 0 || openOffers > 0 ? (
+            <View style={styles.priorityCard}>
+              <Text style={styles.cardTitle}>Deine offenen Aufgaben</Text>
+              {openOrders > 0 ? (
+                <PressFeedback kind="card" style={styles.jobRow} onPress={() => router.push('/orders')} accessibilityRole="button">
+                  <Package size={19} color={ui.brand} />
+                  <Text style={styles.jobLabel}>{openOrders} {openOrders === 1 ? 'Bestellung' : 'Bestellungen'} zu packen</Text>
+                  <ChevronRight size={18} color={ui.textMuted} />
+                </PressFeedback>
+              ) : null}
+              {openOffers > 0 ? (
+                <PressFeedback kind="card" style={styles.jobRow} onPress={() => router.push('/offers')} accessibilityRole="button">
+                  <Handshake size={19} color={ui.brand} />
+                  <Text style={styles.jobLabel}>{openOffers} {openOffers === 1 ? 'Preisvorschlag' : 'Preisvorschläge'} offen</Text>
+                  <ChevronRight size={18} color={ui.textMuted} />
+                </PressFeedback>
+              ) : null}
+            </View>
+          ) : null}
           <SellerStart
             steps={startSteps}
             onOpen={(target) => router.push(target as never)}
@@ -420,8 +447,21 @@ export default function SellScreen() {
               der Hub selbst zeigt, was ansteht (sechste Analyse). Genau das
               war Zaurs Kritik vom 18.08.: nicht die Kacheln im Sendeplan waren
               zu viel, sondern dass die Übersicht das Formular IST. ────────── */}
+          <PressFeedback
+            style={({ pressed }) => [styles.shelfDoor, pressed && styles.doorPressed]}
+            onPress={() => router.push('/shelf')}
+            accessibilityRole="button"
+            accessibilityLabel="Artikel einstellen und verwalten"
+          >
+            <ShoppingBag size={22} color={ui.brand} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.doorText}>Artikel einstellen & verwalten</Text>
+              <Text style={styles.shelfDoorHint}>Dein Regal für direkt kaufbare Angebote</Text>
+            </View>
+            <ChevronRight size={18} color={ui.brand} />
+          </PressFeedback>
           <View style={styles.doorRow}>
-            <Pressable
+            <PressFeedback
               style={({ pressed }) => [styles.door, styles.doorPrimary, pressed && styles.doorPressed]}
               onPress={() => setShowSheet(true)}
               accessibilityRole="button"
@@ -429,8 +469,8 @@ export default function SellScreen() {
             >
               <Radio size={20} color={ui.goldInk} />
               <Text style={styles.doorTextPrimary}>Show starten</Text>
-            </Pressable>
-            <Pressable
+            </PressFeedback>
+            <PressFeedback
               style={({ pressed }) => [styles.door, pressed && styles.doorPressed]}
               onPress={() => setPlanSheet(true)}
               accessibilityRole="button"
@@ -438,7 +478,7 @@ export default function SellScreen() {
             >
               <CalendarClock size={20} color={ui.text} />
               <Text style={styles.doorText}>Termin ankündigen</Text>
-            </Pressable>
+            </PressFeedback>
           </View>
 
           {/* Die angekündigten Termine — auf der Übersicht, nicht im Formular.
@@ -451,9 +491,9 @@ export default function SellScreen() {
               {plannedShows.slice(0, 4).map((plan) => {
                 const ready = preparedByPlan.get(plan.id)?.length ?? 0;
                 return (
-                  <Pressable
+                  <PressFeedback kind="card"
                     key={plan.id}
-                    style={({ pressed }) => [styles.planRow, pressed && { opacity: 0.7 }]}
+                    style={[styles.planRow]}
                     onPress={() => setPrepareFor(plan.id)}
                     accessibilityRole="button"
                     accessibilityLabel={
@@ -491,7 +531,7 @@ export default function SellScreen() {
                       </View>
                     ) : null}
                     <ChevronRight size={16} color={ui.textMuted} />
-                  </Pressable>
+                  </PressFeedback>
                 );
               })}
               {/* Einmal gesagt statt an jeder Zeile. Ohne diesen Satz sieht die
@@ -542,7 +582,7 @@ export default function SellScreen() {
                       {item.size ? ` · Gr. ${item.size}` : ''}
                     </Text>
                   </View>
-                  <Pressable
+                  <PressFeedback
                     hitSlop={8}
                     disabled={discard.isPending}
                     onPress={() =>
@@ -561,7 +601,7 @@ export default function SellScreen() {
                     accessibilityLabel={`${item.title} verwerfen`}
                   >
                     <Trash2 size={16} color={ui.textMuted} />
-                  </Pressable>
+                  </PressFeedback>
                 </View>
               ))}
             </View>
@@ -570,41 +610,46 @@ export default function SellScreen() {
               Titel, Cover, Kategorie, „Show starten". ──────────────────── */}
           <Modal
             visible={showSheet}
-            animationType="slide"
+            animationType={reducedMotion ? 'none' : 'slide'}
             presentationStyle="pageSheet"
             onRequestClose={() => setShowSheet(false)}
           >
             <View style={styles.sheet}>
               <View style={styles.sheetHead}>
-                <Text style={styles.sheetTitle}>Show starten</Text>
-                <Pressable
+                <Text key={fontScale} style={styles.sheetTitle}>Show starten</Text>
+                <PressFeedback
+                  style={styles.sheetClose}
                   hitSlop={10}
                   onPress={() => setShowSheet(false)}
                   accessibilityRole="button"
                   accessibilityLabel="Schließen"
                 >
                   <X size={22} color={ui.text} />
-                </Pressable>
+                </PressFeedback>
               </View>
               <ScrollView
                 contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
                 keyboardShouldPersistTaps="handled"
               >
           <View style={styles.card}>
-            <Text style={styles.cardBody}>
+            <Text key={`show-intro-${fontScale}`} style={styles.cardBody}>
               Gib ihr einen Namen, den man im Feed erkennt — zum Beispiel „Parfüm ab 1 €".
             </Text>
             <TextInput
+              accessibilityLabel="Titel der Show"
               value={showTitle}
               onChangeText={setShowTitle}
               placeholder="Parfüm ab 1 €"
               placeholderTextColor={ui.textMuted}
-              style={styles.input}
+              // iOS single-line input caches its placeholder font. Pass the
+              // current scaled size explicitly without remounting the field.
+              allowFontScaling={false}
+              style={[styles.input, { fontSize: styles.input.fontSize * fontScale }]}
             />
 
             {/* Das Cover ist das, was im Feed über deine Show entscheidet —
                 deshalb steht es hier groß und nicht als Nebensache. */}
-            <Pressable
+            <PressFeedback
               style={styles.coverPicker}
               onPress={() => void chooseImage('cover', setCoverUrl)}
               disabled={uploading !== null}
@@ -618,15 +663,15 @@ export default function SellScreen() {
                 <ActivityIndicator color={ui.brand} />
               ) : coverUrl ? (
                 <View style={styles.coverChange}>
-                  <Text style={styles.coverChangeText}>Cover ändern</Text>
+                  <Text key={fontScale} style={styles.coverChangeText}>Cover ändern</Text>
                 </View>
               ) : (
                 <>
                   <ImagePlus size={22} color={ui.textMuted} />
-                  <Text style={styles.coverHint}>Cover wählen</Text>
+                  <Text key={fontScale} style={styles.coverHint}>Cover wählen</Text>
                 </>
               )}
-            </Pressable>
+            </PressFeedback>
 
             {/* Kategorie der Show. Freiwillig, aber sie entscheidet, ob die
                 Sendung im Kategorien-Reiter überhaupt auftaucht — und dort
@@ -640,7 +685,7 @@ export default function SellScreen() {
               onOpenParent={setShowCategoryParent}
             />
 
-            <Pressable
+            <PressFeedback
               style={[styles.primaryButton, createShow.isPending && styles.buttonBusy]}
               disabled={createShow.isPending || uploading !== null}
               // Wer „Show starten" drückt, will senden — nicht auf einen zweiten
@@ -695,8 +740,8 @@ export default function SellScreen() {
               }
             >
               <Radio size={17} color={ui.goldInk} />
-              <Text style={styles.primaryButtonText}>Show starten</Text>
-            </Pressable>
+              <Text key={fontScale} style={styles.primaryButtonText}>Show starten</Text>
+            </PressFeedback>
           </View>
               </ScrollView>
             </View>
@@ -708,7 +753,7 @@ export default function SellScreen() {
               mit der Erinnerungs-Zahl. ────────────────────────────────────── */}
           <Modal
             visible={planSheet}
-            animationType="slide"
+            animationType={reducedMotion ? 'none' : 'slide'}
             presentationStyle="pageSheet"
             onRequestClose={() => setPlanSheet(false)}
             // Erst wenn dieses Blatt wirklich weg ist, darf das nächste kommen
@@ -721,15 +766,16 @@ export default function SellScreen() {
           >
             <View style={styles.sheet}>
               <View style={styles.sheetHead}>
-                <Text style={styles.sheetTitle}>Termin ankündigen</Text>
-                <Pressable
+                <Text key={fontScale} style={styles.sheetTitle}>Termin ankündigen</Text>
+                <PressFeedback
+                  style={styles.sheetClose}
                   hitSlop={10}
                   onPress={() => setPlanSheet(false)}
                   accessibilityRole="button"
                   accessibilityLabel="Schließen"
                 >
                   <X size={22} color={ui.text} />
-                </Pressable>
+                </PressFeedback>
               </View>
               <ScrollView
                 contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
@@ -853,7 +899,7 @@ export default function SellScreen() {
           <>
             <View style={styles.card}>
               <View style={styles.showRow}>
-                <Pressable
+                <PressFeedback
                   style={styles.showCover}
                   onPress={() =>
                     void chooseImage('cover', (url) =>
@@ -875,7 +921,7 @@ export default function SellScreen() {
                   ) : !show.thumbnail_url ? (
                     <ImagePlus size={18} color={ui.textMuted} />
                   ) : null}
-                </Pressable>
+                </PressFeedback>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{show.title ?? 'Berkat-Show'}</Text>
                   <Text style={styles.cardMeta}>{show.viewer_count ?? 0} schauen zu</Text>
@@ -885,10 +931,10 @@ export default function SellScreen() {
                 </View>
               </View>
               <View style={styles.showActions}>
-                <Pressable style={styles.ghostButton} onPress={() => router.push(`/live/${show.id}`)}>
+                <PressFeedback style={styles.ghostButton} onPress={() => router.push(`/live/${show.id}`)}>
                   <Text style={styles.ghostButtonText}>Zum Raum</Text>
-                </Pressable>
-                <Pressable
+                </PressFeedback>
+                <PressFeedback
                   style={styles.dangerButton}
                   onPress={() =>
                     void run(async () => {
@@ -902,7 +948,7 @@ export default function SellScreen() {
                   }
                 >
                   <Text style={styles.dangerButtonText}>Show beenden</Text>
-                </Pressable>
+                </PressFeedback>
               </View>
             </View>
 
@@ -949,7 +995,7 @@ export default function SellScreen() {
                       {item.buy_now_cents ? ` · sofort ${formatEuro(item.buy_now_cents)}` : ''}
                     </Text>
                   </View>
-                  <Pressable
+                  <PressFeedback
                     onPress={() => beginEdit(item)}
                     hitSlop={8}
                     accessibilityLabel={`${item.title} ändern`}
@@ -958,21 +1004,21 @@ export default function SellScreen() {
                       size={17}
                       color={editingId === item.id ? ui.brand : ui.textMuted}
                     />
-                  </Pressable>
-                  <Pressable
+                  </PressFeedback>
+                  <PressFeedback
                     onPress={() => void run(() => cancelAuction(item.id))}
                     hitSlop={8}
                     accessibilityLabel={`${item.title} entfernen`}
                   >
                     <Trash2 size={17} color={ui.textMuted} />
-                  </Pressable>
-                  <Pressable
+                  </PressFeedback>
+                  <PressFeedback
                     style={[styles.startButton, Boolean(active) && styles.startButtonDisabled]}
                     disabled={Boolean(active)}
                     onPress={() => void run(() => startAuction(item.id, duration))}
                   >
                     <Text style={styles.startButtonText}>Starten</Text>
-                  </Pressable>
+                  </PressFeedback>
                 </View>
               ))
             )}
@@ -980,7 +1026,7 @@ export default function SellScreen() {
             <View style={styles.durationRow}>
               <Text style={styles.durationLabel}>Dauer</Text>
               {DURATIONS.map((seconds) => (
-                <Pressable
+                <PressFeedback
                   key={seconds}
                   onPress={() => setDuration(seconds)}
                   style={[styles.durationChip, duration === seconds && styles.durationChipActive]}
@@ -993,7 +1039,7 @@ export default function SellScreen() {
                   >
                     {seconds} s
                   </Text>
-                </Pressable>
+                </PressFeedback>
               ))}
             </View>
 
@@ -1038,7 +1084,7 @@ export default function SellScreen() {
                 {editingId ? 'Artikel ändern' : 'Artikel auflegen'}
               </Text>
               <View style={styles.articleRow}>
-                <Pressable
+                <PressFeedback
                   style={styles.articleThumb}
                   onPress={() => void chooseImage('article', setArticleUrl)}
                   disabled={uploading !== null}
@@ -1062,7 +1108,7 @@ export default function SellScreen() {
                       Ohne das ließ sich ein einmal gewähltes Bild nur noch
                       ersetzen — die RPC konnte es längst, es fehlte der Knopf. */}
                   {articleUrl && uploading === null ? (
-                    <Pressable
+                    <PressFeedback
                       onPress={() => setArticleUrl(null)}
                       hitSlop={10}
                       style={styles.thumbClear}
@@ -1070,9 +1116,9 @@ export default function SellScreen() {
                       accessibilityLabel="Bild entfernen"
                     >
                       <X size={13} color={ui.card} />
-                    </Pressable>
+                    </PressFeedback>
                   ) : null}
-                </Pressable>
+                </PressFeedback>
                 <TextInput
                   value={title}
                   onChangeText={setTitle}
@@ -1119,19 +1165,19 @@ export default function SellScreen() {
               </View>
               {editingId ? (
                 <View style={styles.editActions}>
-                  <Pressable style={styles.ghostButton} onPress={resetForm}>
+                  <PressFeedback style={styles.ghostButton} onPress={resetForm}>
                     <Text style={styles.ghostButtonText}>Abbrechen</Text>
-                  </Pressable>
-                  <Pressable style={[styles.primaryButton, { flex: 1 }]} onPress={submitItem}>
+                  </PressFeedback>
+                  <PressFeedback style={[styles.primaryButton, { flex: 1 }]} onPress={submitItem}>
                     <Check size={17} color={ui.goldInk} />
                     <Text style={styles.primaryButtonText}>Speichern</Text>
-                  </Pressable>
+                  </PressFeedback>
                 </View>
               ) : (
-                <Pressable style={styles.primaryButton} onPress={submitItem}>
+                <PressFeedback style={styles.primaryButton} onPress={submitItem}>
                   <Plus size={17} color={ui.goldInk} />
                   <Text style={styles.primaryButtonText}>Auflegen</Text>
-                </Pressable>
+                </PressFeedback>
               )}
             </View>
           </>
@@ -1149,8 +1195,8 @@ export default function SellScreen() {
             BILDSCHIRM springen, nicht auf einen Tab-Zustand darin; „Bezahlt —
             bitte packen" landet jetzt direkt bei den Bestellungen. */}
         <View style={styles.jobs}>
-          <Pressable
-            style={({ pressed }) => [styles.jobRow, pressed && styles.jobRowPressed]}
+          <PressFeedback kind="card"
+            style={[styles.jobRow]}
             onPress={() => router.push('/orders')}
             accessibilityRole="button"
             accessibilityLabel={
@@ -1165,7 +1211,7 @@ export default function SellScreen() {
               </View>
             ) : null}
             <ChevronRight size={18} color={ui.textMuted} />
-          </Pressable>
+          </PressFeedback>
 
           {/* ── Preisvorschläge.
               ⚠️ Diese Zeile schließt ein Loch vom 18.08.2026: Der Vorschlag
@@ -1178,11 +1224,10 @@ export default function SellScreen() {
               Die Zeile erscheint auch bei null — anders als das Abzeichen
               rechts. Wer handeln zulässt, soll sehen können, dass gerade
               niemand handelt; das ist eine Auskunft, keine Enttäuschung. */}
-          <Pressable
-            style={({ pressed }) => [
+          <PressFeedback kind="card"
+            style={[
               styles.jobRow,
               styles.jobRowSplit,
-              pressed && styles.jobRowPressed,
             ]}
             onPress={() => router.push('/offers')}
             accessibilityRole="button"
@@ -1200,7 +1245,7 @@ export default function SellScreen() {
               <Text style={styles.jobMeta}>keine</Text>
             )}
             <ChevronRight size={18} color={ui.textMuted} />
-          </Pressable>
+          </PressFeedback>
 
           {/* ⚠️ „Deine Zuschläge" ist seit dem 26.08.2026 kein Nice-to-have.
               Alles nach der Auktion hing an `product_orders` — die entstehen
@@ -1208,11 +1253,10 @@ export default function SellScreen() {
               aus (ZAG). Für sie stand nach dem Zuschlag NICHTS: kein Korb,
               keine Bestellung, keine Liste. Bei Direktzahlung ist das hier der
               einzige Ort, an dem steht, wem man schreiben muss. */}
-          <Pressable
-            style={({ pressed }) => [
+          <PressFeedback kind="card"
+            style={[
               styles.jobRow,
               styles.jobRowSplit,
-              pressed && styles.jobRowPressed,
             ]}
             onPress={() => router.push('/wins')}
             accessibilityRole="button"
@@ -1221,13 +1265,12 @@ export default function SellScreen() {
             <Gavel size={19} color={ui.text} />
             <Text style={styles.jobLabel}>Deine Zuschläge</Text>
             <ChevronRight size={18} color={ui.textMuted} />
-          </Pressable>
+          </PressFeedback>
 
-          <Pressable
-            style={({ pressed }) => [
+          <PressFeedback kind="card"
+            style={[
               styles.jobRow,
               styles.jobRowSplit,
-              pressed && styles.jobRowPressed,
             ]}
             onPress={() => router.push('/shelf')}
             accessibilityRole="button"
@@ -1263,7 +1306,7 @@ export default function SellScreen() {
               </Text>
             )}
             <ChevronRight size={18} color={ui.textMuted} />
-          </Pressable>
+          </PressFeedback>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1271,6 +1314,9 @@ export default function SellScreen() {
 }
 
 const styles = StyleSheet.create({
+  priorityCard: { backgroundColor: ui.card, borderRadius: radius.lg, padding: space.md, marginBottom: space.md },
+  shelfDoor: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: ui.card, borderRadius: radius.lg, padding: space.lg, marginBottom: space.sm },
+  shelfDoorHint: { fontSize: 12, lineHeight: 18, color: ui.textMuted, marginTop: 4 },
   screen: { flex: 1, backgroundColor: ui.bg },
   center: { alignItems: 'center', justifyContent: 'center', gap: space.sm },
   header: { paddingHorizontal: space.md, paddingBottom: space.sm },
@@ -1404,7 +1450,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   jobRowSplit: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.line },
-  jobRowPressed: { opacity: 0.6 },
   jobLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
   jobMeta: { fontSize: 12, color: ui.textMuted },
   /** Nicht rot als Alarm, sondern als das eine Wort, das hier heraussticht. */
@@ -1558,5 +1603,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.lg,
   },
-  sheetTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
+  sheetTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: ui.text },
+  sheetClose: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
 });

@@ -197,6 +197,13 @@ export function StandingComposer({
   const canSubmit =
     title.trim().length >= 2 && priceOk && mediaOk && categoryOk && !busy && !uploading;
 
+  const missingFields = [
+    title.trim().length < 2 ? 'Titel mit mindestens 2 Zeichen' : null,
+    !priceOk ? 'Preis über 1 €' : null,
+    !mediaOk ? 'mindestens ein Foto' : null,
+    !categoryOk ? 'Kategorie' : null,
+  ].filter(Boolean);
+
   const addImage = () => {
     if (imageUrls.length >= MAX_IMAGES || uploading) return;
     setUploading(true);
@@ -226,49 +233,31 @@ export function StandingComposer({
             <Text style={s.title}>Dauerhaft anbieten</Text>
           </View>
           <Text style={s.body}>
-            Bleibt auf deinem Profil kaufbar, auch wenn du nicht sendest. Zwischen zwei Shows
-            ist das alles, was jemand bei dir tun kann.
+            Fotos und Artikeldetails ergänzen, Preis festlegen und dein Angebot ins Regal stellen.
           </Text>
         </>
       ) : null}
 
-      {/* Cover links, Titel rechts — dieselbe Anordnung wie bei „Artikel
-          auflegen". Der Tipp auf das Cover fügt ein WEITERES Bild hinzu; das
-          Entfernen liegt am ✕ der Kachelreihe darunter. So bleibt der schnelle
-          Weg (ein Foto, fertig) ein einziger Tipp. */}
-      <View style={s.titleRow}>
-        <Pressable
-          style={s.picker}
-          disabled={uploading || imageUrls.length >= MAX_IMAGES}
-          onPress={addImage}
-          accessibilityRole="button"
-          accessibilityLabel={cover ? 'Weiteres Foto hinzufügen' : 'Foto wählen'}
-        >
-          {cover ? (
-            <Image
-              source={{ uri: cover }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={120}
-            />
-          ) : null}
-          {uploading ? (
-            <ActivityIndicator color={ui.brand} />
-          ) : cover ? null : (
-            <ImagePlus size={20} color={ui.textMuted} />
-          )}
-        </Pressable>
-
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Silberring, handgemacht"
-          placeholderTextColor={ui.textMuted}
-          style={[s.input, s.titleInput]}
-          maxLength={140}
-          multiline
-        />
-      </View>
+      <Text style={s.sectionTitle}>Fotos</Text>
+      <Pressable
+        style={s.photoEntry}
+        disabled={uploading || imageUrls.length >= MAX_IMAGES}
+        onPress={addImage}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: uploading || imageUrls.length >= MAX_IMAGES }}
+        accessibilityLabel={cover ? 'Weiteres Foto hinzufügen' : 'Produktfotos hinzufügen'}
+      >
+        <View style={s.picker}>
+          {cover ? <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="contain" /> : <ImagePlus size={26} color={ui.brand} />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.photoEntryTitle}>
+            {uploading ? 'Foto wird hochgeladen …' : imageUrls.length >= MAX_IMAGES ? 'Alle Fotoplätze belegt' : cover ? 'Weiteres Foto hinzufügen' : 'Produktfotos hinzufügen'}
+          </Text>
+          <Text style={s.photoEntryHint}>Bis zu {MAX_IMAGES} Fotos. Das erste erscheint als Titelbild.</Text>
+        </View>
+        {uploading ? <ActivityIndicator color={ui.brand} /> : null}
+      </Pressable>
 
       {/* Die Kachelreihe: alle Bilder, jedes mit ✕, hinten die Plus-Kachel.
           Umsortieren geht über Entfernen und neu Hinzufügen — ein Zieh-Sortierer
@@ -323,58 +312,47 @@ export function StandingComposer({
         </Text>
       ) : null}
 
-      {/* Kein Bild-ZWANG, aber ein deutlicher Hinweis. In der Show hältst du
-          den Artikel in die Kamera — hier gibt es keine Kamera, das Foto IST
-          die Auslage. */}
-      {/* ⚠️ Der Satz sagt jetzt „braucht", nicht „sieht schlecht aus". Solange
-          ein Foto freiwillig war, las sich der Hinweis als Geschmacksfrage —
-          und die Testware ist voller Angebote ohne Bild. Beim Bearbeiten bleibt
-          der alte, mildere Ton: Dort ist es weiterhin freiwillig, weil sonst
-          bestehende Angebote nicht mehr korrigierbar wären. */}
-      {imageUrls.length === 0 && !uploading ? (
-        <Text style={s.photoHint}>
-          {needsMedia
-            ? 'Ein Foto brauchst du — ohne sehen Fremde nur ein graues Feld, und die Karte im Regal ist fast nur Bild.'
-            : 'Ohne Foto sehen Fremde nur ein graues Feld — hier gibt es keine Kamera, die es zeigt.'}
-        </Text>
+      <Text style={s.photoHint}>
+        Zeige den ganzen Artikel bei Tageslicht vor ruhigem Hintergrund. Weitere Fotos
+        zeigen Details und Gebrauchsspuren.
+      </Text>
+      {needsMedia && imageUrls.length === 0 && !uploading ? (
+        <Text style={s.photoHint}>Zum Einstellen brauchst du mindestens ein Foto.</Text>
       ) : null}
       {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
 
-      {/* Preis und Größe teilen sich eine Zeile — beides kurze Fakten, und der
-          Verkaufen-Bereich ist am 19.08.2026 gerade erst gekürzt worden
-          (HANDOFF 37). Eine eigene Zeile für zwei Zeichen wäre der Rückschritt.
-
-          Die Größe ist FREITEXT und bleibt es: „42", „M", „74", „One Size",
-          „38/40" sind alle richtig, und welche Skala gilt, weiß nur der
-          Verkäufer. Eine gepflegte Liste müsste Konfektions-, Schuh- und
-          Kindergrößen gleichzeitig abbilden und wäre am ersten Tag
-          unvollständig — sie würde jemanden aussperren, dessen Größe sie nicht
-          kennt. Normalisiert wird später für den FILTER, nicht bei der
-          Eingabe. */}
+      <Text style={s.sectionTitle}>Artikel & Preis</Text>
+      <Text style={s.label}>Titel</Text>
+      <TextInput
+        value={title}
+        onChangeText={setTitle}
+        placeholder="Zum Beispiel: Silberring, handgemacht"
+        placeholderTextColor={ui.textMuted}
+        accessibilityLabel="Artikeltitel"
+        style={[s.input, s.titleInput]}
+        maxLength={140}
+        multiline
+      />
       <View style={s.row}>
-        <TextInput
-          value={price}
-          onChangeText={setPrice}
-          placeholder="Preis in €"
-          placeholderTextColor={ui.textMuted}
-          keyboardType="decimal-pad"
-          style={[s.input, { flex: 1, marginTop: 0 }]}
-        />
-        <TextInput
-          value={size}
-          onChangeText={setSize}
-          placeholder="Größe"
-          placeholderTextColor={ui.textMuted}
-          style={[s.input, { width: canWomenOnly ? 84 : 108, marginTop: 0 }]}
-          maxLength={MAX_SIZE_LEN}
-        />
-        {canWomenOnly ? (
-          <View style={s.switchWrap}>
-            <Text style={s.switchLabel}>Frauen-Only</Text>
-            <Switch value={womenOnly} onValueChange={setWomenOnly} />
-          </View>
-        ) : null}
+        <View style={s.field}>
+          <Text style={s.fieldLabel}>Preis in €</Text>
+          <TextInput value={price} onChangeText={setPrice} placeholder="0,00"
+            placeholderTextColor={ui.textMuted} accessibilityLabel="Preis in Euro"
+            keyboardType="decimal-pad" style={[s.input, s.fieldInput]} />
+        </View>
+        <View style={s.field}>
+          <Text style={s.fieldLabel}>Größe</Text>
+          <TextInput value={size} onChangeText={setSize} placeholder="Zum Beispiel M"
+            placeholderTextColor={ui.textMuted} accessibilityLabel="Größe"
+            style={[s.input, s.fieldInput]} maxLength={MAX_SIZE_LEN} />
+        </View>
       </View>
+      {canWomenOnly ? (
+        <View style={s.offerRow}>
+          <Text style={[s.offerLabel, { flex: 1 }]}>Frauen-Only</Text>
+          <Switch value={womenOnly} onValueChange={setWomenOnly} accessibilityLabel="Frauen-Only" />
+        </View>
+      ) : null}
 
       {price.trim() && !priceOk ? (
         <Text style={s.warn}>Über 1 € — darunter lohnt sich der Versand für niemanden.</Text>
@@ -526,11 +504,7 @@ export function StandingComposer({
         openParent={openParent}
         onOpenParent={setOpenParent}
       />
-      {needsMedia && category === null ? (
-        <Text style={s.photoHint}>
-          Wähl eine Kategorie — sonst findet dich nur, wer dich schon kennt.
-        </Text>
-      ) : null}
+
 
       {/* Die Rechtsangabe steht direkt über dem Knopf, weil sie zur Handlung
           gehört — nicht in einer Einstellung, die niemand findet. Kein Riegel:
@@ -539,6 +513,7 @@ export function StandingComposer({
 
           Nur beim ANLEGEN: Der Anbietertyp gehört zum Verkäufer, nicht zum
           Artikel — beim Bearbeiten wäre er hier eine zweite Wahrheit. */}
+      <Text style={s.sectionTitle}>Verkauf & Versand</Text>
       {mode === 'create' ? (
         <>
           <Text style={s.label}>Du verkaufst als</Text>
@@ -608,6 +583,9 @@ export function StandingComposer({
         </Text>
       ) : null}
 
+      {missingFields.length > 0 ? (
+        <Text style={s.photoHint}>Noch ergänzen: {missingFields.join(' · ')}.</Text>
+      ) : null}
       <Pressable
         style={[s.primary, !canSubmit && s.primaryOff]}
         disabled={!canSubmit}
@@ -654,6 +632,7 @@ export function StandingComposer({
         }}
         accessibilityRole="button"
         accessibilityLabel={submitLabel ?? 'Artikel dauerhaft anbieten'}
+        accessibilityState={{ disabled: !canSubmit, busy: !!busy || uploading }}
       >
         <Text style={s.primaryText}>{submitLabel ?? 'Ins Regal legen'}</Text>
       </Pressable>
@@ -662,6 +641,13 @@ export function StandingComposer({
 }
 
 const s = StyleSheet.create({
+  sectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: ui.text, marginTop: space.xl, marginBottom: space.sm },
+  photoEntry: { flexDirection: 'row', alignItems: 'center', gap: space.md, borderWidth: 1, borderStyle: 'dashed', borderColor: ui.lineStrong, borderRadius: radius.lg, padding: space.md },
+  photoEntryTitle: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.brand },
+  photoEntryHint: { fontSize: 12, lineHeight: 18, color: ui.textMuted, marginTop: 4 },
+  field: { flex: 1, minWidth: 0 },
+  fieldLabel: { fontSize: 12, color: ui.textMuted, marginBottom: space.xs },
+  fieldInput: { marginTop: 0, minHeight: 48 },
   tierRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   tier: {
     flexGrow: 1, flexBasis: '47%',
@@ -700,25 +686,13 @@ const s = StyleSheet.create({
     color: ui.text,
   },
   titleRow: { flexDirection: 'row', alignItems: 'stretch', gap: space.sm },
-  titleInput: { flex: 1, minHeight: 76 },
-  picker: {
-    width: 76,
-    minHeight: 76,
-    marginTop: space.md,
-    borderRadius: radius.md,
-    backgroundColor: ui.sunken,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: ui.lineStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
+  titleInput: { minHeight: 64, marginTop: space.xs, textAlignVertical: 'top' },
+  picker: { width: 72, height: 80, borderRadius: radius.md, backgroundColor: ui.sunken, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 
   imageRow: { marginTop: space.sm },
   imageTile: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 80,
     borderRadius: radius.sm,
     backgroundColor: ui.sunken,
     overflow: 'hidden',
@@ -735,21 +709,21 @@ const s = StyleSheet.create({
   },
   // Auf `ui.overlay` gilt `overlayMuted` — Text auf fremdem Bild, siehe die
   // Bestandsliste an `ui.overlay` in theme/tokens.ts.
-  coverTagText: { fontSize: 8, fontWeight: '700', color: ui.overlayMuted },
+  coverTagText: { fontSize: 10, fontWeight: '700', color: ui.overlayMuted },
   imageRemove: {
     position: 'absolute',
     top: 3,
     right: 3,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: ui.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
   imageAdd: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 80,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderStyle: 'dashed',
