@@ -29,32 +29,36 @@ Antworten verworfen. Token-Erneuerung lädt das unveränderte Profil nicht neu;
 neue Auth-Ereignisse gewinnen gegen alte Start-Snapshots. Profil-/Snapshot-
 Fehler bleiben ohne endlosen Ladezustand; Profil-Updates können erneut laden.
 
+**Build 6 ist installiert und nach Entsperren des iPhones ohne Metro-URL
+gestartet.** Die Korrektur und Buildnummer sind in `776c5d0` gesichert.
+Die vorherige App wurde aktualisiert, nicht deinstalliert.
+
 **Prüfungen:** Die sechs ursprünglichen Regressionstests schlugen vor der
 Änderung fehl; danach zehn neue Fälle und alle bestehenden Tests erfolgreich:
 **195 bestanden**, TypeScript und `git diff --check` bestanden. Kontrollierte
 Auth-/Profilantworten mit tatsächlichem Modul und Zustandsverwaltung; keine
-echten Kontowechsel oder Produktprüfungen. Derzeit wird **Build 6** mit dieser
-Korrektur gebaut. Native Komponenten und Bundle sind fertig; `codesign` wartet
-erneut auf den macOS-Schlüsselbunddialog. **Auf dem iPhone bleibt bis zum
-bestätigten Installationsnachweis Build 5.** Das erneute reguläre Öffnen nach
-den Instruments-Aufzeichnungen wurde wegen gesperrtem iPhone abgelehnt
-(`restored-build-5.log`); der Start nach der Messung ist damit nicht bestätigt.
+echten Kontowechsel oder Produktprüfungen. Xcode-Release-Build und strikte
+Signaturprüfung bestanden. Version 6, Hermes-Bundle, gültige Geräte-
+Provisionierung und zwölf hashgleiche 3D-Motive am Paket geprüft. IPA mit
+ZIP-/SHA-256-Nachweis gesichert. `devicectl` bestätigt installierte Version 6
+und erfolgreichen regulären Start; derselbe Prozess lief bei der späteren
+Kontrolle nach rund einer Minute weiter. Die zuvor wartende Schlüsselbundsignierung
+ist abgeschlossen; der zunächst gesperrte Gerätestart gelang nach Entsperren.
 
 Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-device-performance`
 (`README.md`, `startup-baseline.json`, drei `.trace`-Dateien, Tests/TypeScript).
-Build-6-Log und Paketvorbereitung:
+Build-6-Log, signiertes IPA und Installations-/Startnachweise:
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-6`.
 Der native Build verwendet den wiederverwendbaren `DerivedData/`-Cache unter
 `berkat-iphone-build-5`; dessen unverändertes Build-5-Paket bleibt in `Payload/`
 und IPA gesichert. Noch keine Veröffentlichung oder Git-Push.
 
-**Fortsetzung:** Schlüsselbundfreigabe am Mac abschließen, iPhone entsperren,
-Build 6 prüfen und über die vorhandene App installieren, regulären Start bestätigen.
-Anschließend Zeit bis zur
+**Fortsetzung:** Build 6 im Alltag auf Darstellung und Bediengefühl prüfen.
+Zeit bis zur
 tatsächlich bedienbaren Startseite und eine feste Scroll-Strecke mit Hänger-/
 Speichermessung untersuchen. Die obigen Startwerte gehören zu Build 5.
 
-## Aktueller Gerätebuild 5 · installiert · 08.09.2026
+## Vorheriger Gerätebuild 5 · 08.09.2026
 
 **Berkat 1.0.0 (5) ist auf dem iPhone 16 Pro installiert und ohne Metro-URL
 gestartet.** UI-Quellstand: `2e69cee`; Buildnummer und Vorbereitung: `04df243`.
@@ -97,8 +101,8 @@ Prüfung von Testprodukt-Texten oder -Bildern.
 ## Arbeitsstand · Schritt 2 · 08.09.2026
 
 **Schritt 2 ist im Quellcode umgesetzt und im iOS-Simulator geprüft.** Dieses
-Paket folgt auf `578c58e`, ist in `2e69cee` gesichert und inzwischen im oben
-dokumentierten iPhone-Build 5 enthalten. Der Fokus bleibt die App selbst,
+Paket folgt auf `578c58e`, ist in `2e69cee` gesichert und in den oben
+dokumentierten iPhone-Builds 5 und 6 enthalten. Der Fokus bleibt die App selbst,
 nicht die Richtigkeit der Testprodukte.
 
 - Elf Sheets verwenden `SheetHeader`, mindestens 44 pt große Schließen-Ziele,
@@ -138,7 +142,7 @@ OTA oder native Installation; die spätere Geräteinstallation steht oben.
 Nachweise, Screenshots und Grenzen der Prüfung:
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-sheets-story-live-quality`.
 
-**Fortsetzung:** Den inzwischen installierten Build 5 auf dem iPhone 16 Pro
+**Fortsetzung:** Den inzwischen installierten Build 6 auf dem iPhone 16 Pro
 physisch prüfen und Rückmeldung zu Bedienung und Wirkung einarbeiten.
 Echte Live-Übertragung, Kamera/Mikrofon,
 Mini-Player-Wiederverbindung, höchste Schriftgrößen, Android und Startzeit-/FPS-
