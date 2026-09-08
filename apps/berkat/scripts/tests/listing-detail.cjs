@@ -14,7 +14,7 @@ function detail(client,result={}){return load('lib/useListingDetail.ts',{'react'
 const client=()=>new QueryClient({defaultOptions:{queries:{retry:false,gcTime:Infinity}}});
 const row=(id='a',extra={})=>({id,title:'Cached offer',women_only:false,...extra});
 for(const [prefix,data] of [
- ['shop',[row()]],['category-listings',{pages:[{rows:[row('other')]},{rows:[row()]}]}],
+ ['shop',[row()]],['discovery',{items:[row()],reasons:{a:'interest'},partial:false}],['category-listings',{pages:[{rows:[row('other')]},{rows:[row()]}]}],
  ['standing',{pages:[{rows:[row()]}]}],['listing-search',[row()]],
  ['saved-listings',[row()]],['listings-by-ids',new Map([['a',row()]])],
 ])test(`${prefix}: already loaded data is available without promoting it to detail cache`,()=>{

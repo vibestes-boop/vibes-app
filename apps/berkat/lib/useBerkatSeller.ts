@@ -115,6 +115,7 @@ export function useDeclareSellerKind(userId: string | null) {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'standing'] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'category-listings'] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop'] });
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'discovery'] });
   }, [queryClient, userId]);
 
   return useMutation({

@@ -212,10 +212,10 @@ function shelfQuery() {
  *
  * Deshalb zwei Grenzen mit je einem Zweck, nicht eine mit einem Schalter.
  */
-function browseQuery() {
+export function browseQuery(columns = LISTING_COLUMNS) {
   return supabase
     .from('live_auctions')
-    .select(LISTING_COLUMNS)
+    .select(columns)
     .is('session_id', null)
     .or(BROWSABLE);
 }
@@ -263,7 +263,7 @@ const BROWSABLE =
  * ⚠️ Ohne das stünde eine Karte da, die „in einer Show" sagt und auf die Frage
  * „in welcher?" keine Antwort hat.
  */
-function withVisibleShow(rows: Listing[]): Listing[] {
+export function withVisibleShow(rows: Listing[]): Listing[] {
   return rows.filter((l) => l.status !== 'scheduled' || l.show !== null);
 }
 

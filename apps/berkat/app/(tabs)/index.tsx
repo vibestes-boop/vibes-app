@@ -10,7 +10,7 @@ import { Image } from 'expo-image';
 import { useIsFocused, useScrollToTop } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowUpRight, Bell, Heart, Lock, MessageSquare, Search, ShoppingBag } from 'lucide-react-native';
+import { ArrowUpRight, Bell, Heart, Lock, MessageSquare, Search, ShoppingBag, SlidersHorizontal } from 'lucide-react-native';
 import { useLiveShows, type LiveShow } from '../../lib/useLiveShows';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -26,9 +26,11 @@ import { useCategories, useCategoryOptions } from '../../lib/useCategories';
 import {
   useCategoryListings,
   useShopCount,
-  useShopListings,
   type Listing,
 } from '../../lib/useListings';
+import { DEFAULT_DISCOVERY, expandInterests } from '../../lib/discovery';
+import { useDiscoveryPreferences } from '../../lib/useDiscoveryPreferences';
+import { useDiscoveryListings } from '../../lib/useDiscoveryListings';
 import { ListingCard } from '../../components/ListingCard';
 import { useSavedCounts, useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { ui, radius, ratio, space } from '../../theme/tokens';
@@ -81,6 +83,8 @@ export default function HomeScreen() {
   // Abzeichen an der Glocke. Scheitert die Abfrage, liefert der Hook 0 — eine
   // fehlende Zahl darf die Startseite nicht mitreißen.
   const userId = useSession((st) => st.userId);
+  const sessionLoading = useSession((st) => st.loading);
+  const preferences = useDiscoveryPreferences(userId, !sessionLoading);
   // Stories: der Ring über dem Regal. Begründung in `lib/useStories.ts`.
   //
   // ⚠️ Das eigene Profil wird hier NICHT mehr gebraucht. Bis zum 24.08.2026
@@ -168,7 +172,8 @@ export default function HomeScreen() {
   // Anzeigenamen. Ohne diese Übersetzung stünde in der Leiste „beauty" und
   // „buecher" statt „Beauty & Duft" und „Bücher & Medien" — vorher fiel das
   // nicht auf, weil dort immer die Konstante `'shopping'` stand.
-  const { groups: categoryGroups } = useCategoryOptions();
+  const categoryOptions = useCategoryOptions();
+  const { groups: categoryGroups } = categoryOptions;
   // Die Zähler für die Entdeckungs-Leiste. Derselbe Abruf, den der
   // Kategorien-Reiter ohnehin macht — React Query gibt beiden dieselbe Antwort.
   const { data: counted = [], isLoading: categoriesLoading, refetch: refetchCategories } = useCategories(isFocused);
@@ -294,16 +299,26 @@ export default function HomeScreen() {
     return parent ? [parent.slug, ...parent.children.map((c) => c.slug)] : [filter];
   }, [filter, categoryGroups]);
 
-  // Zwei Quellen, eine Fläche: ohne Filter das ganze Regal, mit Filter die
-  // Kategorie. Immer nur eine davon ist aktiv (`enabled`), es läuft also nie
-  // ein Abruf für Zeilen, die niemand sieht.
-  const wholeShelfQuery = useShopListings(SHELF_PREVIEW, browsing && filter === ALL);
+  const selection = preferences.data ?? DEFAULT_DISCOVERY;
+  const interestSlugs = useMemo(() => expandInterests(selection.categorySlugs, categoryGroups), [selection.categorySlugs, categoryGroups]);
+  const preferencesReady = !sessionLoading && (preferences.isSuccess || preferences.isError) &&
+    (selection.categorySlugs.length === 0 || categoryOptions.isSuccess || categoryOptions.isError);
+  const wholeShelfQuery = useDiscoveryListings(userId, interestSlugs, selection.useFollowing,
+    browsing && filter === ALL && preferencesReady);
   const categoryShelfQuery = useCategoryListings(filterSlugs, browsing);
   const shelfQuery = filter === ALL ? wholeShelfQuery : categoryShelfQuery;
   const categoryShelf = categoryShelfQuery.data ?? [];
   const shelf = useMemo(() => (shelfQuery.data ?? []).slice(0, SHELF_PREVIEW), [shelfQuery.data]);
   const shelfLoading = browsing && shelfQuery.isLoading;
-  const homeError = showsError || (browsing && shelfQuery.isError);
+  const discoveryWarning = filter === ALL && (wholeShelfQuery.partial || preferences.isError ||
+    (selection.categorySlugs.length > 0 && categoryOptions.isError));
+  const homeError = showsError || (browsing && (shelfQuery.isError || discoveryWarning));
+  const reasons = Object.values(wholeShelfQuery.reasons);
+  const hasInterests = reasons.some((reason) => reason === 'interest' || reason === 'both');
+  const hasFollowing = reasons.some((reason) => reason === 'following' || reason === 'both');
+  const discoveryTitle = hasInterests || hasFollowing ? 'Für dich' : 'Neu entdecken';
+  const discoveryCaption = hasInterests && hasFollowing ? 'Interessen, gefolgte Profile & neue Funde'
+    : hasInterests ? 'Deine Interessen & neue Funde' : hasFollowing ? 'Gefolgte Profile & neue Funde' : null;
   // Eigener Aufruf statt einer gemeinsamen Liste mit den Show-Gastgebern: Die
   // Kette läuft profiles → visible → idle → shelf, ein Ring wäre die Folge.
   // React Query hält beide Antworten ohnehin im selben Zwischenspeicher, und
@@ -341,6 +356,8 @@ export default function HomeScreen() {
       await Promise.all([
         refetch(), refetchUpcoming(), refetchStories(), refetchCategories(), refetchShopCount(),
         ...(browsing ? [refetchShelf()] : []),
+        ...(filter === ALL && preferences.isError ? [preferences.refetch()] : []),
+        ...(filter === ALL && categoryOptions.isError ? [categoryOptions.refetch()] : []),
         ...(userId ? [refetchUnread(), refetchMessages()] : []),
         queryClient.invalidateQueries({ queryKey: ['berkat', 'show-previews'] }),
         queryClient.invalidateQueries({ queryKey: ['berkat', 'saved-counts'] }),
@@ -350,7 +367,8 @@ export default function HomeScreen() {
       setPulling(false);
     }
   }, [browsing, userId, refetch, refetchUpcoming, refetchStories, refetchCategories,
-    refetchShopCount, refetchShelf, refetchUnread, refetchMessages, queryClient]);
+    refetchShopCount, refetchShelf, refetchUnread, refetchMessages, queryClient,
+    filter, preferences.isError, preferences.refetch, categoryOptions.isError, categoryOptions.refetch]);
 
   // Zwei Spalten, jede Karte `flex: 1`: Bleibt in der letzten Reihe ein Platz
   // frei, zieht sich die einzelne Karte über die volle Breite — samt Vorschau.
@@ -400,6 +418,30 @@ export default function HomeScreen() {
       );
     },
     [savedIds, saveCounts, shelfProfiles, toggleSaved, userId],
+  );
+
+  const shelfHeading = (
+    <View style={styles.shelfHead}>
+      <View style={styles.sectionRow}>
+        <View style={[styles.discoveryHeading, fontScale > 1.5 && { flexBasis: '100%' }]}>
+          <Text accessibilityRole="header" style={[styles.shelfTitle, { flex: 1 }]}>
+            {filter === ALL ? discoveryTitle : categoryNames.get(filter) ?? 'Entdecken'}
+          </Text>
+          {filter === ALL ? <PressFeedback onPress={() => router.push('/interests')}
+            style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Auswahl anpassen"
+            accessibilityHint="Wähle deine Interessen und ob gefolgte Verkäufer bevorzugt werden.">
+            <SlidersHorizontal size={19} color={ui.brand} />
+          </PressFeedback> : null}
+        </View>
+        <PressFeedback onPress={() => router.push(filter === ALL ? '/shop' : `/category/${filter}`)}
+          accessibilityRole="button"
+          accessibilityLabel={filter === ALL ? 'Alle Angebote ansehen' : 'Alle Angebote dieser Kategorie ansehen'}
+          style={styles.sectionLink}>
+          <Text style={styles.sectionLinkText}>Alle ansehen</Text><ArrowUpRight size={16} color={ui.brand} />
+        </PressFeedback>
+      </View>
+      {filter === ALL && discoveryCaption ? <Text style={styles.discoveryCaption}>{discoveryCaption}</Text> : null}
+    </View>
   );
 
   return (
@@ -532,23 +574,7 @@ export default function HomeScreen() {
                 />
               ) : null}
 
-              {idle && (shelf.length > 0 || shelfLoading) ? (
-                <View style={styles.shelfHead}>
-                  <View style={styles.sectionRow}>
-                    <Text accessibilityRole="header" style={styles.shelfTitle}>
-                      {filter === ALL ? 'Neu entdecken' : categoryNames.get(filter) ?? 'Entdecken'}
-                    </Text>
-                    <PressFeedback
-                      onPress={() => router.push(filter === ALL ? '/shop' : `/category/${filter}`)}
-                      accessibilityRole="button"
-                      accessibilityLabel={filter === ALL ? 'Alle Angebote ansehen' : 'Alle Angebote dieser Kategorie ansehen'}
-                      style={[styles.sectionLink]}>
-                      <Text style={styles.sectionLinkText}>Alle ansehen</Text>
-                      <ArrowUpRight size={16} color={ui.brand} />
-                    </PressFeedback>
-                  </View>
-                </View>
-              ) : null}
+              {idle ? shelfHeading : null}
               {!idle ? (
                 <View style={styles.shelfHead}>
                   <Text accessibilityRole="header" style={styles.shelfTitle}>Jetzt live</Text>
@@ -631,11 +657,7 @@ export default function HomeScreen() {
                   ⚠️ Die Überschrift steht NUR im Sende-Fall. Ohne Show trägt
                   sie schon der Kopf („Direkt kaufen") — zweimal derselbe Satz auf einem Bildschirm wäre
                   Lärm. */}
-              {!idle && shelf.length > 0 ? (
-                <View style={styles.shelfHead}>
-                  <Text style={styles.shelfTitle}>Direkt kaufen</Text>
-                </View>
-              ) : null}
+              {!idle ? shelfHeading : null}
 
               {/* Ein eigenes, umbrechendes Raster statt weiterer Zeilen in der
                   Liste: Ein Abschnittskopf mitten in einem `numColumns={2}`-
@@ -855,6 +877,8 @@ const styles = StyleSheet.create({
   searchPlaceholder: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20, color: ui.textMuted, paddingVertical: 10 },
   community: { marginTop: space.xl },
   sectionRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: space.md },
+  discoveryHeading: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 180, gap: space.xs },
+  discoveryCaption: { fontSize: 12, lineHeight: 18, color: ui.textMuted, marginBottom: space.sm },
   sectionLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.xs },
   sectionLinkText: { color: ui.brand, fontSize: 13, fontWeight: '600' },
 

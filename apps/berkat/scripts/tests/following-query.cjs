@@ -149,10 +149,10 @@ test('permission errors do not retry; transient errors retry only once', () => {
   assert.equal(config.retry(1, new Error('offline')), false);
 });
 
-test('follow and unfollow success invalidate only the current user directory and activity', () => {
+test('follow and unfollow success invalidate the current user directory, activity and discovery', () => {
   for (const following of [true, false]) {
     const client = clientFor(); let mutation;
-    const keys = [['berkat', 'following', 'me'], ['berkat', 'activity', 'me'], ['berkat', 'following', 'other'], ['berkat', 'activity', 'other']];
+    const keys = [['berkat', 'following', 'me'], ['berkat', 'activity', 'me'], ['berkat', 'following', 'other'], ['berkat', 'activity', 'other'], ['berkat', 'discovery', 'me', [], true], ['berkat', 'discovery', 'other', [], true]];
     keys.forEach(key => client.setQueryData(key, { existing: true }));
     const exports = load('lib/useFollow.ts', {
       useQueryClient: () => client, useQuery: () => ({ data: false }),
@@ -163,6 +163,8 @@ test('follow and unfollow success invalidate only the current user directory and
       assert.equal(client.getQueryState(keys[0]).isInvalidated, true);
       assert.equal(client.getQueryState(keys[1]).isInvalidated, true);
       assert.equal(client.getQueryState(keys[2]).isInvalidated, false);
+      assert.equal(client.getQueryState(keys[4]).isInvalidated, true);
+      assert.equal(client.getQueryState(keys[5]).isInvalidated, false);
       assert.equal(client.getQueryState(keys[3]).isInvalidated, false);
       assert.equal(client.getQueryData(['berkat', 'follows', 'me', 'seller']), following);
     } finally { client.clear(); }

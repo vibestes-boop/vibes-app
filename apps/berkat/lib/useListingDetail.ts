@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useListing, type Listing } from './useListings';
 
-const LIST_SOURCES = new Set(['shop', 'category-listings', 'standing', 'listing-search', 'saved-listings', 'listings-by-ids']);
+const LIST_SOURCES = new Set(['shop', 'discovery', 'category-listings', 'standing', 'listing-search', 'saved-listings', 'listings-by-ids']);
 
 /** Read an existing list snapshot; never promote it to a verified detail cache.
  * Only these sources carry the complete shared Listing column set.
@@ -13,8 +13,8 @@ export function cachedListingPreview(client: QueryClient, id: string | undefined
     query.queryKey[0] === 'berkat' && LIST_SOURCES.has(String(query.queryKey[1])),
   }).sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt);
   for (const query of queries) {
-    const data = query.state.data as Listing[] | Map<string, Listing> | { pages?: { rows: Listing[] }[] } | undefined;
-    const rows = Array.isArray(data) ? data : data instanceof Map ? [data.get(id)] : data?.pages?.flatMap(page => page.rows) ?? [];
+    const data = query.state.data as Listing[] | Map<string, Listing> | { items?: Listing[]; pages?: { rows: Listing[] }[] } | undefined;
+    const rows = Array.isArray(data) ? data : data instanceof Map ? [data.get(id)] : data?.items ?? data?.pages?.flatMap(page => page.rows) ?? [];
     const found = rows.find(row => row?.id === id);
     // Protected content waits for the detail query, including after account changes.
     if (found) return found.women_only === false ? found : undefined;

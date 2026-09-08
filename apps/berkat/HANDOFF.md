@@ -5,6 +5,67 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Persönliche Entdeckung aus Interessen und Folgen · 09.09.2026
+
+**Der nächste Schritt aus dem Whatnot-Vergleich ist im Quellcode umgesetzt:**
+Die Angebotsauswahl auf Home berücksichtigt ausdrücklich gewählte Themen und
+bereits gefolgte Verkäufer. Auf dem physischen iPhone bleibt **Build 7**.
+Kein Gerätebuild, keine Datenbankmigration, kein Push und keine Veröffentlichung.
+
+- **Einstieg:** Regler-Symbol „Auswahl anpassen“ neben der Abschnittsüberschrift
+  öffnet `/interests`. Zwölf vorhandene 3D-Kategorien als Mehrfachauswahl;
+  angemeldete Nutzer können Angebote gefolgter Verkäufer bevorzugen/abwählen.
+  Ein expliziter Speichern-Knopf, Zurücksetzen und Fehler mit Wiederholen.
+  Zurück verwirft den Entwurf. Große Schrift: eine Kartenspalte, mitwachsende
+  Texte/Schaltflächen; Entwurf bleibt beim Schriftwechsel bestehen.
+- **Speicherung:** eigener versionierter SecureStore-Eintrag pro Konto, Gäste
+  separat (`berkat.discovery.v1.<userId|guest>`). Gerätelokal, in der Oberfläche
+  erklärt. Gemeinsames Serlo-Feld `profiles.preferred_tags` bleibt unverändert.
+  Konto-Wechsel, langsame Lese-/Schreibvorgänge und Schreibfehler sind abgesichert.
+- **Auswahl:** allgemeine Neuheiten, Interessentreffer inklusive Unterkategorien
+  und Angebote gefolgter Verkäufer werden mit höchstens 16 Kandidaten je Quelle
+  geholt. Zwei persönliche Plätze, dann ein neuer Fund, soweit vorhanden;
+  Doppelungen entfernt, nach Möglichkeit unterschiedliche Verkäufer. Eigene
+  Angebote bekommen keinen persönlichen Empfehlungsgrund. Höchstens acht Karten.
+  „Für dich“ erscheint nur bei tatsächlichen persönlichen Treffern; sonst
+  „Neu entdecken“. Eine kurze Unterzeile benennt die berücksichtigten Signale.
+- **Datenzugriff:** bestehende `browseQuery`-/`withVisibleShow`-Grenzen und RLS
+  bleiben gemeinsam. Folgen wird serverseitig über verifizierte Fremdschlüssel
+  gefiltert, nicht über die erste Seite der Gefolgt-Liste. Keine Einzelabfrage je
+  Verkäufer. Account-getrennte Query-Schlüssel, Abort, 8-s-Grenze je Quelle,
+  vorhandene Ergebnisse plus Wiederholen-Hinweis bei Teilausfall. Follow/Unfollow
+  invalidiert auch den persönlichen Feed. Keine echten Folgeaktionen zum Testen.
+  Regal-/Show-/Verkäuferänderungen aktualisieren die neue Fläche ebenfalls;
+  vorhandene Karten liefern weiterhin eine Vorschau für die Detailseite,
+  während deren vollständige Abfrage läuft. Geschützte Vorschauen bleiben gesperrt.
+- **Geltungsbereich:** persönliche Angebotsauswahl. Laufende Shows behalten ihre
+  bisherige Priorisierung; Termine, gespeicherte Suchen, Merkliste und Stories
+  sind weiterhin vorhanden. Kein Nachweis einer Retention-/FPS-Verbesserung.
+
+**Prüfung:** TypeScript, **213 Tests** (18 neue für Auswahl, Quellen, Grenzen,
+Konto-/Speicherrennen, Timeout, Entwurfs-/Navigationsverhalten und Feed-Anbindung), `diff --check`
+und lokaler iOS-/Hermes-Export. Native Sicht-/Bedienprüfung auf iPhone-17-Simulator:
+Abbrechen, Speichern, persönlicher Feed, frischer App-Start, erneutes Öffnen,
+Schriftwechsel mit erhaltenem Entwurf, Follow-Präferenzschalter, Zurücksetzen
+und allgemeiner Fallback bei einer Kategorie ohne Treffer. Systemschrift und
+temporäre Testinteressen anschließend auf Ausgangszustand zurückgesetzt.
+Die positive Follow-Quelle, Gäste und Konto-Wechsel wurden mit isolierten
+Testdaten geprüft; keine neue echte Folgebeziehung und kein Account-Logout.
+Ein öffentlicher, ausschließlich lesender Join-Probeabruf mit Dummy-ID bestätigte
+HTTP 200/keine Treffer; das ersetzt keinen angemeldeten RLS-Rollentest.
+
+Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-personal-discovery`
+(Screenshots, README, Tests/TypeScript/Export, Quell-Hashes).
+
+**Nächste Schritte:**
+1. Relevante geplante/laufende Shows an Interessen/Folgen anbinden; vorhandene
+   Terminerinnerungen und Verkäuferprofile nutzen, keine zweite Folgefunktion.
+2. Home mit echten Live-Zuständen sowie Gast-/wenig-Inhalt-Zuständen nativ prüfen.
+   Die neue Interessenansicht bietet auch Gästen eine Auswahl, bislang ist der
+   Gastpfad durch lokale Tests, nicht durch Abmelden im Simulator abgedeckt.
+3. Danach nächsten signierten iPhone-Testbuild erstellen und den neuen Gesamtstand
+   auf dem Gerät kontrollieren. Build-7-Messungen gelten weiterhin nur für Build 7.
+
 ## Startseite und Kategorien nach Whatnot-Vergleich · 09.09.2026
 
 **Aktueller Quellstand enthält eine neue Anordnung; auf dem physischen iPhone

@@ -80,6 +80,7 @@ export function invalidateShelfSurfaces(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ['berkat', 'category-listings'] });
   // … der Marktplatz und sein Zähler im Leerzustand der Startseite …
   void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop'] });
+  void queryClient.invalidateQueries({ queryKey: ['berkat', 'discovery'] });
   void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop-count'] });
   // … die Artikelsuche, die dieselben Zeilen zeigt …
   void queryClient.invalidateQueries({ queryKey: ['berkat', 'listing-search'] });
