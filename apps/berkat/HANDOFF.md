@@ -5,6 +5,36 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Gerätebuild 5 · in Vorbereitung · 08.09.2026
+
+Der Nutzer hat nach Abschluss von Schritt 2 die Weiterarbeit beauftragt.
+`app.json` und die ignorierte native `ios/Berkat/Info.plist` tragen jetzt
+**Version 1.0.0 (5)**. UI-Quellstand: `2e69cee`. Native Komponenten und
+Hermes-Bundle sind gebaut; **Xcode wartet bei `codesign` noch auf die
+Schlüsselbundfreigabe. Build 5 ist noch nicht installiert oder als fertiges
+signiertes IPA gesichert.** Das gekoppelte iPhone 16 Pro wurde inzwischen
+erreicht; `devicectl` bestätigt weiterhin die installierte Version 1.0.0 (4).
+
+Vor Signierabschluss geprüft: Version 5, eingebettetes Hermes-Bundle mit neuer
+Story-/Sheet-Kopie, temporäre Prüfansicht abwesend, alle zwölf 3D-Kategoriemotive
+hashgleich zur Quelle, gültiges Provisioning-Profil mit Testgerät und lokal
+deaktivierte OTA-Updates. Der vorhandene Pod-Lock stimmt mit dem Manifest
+überein; für die reine Buildnummer wurde kein neuer Prebuild ausgeführt.
+
+Build läuft in Xcode Release/iphoneOS mit bestehendem Apple-Development-Team,
+Sentry-Upload deaktiviert. Alle Nachweise und der wiederverwendbare Buildcache:
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-5`.
+`build.log` und `Build.xcresult` gehören zu diesem Durchgang;
+`verify-bundle.py` erzeugt `bundle-verification.json`. Der Nutzer wurde gebeten,
+einen angezeigten macOS-Dialog selbst zu bestätigen; Computerzugriff auf den
+geschützten `SecurityAgent` wurde vom Werkzeug aus Sicherheitsgründen verweigert.
+
+**Fortsetzung:** Signierabschluss abwarten, `codesign --verify --deep --strict`
+prüfen, das App-Paket über die bestehende Installation auf dem iPhone
+aktualisieren, ohne Metro-URL starten und installierte Version/Prozess prüfen.
+Anschließend IPA sichern und diesen Abschnitt auf das tatsächliche Ergebnis
+aktualisieren. Keine Deinstallation, OTA-/Store-Veröffentlichung oder Git-Push.
+
 ## Arbeitsstand · Schritt 2 · 08.09.2026
 
 **Schritt 2 ist im Quellcode umgesetzt und im iOS-Simulator geprüft.** Dieses
