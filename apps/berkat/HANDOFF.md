@@ -8,19 +8,20 @@
 ## Aktueller Teststand · 08.09.2026
 
 Der Nutzer möchte die bisherige Modernisierung sichern und auf seinem iPhone
-testen. Dieser Checkpoint auf Branch `berkat` umfasst den gesamten bislang
-uncommitteten Berkat-Stand: zwölf lokale 3D-Kategoriemotive, Markenassets,
+testen. Commit `089ce32` auf Branch `berkat` sichert die Modernisierung:
+zwölf lokale 3D-Kategoriemotive, Markenassets,
 überarbeitete Hauptbereiche und Verkäuferprofile, Suche/Gefolgt, Lade-/Fehler-
 zustände, fokusgebundene Abfragen, Pagination, Galerie/Bildladen sowie
 gemeinsames Druckfeedback und reduzierte Bewegung. Die Detailnachweise folgen
 weiter unten. Keine Änderungen außerhalb `apps/berkat` in diesem Checkpoint.
 
-**Gerät bereit:** Das gekoppelte iPhone 16 Pro wurde über `devicectl` erkannt.
-Die installierte Berkat-Entwicklungsapp `com.berkat.app`, Version 1.0.0 (3),
-wurde mit der aktuellen Metro-Adresse geöffnet. Die native iPhone-Laufzeit
-ist verbunden; `HomeScreen` ist montiert und 70 `PressFeedback`-Instanzen sind
-aktiv. Das bestätigt den geladenen App-Code, nicht bereits die Sichtprüfung
-oder einen Leistungsbenchmark auf dem Gerät.
+**Jetzt auf dem iPhone:** Berkat `com.berkat.app`, **Version 1.0.0 (4)**,
+als lokal gebauter, mit Apple Development signierter **Release-Build** auf
+dem iPhone 16 Pro installiert und ohne Metro-URL gestartet. `devicectl`
+bestätigt die installierte Buildnummer und den laufenden Berkat-Prozess
+nach dem Start. Die vorherige App wurde aktualisiert, nicht deinstalliert.
+Die Sichtprüfung, physische Gesten und ein Startzeit-/FPS-Benchmark stehen
+noch aus; ein laufender Prozess ersetzt diese Nachweise nicht.
 
 **Jetzt testen:**
 
@@ -34,24 +35,38 @@ oder einen Leistungsbenchmark auf dem Gerät.
 6. Größere Systemschrift und „Bewegung reduzieren“ ausprobieren. Texte sollen
    lesbar bleiben; lokale Eingaben und Auswahl sollen beim Wechsel erhalten bleiben.
 
-**Verbindung:** Metro läuft aus `apps/berkat` auf Port 8081. Bei der Übergabe
-war der Mac unter `172.20.10.2` erreichbar. Mac/Metro für diesen Test weiterlaufen
-lassen und die gemeinsame Netzwerkverbindung beibehalten. Nach einem Netzwechsel
-die aktuelle Adresse verwenden; eine alte gespeicherte Dev-Client-Adresse lädt
-sonst nicht den neuen Stand. Berkat verwendet einen eigenen Dev-Client, kein Expo Go.
+**Verbindung und Assets:** Build 4 enthält das Hermes-Bundle und alle zwölf
+3D-Kategoriemotive; ihre Dateihashes stimmen mit den Quellassets überein.
+Das neue App-Icon und der native Splash sind ebenfalls eingebaut. Zum Starten
+dieser Version sind Mac und Metro nicht erforderlich; Serverinhalte benötigen
+weiterhin Internet. Der vorherige Metro-Test mit Build 3 ist damit historisch.
+Metro kann für andere Entwicklungs-/Simulator-Tests weiterlaufen.
 
-**Native Grenze:** Die aktuelle Oberfläche und lokale Kategorieassets werden
-über Metro geladen. Das bereits installierte Homescreen-Icon und der native
-Splash werden dadurch nicht ersetzt; die neuen Markenassets/App-Konfiguration
-brauchen dafür einen frisch gebauten und installierten iOS-Build. Für diesen
-UI-Test wurde weder ein neuer Build installiert noch OTA/TestFlight veröffentlicht.
+**Native Vorbereitung:** `ios.buildNumber` auf `4` erhöht und
+`expo-image-manipulator` von `^57.0.12` auf `~14.0.8` an Expo SDK 54 angepasst
+(lokales `expo/bundledNativeModules.json` und
+[Expo-SDK-54-Dokumentation](https://docs.expo.dev/versions/v54.0.0/sdk/imagemanipulator/)).
+Prebuild und CocoaPods aktualisiert; die generierten Dateien unter `ios/`
+bleiben ignoriert. Nur für diesen lokalen Test wurde anschließend
+`EXUpdatesEnabled=false` in `ios/Berkat/Supporting/Expo.plist` gesetzt, damit
+keine ältere OTA-Version das eingebettete Bundle ersetzt. `app.json` behält
+seine bisherige Updates-Konfiguration; ein neuer Prebuild überschreibt den
+lokalen Schalter. Keine OTA-/TestFlight-/App-Store-Veröffentlichung und kein Push.
 
-**Prüfungen:** 176 Tests, `npx tsc --noEmit`, iOS-Export nach
-`/private/tmp/berkat-iphone-commit-20260908` und `git diff --cached --check`
-am 08.09. vor dem Commit bestanden. Die Simulator-Prüfungen
-ersetzen den jetzt vorgesehenen physischen Gerätetest nicht. Anschließend stehen
-weitere Sheets und Story-/Live-Effekte an. Historische „Nächster Schritt“-Angaben
-in älteren Einträgen sind durch diesen Teststand und die jüngsten Einträge ersetzt.
+**Prüfungen für Build 4:** 176 Tests, `npx tsc --noEmit`, iOS-Export,
+nativer Xcode-Release-Build und `codesign --verify --deep --strict` bestanden.
+Das eingebettete Provisioning-Profil enthält das Testgerät; Bundle-Version,
+lokales Bundle und deaktivierte Updates wurden am fertigen Paket geprüft.
+Der Nutzer hat den macOS-Schlüsselbunddialog selbst bestätigt.
+Build-/Testlogs liegen unter `/private/tmp/berkat-native-build-20260908`.
+IPA, kompakte Nachweise und Wiederholungsanleitung sind dauerhaft gesichert:
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-4`.
+
+**Danach:** Zuerst Rückmeldung aus dem physischen App-Test aufnehmen,
+anschließend weitere Sheets und Story-/Live-Effekte bearbeiten. Die bisherigen
+Simulator-Prüfungen ersetzen den Gerätetest nicht. Historische „Nächster Schritt“-
+Angaben in älteren Einträgen sind durch diesen Teststand und die jüngsten
+Einträge ersetzt. Weiterhin keine Prüfung der Testprodukt-Richtigkeit.
 
 > **Konto/Aktivität/Verkaufsformulare · 08.09.2026:** 86 Druckziele in den
 > drei Tabs plus SellerStart, SavedList, CategoryPicker, SchedulePlanner und
