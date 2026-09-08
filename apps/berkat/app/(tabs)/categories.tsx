@@ -1,27 +1,9 @@
-// Kategorien — Whatnots zweiter von fünf Reitern, mit zwei Ebenen.
-//
-// Warum er auch dann steht, wenn wenig darin liegt: Die Startseite beantwortet
-// „was läuft JETZT". Bei fünf Verkäufern mit je zwei Stunden pro Woche ist die
-// Antwort 94 % der Zeit „nichts" (HANDOFF 17). Dieser Reiter beantwortet die
-// andere Frage — „was gibt es hier überhaupt" — und die hat immer eine Antwort,
-// solange Dauerangebote existieren.
-//
-// AUFBAU, abgeschaut am 16.08.2026 von Whatnot:
-//   • Zwei Spalten geben den freigestellten Motiven ausreichend Fläche (06.09.2026).
-//   • Ein Tipp auf eine Kachel klappt ihre Unterkategorien VERTIKAL unter der
-//     Zeile auf, ein zweiter schließt sie. Erst dadurch trägt die Seite
-//     zweiundsiebzig Kategorien, ohne zur Wand zu werden.
-//   • Zuschauer statt Shows als Zahl auf der Kachel.
-//
-// EINE STELLE, AN DER BERKAT ES BESSER KANN: Whatnots Kachel zeigt nur
-// Zuschauer, weil dort immer welche sind. Hier ist eine Kategorie oft „0 live,
-// aber 12 kaufbar" — dann steht genau das da statt einer toten Null. Whatnot
-// kann das strukturell nicht, die haben kein Dauerregal je Kategorie.
+// Zwei Spalten geben den 3D-Motiven Raum. Unterkategorien öffnen sich unter
+// ihrer Zeile; Bestand und Live-Aktivität erklären, wo es etwas zu entdecken gibt.
+// Suche und Gesamtkatalog bleiben direkt erreichbar, ohne eine zusätzliche
+// große Kachel vor das Raster zu setzen.
 
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   FlatList,
   LayoutAnimation,
@@ -31,10 +13,14 @@ import {
   TextInput,
   UIManager,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, Search, ShoppingBag, X } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
+import { useIsFocused } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowUpRight, ChevronRight, Search, X } from 'lucide-react-native';
 
 import { useCategoryTree, type Category, type CategoryNode } from '../../lib/useCategories';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -95,12 +81,13 @@ function hasActivity(c: Category): boolean {
 
 export default function CategoriesScreen() {
   const reducedMotion = useReducedMotion();
+  const { fontScale } = useWindowDimensions();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const queryClient = useQueryClient();
-  const { tree, isLoading, refetch } = useCategoryTree(isFocused);
+  const { tree, isLoading, isError, refetch } = useCategoryTree(isFocused);
 
   const [sort, setSort] = useState<SortMode>('empfohlen');
   const [open, setOpen] = useState<string | null>(null);
@@ -173,9 +160,13 @@ export default function CategoriesScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Kategorien</Text>
-        <Text style={styles.subtitle}>Stöbern, auch wenn gerade niemand sendet</Text>
+      <View key={`header-${fontScale}`} style={styles.header}>
+        <Text accessibilityRole="header" style={styles.title}>Kategorien</Text>
+        <PressFeedback style={styles.allRow} onPress={() => router.push('/shop')}
+          accessibilityRole="button" accessibilityLabel="Alle Angebote ansehen">
+          <Text style={styles.allText}>Alle Angebote</Text>
+          <ArrowUpRight size={16} color={ui.brand} />
+        </PressFeedback>
       </View>
 
       {/* ── ⚠️ DAS SUCHFELD GEHÖRT HIERHER (24.08.2026) ────────────────────────
@@ -193,14 +184,15 @@ export default function CategoriesScreen() {
           ⚠️ Die Beschriftung sagt „Artikel", nicht „Suchen": `shop.tsx` sucht in
           Angebots-Titeln. Verkäufer findet man auf der Startseite. Ein Feld, das
           mehr verspricht, als es einlöst, ist schlimmer als ein enges. */}
-      <View style={styles.searchRow}>
+      <View key={`search-${fontScale}`} style={styles.searchRow}>
         <Search size={17} color={ui.textMuted} />
         <TextInput
+          allowFontScaling={false}
           value={query}
           onChangeText={setQuery}
           placeholder="Artikel suchen"
           placeholderTextColor={ui.textMuted}
-          style={styles.searchInput}
+          style={[styles.searchInput, { fontSize: 15 * fontScale, minHeight: Math.ceil(20 * fontScale) + 20 }]}
           returnKeyType="search"
           autoCorrect={false}
           autoCapitalize="none"
@@ -222,26 +214,7 @@ export default function CategoriesScreen() {
         ) : null}
       </View>
 
-      {/* Kein sechster Reiter: Unten liegen schon fünf, und „Kategorien" ist
-          dort das längste Wort. Der Einstieg gehört hierher, weil dieser
-          Bildschirm ohnehin die Frage „was gibt es hier überhaupt" beantwortet —
-          „Alles ansehen" ist nur die Antwort ohne Umweg über eine Kachel.
-
-          Wichtig für die Auffindbarkeit: Die Kategorie ist beim Einstellen
-          FREIWILLIG. Ein Angebot ohne Kategorie lag bis hierher in keiner Kachel
-          und war damit für jeden unauffindbar, der den Verkäufer nicht kennt. */}
-      <PressFeedback
-        style={styles.allRow}
-        onPress={() => router.push('/shop')}
-        accessibilityRole="button"
-        accessibilityLabel="Alle Angebote ansehen"
-      >
-        <ShoppingBag size={17} color={ui.text} />
-        <Text style={styles.allText}>Alles ansehen</Text>
-        <ChevronRight size={17} color={ui.textMuted} />
-      </PressFeedback>
-
-      <View style={styles.sortRow}>
+      <View key={`sort-${fontScale}`} style={styles.sortRow}>
         {SORTS.map((option) => {
           const on = option.key === sort;
           return (
@@ -259,6 +232,7 @@ export default function CategoriesScreen() {
       </View>
 
       <FlatList
+        key={`categories-${fontScale}`}
         data={rows}
         keyExtractor={(row) => row.key}
         refreshing={pulling}
@@ -271,11 +245,16 @@ export default function CategoriesScreen() {
           isLoading ? null : (
             <View style={styles.empty}>
               <BerkatMark size={38} color={ui.sunken} />
-              <Text style={styles.emptyTitle}>Keine Kategorien</Text>
+              <Text style={styles.emptyTitle}>{isError ? 'Kategorien gerade nicht erreichbar' : 'Hier entsteht etwas Neues'}</Text>
               <Text style={styles.emptyBody}>
-                Die Liste kommt aus der Datenbank. Fehlt sie, ist die Migration noch nicht
-                eingespielt.
+                {isError ? 'Versuch es noch einmal oder stöbere in allen Angeboten.' : 'Entdecke inzwischen alle Angebote im Marktplatz.'}
               </Text>
+              {isError ? (
+                <PressFeedback onPress={onPull} disabled={pulling} style={styles.allRow}
+                  accessibilityRole="button" accessibilityState={{ busy: pulling, disabled: pulling }}>
+                  <Text style={styles.allText}>{pulling ? 'Wird geladen …' : 'Erneut laden'}</Text>
+                </PressFeedback>
+              ) : null}
             </View>
           )
         }
@@ -425,43 +404,36 @@ const styles = StyleSheet.create({
     marginHorizontal: space.md,
     marginBottom: space.sm,
     paddingHorizontal: space.md,
-    height: 44,
+    minHeight: 44,
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
   },
-  searchInput: { flex: 1, fontSize: 15, color: ui.text, padding: 0 },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 15, color: ui.text, paddingVertical: 10 },
 
   screen: { flex: 1, backgroundColor: ui.bg },
 
-  header: { paddingHorizontal: space.md, paddingTop: space.sm },
-  title: { fontSize: 26, fontWeight: '700', color: ui.text, letterSpacing: -0.4 },
-  subtitle: { fontSize: 13, color: ui.textMuted, marginTop: 2 },
+  header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space.sm, paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.sm },
+  title: { flexGrow: 1, fontSize: 26, fontWeight: '700', color: ui.text, letterSpacing: -0.4 },
 
   allRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    marginHorizontal: space.md,
-    marginBottom: space.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: space.md,
-    borderRadius: radius.md,
-    backgroundColor: ui.card,
-    borderWidth: 1,
-    borderColor: ui.line,
+    minHeight: 44,
+    paddingVertical: space.sm,
   },
-  allText: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
+  allText: { fontSize: 13, fontWeight: '600', color: ui.brand },
 
   sortRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: space.sm,
     paddingHorizontal: space.md,
-    paddingVertical: space.md,
+    paddingBottom: space.md,
   },
   sortChip: {
     paddingHorizontal: space.lg,
-    minHeight: 34,
+    minHeight: 44,
     paddingVertical: space.sm,
     justifyContent: 'center',
     borderRadius: radius.pill,

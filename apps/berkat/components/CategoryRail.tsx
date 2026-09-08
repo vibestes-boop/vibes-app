@@ -29,22 +29,23 @@
 import { useEffect, useRef } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { UsersRound } from 'lucide-react-native';
 import { BerkatMark } from './BerkatMark';
 import { categoryArt } from '../theme/categoryArt';
 import { ui, radius, space } from '../theme/tokens';
 import { PressFeedback } from './PressFeedback';
 import { useReducedMotion } from '../lib/useReducedMotion';
 
-export const RAIL_TALL = 132;
+export const RAIL_TALL = 108;
 export const RAIL_SHORT = 52;
 
 // Leiste und Listenpolster müssen dieselben Maße verwenden.
 export function categoryRailMetrics(fontScale: number) {
   const scale = Math.max(1, fontScale);
   return {
-    tall: RAIL_TALL + Math.ceil(49 * (scale - 1)),
+    tall: RAIL_TALL + Math.ceil(32 * (scale - 1)),
     short: RAIL_SHORT + Math.ceil(18 * (scale - 1)),
-    tileWidth: Math.ceil(96 * scale),
+    tileWidth: Math.ceil(84 * scale),
     pillHeight: 44 + Math.ceil(18 * (scale - 1)),
   };
 }
@@ -67,12 +68,14 @@ export type RailItem = {
   /**
    * Wie viele Artikel dort dauerhaft liegen.
    *
-   * Steht auf der Kachel, wenn keine Show läuft — sonst wäre die Leiste eine
-   * Reihe von Namen ohne jede Auskunft darüber, wo sich das Hinsehen lohnt.
+   * Für die vorgelesene Auskunft. Sichtbare Bestandszahlen stehen im
+   * Kategorien-Tab; die kompakte Startleiste zeigt nur laufende Shows an.
    */
   listingCount?: number;
   /** Der allgemeine Einstieg trägt das Markenzeichen statt Kategorie-Artwork. */
   art?: false;
+  /** Direkter Zugang zu gefolgten Profilen; kein Kategorie-Filter. */
+  following?: boolean;
 };
 
 type Props = {
@@ -147,20 +150,26 @@ export function CategoryRail({ items, active, onSelect, progress, compact, loadi
                 style={[styles.tile, { width: metrics.tileWidth }]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={line ? `${item.name}, ${line}` : item.name}
+                accessibilityLabel={item.following ? 'Gefolgte Profile öffnen' : line ? `${item.name}, ${line}` : item.name}
               >
                 <View style={[styles.tileArt, { backgroundColor: art.tint }, on && styles.tileActive, item.art === false && on && styles.discoveryActive]}>
-                  {item.art === false ? (
-                    <BerkatMark size={34} color={on ? ui.card : ui.brand} />
+                  {item.following ? (
+                    <UsersRound size={28} color={ui.brand} strokeWidth={1.6} />
+                  ) : item.art === false ? (
+                    <BerkatMark size={29} color={on ? ui.card : ui.brand} />
                   ) : art.photo ? (
                     <Image source={art.photo} style={styles.tilePhoto} contentFit="contain" enforceEarlyResizing transition={0} />
                   ) : (
                     <Icon size={30} color={ui.brand} />
                   )}
+                  {item.liveCount > 0 ? (
+                    <View style={styles.liveBadge}>
+                      <Text style={styles.liveText}>Live</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <View style={styles.tileCaption}>
                   <Text numberOfLines={2} style={[styles.tileText, on && styles.tileTextActive]}>{item.name}</Text>
-                  {line ? <Text style={styles.tileCount}>{line}</Text> : null}
                 </View>
               </PressFeedback>
             );
@@ -187,6 +196,7 @@ export function CategoryRail({ items, active, onSelect, progress, compact, loadi
                 style={[styles.pill, { height: metrics.pillHeight }, on && styles.pillActive]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
+                accessibilityLabel={item.following ? 'Gefolgte Profile öffnen' : item.name}
               >
                 <Text numberOfLines={1} style={[styles.pillText, on && styles.pillTextActive]}>
                   {item.name}
@@ -206,10 +216,10 @@ const styles = StyleSheet.create({
   row: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'flex-start' },
   rowShort: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'center', height: RAIL_SHORT },
 
-  tile: { width: 96, alignItems: 'center', gap: 4 },
+  tile: { width: 84, alignItems: 'center', gap: 4 },
   tileArt: {
-    width: 88,
-    height: 72,
+    width: 76,
+    height: 64,
     borderRadius: radius.md,
     borderWidth: 2,
     borderColor: 'transparent',
@@ -220,11 +230,12 @@ const styles = StyleSheet.create({
   tilePhoto: { width: '92%', height: '92%' },
   tileActive: { borderColor: ui.brand },
   discoveryActive: { backgroundColor: ui.brand },
-  tileCaption: { alignItems: 'center', gap: 2 },
+  tileCaption: { alignSelf: 'stretch', alignItems: 'center' },
+  liveBadge: { position: 'absolute', top: 2, right: 2, paddingHorizontal: 5, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: ui.live },
+  liveText: { fontSize: 10, lineHeight: 12, fontWeight: '700', color: ui.liveInk },
   skeletonLabel: { width: 52, height: 12, borderRadius: radius.sm, backgroundColor: ui.sunken, marginTop: 4 },
   tileText: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: ui.text, textAlign: 'center' },
   tileTextActive: { color: ui.brand },
-  tileCount: { fontSize: 11, lineHeight: 15, color: ui.textMuted },
 
   pill: {
     paddingHorizontal: space.lg,

@@ -1,29 +1,16 @@
-// Startseite — der Basar bei Tag.
-//
-// Aufbau nach Whatnot: Suche, Filterreihe, zweispaltiges Raster. Der
-// Verkäufername steht ÜBER der Karte, nicht darunter — bei Live-Shopping kauft
-// man den Menschen, nicht das Bild.
-//
-// SENDET NIEMAND, ZEIGT DAS RASTER DAS REGAL (seit 18.08.2026).
-// Vorher stand hier eine Ähre, ein Satz und ein Knopf, der ins Regal führte.
-// Das war der Zustand, den rund 94 % aller Besucher sehen (HANDOFF 17) — die
-// wichtigste Fläche der App verwies also fast immer auf einen anderen
-// Bildschirm, statt selbst etwas zu zeigen. Aus der Design-Analyse: „Ein Regal
-// erzeugt keine Nachfrage. Es hält Nachfrage, die schon da ist." Wer die App
-// öffnet, HAT Nachfrage; sie einen Tipp weit wegzuschicken verschenkt sie.
-//
-// Die Regel dahinter: Erst die Live-Shows, und nur wenn es keine gibt, die
-// Ware. Nie beides zugleich — eine laufende Sendung ist immer das Wichtigere,
-// und zwei Sorten Karten im selben Raster wären zwei Antworten auf eine Frage.
+// Startseite: Suche und Kategorien führen direkt zu Shows oder Angeboten.
+// Laufende Shows stehen zuerst; der Marktplatz bleibt auch dann erreichbar.
+// Persönliche Werkzeuge teilen sich die vorhandene Navigation. Stories und
+// Termine ergänzen den Feed, ohne den ersten Inhalt nach unten zu verdrängen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, StyleSheet, Text, View, useWindowDimensions, type FlatList } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
-import { useQueryClient } from '@tanstack/react-query';
-import { ActivityIndicator, Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { useIsFocused, useScrollToTop } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowUpRight, Bell, Heart, Lock, MessageSquare, Search, ShoppingBag, UsersRound } from 'lucide-react-native';
+import { ArrowUpRight, Bell, Heart, Lock, MessageSquare, Search, ShoppingBag } from 'lucide-react-native';
 import { useLiveShows, type LiveShow } from '../../lib/useLiveShows';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -62,6 +49,7 @@ import { useReducedMotion } from '../../lib/useReducedMotion';
  * lange gut, wie Name und Schlüssel dasselbe waren.
  */
 const ALL = '__all__';
+const FOLLOWING = '__following__';
 
 // Der Lückenfüller der letzten Reihe. `spacer` ist kein Zierrat, sondern das
 // Kennzeichen, an dem Karte und Platzhalter sicher auseinandergehalten werden.
@@ -87,6 +75,8 @@ export default function HomeScreen() {
   const { tall: RAIL_TALL, short: RAIL_SHORT } = categoryRailMetrics(fontScale);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const listRef = useRef<FlatList<GridItem>>(null);
+  useScrollToTop(listRef);
   const queryClient = useQueryClient();
   // Abzeichen an der Glocke. Scheitert die Abfrage, liefert der Hook 0 — eine
   // fehlende Zahl darf die Startseite nicht mitreißen.
@@ -229,12 +219,23 @@ export default function HomeScreen() {
         a.name.localeCompare(b.name, 'de'),
     );
 
-    return [{ slug: ALL, name: 'Für dich', liveCount: shows.length, art: false }, ...tiles];
+    return [
+      { slug: ALL, name: 'Entdecken', liveCount: shows.length, art: false },
+      { slug: FOLLOWING, name: 'Gefolgt', liveCount: 0, following: true },
+      ...tiles,
+    ];
   }, [shows.length, counted]);
 
-  // Erst ab zwei Kategorien lohnt eine Leiste — vorher gäbe es nichts zu
-  // wählen, und das Polster oben wäre nur Leere.
+  // Die beiden festen Einstiege bleiben auch während leerer Kategorie-Abfragen erreichbar.
   const railOn = categories.length > 1 || categoriesLoading;
+  const selectCategory = useCallback((slug: string) => {
+    if (slug === FOLLOWING) {
+      router.push('/following');
+      return;
+    }
+    setFilter(slug);
+    listRef.current?.scrollToOffset({ offset: 0, animated: !reducedMotion });
+  }, [router, reducedMotion]);
   const scrollY = useRef(new Animated.Value(0)).current;
   const RAIL_TRAVEL = RAIL_TALL - RAIL_SHORT;
   const railShift = scrollY.interpolate({
@@ -410,6 +411,11 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.headerActions}>
+          <PressFeedback onPress={() => router.push('/saved')}
+            style={styles.iconButton} accessibilityRole="button"
+            accessibilityLabel="Merkliste öffnen">
+            <Heart size={21} color={ui.text} />
+          </PressFeedback>
           <PressFeedback
             onPress={() => router.push('/messages')}
             style={[styles.iconButton]}
@@ -444,7 +450,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.searchArea}>
+      <View key={`search-${fontScale}`} style={styles.searchArea}>
         <PressFeedback onPress={() => router.push('/search')}
           accessibilityRole="button" accessibilityLabel="Berkat durchsuchen"
           style={[styles.searchWrap]}>
@@ -465,6 +471,7 @@ export default function HomeScreen() {
           Nach der Liste gerendert, damit sie ohne `zIndex` obenauf liegt. */}
       <View style={styles.listWrap}>
       <Animated.FlatList
+        ref={listRef}
         data={gridData}
         // Regal-Artikel und Shows können dieselbe Position, aber nie dieselbe
         // Liste belegen; das Präfix hält die Schlüssel trotzdem auseinander,
@@ -512,34 +519,6 @@ export default function HomeScreen() {
                   </PressFeedback>
                 </View>
               ) : null}
-              <View style={styles.shortcuts}>
-                <PressFeedback onPress={() => router.push('/saved')}
-                  accessibilityRole="button" accessibilityLabel="Merkliste öffnen"
-                  style={[styles.shortcut]}>
-                  <Heart size={18} color={ui.brand} />
-                  <Text style={styles.shortcutText}>Gemerkt</Text>
-                  <ArrowUpRight size={14} color={ui.textMuted} />
-                </PressFeedback>
-                <PressFeedback onPress={() => router.push('/following')}
-                  accessibilityRole="button" accessibilityLabel="Gefolgte Profile öffnen"
-                  style={[styles.shortcut]}>
-                  <UsersRound size={18} color={ui.brand} />
-                  <Text style={styles.shortcutText}>Gefolgt</Text>
-                  <ArrowUpRight size={14} color={ui.textMuted} />
-                </PressFeedback>
-              </View>
-              <StoryRail
-                groups={storyGroups}
-                myUserId={userId ?? null}
-                busy={createStory.isPending}
-                onOpen={(sellerId) => router.push(`/story/${sellerId}`)}
-                onCreate={() =>
-                  userId
-                    ? void createStory.mutateAsync()
-                    : router.push('/login')
-                }
-              />
-
               {/* Ein Termin gehört zu keiner Kategorie — bei gesetztem Filter
                   wäre der Streifen eine Antwort auf eine nicht gestellte
                   Frage. */}
@@ -557,7 +536,7 @@ export default function HomeScreen() {
                 <View style={styles.shelfHead}>
                   <View style={styles.sectionRow}>
                     <Text accessibilityRole="header" style={styles.shelfTitle}>
-                      {filter === ALL ? 'Entdecken' : categoryNames.get(filter) ?? 'Entdecken'}
+                      {filter === ALL ? 'Neu entdecken' : categoryNames.get(filter) ?? 'Entdecken'}
                     </Text>
                     <PressFeedback
                       onPress={() => router.push(filter === ALL ? '/shop' : `/category/${filter}`)}
@@ -568,7 +547,6 @@ export default function HomeScreen() {
                       <ArrowUpRight size={16} color={ui.brand} />
                     </PressFeedback>
                   </View>
-                  <Text style={styles.shelfBody}>Zum Stöbern. Zum Behalten.</Text>
                 </View>
               ) : null}
               {!idle ? (
@@ -638,7 +616,7 @@ export default function HomeScreen() {
         // schicken hieße, die eben getroffene Wahl wegzuwerfen — und die Zahl
         // daneben wäre die falsche (Gesamtbestand statt Kategorie).
         ListFooterComponent={
-          !browsing || shelf.length === 0 ? null : (
+          !browsing ? null : (
             <View>
               {/* ── ⚠️ DAS REGAL UNTER DEN SENDUNGEN (25.08.2026) ──────────
                   Läuft eine Show, stand hier bisher NICHTS — die Startseite
@@ -653,12 +631,9 @@ export default function HomeScreen() {
                   ⚠️ Die Überschrift steht NUR im Sende-Fall. Ohne Show trägt
                   sie schon der Kopf („Direkt kaufen") — zweimal derselbe Satz auf einem Bildschirm wäre
                   Lärm. */}
-              {!idle ? (
+              {!idle && shelf.length > 0 ? (
                 <View style={styles.shelfHead}>
                   <Text style={styles.shelfTitle}>Direkt kaufen</Text>
-                  <Text style={styles.shelfBody}>
-                    Entdecke Artikel — auch zwischen den Shows.
-                  </Text>
                 </View>
               ) : null}
 
@@ -667,7 +642,7 @@ export default function HomeScreen() {
                   Raster geht nur mit Tricks, die später niemand mehr versteht.
                   Bei höchstens acht Karten (`SHELF_PREVIEW`) kostet das nichts
                   — die lange Liste bleibt oben und damit virtualisiert. */}
-              {!idle ? (
+              {!idle && shelf.length > 0 ? (
                 <View style={styles.footerGrid}>
                   {shelf.map((listing) => (
                     <View key={`foot:${listing.id}`} style={styles.footerCell}>
@@ -677,7 +652,7 @@ export default function HomeScreen() {
                 </View>
               ) : null}
 
-              {filter === ALL ? (
+              {filter === ALL && shelf.length > 0 ? (
                 <UpcomingStrip
                   shows={upcoming}
                   onSelect={(hostId) => router.push(`/seller/${hostId}?tab=shows`)}
@@ -698,7 +673,7 @@ export default function HomeScreen() {
                 </Text>
               </PressFeedback>
             ) : null
-          ) : shopCount > shelf.length ? (
+          ) : shelf.length > 0 && shopCount > shelf.length ? (
             <PressFeedback
               style={[styles.shelfMore]}
               onPress={() => router.push('/shop')}
@@ -708,6 +683,21 @@ export default function HomeScreen() {
               <ShoppingBag size={16} color={ui.text} />
               <Text style={styles.emptyCtaText}>Alle {shopCount} Angebote ansehen</Text>
             </PressFeedback>
+              ) : null}
+              {filter === ALL && (storyGroups.length > 0 || userId) ? (
+                <View style={styles.community}>
+                  <StoryRail
+                    groups={storyGroups}
+                    myUserId={userId ?? null}
+                    busy={createStory.isPending}
+                    onOpen={(sellerId) => router.push(`/story/${sellerId}`)}
+                    onCreate={() =>
+                      userId
+                        ? void createStory.mutateAsync()
+                        : router.push('/login')
+                    }
+                  />
+                </View>
               ) : null}
             </View>
           )
@@ -792,7 +782,7 @@ export default function HomeScreen() {
                 enger werden. */}
             {item.category ? (
               <PressFeedback
-                onPress={() => setFilter(item.category!)}
+                onPress={() => selectCategory(item.category!)}
                 hitSlop={6}
                 accessibilityRole="button"
                 accessibilityLabel={`Nur ${categoryNames.get(item.category) ?? item.category} zeigen`}
@@ -816,7 +806,7 @@ export default function HomeScreen() {
             key={fontScale}
             items={categories}
             active={filter}
-            onSelect={setFilter}
+            onSelect={selectCategory}
             progress={railProgress}
             compact={!reducedMotion && railCompact}
             loading={categoriesLoading}
@@ -834,7 +824,7 @@ const styles = StyleSheet.create({
   loadRetryText: { fontSize: 14, fontWeight: '600', color: ui.brand },
   screen: { flex: 1, backgroundColor: ui.bg },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
     paddingHorizontal: space.lg, paddingTop: space.xs,
   },
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
@@ -862,14 +852,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill, backgroundColor: ui.card,
     borderWidth: 1, borderColor: ui.line,
   },
-  searchPlaceholder: { flex: 1, minWidth: 0, fontSize: 15, color: ui.textMuted, paddingVertical: 10 },
-  shortcuts: { flexDirection: 'row', gap: space.sm, marginBottom: space.md },
-  shortcut: {
-    flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.sm,
-    paddingHorizontal: space.md, paddingVertical: space.sm,
-    borderRadius: radius.md, backgroundColor: ui.card,
-  },
-  shortcutText: { flex: 1, fontSize: 14, fontWeight: '600', color: ui.brand },
+  searchPlaceholder: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20, color: ui.textMuted, paddingVertical: 10 },
+  community: { marginTop: space.xl },
   sectionRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: space.md },
   sectionLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.xs },
   sectionLinkText: { color: ui.brand, fontSize: 13, fontWeight: '600' },
@@ -965,7 +949,7 @@ const styles = StyleSheet.create({
   /* Die Überschrift über der Ware. Kleiner als ein Leerzustand-Titel: Sie
      erklärt eine Fläche, die schon gefüllt ist — sie ist nicht selbst die
      Nachricht. */
-  shelfHead: { paddingTop: space.xs, paddingBottom: space.lg, gap: 2 },
+  shelfHead: { paddingTop: space.xs, paddingBottom: space.sm, gap: 2 },
   shelfTitle: { flexGrow: 1, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, color: ui.text },
   shelfBody: { fontSize: 13, color: ui.textMuted, lineHeight: 18 },
   /* Wie `emptyCta`, nur zentriert unter dem Raster statt in einer leeren

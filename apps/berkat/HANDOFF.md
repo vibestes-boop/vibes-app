@@ -5,6 +5,60 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Startseite und Kategorien nach Whatnot-Vergleich · 09.09.2026
+
+**Aktueller Quellstand enthält eine neue Anordnung; auf dem physischen iPhone
+bleibt Build 7 installiert.** Kein neuer Gerätebuild, keine Veröffentlichung.
+Der Nutzer hat nach dem Whatnot-Vergleich die Umsetzung bestätigt. Diese Runde
+setzt die ersten beiden Prioritäten um: Inhalte früher zeigen und den Bereich
+oberhalb der Kategorien verdichten. Testprodukte bleiben unverändert.
+
+- **Startseite:** Merkliste als Herz mit 44-pt-Ziel in der Kopfzeile; „Gefolgt“
+  als direkter Profileinstieg in der Kategorienleiste. Die separate Shortcut-Zeile
+  entfällt. Stories/Erstellung stehen nach dem Feed; bei Kategorieauswahl werden
+  sie ausgeblendet. Laufende Shows behalten Vorrang, Angebote bleiben darunter.
+- **Kategorie-Leiste:** 108 statt 132 pt Basishöhe, kleinere 3D-Flächen und
+  kontrollierter Beschriftungsumbruch. Bestandszahlen bleiben im Kategorien-Tab
+  und in der vorgelesenen Auskunft; laufende Shows erhalten ein Live-Abzeichen.
+  Scrollgebundene native Transformation/Überblendung und frühe Bildverkleinerung
+  bleiben erhalten. Kategorieauswahl und erneuter Tipp auf den Start-Tab führen
+  zum Listenanfang. „Gefolgt“ löst keinen Kategorie-Query aus.
+- **Ehrliche Beschriftung:** allgemeiner Einstieg jetzt „Entdecken“, Abschnitt
+  „Neu entdecken“. Die Auswahl ist weiterhin allgemein/nach Erstellungsdatum;
+  eine persönliche Empfehlungslogik wurde in dieser Runde nicht eingebaut.
+- **Kategorien:** „Alle Angebote“ direkt neben der Überschrift, zusätzlicher
+  Erklärungssatz und große Gesamt-Kachel entfallen. Zwei Spalten und zwölf
+  3D-Motive bleiben. Sortierziele mindestens 44 pt. Fehler-/Leertext enthält keine
+  Datenbank-/Migrationsanweisungen mehr; Fehler bietet erneutes Laden.
+- **Große Schrift:** Home-Suchfeld wächst mit, Kategorie-Eingabe skaliert explizit.
+  Kopf, Sortierung und Kategorienliste werden bei Schriftwechsel neu vermessen,
+  damit nach dem Zurückstellen keine gemischten alten Textgrößen bleiben.
+  Gewählte Kategorie/Sortierung und Suchwert bleiben im Bildschirmzustand.
+
+**Prüfung:** TypeScript, 195 bestehende Tests und lokaler iOS-/Hermes-Export
+bestanden. Native Sicht-/Bedienprüfung auf iPhone-17-Simulator/iOS 26.3:
+frischer App-Start, Merkliste, Gefolgt, Kategorieauswahl samt Zurücksetzen,
+kompakte Scroll-Leiste, erneuter Start-Tab-Tipp, Kategorie-Aufklappen und
+Story-Zugang am Feed-Ende. Systemschrift `extra-large` und
+`accessibility-extra-large`, anschließend `extra-large` wiederhergestellt.
+Keine Performance-/Retention-Verbesserung aus dieser Sichtprüfung ableiten;
+der echte Live-Zustand wurde hier nicht mit einer laufenden Sendung geprüft.
+
+Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-home-hierarchy`
+(Vorher/Nachher, große Schrift, Scroll-/Story-/Unterkategorie-Zustände,
+TypeScript/Test-/Exportlogs, lokaler iOS-Export, README).
+
+**Nächste Schritte:**
+1. Relevante Auswahl aus ausdrücklich gewählten Interessen und gefolgten
+   Verkäufern entwerfen, mit guter allgemeiner Auswahl für neue Nutzer. Vorhandene
+   Merkliste, gespeicherte Suchen, Folgen und Terminerinnerungen nutzen; nicht
+   nochmals als fehlende Funktionen einplanen.
+2. Passende neue Inhalte/Termine mit diesen Einstiegen verbinden. Stories stehen
+   aktuell nach bis zu acht Angeboten; die Position anhand von Nutzung prüfen.
+3. Neue Anordnung mit/ohne Live, ohne Anmeldung und bei wenig Inhalt abnehmen;
+   dann nächsten signierten iPhone-Testbuild erstellen. Build-7-Messung ist kein
+   Messnachweis für diesen neuen Quellstand.
+
 ## Bildverarbeitung · Build 7 installiert und kontrolliert · 08./09.09.2026
 
 Die aus der Build-6-Spur abgeleitete Korrektur ist im Quellcode umgesetzt:
