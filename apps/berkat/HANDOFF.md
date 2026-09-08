@@ -5,7 +5,7 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
-## Bildverarbeitung · Vorbereitung Build 7 · 08.09.2026
+## Bildverarbeitung · Build 7 installiert und kontrolliert · 08./09.09.2026
 
 Die aus der Build-6-Spur abgeleitete Korrektur ist im Quellcode umgesetzt:
 `ProductPhoto` besitzt eine optionale `thumbnail`-Einstellung. Die gemeinsame
@@ -13,8 +13,8 @@ Die aus der Build-6-Spur abgeleitete Korrektur ist im Quellcode umgesetzt:
 3D-Bilder in `CategoryRail`/Kategorien verwenden auf iOS `enforceEarlyResizing`.
 Damit bekommt der vorhandene Bildlader die Zielgröße schon beim Laden, statt
 erst das vollständige Bild auf dem Hauptthread zu verkleinern. Galerie-Bilder
-behalten den bisherigen Standardpfad. Bilddateien, Layout, Cache-/Retry-
-Verhalten und Bibliotheksversionen wurden nicht geändert.
+behalten den bisherigen Standardpfad. Bilddateien, Layout, Cache-Richtlinie,
+Retry-Logik und Bibliotheksversionen wurden nicht geändert.
 
 **Prüfungen:** 195 bestehende Tests, TypeScript und `git diff --check` bestanden.
 Native Sichtprüfung auf iPhone-17-Simulator/iOS 26.3: transparentes PNG mit
@@ -25,16 +25,45 @@ Lader meldet bei kleinen Flächen reduzierte Bildabmessungen. Keine Aussage
 über Pixelgleichheit oder jedes denkbare Format. Die temporäre Prüfansicht
 wurde vor dem Release-Build entfernt.
 
-Buildnummer 7 ist in `app.json` und der ignorierten nativen `Info.plist`
-vorbereitet. Release-Build läuft mit vorhandenem Cache; Installations-/
-Messstatus wird nach Abschluss ergänzt. **Die Build-6-Messwerte unten sind
-noch kein Nachweis einer Verbesserung durch diese Änderung.** Nach Installation
-dieselbe Home/Kategorien-Strecke mit warmen Caches prüfen; gestenbedingte
-Abweichungen bei einer manuellen Messung berücksichtigen.
+**Quellstand `5f47245`, Build 7 erfolgreich als Update auf dem iPhone 16 Pro
+installiert und ohne Metro-URL gestartet.** Xcode-Release-Build, strikte
+Signaturprüfung, Geräte-/Versionsprüfung und IPA-Integrität bestanden.
+Zwölf 3D-Motive hashgleich, temporäre Prüfansicht nicht im Paket. Die
+Schlüsselbundfreigabe wurde bestätigt. Prozess 66196 lief nach der Messung
+weiter. Buildnummer 7 steht in `app.json` und der ignorierten nativen
+`Info.plist`; lokales `EXUpdatesEnabled=false` bleibt bestehen.
+
+**Physische Kontrollmessung (08.09., 23:54:59–23:55:35):** Home und Kategorien
+manuell durchgescrollt, Nutzer bestätigt „Beide getestet, flüssig und Bilder
+unauffällig“. Instruments Animation Hitches + Activity Monitor, USB,
+**36,187 s**, **2 Hitches zu je 12,502 ms**, **keine erkannten potenziellen
+Interaktionsverzögerungen >33 ms**. Export und Instruments-UI stimmen überein.
+Physical Footprint: Anfang **80,407 MiB**, Spitze **87,985 MiB**, Ende
+**82,110 MiB**, 34 Stichproben. Der zuvor auffällige
+`resize(image:toSize:scale:)` erscheint in **0 von 3482 Hauptthread-
+Stichproben**; in der gesamten Build-6-Spur waren es 133 von 3688.
+
+**Positives Kontrollresultat, kein kontrollierter Prozentvergleich:**
+Build 6 dauerte 66,142 s, Build 7 36,187 s; manuelle Gesten, Cache-Zustand
+und thermischer Zustand (Fair → Nominal) unterscheiden sich. Keine FPS,
+garantierte Beseitigung sämtlicher Resize-Arbeit oder Leckfreiheit ableiten.
+Die Aufnahme wurde wegen begrenztem temporären Mac-Plattenplatz verkürzt.
+Der 40-s-Vorcheck stoppte vor Aufnahme; anschließend 35-s-Limit mit ausreichend
+freiem Platz. Exporte diesmal einzeln erfolgreich. Nur die geschlossene
+eigene temporäre Rohdatei nach gesicherter Aufnahme bereinigt, Trace behalten.
+
+**Fortsetzung:** Build 7 als aktuellen Alltags-/UI-Teststand nutzen. Bei
+weiterer Performance-Arbeit mehrere identische Home/Kategorien-Zyklen mit
+festen Gesten- und Ruhephasen sowie gleichem thermischen Zustand vergleichen.
+Langzeit-Speicherverhalten und echte Live-Übertragung bleiben offen. Keine
+Produktkorrektheitsprüfung. Keine Veröffentlichung oder Git-Push.
 
 Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-image-resizing-build-7`
 (Sichtprüfung, Fixture, Tests, TypeScript, Quell-Hashes); Paket/Buildlog:
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-7`.
+Native Kontrollspur, Auswertung und Vergleich der Resize-Stichproben:
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-scroll-memory-build-7`
+(`README.md`, `scroll-01-summary.json`, `resize-comparison.json`, XML, `.trace`).
 
 ## Scrollen und Speicher · Build 6 · 08.09.2026
 
@@ -67,7 +96,8 @@ Variante prüfen. Galerie, Schärfe, Ausschnitt und dynamische Größenänderung
 beachten. Danach dieselbe Strecke mit warmen Caches und klaren Ruhephasen
 wiederholen; mehrere Home/Kategorien-Wechsel auf verbleibendes Speicherwachstum
 prüfen. Keine Produktdaten-/Bildinhaltsprüfung, kein pauschaler Bibliothekspatch.
-**Noch keine Resize-Korrektur oder Vorher-/Nachher-Verbesserung umgesetzt.**
+Die daraus abgeleitete Bildlader-Variante ist inzwischen in Build 7 umgesetzt
+und oben dokumentiert; ein kontrollierter Prozentvergleich bleibt offen.
 
 Nachweise und Wiederholung:
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-scroll-memory-build-6`
