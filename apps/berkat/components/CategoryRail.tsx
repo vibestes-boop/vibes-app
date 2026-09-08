@@ -153,7 +153,7 @@ export function CategoryRail({ items, active, onSelect, progress, compact, loadi
                   {item.art === false ? (
                     <BerkatMark size={34} color={on ? ui.card : ui.brand} />
                   ) : art.photo ? (
-                    <Image source={art.photo} style={styles.tilePhoto} contentFit="contain" transition={0} />
+                    <Image source={art.photo} style={styles.tilePhoto} contentFit="contain" enforceEarlyResizing transition={0} />
                   ) : (
                     <Icon size={30} color={ui.brand} />
                   )}

@@ -144,7 +144,7 @@ export function ListingCard({
           accessibilityLabel={label}
         >
           <View style={[s.rowThumb, layout === 'search' && s.searchPhoto]}>
-            <ProductPhoto uri={listing.image_url} style={StyleSheet.absoluteFill} compact />
+            <ProductPhoto uri={listing.image_url} style={StyleSheet.absoluteFill} compact thumbnail />
           </View>
 
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -212,7 +212,7 @@ export function ListingCard({
       accessibilityLabel={label}
     >
       <View style={s.thumb}>
-        <ProductPhoto uri={listing.image_url} style={StyleSheet.absoluteFill} />
+        <ProductPhoto uri={listing.image_url} style={StyleSheet.absoluteFill} thumbnail />
         {listing.women_only ? (
           <View style={s.lock}>
             <Lock size={11} color={ui.successInk} />

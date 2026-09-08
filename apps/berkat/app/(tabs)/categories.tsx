@@ -315,6 +315,7 @@ export default function CategoriesScreen() {
                             source={art.photo}
                             style={styles.tilePhoto}
                             contentFit="contain"
+                            enforceEarlyResizing
                             transition={0}
                           />
                         ) : (

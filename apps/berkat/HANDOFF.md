@@ -5,6 +5,37 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Bildverarbeitung · Vorbereitung Build 7 · 08.09.2026
+
+Die aus der Build-6-Spur abgeleitete Korrektur ist im Quellcode umgesetzt:
+`ProductPhoto` besitzt eine optionale `thumbnail`-Einstellung. Die gemeinsame
+`ListingCard` aktiviert sie für Raster, Such- und Listenbilder. Diese und die
+3D-Bilder in `CategoryRail`/Kategorien verwenden auf iOS `enforceEarlyResizing`.
+Damit bekommt der vorhandene Bildlader die Zielgröße schon beim Laden, statt
+erst das vollständige Bild auf dem Hauptthread zu verkleinern. Galerie-Bilder
+behalten den bisherigen Standardpfad. Bilddateien, Layout, Cache-/Retry-
+Verhalten und Bibliotheksversionen wurden nicht geändert.
+
+**Prüfungen:** 195 bestehende Tests, TypeScript und `git diff --check` bestanden.
+Native Sichtprüfung auf iPhone-17-Simulator/iOS 26.3: transparentes PNG mit
+Contain, breites/hohes SVG mit Cover jeweils im Vergleich, vergrößerte
+Bildfläche, echte Kartenansicht → große Galerie und echtes Kategorienraster.
+Kein auffälliger Ausschnitt-/Transparenzfehler in den geprüften Beispielen;
+Lader meldet bei kleinen Flächen reduzierte Bildabmessungen. Keine Aussage
+über Pixelgleichheit oder jedes denkbare Format. Die temporäre Prüfansicht
+wurde vor dem Release-Build entfernt.
+
+Buildnummer 7 ist in `app.json` und der ignorierten nativen `Info.plist`
+vorbereitet. Release-Build läuft mit vorhandenem Cache; Installations-/
+Messstatus wird nach Abschluss ergänzt. **Die Build-6-Messwerte unten sind
+noch kein Nachweis einer Verbesserung durch diese Änderung.** Nach Installation
+dieselbe Home/Kategorien-Strecke mit warmen Caches prüfen; gestenbedingte
+Abweichungen bei einer manuellen Messung berücksichtigen.
+
+Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-image-resizing-build-7`
+(Sichtprüfung, Fixture, Tests, TypeScript, Quell-Hashes); Paket/Buildlog:
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-7`.
+
 ## Scrollen und Speicher · Build 6 · 08.09.2026
 
 **Startseite und Kategorien wurden auf dem iPhone 16 Pro manuell durchgescrollt.**

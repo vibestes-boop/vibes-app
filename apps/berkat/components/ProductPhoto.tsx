@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Image } from 'expo-image';
 import { ActivityIndicator, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
 import { Camera } from 'lucide-react-native';
 import { radius, space, ui } from '../theme/tokens';
 import { PressFeedback } from './PressFeedback';
@@ -10,6 +10,8 @@ type Props = {
   style: StyleProp<ViewStyle>;
   contentFit?: 'cover' | 'contain';
   compact?: boolean;
+  /** Fixed card preview: decode near its display size; galleries keep full sources. */
+  thumbnail?: boolean;
   retry?: boolean;
   accessibilityLabel?: string;
   priority?: 'low' | 'normal' | 'high';
@@ -27,7 +29,7 @@ function Photo(props: Props) {
   return <PhotoAttempt key={attempt} {...props} onRetry={() => setAttempt(value => value + 1)} />;
 }
 
-function PhotoAttempt({ uri, style, contentFit = 'cover', compact = false, retry = false, accessibilityLabel,
+function PhotoAttempt({ uri, style, contentFit = 'cover', compact = false, thumbnail = false, retry = false, accessibilityLabel,
   priority = 'normal', onRetry }: Props & { onRetry: () => void }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>(uri ? 'loading' : 'failed');
   const [showLoading, setShowLoading] = useState(false);
@@ -51,6 +53,8 @@ function PhotoAttempt({ uri, style, contentFit = 'cover', compact = false, retry
           cachePolicy="memory-disk"
           recyclingKey={uri}
           priority={priority}
+          // Avoid resizing the full bitmap on iOS's main thread after cache loading.
+          enforceEarlyResizing={thumbnail}
           allowDownscaling
           transition={0}
           accessible={Boolean(accessibilityLabel) && status === 'ready'}
