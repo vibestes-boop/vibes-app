@@ -5,41 +5,52 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
-## Gerätebuild 5 · in Vorbereitung · 08.09.2026
+## Aktueller Gerätebuild 5 · installiert · 08.09.2026
 
-Der Nutzer hat nach Abschluss von Schritt 2 die Weiterarbeit beauftragt.
-`app.json` und die ignorierte native `ios/Berkat/Info.plist` tragen jetzt
-**Version 1.0.0 (5)**. UI-Quellstand: `2e69cee`. Native Komponenten und
-Hermes-Bundle sind gebaut; **Xcode wartet bei `codesign` noch auf die
-Schlüsselbundfreigabe. Build 5 ist noch nicht installiert oder als fertiges
-signiertes IPA gesichert.** Das gekoppelte iPhone 16 Pro wurde inzwischen
-erreicht; `devicectl` bestätigt weiterhin die installierte Version 1.0.0 (4).
+**Berkat 1.0.0 (5) ist auf dem iPhone 16 Pro installiert und ohne Metro-URL
+gestartet.** UI-Quellstand: `2e69cee`; Buildnummer und Vorbereitung: `04df243`.
+Die bestehende App wurde aktualisiert, nicht deinstalliert. `devicectl`
+bestätigt die installierte Version 5 und den nach dem Start weiterhin laufenden
+Berkat-Prozess. Anmeldung, einzelne gespeicherte Einstellungen, physische
+Sicht-/Gestenprüfung und Leistungsbenchmark wurden dabei nicht geprüft.
 
-Vor Signierabschluss geprüft: Version 5, eingebettetes Hermes-Bundle mit neuer
-Story-/Sheet-Kopie, temporäre Prüfansicht abwesend, alle zwölf 3D-Kategoriemotive
-hashgleich zur Quelle, gültiges Provisioning-Profil mit Testgerät und lokal
-deaktivierte OTA-Updates. Der vorhandene Pod-Lock stimmt mit dem Manifest
-überein; für die reine Buildnummer wurde kein neuer Prebuild ausgeführt.
+Build 5 enthält die bisherigen 3D-Motive und Hauptbereiche sowie **Schritt 2:
+Sheets, Stories und Live-Bedienelemente**. Es startet mit eingebettetem Code
+ohne Mac/Metro; Serverinhalte benötigen weiterhin Internet.
 
-Build läuft in Xcode Release/iphoneOS mit bestehendem Apple-Development-Team,
-Sentry-Upload deaktiviert. Alle Nachweise und der wiederverwendbare Buildcache:
+**Prüfungen:** Xcode-Release-Build erfolgreich, `codesign --verify --deep
+--strict` bestanden. Version 5, Hermes-Bundle mit neuer Story-/Sheet-Kopie,
+temporäre Prüfansicht abwesend, zwölf 3D-Kategoriemotive hashgleich zur Quelle,
+gültiges Provisioning-Profil mit Testgerät und lokal deaktivierte OTA-Updates
+am fertigen Paket geprüft. IPA erstellt, ZIP-Integrität und SHA-256 gesichert.
+Die 185 Tests, TypeScript und der iOS-Export zum UI-Quellstand sind im folgenden
+Abschnitt dokumentiert; danach wurde nur die iOS-Buildnummer geändert.
+
+Native Vorbereitung: vorhandener Pod-Lock und Manifest stimmen überein,
+kein neuer Prebuild nötig. Xcode Release/iphoneOS, bestehendes Apple-Development-
+Team, Sentry-Upload deaktiviert. Die zuvor wartende Schlüsselbundsignierung ist
+abgeschlossen. `EXUpdatesEnabled=false` bleibt nur im ignorierten lokalen
+nativen Projekt; ein neuer Prebuild kann das überschreiben. `app.json` behält
+die bisherige Updates-Konfiguration. Keine OTA-/Store-Veröffentlichung oder Push.
+
+IPA, Signatur-/Bundle-/Gerätenachweise, Wiederholungsanleitung und Buildcache:
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-5`.
-`build.log` und `Build.xcresult` gehören zu diesem Durchgang;
-`verify-bundle.py` erzeugt `bundle-verification.json`. Der Nutzer wurde gebeten,
-einen angezeigten macOS-Dialog selbst zu bestätigen; Computerzugriff auf den
-geschützten `SecurityAgent` wurde vom Werkzeug aus Sicherheitsgründen verweigert.
 
-**Fortsetzung:** Signierabschluss abwarten, `codesign --verify --deep --strict`
-prüfen, das App-Paket über die bestehende Installation auf dem iPhone
-aktualisieren, ohne Metro-URL starten und installierte Version/Prozess prüfen.
-Anschließend IPA sichern und diesen Abschnitt auf das tatsächliche Ergebnis
-aktualisieren. Keine Deinstallation, OTA-/Store-Veröffentlichung oder Git-Push.
+**Jetzt testen:** App vom Home-Bildschirm öffnen, Hauptbereiche wechseln,
+Profilformular mit Tastatur öffnen/abbrechen und Stories pausieren/weiterblättern.
+Danach größere Systemschrift und „Bewegung reduzieren“ ausprobieren. Rückmeldung
+zur App-Darstellung und zum Bediengefühl aufnehmen und gezielt nachbessern.
+Echte Live-Übertragung, Kamera/Mikrofon, Mini-Player-Wiederverbindung, höchste
+Schriftgrößen, Android und Startzeit-/FPS-Messungen bleiben separat offen.
+Ein laufender Prozess ersetzt keine physische Sichtprüfung. Weiterhin keine
+Prüfung von Testprodukt-Texten oder -Bildern.
 
 ## Arbeitsstand · Schritt 2 · 08.09.2026
 
 **Schritt 2 ist im Quellcode umgesetzt und im iOS-Simulator geprüft.** Dieses
-Paket folgt auf `578c58e`; es ist noch nicht im installierten iPhone-Build 4
-enthalten. Der Fokus bleibt die App selbst, nicht die Richtigkeit der Testprodukte.
+Paket folgt auf `578c58e`, ist in `2e69cee` gesichert und inzwischen im oben
+dokumentierten iPhone-Build 5 enthalten. Der Fokus bleibt die App selbst,
+nicht die Richtigkeit der Testprodukte.
 
 - Elf Sheets verwenden `SheetHeader`, mindestens 44 pt große Schließen-Ziele,
   gemeinsame Typografie und `PressFeedback`: ProfileEdit, Highlight, Review,
@@ -72,19 +83,20 @@ Verkäufer-Kennzahlen nach Layoutkorrektur. Profil mit festem Aktionsbereich
 abschließend geprüft. Live-Host-Steuerung nur ohne aktive Übertragung gesichtet.
 Die temporäre lokale Prüfansicht wurde vor dem finalen Export entfernt;
 Systemschrift auf `extra-large` zurückgestellt und normale Startseite geöffnet.
-Keine Backend-Schreibaktionen, neue Abhängigkeiten, OTA oder native Installation.
+Im Simulator-Durchgang keine Backend-Schreibaktionen, neuen Abhängigkeiten,
+OTA oder native Installation; die spätere Geräteinstallation steht oben.
 
 Nachweise, Screenshots und Grenzen der Prüfung:
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-sheets-story-live-quality`.
 
-**Fortsetzung:** Einen neuen lokal signierten iPhone-Testbuild mit diesem
-UI-Paket erstellen und auf dem iPhone 16 Pro prüfen. Danach Rückmeldung zu
-Bedienung und Wirkung einarbeiten. Echte Live-Übertragung, Kamera/Mikrofon,
+**Fortsetzung:** Den inzwischen installierten Build 5 auf dem iPhone 16 Pro
+physisch prüfen und Rückmeldung zu Bedienung und Wirkung einarbeiten.
+Echte Live-Übertragung, Kamera/Mikrofon,
 Mini-Player-Wiederverbindung, höchste Schriftgrößen, Android und Startzeit-/FPS-
 Messungen sind noch offen. Ein Export oder Simulator-Test ersetzt diese
 Geräteprüfungen nicht; Aussagen zur tatsächlichen Nutzerbindung sind ungemessen.
 
-## Aktueller Teststand · 08.09.2026
+## Vorheriger Teststand · Build 4 · 08.09.2026
 
 Der Nutzer möchte die bisherige Modernisierung sichern und auf seinem iPhone
 testen. Commit `089ce32` auf Branch `berkat` sichert die Modernisierung:
@@ -94,7 +106,7 @@ zustände, fokusgebundene Abfragen, Pagination, Galerie/Bildladen sowie
 gemeinsames Druckfeedback und reduzierte Bewegung. Die Detailnachweise folgen
 weiter unten. Keine Änderungen außerhalb `apps/berkat` in diesem Checkpoint.
 
-**Jetzt auf dem iPhone:** Berkat `com.berkat.app`, **Version 1.0.0 (4)**,
+**Damals auf dem iPhone:** Berkat `com.berkat.app`, **Version 1.0.0 (4)**,
 als lokal gebauter, mit Apple Development signierter **Release-Build** auf
 dem iPhone 16 Pro installiert und ohne Metro-URL gestartet. `devicectl`
 bestätigt die installierte Buildnummer und den laufenden Berkat-Prozess
@@ -143,7 +155,7 @@ IPA, kompakte Nachweise und Wiederholungsanleitung sind dauerhaft gesichert:
 
 **Danach:** Die Weiterarbeit an Sheets und Story-/Live-Ansichten ist im Abschnitt
 „Arbeitsstand · Schritt 2“ oben dokumentiert. Build 4 enthält sie noch nicht;
-für die nächste Geräteprüfung muss ein neuer Testbuild installiert werden.
+der inzwischen installierte Build 5 ist im obersten Abschnitt dokumentiert.
 Historische „Nächster Schritt“-Angaben in älteren Einträgen sind durch den
 obersten Arbeitsstand ersetzt. Weiterhin keine Prüfung der Testprodukt-Richtigkeit.
 
