@@ -36,7 +36,9 @@ Auth-/Profilantworten mit tatsächlichem Modul und Zustandsverwaltung; keine
 echten Kontowechsel oder Produktprüfungen. Derzeit wird **Build 6** mit dieser
 Korrektur gebaut. Native Komponenten und Bundle sind fertig; `codesign` wartet
 erneut auf den macOS-Schlüsselbunddialog. **Auf dem iPhone bleibt bis zum
-bestätigten Installationsnachweis Build 5.**
+bestätigten Installationsnachweis Build 5.** Das erneute reguläre Öffnen nach
+den Instruments-Aufzeichnungen wurde wegen gesperrtem iPhone abgelehnt
+(`restored-build-5.log`); der Start nach der Messung ist damit nicht bestätigt.
 
 Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-device-performance`
 (`README.md`, `startup-baseline.json`, drei `.trace`-Dateien, Tests/TypeScript).
@@ -46,8 +48,9 @@ Der native Build verwendet den wiederverwendbaren `DerivedData/`-Cache unter
 `berkat-iphone-build-5`; dessen unverändertes Build-5-Paket bleibt in `Payload/`
 und IPA gesichert. Noch keine Veröffentlichung oder Git-Push.
 
-**Fortsetzung:** Signierung abschließen, Build 6 prüfen und über die vorhandene
-App installieren, regulären Start bestätigen. Anschließend Zeit bis zur
+**Fortsetzung:** Schlüsselbundfreigabe am Mac abschließen, iPhone entsperren,
+Build 6 prüfen und über die vorhandene App installieren, regulären Start bestätigen.
+Anschließend Zeit bis zur
 tatsächlich bedienbaren Startseite und eine feste Scroll-Strecke mit Hänger-/
 Speichermessung untersuchen. Die obigen Startwerte gehören zu Build 5.
 
