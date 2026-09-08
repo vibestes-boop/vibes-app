@@ -5,6 +5,48 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Scrollen und Speicher · Build 6 · 08.09.2026
+
+**Startseite und Kategorien wurden auf dem iPhone 16 Pro manuell durchgescrollt.**
+Nutzerbestätigung: „Beide getestet, wirkte flüssig.“ Instruments „Animation
+Hitches“ plus „Activity Monitor“, USB, installierter Release-Build 6, an den
+bereits laufenden Prozess angehängt. Aufnahme 23:26:23–23:27:29, **66,142 s**.
+
+- **5 kurze Hitches**, zusammen **70,845 ms**, Maximum **20,837 ms**.
+  Export und Instruments-UI stimmen bei Anzahl, Dauer und Berkat-PID überein.
+- Zwei „Potential Interaction Delay“-Ereignisse: **52,867 / 40,452 ms**.
+  Bei diesen Blockaden enthalten **48/48 bzw. 37/39 Hauptthread-Stichproben**
+  den Aufruf `resize(image:toSize:scale:)`. Kette: SDWebImage → expo-image
+  `imageLoadCompleted` → `processImage` → `UIGraphicsImageRenderer`.
+  Lokaler expo-image-Quellcode bestätigt diesen Resize-Pfad. Konkrete Bild-URL
+  oder React-Komponente ist aus der Spur nicht bestimmt.
+- **Physical Footprint:** Anfang **62,610 MiB**, Spitze **154,251 MiB**,
+  Ende **128,063 MiB**, 60 Stichproben. Nach der Spitze fällt der Wert wieder;
+  Restanstieg **65,453 MiB**. Ein Durchgang beweist kein Speicherleck und
+  schließt keines aus. Thermischer Gerätezustand durchgehend **Fair**.
+- Nutzer führte die Gesten nach Ansagen aus; genaue Tab-/Gestenmarker und
+  eine abschließende Ruhephase sind nicht verlässlich erfasst. **Keine FPS,
+  animationsbezogene Hitch-Rate oder genaue Tab-Zuordnung behaupten.**
+  Der Berkat-Prozess lief nach der Aufzeichnung weiter.
+
+**Konkrete Fortsetzung:** Den gemessenen Hauptthread-Resize bei Bildanzeige
+reduzieren. Zuerst die auslösende Ansicht eingrenzen; vorhandenes
+`enforceEarlyResizing` für feste Karten-/Thumbnail-Flächen als begrenzte
+Variante prüfen. Galerie, Schärfe, Ausschnitt und dynamische Größenänderungen
+beachten. Danach dieselbe Strecke mit warmen Caches und klaren Ruhephasen
+wiederholen; mehrere Home/Kategorien-Wechsel auf verbleibendes Speicherwachstum
+prüfen. Keine Produktdaten-/Bildinhaltsprüfung, kein pauschaler Bibliothekspatch.
+**Noch keine Resize-Korrektur oder Vorher-/Nachher-Verbesserung umgesetzt.**
+
+Nachweise und Wiederholung:
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-scroll-memory-build-6`
+(`README.md`, `.trace`, XML, `scroll-01-summary.json`, Speicher-CSV,
+`scroll-01-main-thread-spike.json`, `protocol.json`, Auswertungsskript).
+Erster paralleler Export scheiterte an temporärem Plattenplatz; nur zwei
+geschlossene Rohdateien der eigenen Aufnahmen bereinigt, gespeicherte Traces
+behalten. Einzelner Export danach erfolgreich. Künftig Exporte seriell starten.
+In diesem Schritt nur Messung/Dokumentation; **Build 6 bleibt installiert**.
+
 ## Startmessung und Sitzungsstart · 08.09.2026
 
 **Drei native Startaufzeichnungen von Build 5 auf dem iPhone 16 Pro sind
