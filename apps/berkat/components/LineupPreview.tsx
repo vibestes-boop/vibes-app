@@ -18,6 +18,7 @@
 // die Glocke („sag mir, wenn der drankommt") und das Vorabgebot sitzen werden.
 
 import { useState } from 'react';
+
 import {
   Modal,
   Pressable,
@@ -27,10 +28,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+
 import { Bell, BellRing, Gavel, X } from 'lucide-react-native';
 
+import { SheetHeader } from './SheetHeader';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { formatEuro } from '../lib/useAuction';
 import type { PreparedAuction } from '../lib/usePrepared';
 import { prebidErrorText, useMyPrebid, usePrebidActions } from '../lib/usePrebid';
@@ -47,6 +52,7 @@ type Props = {
 };
 
 export function LineupPreview({ items, when }: Props) {
+  const reducedMotion = useReducedMotion();
   const [peek, setPeek] = useState<PreparedAuction | null>(null);
   if (items.length === 0) return null;
 
@@ -95,22 +101,12 @@ export function LineupPreview({ items, when }: Props) {
 
       <Modal
         visible={peek !== null}
-        animationType="slide"
+        animationType={reducedMotion ? 'none' : 'slide'}
         presentationStyle="pageSheet"
         onRequestClose={() => setPeek(null)}
       >
         <View style={s.sheet}>
-          <View style={s.sheetHead}>
-            <Text style={s.sheetTitle}>Kommt in der Show</Text>
-            <Pressable
-              hitSlop={10}
-              onPress={() => setPeek(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Schließen"
-            >
-              <X size={22} color={ui.text} />
-            </Pressable>
-          </View>
+          <SheetHeader title="Kommt in der Show" onClose={() => setPeek(null)} />
 
           {peek ? (
             <ScrollView contentContainerStyle={{ paddingBottom: space.xl }}>
@@ -120,7 +116,7 @@ export function LineupPreview({ items, when }: Props) {
                     source={{ uri: peek.image_url }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
-                    transition={160}
+                    transition={reducedMotion ? 0 : 160}
                   />
                 ) : (
                   <BerkatMark size={44} color={ui.lineStrong} />

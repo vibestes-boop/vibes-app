@@ -17,19 +17,17 @@
 // Erfolgs-Hinweis wäre die Bestätigung von etwas, das man gerade sieht.
 
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+
+import { useWindowDimensions, ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
 import { Image } from 'expo-image';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Package } from 'lucide-react-native';
 
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { formatEuro } from '../lib/useAuction';
 import { useSellerListings } from '../lib/useListings';
 import { shelfBridgeErrorText, useShelfBridge } from '../lib/useShelfBridge';
@@ -51,6 +49,8 @@ type Props = {
 };
 
 export function ShelfPickSheet({ visible, onClose, sellerId, target, targetLabel }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { data: listings, isLoading } = useSellerListings(sellerId ?? undefined);
   const { toShow } = useShelfBridge();
@@ -75,28 +75,16 @@ export function ShelfPickSheet({ visible, onClose, sellerId, target, targetLabel
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       <View style={s.root}>
         <Pressable style={s.backdrop} onPress={onClose} />
-        <View style={[s.sheet, { paddingBottom: insets.bottom || space.md }]}>
-          <View style={s.grabber} />
-          <View style={s.head}>
-            <View style={s.headText}>
-              <Text style={s.title}>Aus dem Regal holen</Text>
-              <Text style={s.sub}>{targetLabel}</Text>
-            </View>
-            {/* „Fertig" statt ✕ — aus demselben Grund wie im Vorbereiten-Blatt:
-                Jeder Tipp auf eine Zeile hat den Artikel bereits verschoben.
-                Ein ✕ würde behaupten, man könne das hier noch verwerfen. */}
-            <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Fertig">
-              <Text style={s.done}>Fertig</Text>
-            </Pressable>
-          </View>
+        <View style={[s.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+          <SheetHeader title="Aus dem Regal holen" subtitle={targetLabel} onClose={onClose} closeLabel="Fertig" closeText="Fertig" />
 
           {notice ? (
-            <Pressable style={s.notice} onPress={() => setNotice(null)}>
-              <Text style={s.noticeText}>{notice}</Text>
-            </Pressable>
+            <PressFeedback style={s.notice} onPress={() => setNotice(null)}>
+              <Text key={`copy-0-${fontScale}`} style={s.noticeText}>{notice}</Text>
+            </PressFeedback>
           ) : null}
 
           {isLoading ? (
@@ -108,8 +96,8 @@ export function ShelfPickSheet({ visible, onClose, sellerId, target, targetLabel
               <Package size={26} color={ui.textMuted} />
               {/* Warm und handlungsleitend statt „Keine Artikel" — dieselbe
                   Regel wie überall sonst (Design-Gesetz 2). */}
-              <Text style={s.emptyTitle}>Dein Regal ist noch leer</Text>
-              <Text style={s.emptyText}>
+              <Text key={`copy-1-${fontScale}`} style={s.emptyTitle}>Dein Regal ist noch leer</Text>
+              <Text key={`copy-2-${fontScale}`} style={s.emptyText}>
                 Alles, was du dauerhaft anbietest, kannst du hier mit einem Tipp in die Sendung
                 holen.
               </Text>
@@ -117,11 +105,11 @@ export function ShelfPickSheet({ visible, onClose, sellerId, target, targetLabel
           ) : (
             <ScrollView contentContainerStyle={{ paddingBottom: space.lg }}>
               {listings.map((item) => (
-                <Pressable
+                <PressFeedback
                   key={item.id}
                   onPress={() => void move(item.id)}
                   disabled={!!busyId}
-                  style={({ pressed }) => [s.row, pressed && s.rowPressed]}
+                  style={s.row}
                   accessibilityRole="button"
                   accessibilityLabel={`${item.title} in die Sendung holen`}
                 >
@@ -131,22 +119,22 @@ export function ShelfPickSheet({ visible, onClose, sellerId, target, targetLabel
                     ) : null}
                   </View>
                   <View style={s.rowText}>
-                    <Text numberOfLines={1} style={s.rowTitle}>
+                    <Text key={`copy-3-${fontScale}`} numberOfLines={1} style={s.rowTitle}>
                       {item.title}
                     </Text>
                     {/* Der Festpreis wird in der Show zum Sofortkauf, gestartet
                         wird bei 1 €. Das hier zu sagen nimmt die Angst, mit dem
                         Umzug einen Preis zu verlieren. */}
-                    <Text style={s.rowMeta}>
+                    <Text key={`copy-4-${fontScale}`} style={s.rowMeta}>
                       startet bei 1 € · sofort {formatEuro(item.buy_now_cents)}
                     </Text>
                   </View>
                   {busyId === item.id ? (
                     <ActivityIndicator color={ui.textMuted} />
                   ) : (
-                    <Text style={s.rowAction}>Holen</Text>
+                    <Text key={`copy-5-${fontScale}`} style={s.rowAction}>Holen</Text>
                   )}
-                </Pressable>
+                </PressFeedback>
               ))}
             </ScrollView>
           )}
@@ -160,31 +148,13 @@ const s = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {
+    overflow: 'hidden',
     backgroundColor: ui.card,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     paddingHorizontal: space.md,
     maxHeight: '76%',
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: ui.line,
-    marginTop: space.sm,
-    marginBottom: space.sm,
-  },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: space.sm,
-  },
-  headText: { flex: 1, minWidth: 0 },
-  title: { fontSize: 17, fontWeight: '700', color: ui.text },
-  sub: { fontSize: 12, color: ui.textMuted, marginTop: 1 },
-  done: { fontSize: 16, fontWeight: '600', color: ui.brand },
 
   notice: {
     backgroundColor: ui.sunken,
@@ -206,7 +176,7 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: ui.line,
   },
-  rowPressed: { opacity: 0.6 },
+
   thumb: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: ui.sunken, overflow: 'hidden' },
   rowText: { flex: 1, minWidth: 0 },
   rowTitle: { fontSize: 14, fontWeight: '600', color: ui.text },

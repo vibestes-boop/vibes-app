@@ -9,6 +9,7 @@
 // aus dem Live-Raum hierher, aber das hier ist Stöbern, kein Zuschauen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import {
   ActivityIndicator,
   Animated,
@@ -21,9 +22,11 @@ import {
   Text,
   View,
 } from 'react-native';
+
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -45,6 +48,7 @@ import {
   Truck,
 } from 'lucide-react-native';
 
+import { useReducedMotion } from '../../lib/useReducedMotion';
 import { useSellerProfile, useSellerLiveShow, useSellerSoldItems } from '../../lib/useSellerProfile';
 import { SellerSectionState } from '../../components/SellerSectionState';
 import { SellerShowEntry } from '../../components/SellerShowEntry';
@@ -169,6 +173,7 @@ type ShowRow = {
 type TabItem = SellerShopRow | SellerReview | ShowRow;
 
 export default function SellerScreen() {
+  const reducedMotion = useReducedMotion();
   const { id, tab: wantedTab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
@@ -1081,7 +1086,7 @@ export default function SellerScreen() {
           muss. Kein RPC, keine Migration: `user_blocks_insert` verlangt
           `blocker_id = auth.uid()`, `user_reports_insert` dasselbe für
           `reporter_id`, die RLS trägt beides. */}
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+      <Modal visible={menuOpen} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={() => setMenuOpen(false)}>
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
         <View style={styles.menuWrap}>
           <View style={styles.menu}>

@@ -7,6 +7,7 @@
 // Helle Fläche: Schreiben ist kein Zuschauen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import {
   ActivityIndicator,
   FlatList,
@@ -19,8 +20,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Ban,
@@ -33,6 +36,7 @@ import {
   X,
 } from 'lucide-react-native';
 
+import { useReducedMotion } from '../../lib/useReducedMotion';
 import { useSession } from '../../lib/session';
 import { useProfiles } from '../../lib/useAuction';
 import { goBack } from '../../lib/nav';
@@ -106,6 +110,7 @@ function dayLabel(iso: string): string {
 }
 
 export default function ConversationScreen() {
+  const reducedMotion = useReducedMotion();
   const {
     id: otherId,
     draft: presetDraft,
@@ -729,7 +734,7 @@ export default function ConversationScreen() {
           demselben Zweck dient wie die Bühne: Das Bild soll wirken, nicht die
           App. Ein Tipp irgendwohin schließt; ein eigener Schließen-Knopf wäre
           auf einem Foto der einzige Fremdkörper. */}
-      <Modal visible={zoom !== null} transparent animationType="fade" onRequestClose={() => setZoom(null)}>
+      <Modal visible={zoom !== null} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={() => setZoom(null)}>
         <Pressable style={styles.zoomWrap} onPress={() => setZoom(null)}>
           {zoom ? (
             <Image source={{ uri: zoom }} style={styles.zoomImage} contentFit="contain" />
@@ -737,7 +742,7 @@ export default function ConversationScreen() {
         </Pressable>
       </Modal>
 
-      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+      <Modal visible={menuOpen} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={() => setMenuOpen(false)}>
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
         <View style={[styles.menuWrap, { paddingBottom: insets.bottom + space.md }]}>
           <View style={styles.menuCard}>

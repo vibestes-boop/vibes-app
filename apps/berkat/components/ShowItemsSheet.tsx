@@ -9,20 +9,17 @@
 // beenden, um weiterzuverkaufen.
 
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+
+import { useWindowDimensions, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+
 import { Image } from 'expo-image';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gift, Package, X } from 'lucide-react-native';
+
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { stage, radius, space } from '../theme/tokens';
 import { formatEuro, type Auction } from '../lib/useAuction';
 import { euroToCents } from '../lib/useStudio';
@@ -80,6 +77,8 @@ export function ShowItemsSheet({
   sessionId,
   hostId,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const [giftTitle, setGiftTitle] = useState('');
 
@@ -125,7 +124,7 @@ export function ShowItemsSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       {/* Ohne das schiebt die Tastatur den Zettel nicht hoch, sondern legt sich
           darüber — und man tippt blind. */}
       <KeyboardAvoidingView
@@ -133,25 +132,22 @@ export function ShowItemsSheet({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom || space.md }]}>
-        <View style={styles.grabber} />
-        <View style={styles.head}>
-          <Text style={styles.title}>Artikel in dieser Show</Text>
-          <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Schließen">
-            <X size={22} color={stage.textMuted} />
-          </Pressable>
-        </View>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+        <SheetHeader title="Artikel in dieser Show" surface="stage" onClose={onClose} />
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: space.lg }}>
 
         {isHost && onDuration ? (
           <View style={styles.durationRow}>
-            <Text style={styles.durationLabel}>Dauer</Text>
+            <Text key={`copy-0-${fontScale}`} style={styles.durationLabel}>Dauer</Text>
             {DURATIONS.map((seconds) => (
-              <Pressable
+              <PressFeedback
                 key={seconds}
                 onPress={() => onDuration(seconds)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: duration === seconds }}
                 style={[styles.durationChip, duration === seconds && styles.durationChipActive]}
               >
-                <Text
+                <Text key={`copy-1-${fontScale}`}
                   style={[
                     styles.durationChipText,
                     duration === seconds && styles.durationChipTextActive,
@@ -159,21 +155,21 @@ export function ShowItemsSheet({
                 >
                   {seconds} s
                 </Text>
-              </Pressable>
+              </PressFeedback>
             ))}
           </View>
         ) : null}
 
         {isHost && onCreateGiveaway && !giveawayOpen ? (
           <View style={styles.giftRow}>
-            <TextInput
+            <TextInput allowFontScaling={false}
               value={giftTitle}
               onChangeText={setGiftTitle}
               placeholder="Gewinnspiel, z. B. Probe-Set"
               placeholderTextColor={stage.textMuted}
-              style={styles.giftInput}
+              style={[styles.giftInput, { fontSize: styles.giftInput.fontSize * fontScale, lineHeight: styles.giftInput.fontSize * 1.4 * fontScale }]}
             />
-            <Pressable
+            <PressFeedback
               onPress={() => {
                 if (!giftTitle.trim()) return;
                 onCreateGiveaway(giftTitle.trim());
@@ -184,7 +180,7 @@ export function ShowItemsSheet({
               accessibilityLabel="Gewinnspiel starten"
             >
               <Gift size={15} color={stage.goldInk} />
-            </Pressable>
+            </PressFeedback>
           </View>
         ) : null}
 
@@ -192,26 +188,25 @@ export function ShowItemsSheet({
             Live-Vorteil: Ein Zuschauer fragt nach etwas, und es liegt schon im
             Regal, statt vor der Kamera neu getippt zu werden. */}
         {isHost && sessionId ? (
-          <Pressable
+          <PressFeedback
             style={styles.shelfBar}
             onPress={() => setPickerOpen(true)}
             accessibilityRole="button"
             accessibilityLabel="Artikel aus dem Regal holen"
           >
             <Package size={15} color={stage.text} />
-            <Text style={styles.shelfBarText}>Aus dem Regal holen</Text>
-          </Pressable>
+            <Text key={`copy-2-${fontScale}`} style={styles.shelfBarText}>Aus dem Regal holen</Text>
+          </PressFeedback>
         ) : null}
 
         {shelfNotice ? (
-          <Pressable style={styles.shelfNotice} onPress={() => setShelfNotice(null)}>
-            <Text style={styles.shelfNoticeText}>{shelfNotice}</Text>
-          </Pressable>
+          <PressFeedback style={styles.shelfNotice} onPress={() => setShelfNotice(null)}>
+            <Text key={`copy-3-${fontScale}`} style={styles.shelfNoticeText}>{shelfNotice}</Text>
+          </PressFeedback>
         ) : null}
 
-        <ScrollView contentContainerStyle={{ paddingBottom: space.lg }}>
           {auctions.length === 0 ? (
-            <Text style={styles.empty}>Der Verkäufer hat noch nichts aufgelegt.</Text>
+            <Text key={`copy-4-${fontScale}`} style={styles.empty}>Der Verkäufer hat noch nichts aufgelegt.</Text>
           ) : (
             auctions.map((item) => {
               const status = statusLabel(item);
@@ -232,67 +227,67 @@ export function ShowItemsSheet({
                       ) : null}
                     </View>
                     <View style={styles.rowText}>
-                      <Text numberOfLines={1} style={styles.rowTitle}>
+                      <Text key={`copy-5-${fontScale}`} numberOfLines={1} style={styles.rowTitle}>
                         {item.title}
                       </Text>
-                      <Text style={[styles.rowStatus, { color: status.color }]}>{status.text}</Text>
+                      <Text key={`copy-6-${fontScale}`} style={[styles.rowStatus, { color: status.color }]}>{status.text}</Text>
                     </View>
 
                     {startable ? (
-                      <Pressable
+                      <PressFeedback
                         onPress={() => onStart(item.id)}
                         disabled={blocked}
                         style={[styles.startButton, blocked && styles.startButtonBlocked]}
                         accessibilityRole="button"
                         accessibilityLabel={`${item.title} starten`}
                       >
-                        <Text style={styles.startButtonText}>Starten</Text>
-                      </Pressable>
+                        <Text key={`copy-7-${fontScale}`} style={styles.startButtonText}>Starten</Text>
+                      </PressFeedback>
                     ) : (
-                      <Text style={styles.rowPrice}>
+                      <Text key={`copy-8-${fontScale}`} style={styles.rowPrice}>
                         {formatEuro(item.current_bid_cents ?? item.start_price_cents)}
                       </Text>
                     )}
                   </View>
 
                   {returnable && !asking ? (
-                    <Pressable
+                    <PressFeedback
                       onPress={() => openShelfFor(item)}
                       style={styles.toShelfLink}
                       accessibilityRole="button"
                       accessibilityLabel={`${item.title} ins Regal legen`}
                     >
-                      <Text style={styles.toShelfLinkText}>Ins Regal legen</Text>
-                    </Pressable>
+                      <Text key={`copy-9-${fontScale}`} style={styles.toShelfLinkText}>Ins Regal legen</Text>
+                    </PressFeedback>
                   ) : null}
 
                   {asking ? (
                     <View style={styles.askRow}>
-                      <TextInput
+                      <TextInput allowFontScaling={false}
                         value={shelfPrice}
                         onChangeText={setShelfPrice}
                         placeholder="Preis in €"
                         placeholderTextColor={stage.textMuted}
                         keyboardType="decimal-pad"
-                        style={styles.askInput}
+                        style={[styles.askInput, { fontSize: styles.askInput.fontSize * fontScale, lineHeight: styles.askInput.fontSize * 1.4 * fontScale }]}
                         autoFocus
                       />
-                      <Pressable
+                      <PressFeedback
                         onPress={() => void confirmShelf()}
                         disabled={shelfBusy}
                         style={[styles.askConfirm, shelfBusy && styles.startButtonBlocked]}
                         accessibilityRole="button"
                         accessibilityLabel="Ins Regal legen"
                       >
-                        <Text style={styles.askConfirmText}>Ins Regal</Text>
-                      </Pressable>
-                      <Pressable
+                        <Text key={`copy-10-${fontScale}`} style={styles.askConfirmText}>Ins Regal</Text>
+                      </PressFeedback>
+                      <PressFeedback
                         onPress={() => setShelfFor(null)}
                         hitSlop={8}
                         accessibilityLabel="Abbrechen"
                       >
                         <X size={18} color={stage.textMuted} />
-                      </Pressable>
+                      </PressFeedback>
                     </View>
                   ) : null}
                 </View>
@@ -320,28 +315,14 @@ const styles = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
   sheet: {
+    overflow: 'hidden',
     backgroundColor: stage.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     paddingHorizontal: space.md,
     maxHeight: '72%',
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: stage.lineStrong,
-    marginTop: space.sm,
-    marginBottom: space.md,
-  },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: space.md,
-  },
-  title: { fontSize: 18, fontWeight: '700', color: stage.text },
+
   empty: { fontSize: 14, color: stage.textMuted, paddingVertical: space.lg },
 
   durationRow: {
@@ -352,6 +333,8 @@ const styles = StyleSheet.create({
   },
   durationLabel: { fontSize: 12, color: stage.textMuted, marginRight: 2 },
   durationChip: {
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: stage.line,
@@ -365,7 +348,7 @@ const styles = StyleSheet.create({
   giftRow: { flexDirection: 'row', gap: space.sm, marginBottom: space.md },
   giftInput: {
     flex: 1,
-    height: 38,
+    minHeight: 38,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: stage.line,

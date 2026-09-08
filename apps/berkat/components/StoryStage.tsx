@@ -22,253 +22,212 @@
 // deshalb ZUM VERKÄUFER — nicht in einen Chat.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { useWindowDimensions, ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
+
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, Trash2, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, ImageOff, Pause, Play, RotateCcw, Trash2, X } from 'lucide-react-native';
 
+import { useReducedMotion } from '../lib/useReducedMotion';
+import { radius, space, stage } from '../theme/tokens';
 import { Avatar } from './Avatar';
-import { space, stage } from '../theme/tokens';
-
-/** Wie lange ein Bild steht, bevor weitergeblättert wird. */
-const DAUER_MS = 5000;
-/** Der Takt, in dem der Balken wächst. 50 ms sind flüssig genug und billig. */
-const TAKT_MS = 50;
+import { PressFeedback } from './PressFeedback';
+import { StoryProgress } from './StoryProgress';
 
 export type StageItem = { id: string; media_url: string };
 
 type Props = {
   items: StageItem[];
-  /** Wer es zeigt. Der Tipp darauf führt auf sein Profil. */
   who: { username: string | null; avatarUrl: string | null } | null;
-  /** Zweite Zeile in der Kopfzeile — bei Highlights ihr Name. */
   caption?: string | null;
-  /** Läuft die Abfrage noch? Dann NICHT wegen „keine Bilder" schliessen. */
   loading?: boolean;
-  /** Wird gerufen, sobald ein Bild steht. Für den Sicht-Vermerk. */
+  error?: boolean;
+  onRetry?: () => void;
+  /** Called only after the current image is displayed in the foreground. */
   onSeen?: (itemId: string) => void;
-  /** Gesetzt = Papierkorb in der Kopfzeile. Bekommt das gerade sichtbare Bild. */
   onDelete?: (itemId: string) => void;
   deleteLabel?: string;
   onOpenProfile: () => void;
   onClose: () => void;
 };
 
-export function StoryStage({
-  items,
-  who,
-  caption,
-  loading,
-  onSeen,
-  onDelete,
-  deleteLabel = 'Löschen',
-  onOpenProfile,
-  onClose,
-}: Props) {
-  const insets = useSafeAreaInsets();
-  const [idx, setIdx] = useState(0);
-  const [fortschritt, setFortschritt] = useState(0);
-  const [pausiert, setPausiert] = useState(false);
-  const aktuell = items[idx] ?? null;
+export function StoryStage(props: Props) {
+  const { items, loading, error, onClose, onSeen } = props;
+  const focused = useIsFocused();
+  const [foreground, setForeground] = useState(AppState.currentState === 'active');
+  const [closed, setClosed] = useState(false);
+  const [selection, setSelection] = useState({ id: '', index: 0, visit: 0 });
+  const leaving = useRef(false);
+  const seen = useRef(new Set<string>());
+  const found = items.findIndex(item => item.id === selection.id);
+  const index = found >= 0 ? found : Math.min(selection.index, Math.max(0, items.length - 1));
+  const current = items[index];
 
-  /**
-   * ⚠️ Der Riegel gegen das doppelte Schliessen.
-   *
-   * Das Weiterblättern hängt am Fortschritt, und der bleibt beim letzten Bild
-   * auf 1 stehen. Wird die Wirkung noch einmal ausgewertet, bevor der
-   * Bildschirm wirklich weg ist, liefe `onClose` ein zweites Mal — und weil das
-   * ein `router.back()` ist, spränge die App ZWEI Stufen zurück statt einer.
-   * Ein Fehler, den man nur unter Last sieht und dann nicht mehr erklären kann.
-   */
-  const zu = useRef(false);
-  const schliessen = useCallback(() => {
-    if (zu.current) return;
-    zu.current = true;
-    onClose();
-  }, [onClose]);
-
-  const weiter = useCallback(() => {
-    if (idx + 1 >= items.length) {
-      schliessen();
-      return;
-    }
-    setFortschritt(0);
-    setIdx(idx + 1);
-  }, [idx, items.length, schliessen]);
-
-  const zurueck = useCallback(() => {
-    setFortschritt(0);
-    setIdx((i) => Math.max(0, i - 1));
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => setForeground(state === 'active'));
+    return () => subscription.remove();
   }, []);
-
-  /**
-   * Die Uhr.
-   *
-   * ⚠️ `setInterval` statt einer Animation, weil der Balken NUR anzeigt, wie
-   * viel Zeit noch bleibt — er treibt nichts an. Eine Reanimated-Animation wäre
-   * flüssiger und müsste ihren Zustand mit dem Weiterblättern abgleichen; das
-   * sind zwei Wahrheiten über dieselbe Sache, und genau daran ist am 23.08.2026
-   * die Tastatur gescheitert (Übergabe, Abschnitt 79).
-   */
+  // Preserve the visible image when a query refresh reorders or removes items.
   useEffect(() => {
-    if (!aktuell || pausiert) return;
-    const t = setInterval(() => {
-      setFortschritt((f) => {
-        const n = f + TAKT_MS / DAUER_MS;
-        // ⚠️ NICHT hier `weiter()` rufen — das wäre eine Zustandsänderung
-        // während der Auswertung einer anderen. Erst den Balken vollmachen,
-        // das Weiterblättern übernimmt die Wirkung darunter.
-        return n >= 1 ? 1 : n;
-      });
-    }, TAKT_MS);
-    return () => clearInterval(t);
-  }, [aktuell, pausiert, idx]);
+    if (current) setSelection(value => value.id === current.id && value.index === index
+      ? value : { ...value, id: current.id, index });
+  }, [current?.id, index]);
 
+  const leave = useCallback((action: () => void) => {
+    if (leaving.current) return;
+    leaving.current = true;
+    setClosed(true);
+    action();
+  }, []);
+  const close = useCallback(() => leave(onClose), [leave, onClose]);
   useEffect(() => {
-    if (fortschritt >= 1) weiter();
-  }, [fortschritt, weiter]);
+    if (!loading && !error && items.length === 0) close();
+  }, [loading, error, items.length, close]);
 
-  // Sicht-Vermerk, sobald ein Bild steht.
+  const navigate = (offset: number) => {
+    if (closed) return;
+    const next = index + offset;
+    if (next >= items.length) { close(); return; }
+    if (next < 0) return;
+    setSelection(value => ({ id: items[next].id, index: next, visit: value.visit + 1 }));
+  };
+  const markSeen = (id: string) => {
+    if (seen.current.has(id)) return;
+    seen.current.add(id);
+    onSeen?.(id);
+  };
+
+  return <StoryFrame key={current ? JSON.stringify([current.id, current.media_url, selection.visit]) : 'pending'}
+    {...props} current={current} index={index} active={focused && foreground && !closed}
+    onClose={close} onOpenProfile={() => leave(props.onOpenProfile)} onSeen={markSeen}
+    onPrevious={() => navigate(-1)} onNext={() => navigate(1)} />;
+}
+
+function StoryFrame({ current, index, active, items, who, caption, loading, error, onRetry,
+  onClose, onOpenProfile, onSeen, onDelete, deleteLabel = 'Löschen', onPrevious, onNext }: Props & {
+  current?: StageItem; index: number; active: boolean; onPrevious: () => void; onNext: () => void;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const reduced = useReducedMotion();
+  const [imageState, setImageState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [held, setHeld] = useState(false);
+  const request = useRef(0);
+  const outcome = useRef<'loading' | 'ready' | 'error'>('loading');
+  const mounted = useRef(true);
+  const ready = Boolean(current && imageState === 'ready');
+  const running = ready && active && !paused && !held && !reduced;
   useEffect(() => {
-    if (aktuell && onSeen) onSeen(aktuell.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aktuell?.id]);
+    if (ready && active && current) onSeen?.(current.id);
+  }, [ready, active, current?.id, onSeen]);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const retry = () => {
+    request.current++;
+    outcome.current = 'loading';
+    setImageState('loading');
+    setAttempt(request.current);
+  };
+  const failed = current ? imageState === 'error' : error;
 
-  // Verschwindet der Inhalt unter uns (gelöscht, abgelaufen), nicht auf einem
-  // schwarzen Bildschirm stehenbleiben. ⚠️ Erst wenn die Abfrage durch ist —
-  // sonst schliesst der Bildschirm sich im ersten Lidschlag wieder selbst.
-  useEffect(() => {
-    if (!loading && items.length === 0) schliessen();
-  }, [loading, items.length, schliessen]);
-
-  const halb = Dimensions.get('window').width / 2;
-
-  if (!aktuell) {
-    return (
-      <View style={s.screen}>
-        <StatusBar style="light" />
-      </View>
-    );
-  }
-
-  return (
-    <View style={s.screen}>
-      <StatusBar style="light" />
-
-      <Image
-        source={{ uri: aktuell.media_url }}
-        style={StyleSheet.absoluteFill}
-        contentFit="contain"
-        transition={120}
-      />
-
-      {/* ⚠️ Die zwei Tippflächen liegen UNTER der Kopfzeile im Baum, damit
-          Schliessen und Löschen die Tipps bekommen und nicht das Blättern.
-          Ohne `box-none` weiter oben wäre der Kopf tot (Abschnitt 3). */}
-      <Pressable
-        style={[s.tap, { left: 0, width: halb }]}
-        onPress={zurueck}
-        onLongPress={() => setPausiert(true)}
-        onPressOut={() => setPausiert(false)}
-      />
-      <Pressable
-        style={[s.tap, { right: 0, width: halb }]}
-        onPress={weiter}
-        onLongPress={() => setPausiert(true)}
-        onPressOut={() => setPausiert(false)}
-      />
-
-      <View style={[s.head, { paddingTop: insets.top + space.sm }]} pointerEvents="box-none">
-        {/* Ein Balken je Bild. Der aktuelle wächst, die davor sind voll, die
-            danach leer — die Auskunft „wie viele kommen noch" ohne eine Zahl. */}
-        <View style={s.bars}>
-          {items.map((it, i) => (
-            <View key={it.id} style={s.barTrack}>
-              <View
-                style={[
-                  s.barFill,
-                  { width: i < idx ? '100%' : i === idx ? `${Math.round(fortschritt * 100)}%` : '0%' },
-                ]}
-              />
-            </View>
-          ))}
-        </View>
-
-        <View style={s.headRow} pointerEvents="box-none">
-          <Pressable
-            style={s.who}
-            onPress={onOpenProfile}
-            accessibilityRole="button"
-            accessibilityLabel={`Profil von ${who?.username ?? 'Verkäufer'}`}
-          >
-            <Avatar uri={who?.avatarUrl ?? null} name={who?.username} size={30} />
-            <View style={s.whoText}>
-              <Text numberOfLines={1} style={s.name}>
-                {who?.username ?? 'Verkäufer'}
-              </Text>
-              {caption ? (
-                <Text numberOfLines={1} style={s.caption}>
-                  {caption}
-                </Text>
-              ) : null}
-            </View>
-            <ChevronRight size={15} color={stage.textMuted} />
-          </Pressable>
-
-          {onDelete ? (
-            <Pressable
-              hitSlop={10}
-              style={s.headBtn}
-              onPress={() => onDelete(aktuell.id)}
-              accessibilityRole="button"
-              accessibilityLabel={deleteLabel}
-            >
-              <Trash2 size={19} color={stage.text} />
-            </Pressable>
-          ) : null}
-
-          <Pressable
-            hitSlop={10}
-            style={s.headBtn}
-            onPress={schliessen}
-            accessibilityRole="button"
-            accessibilityLabel="Schliessen"
-          >
-            <X size={22} color={stage.text} />
-          </Pressable>
-        </View>
+  return <View style={[s.screen, { paddingTop: insets.top + space.sm, paddingBottom: Math.max(insets.bottom, space.sm) }]}>
+    <StatusBar style="light" />
+    <View style={s.head}>
+      {current ? <StoryProgress key={attempt} count={items.length} index={index} running={running} onComplete={onNext} /> : null}
+      <View style={s.headRow}>
+        <PressFeedback style={s.who} onPress={onOpenProfile} disabled={!who}
+          accessibilityRole="button" accessibilityLabel={`Profil von ${who?.username ?? 'Verkäufer'}`}>
+          <Avatar uri={who?.avatarUrl ?? null} name={who?.username} size={36} />
+          <View style={s.whoText}>
+            <Text key={`copy-0-${fontScale}`} numberOfLines={1} style={s.name}>{who?.username ?? 'Story'}</Text>
+            <Text key={`copy-1-${fontScale}`} numberOfLines={2} style={s.caption}>{caption || 'Ein Einblick für dich'}</Text>
+          </View>
+        </PressFeedback>
+        {current && !reduced ? <PressFeedback style={s.headBtn} onPress={() => setPaused(value => !value)}
+          accessibilityRole="button" accessibilityLabel={paused ? 'Story fortsetzen' : 'Story pausieren'}>
+          {paused ? <Play size={19} color={stage.text} /> : <Pause size={19} color={stage.text} />}
+        </PressFeedback> : null}
+        {onDelete && current ? <PressFeedback style={s.headBtn}
+          onPress={() => { setPaused(true); onDelete(current.id); }} accessibilityRole="button" accessibilityLabel={deleteLabel}>
+          <Trash2 size={19} color={stage.text} />
+        </PressFeedback> : null}
+        <PressFeedback style={s.headBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Schließen">
+          <X size={21} color={stage.text} />
+        </PressFeedback>
       </View>
     </View>
-  );
+
+    <View style={s.media}>
+      {current ? <Image key={attempt} source={{ uri: current.media_url }} style={StyleSheet.absoluteFill}
+        contentFit="contain" transition={0} cachePolicy="memory-disk" recyclingKey={current.media_url}
+        onDisplay={() => { if (mounted.current && request.current === attempt && outcome.current === 'loading') {
+          outcome.current = 'ready'; setImageState('ready');
+        } }}
+        onError={() => { if (mounted.current && request.current === attempt) {
+          outcome.current = 'error'; setImageState('error');
+        } }} /> : null}
+      {current ? <View style={StyleSheet.absoluteFill} pointerEvents="box-none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Pressable style={[s.tap, { left: 0 }]} accessible={false} onPress={onPrevious}
+          onPressIn={() => setHeld(true)} onLongPress={() => {}} onPressOut={() => setHeld(false)} />
+        <Pressable style={[s.tap, { right: 0 }]} accessible={false} onPress={onNext}
+          onPressIn={() => setHeld(true)} onLongPress={() => {}} onPressOut={() => setHeld(false)} />
+      </View> : null}
+      {!ready ? <View style={s.state} pointerEvents="box-none">
+        <View style={s.stateIcon}>
+          {failed ? <ImageOff size={26} color={stage.textMuted} /> : <ActivityIndicator color={stage.text} />}
+        </View>
+        <Text key={`copy-2-${fontScale}`} style={s.stateTitle}>{failed ? 'Das Bild kam nicht an' : loading || current ? 'Dein Bild lädt …' : 'Diese Story ist nicht mehr da'}</Text>
+        {failed ? <>
+          <Text key={`copy-3-${fontScale}`} style={s.stateBody}>Versuch es noch einmal oder blättere weiter.</Text>
+          {current || onRetry ? <PressFeedback style={s.retry} onPress={current ? retry : onRetry}
+            accessibilityRole="button" accessibilityLabel="Erneut laden">
+            <RotateCcw size={17} color={stage.text} /><Text key={`copy-4-${fontScale}`} style={s.retryText}>Erneut laden</Text>
+          </PressFeedback> : null}
+        </> : null}
+      </View> : null}
+    </View>
+
+    {current ? <View style={s.footer}>
+      <PressFeedback style={s.headBtn} onPress={onPrevious} disabled={index === 0}
+        accessibilityRole="button" accessibilityLabel="Vorheriges Bild" accessibilityState={{ disabled: index === 0 }}>
+        <ChevronLeft size={22} color={index === 0 ? stage.textMuted : stage.text} />
+      </PressFeedback>
+      <View style={s.position}>
+        <Text key={`copy-5-${fontScale}`} style={s.count}>{index + 1} von {items.length}</Text>
+        <Text key={`copy-6-${fontScale}`} style={s.footerHint}>{reduced ? 'Zum Weiterblättern tippen' : paused || held ? 'Pausiert' : 'Zum Anhalten gedrückt halten'}</Text>
+      </View>
+      <PressFeedback style={s.headBtn} onPress={onNext} accessibilityRole="button"
+        accessibilityLabel={index + 1 === items.length ? 'Story schließen' : 'Nächstes Bild'}>
+        <ChevronRight size={22} color={stage.text} />
+      </PressFeedback>
+    </View> : null}
+  </View>;
 }
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stage.ink },
-  tap: { position: 'absolute', top: 0, bottom: 0 },
-
-  head: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: space.md,
-    gap: space.sm,
-  },
-  bars: { flexDirection: 'row', gap: 3 },
-  barTrack: {
-    flex: 1,
-    height: 2.5,
-    borderRadius: 2,
-    backgroundColor: stage.lineStrong,
-    overflow: 'hidden',
-  },
-  barFill: { height: '100%', backgroundColor: stage.text },
-
+  head: { paddingHorizontal: space.lg, gap: space.md, paddingBottom: space.md },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  who: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, minWidth: 0 },
-  whoText: { flexShrink: 1, minWidth: 0 },
-  name: { fontSize: 14, fontWeight: '700', color: stage.text },
-  caption: { fontSize: 11, color: stage.textMuted, marginTop: 1 },
-  headBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  who: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.sm, minWidth: 0 },
+  whoText: { flex: 1, minWidth: 0 },
+  name: { fontSize: 15, fontWeight: '700', color: stage.text },
+  caption: { fontSize: 12, color: stage.textMuted, marginTop: 2 },
+  headBtn: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: stage.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
+  media: { flex: 1, minHeight: 0, marginHorizontal: space.md, borderRadius: radius.phone, backgroundColor: stage.surface, overflow: 'hidden' },
+  tap: { position: 'absolute', top: 0, bottom: 0, width: '50%' },
+  state: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md },
+  stateIcon: { width: 64, height: 64, borderRadius: radius.phone, backgroundColor: stage.surfaceHigh, alignItems: 'center', justifyContent: 'center' },
+  stateTitle: { fontSize: 18, fontWeight: '700', color: stage.text, textAlign: 'center' },
+  stateBody: { fontSize: 14, lineHeight: 21, color: stage.textMuted, textAlign: 'center' },
+  retry: { flexDirection: 'row', gap: space.sm, minHeight: 48, paddingHorizontal: space.lg, paddingVertical: space.md, borderRadius: radius.pill, backgroundColor: stage.surfaceHigh, alignItems: 'center' },
+  retryText: { fontSize: 14, fontWeight: '600', color: stage.text },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.md },
+  position: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3 },
+  count: { fontSize: 14, fontWeight: '700', color: stage.text, fontVariant: ['tabular-nums'] },
+  footerHint: { fontSize: 11, color: stage.textMuted, textAlign: 'center' },
 });

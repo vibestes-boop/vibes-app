@@ -12,10 +12,15 @@
 // darunter als eine Zeile.
 
 import { useMemo, useState } from 'react';
+
 import { Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+
 import { AlertTriangle, MapPin, MessageCircle, Package, Truck } from 'lucide-react-native';
+
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { ui, radius, space } from '../theme/tokens';
 import { trackingUrl, type SellerOrder } from '../lib/useSellerOrders';
 import { formatCents, useShippingCheck } from '../lib/useShipping';
@@ -80,7 +85,6 @@ function since(iso: string | null): string {
   return tage === 1 ? 'gestern' : `vor ${tage} Tagen`;
 }
 
-
 /**
  * Eine offene Beanstandung — Whatnots „Support Request", auf Berkats Maß.
  *
@@ -114,6 +118,7 @@ function DisputeCard({
   const resolve = useResolveDispute();
   const [note, setNote] = useState('');
   const [zoom, setZoom] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
   // Der Beleg liegt seit dem 23.08.2026 im privaten Eimer; die anzeigbare
   // Adresse entsteht erst hier und läuft nach fünf Minuten ab.
   const photoUri = useEvidenceUri(dispute.image_url);
@@ -253,7 +258,7 @@ function DisputeCard({
 
       {/* Schwarz und randlos — dieselbe Begründung wie im Chat (Übergabe 66):
           Ein Beleg wird auf neutralem Grund beurteilt. */}
-      <Modal visible={zoom !== null} transparent animationType="fade" onRequestClose={() => setZoom(null)}>
+      <Modal visible={zoom !== null} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={() => setZoom(null)}>
         <Pressable style={styles.zoomWrap} onPress={() => setZoom(null)}>
           {zoom ? <Image source={{ uri: zoom }} style={styles.zoomImage} contentFit="contain" /> : null}
         </Pressable>

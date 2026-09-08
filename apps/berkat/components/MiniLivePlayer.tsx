@@ -5,15 +5,20 @@
 // stöbert. Antippen holt die Show zurück, das Kreuz beendet sie.
 
 import { useEffect } from 'react';
+
+import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
+
+import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
+
 import { supabase } from '../lib/supabase';
 import { useLivePlayer } from '../lib/livePlayer';
 import { liveKitAvailable } from '../lib/livekit';
+import { PressFeedback } from './PressFeedback';
 import { stage, radius, space } from '../theme/tokens';
 
 type StageModule = {
@@ -73,8 +78,9 @@ export function MiniLivePlayer() {
       style={[styles.wrap, { bottom: insets.bottom + TAB_BAR + space.sm }]}
       pointerEvents="box-none"
     >
-      <Pressable
+      <PressFeedback
         style={styles.card}
+        kind="card"
         onPress={() => {
           restore();
           router.push(`/live/${session.id}`);
@@ -95,22 +101,21 @@ export function MiniLivePlayer() {
           <Text style={styles.livePillText}>live</Text>
         </View>
 
-        <Pressable
-          onPress={close}
-          hitSlop={10}
-          style={styles.close}
-          accessibilityRole="button"
-          accessibilityLabel="Show verlassen"
-        >
-          <X size={12} color={stage.text} />
-        </Pressable>
-
         <View style={styles.caption}>
           <Text numberOfLines={1} style={styles.captionText}>
             {session.title ?? 'Live'}
           </Text>
         </View>
-      </Pressable>
+      </PressFeedback>
+      <PressFeedback
+        onPress={close}
+        hitSlop={10}
+        style={styles.close}
+        accessibilityRole="button"
+        accessibilityLabel="Show verlassen"
+      >
+        <X size={20} color={stage.text} />
+      </PressFeedback>
     </View>
   );
 }
@@ -118,8 +123,8 @@ export function MiniLivePlayer() {
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', right: space.md, alignItems: 'flex-end' },
   card: {
-    width: 102,
-    height: 136,
+    width: 128,
+    height: 168,
     borderRadius: radius.md,
     backgroundColor: stage.surfaceHigh,
     overflow: 'hidden',
@@ -128,8 +133,8 @@ const styles = StyleSheet.create({
   },
   livePill: {
     position: 'absolute',
-    top: 5,
-    left: 5,
+    top: 16,
+    left: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
@@ -142,12 +147,12 @@ const styles = StyleSheet.create({
   livePillText: { fontSize: 10, fontWeight: '700', color: stage.liveInk },
   close: {
     position: 'absolute',
-    top: 5,
-    right: 5,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    top: 4,
+    right: 4,
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: stage.control,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -156,9 +161,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(11,21,18,0.82)',
+    backgroundColor: stage.control,
     paddingHorizontal: 6,
     paddingVertical: 4,
   },
-  captionText: { fontSize: 10, fontWeight: '600', color: stage.text },
+  captionText: { fontSize: 12, fontWeight: '600', color: stage.text },
 });

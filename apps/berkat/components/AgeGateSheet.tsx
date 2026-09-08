@@ -19,19 +19,14 @@
 // Blatt mitten in einer laufenden Sendung wäre ein Blitz.
 
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
 
+import { useWindowDimensions, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { ageGateError, toIsoDate, type BirthDateState } from '../lib/useAgeGate';
 import { radius, space, stage, ui } from '../theme/tokens';
 
@@ -50,7 +45,7 @@ const PALETTE: Record<Surface, {
   line: string; lineStrong: string; accent: string; accentInk: string; warn: string;
 }> = {
   ui: {
-    sheet: ui.bg, field: ui.sunken, text: ui.text, muted: ui.textMuted,
+    sheet: ui.card, field: ui.sunken, text: ui.text, muted: ui.textMuted,
     line: ui.line, lineStrong: ui.lineStrong,
     accent: ui.brand, accentInk: ui.bg, warn: ui.live,
   },
@@ -82,6 +77,8 @@ export function AgeGateSheet({
   onClose,
   onSubmit,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const c = PALETTE[surface];
   const [day, setDay] = useState('');
@@ -109,7 +106,7 @@ export function AgeGateSheet({
     label: string,
     grow?: boolean,
   ) => (
-    <TextInput
+    <TextInput allowFontScaling={false}
       value={value}
       // Nur Ziffern durchlassen: Auf iOS trägt auch der Zahlenblock ein Komma,
       // und ein "1,2" im Tagesfeld wäre eine Fehlermeldung, die niemand
@@ -119,35 +116,28 @@ export function AgeGateSheet({
       placeholderTextColor={c.muted}
       keyboardType="number-pad"
       maxLength={len}
-      style={[
+      style={[[
         s.field,
         { backgroundColor: c.field, borderColor: c.line, color: c.text },
         grow ? { flex: 1.4 } : { flex: 1 },
-      ]}
+      ], { fontSize: s.field.fontSize * fontScale, lineHeight: s.field.fontSize * 1.4 * fontScale }]}
       accessibilityLabel={label}
       editable={!blocked && !busy}
     />
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={s.root}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={s.backdrop} onPress={onClose} />
         <View
-          style={[s.sheet, { backgroundColor: c.sheet, paddingBottom: insets.bottom || space.md }]}
+          style={[s.sheet, { backgroundColor: c.sheet, paddingBottom: Math.max(insets.bottom, space.lg) }]}
         >
-          <View style={[s.grabber, { backgroundColor: c.lineStrong }]} />
-          <View style={s.head}>
-            <Text style={[s.title, { color: c.text }]}>
-              {blocked ? 'Mitbieten geht ab 18' : 'Kurz noch: dein Geburtsdatum'}
-            </Text>
-            <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Schließen">
-              <X size={20} color={c.muted} />
-            </Pressable>
-          </View>
+          <SheetHeader title={blocked ? 'Mitbieten geht ab 18' : 'Dein Geburtsdatum'} surface={surface} onClose={onClose} />
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.body}>
 
           {/* ⚠️ Der Text sagt, WARUM — und zwar in einem Satz, nicht als
               Paragraphenkette. „Ein Gebot ist ein verbindlicher Kauf" ist der
@@ -155,7 +145,7 @@ export function AgeGateSheet({
               Migration, wo sie hingehören. Eine Abfrage, die nur fordert und
               nichts erklärt, fühlt sich nach Behörde an — und Berkat soll sich
               anfühlen wie ein wohlwollender Freund. */}
-          <Text style={[s.explain, { color: c.muted }]}>
+          <Text key={`copy-0-${fontScale}`} style={[s.explain, { color: c.muted }]}>
             {blocked
               ? 'Ein Gebot ist ein verbindlicher Kauf, und dafür muss man volljährig sein. Stöbern, zuschauen und schreiben kannst du weiterhin. 🙂'
               : 'Ein Gebot ist ein verbindlicher Kauf — deshalb fragen wir einmal nach dem Alter. Wir zeigen das Datum nirgends an.'}
@@ -172,17 +162,17 @@ export function AgeGateSheet({
               {/* ⚠️ Der Satz steht VOR dem Knopf, nicht danach. Die Einmal-Regel
                   ist der Grund, warum ein Tippfehler hier teuer ist — wer das
                   erst hinterher liest, hat schon getippt. */}
-              <Text style={[s.hint, { color: c.muted }]}>
+              <Text key={`copy-1-${fontScale}`} style={[s.hint, { color: c.muted }]}>
                 Das lässt sich später nicht mehr selbst ändern — schau lieber
                 zweimal drauf.
               </Text>
 
               {localError ? (
-                <Text style={[s.error, { color: c.warn }]}>{localError}</Text>
+                <Text key={`copy-2-${fontScale}`} style={[s.error, { color: c.warn }]}>{localError}</Text>
               ) : null}
-              {notice ? <Text style={[s.error, { color: c.warn }]}>{notice}</Text> : null}
+              {notice ? <Text key={`copy-3-${fontScale}`} style={[s.error, { color: c.warn }]}>{notice}</Text> : null}
 
-              <Pressable
+              <PressFeedback
                 style={[
                   s.submit,
                   { backgroundColor: c.accent },
@@ -193,21 +183,22 @@ export function AgeGateSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Geburtsdatum speichern"
               >
-                <Text style={[s.submitText, { color: c.accentInk }]}>
+                <Text key={`copy-4-${fontScale}`} style={[s.submitText, { color: c.accentInk }]}>
                   {busy ? 'Einen Moment …' : 'Weiter'}
                 </Text>
-              </Pressable>
+              </PressFeedback>
             </>
           ) : (
-            <Pressable
+            <PressFeedback
               style={[s.submit, { backgroundColor: c.accent }]}
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Verstanden"
             >
-              <Text style={[s.submitText, { color: c.accentInk }]}>Verstanden</Text>
-            </Pressable>
+              <Text key={`copy-5-${fontScale}`} style={[s.submitText, { color: c.accentInk }]}>Verstanden</Text>
+            </PressFeedback>
           )}
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -220,26 +211,20 @@ export { ageGateError };
 const s = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
+  body: { gap: space.sm, paddingBottom: space.sm },
   sheet: {
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    overflow: 'hidden',
+    maxHeight: '90%',
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     paddingHorizontal: space.md,
     gap: space.sm,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    marginTop: space.sm,
-    marginBottom: space.xs,
-  },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 17, fontWeight: '700', flexShrink: 1 },
+
   explain: { fontSize: 13, lineHeight: 19 },
   row: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
   field: {
-    height: 52,
+    minHeight: 52,
     borderRadius: radius.md,
     borderWidth: 1,
     paddingHorizontal: space.sm,
@@ -250,7 +235,7 @@ const s = StyleSheet.create({
   hint: { fontSize: 12, lineHeight: 17 },
   error: { fontSize: 12, lineHeight: 17 },
   submit: {
-    height: 50,
+    minHeight: 50,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

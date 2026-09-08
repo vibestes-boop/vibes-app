@@ -13,11 +13,15 @@
 // den Berkats zwei feste Flächen sonst strukturell ausschließen. Hier geht es
 // nicht anders, also deckt die Fläche und die Textfarben stehen fest.
 
-import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+
+import { useWindowDimensions, Animated, StyleSheet, Text, View } from 'react-native';
+
 import { Image } from 'expo-image';
+
 import { ui, radius, space } from '../theme/tokens';
 import { formatCountdown, formatEuro, type ShowPreview } from '../lib/useAuction';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { RollupNumber } from './RollupNumber';
 
 type Props = {
@@ -26,41 +30,22 @@ type Props = {
   secondsLeft: number | null;
 };
 
-/** Artikel und Zustand zusammen — daran hängt das Kommen und Gehen. */
-const keyOf = (p: ShowPreview) => `${p.id}:${p.status}`;
-
 export function LivePreview({ preview, secondsLeft }: Props) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const [frozen, setFrozen] = useState<ShowPreview | null>(null);
-  const lastRef = useRef(preview);
-
-  // Erstes Erscheinen: einblenden statt aufpoppen.
+  const { fontScale } = useWindowDimensions();
+  const reduced = useReducedMotion();
+  const opacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }).start();
-  }, [opacity]);
-
-  // Das „Kommen und Gehen" ist kein eigener Mechanismus, sondern die Folge des
-  // Zustandswechsels. Der alte Stand bleibt eingefroren stehen, solange er
-  // ausblendet — sonst springt der Inhalt um, bevor ihn jemand gehen sieht.
-  useEffect(() => {
-    const previous = lastRef.current;
-    lastRef.current = preview;
-    if (keyOf(previous) === keyOf(preview)) return;
-
-    setFrozen(previous);
-    Animated.timing(opacity, { toValue: 0, duration: 130, useNativeDriver: true }).start(
-      ({ finished }) => {
-        // Abgebrochen heißt: ein zweiter Wechsel hat übernommen. Der räumt
-        // selbst auf — hier weiterzumachen ließe zwei Blenden gegeneinander
-        // laufen.
-        if (!finished) return;
-        setFrozen(null);
-        Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }).start();
-      },
-    );
-  }, [preview, opacity]);
-
-  const shown = frozen ?? preview;
+    opacity.stopAnimation();
+    if (reduced) { opacity.setValue(1); return; }
+    opacity.setValue(0.86);
+    const animation = Animated.timing(opacity, {
+      toValue: 1, duration: 160, useNativeDriver: true, isInteraction: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [preview.id, preview.status, reduced, opacity]);
+  // Price, countdown and label always belong to the current preview.
+  const shown = preview;
   const hasImage = Boolean(shown.imageUrl);
 
   // Kurz halten: Auf einer halbbreiten Karte bleiben für diese Zeile knapp
@@ -80,31 +65,28 @@ export function LivePreview({ preview, secondsLeft }: Props) {
       style={[
         s.root,
         {
-          opacity,
-          transform: [
-            { translateY: opacity.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) },
-          ],
+          opacity: reduced ? 1 : opacity,
         },
       ]}
     >
-      <Text numberOfLines={1} style={[s.label, hasImage && s.textInset]}>
+      <Text key={`copy-0-${fontScale}`} numberOfLines={1} style={[s.label, hasImage && s.textInset]}>
         {label}
       </Text>
       {/* Der Artikelname bekommt die volle Breite. Das Bild hängt so weit über
           die Oberkante, dass es nur die kurze Zeile darüber berührt — sonst
           bliebe vom Namen auf einer halbbreiten Karte kaum etwas übrig. */}
-      <Text numberOfLines={1} style={s.title}>
+      <Text key={`copy-1-${fontScale}`} numberOfLines={1} style={s.title}>
         {shown.title}
       </Text>
 
       <View style={s.bottomRow}>
         <StateText status={shown.status} secondsLeft={secondsLeft} />
-        {shown.status === 'running' ? (
+        {shown.status === 'running' && !reduced ? (
           // Schlüssel je Artikel: Ohne ihn zählt der neue Artikel vom Preis des
           // alten herunter, sobald das Widget umschaltet.
           <RollupNumber key={shown.id} cents={shown.priceCents} style={s.price} />
         ) : (
-          <Text style={s.price}>{formatEuro(shown.priceCents)}</Text>
+          <Text key={`copy-2-${fontScale}`} style={s.price}>{formatEuro(shown.priceCents)}</Text>
         )}
       </View>
 
@@ -120,7 +102,7 @@ export function LivePreview({ preview, secondsLeft }: Props) {
 
           Es steht fest da und nicht bedingt: Der Sammelkorb ist eine
           Eigenschaft von Berkat, nicht dieser Show. */}
-      <Text style={s.shipping}>Alles in einem Paket</Text>
+      <Text key={`copy-3-${fontScale}`} style={s.shipping}>Alles in einem Paket</Text>
 
       {shown.imageUrl ? (
         <View style={s.thumb}>
@@ -128,7 +110,7 @@ export function LivePreview({ preview, secondsLeft }: Props) {
             source={{ uri: shown.imageUrl }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            transition={140}
+            transition={reduced ? 0 : 140}
           />
         </View>
       ) : null}
@@ -144,18 +126,19 @@ function StateText({
   status: ShowPreview['status'];
   secondsLeft: number | null;
 }) {
+  const { fontScale } = useWindowDimensions();
   if (status === 'sold') {
-    return <Text style={[s.state, s.urgent]}>Verkauft</Text>;
+    return <Text key={`copy-4-${fontScale}`} style={[s.state, s.urgent]}>Verkauft</Text>;
   }
   if (status === 'scheduled') {
-    return <Text style={[s.state, s.calm]}>Beginnt bald …</Text>;
+    return <Text key={`copy-5-${fontScale}`} style={[s.state, s.calm]}>Beginnt bald …</Text>;
   }
   // Zwischen „Zeit um" und dem Zuschlag liegt ein Server-Aufruf. Eine stehende
   // 00:00 sieht nach Absturz aus — dieselbe Formulierung wie im Live-Raum.
   if (secondsLeft == null || secondsLeft <= 0) {
-    return <Text style={[s.state, s.calm]}>Zuschlag …</Text>;
+    return <Text key={`copy-6-${fontScale}`} style={[s.state, s.calm]}>Zuschlag …</Text>;
   }
-  return <Text style={[s.state, s.urgent]}>{formatCountdown(secondsLeft)}</Text>;
+  return <Text key={`copy-7-${fontScale}`} style={[s.state, s.urgent]}>{formatCountdown(secondsLeft)}</Text>;
 }
 
 const s = StyleSheet.create({

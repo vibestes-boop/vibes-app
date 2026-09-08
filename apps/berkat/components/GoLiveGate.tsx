@@ -8,11 +8,15 @@
 // Erst der Knopf startet die echte Übertragung.
 
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+
+import { ActivityIndicator, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView } from '@livekit/react-native';
 import { createLocalVideoTrack, type LocalVideoTrack } from 'livekit-client';
 import { Radio, SwitchCamera } from 'lucide-react-native';
+
+import { PressFeedback } from './PressFeedback';
 import { stage, radius, space } from '../theme/tokens';
 
 const FILL: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 };
@@ -91,16 +95,18 @@ export function GoLiveGate({ onGoLive }: { onGoLive: () => void }) {
       </View>
 
       <View style={[styles.controls, { paddingBottom: insets.bottom || space.lg }]}>
-        <Pressable
+        <PressFeedback
           onPress={switchCamera}
+          disabled={busy || !track}
+          accessibilityState={{ disabled: busy || !track, busy }}
           style={styles.switchButton}
           accessibilityRole="button"
           accessibilityLabel="Kamera wechseln"
         >
           <SwitchCamera size={20} color={stage.text} />
-        </Pressable>
+        </PressFeedback>
 
-        <Pressable
+        <PressFeedback
           onPress={goLive}
           style={styles.goLive}
           accessibilityRole="button"
@@ -108,7 +114,7 @@ export function GoLiveGate({ onGoLive }: { onGoLive: () => void }) {
         >
           <Radio size={19} color={stage.goldInk} />
           <Text style={styles.goLiveText}>Live gehen</Text>
-        </Pressable>
+        </PressFeedback>
       </View>
     </View>
   );
@@ -142,7 +148,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: stage.control,
     alignItems: 'center',
     justifyContent: 'center',
   },

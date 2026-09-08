@@ -10,8 +10,7 @@
 // Hier wird nur ihr Bild gezeigt.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+
 import {
   ActivityIndicator,
   Animated,
@@ -19,7 +18,6 @@ import {
   KeyboardAvoidingView,
   PanResponder,
   Platform,
-  Pressable,
   Share,
   ScrollView,
   useWindowDimensions,
@@ -29,10 +27,14 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+
+import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronDown,
@@ -47,6 +49,8 @@ import {
   TrendingUp,
   type LucideIcon,
 } from 'lucide-react-native';
+
+import { PressFeedback } from '../../components/PressFeedback';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { errText } from '../../lib/errorText';
@@ -140,7 +144,7 @@ function RailIcon({ icon: Icon, color, fill }: { icon: LucideIcon; color: string
 type StageModule = {
   useStageReady: () => boolean;
   StageVideo: (props: { hostIdentity: string; style: ViewStyle }) => React.ReactNode;
-  HostControls: () => React.ReactNode;
+  HostControls: (props: { topOffset?: number }) => React.ReactNode;
   GoLiveGate: (props: { onGoLive: () => void }) => React.ReactNode;
 };
 
@@ -212,6 +216,7 @@ export default function LiveAuctionRoom() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [headerHeight, setHeaderHeight] = useState(44);
   const { height: windowHeight, fontScale } = useWindowDimensions();
   const myUserId = useSession((s) => s.userId);
 
@@ -597,7 +602,6 @@ export default function LiveAuctionRoom() {
     [myUserId, router, hearts],
   );
 
-
   const sendChat = useCallback(async () => {
     if (!id || !draft.trim()) return;
     if (!myUserId) {
@@ -724,7 +728,7 @@ export default function LiveAuctionRoom() {
 
         {wonCart ? (
           <>
-            <Pressable
+            <PressFeedback
               style={[styles.payNow, paying && styles.payNowBusy]}
               disabled={paying}
               onPress={() => void payCart(wonCart.id)}
@@ -741,7 +745,7 @@ export default function LiveAuctionRoom() {
                   </Text>
                 </>
               )}
-            </Pressable>
+            </PressFeedback>
             <Text style={styles.payNowHint}>
               {notice ??
                 [shippingHint(shippingFrom), 'Adresse gibst du auf der Bezahlseite ein.']
@@ -751,12 +755,12 @@ export default function LiveAuctionRoom() {
           </>
         ) : null}
 
-        <Pressable style={styles.backButton} onPress={leaveRoom}>
+        <PressFeedback style={styles.backButton} onPress={leaveRoom}>
           {/* „Später" statt „Zurück", solange etwas offen ist: Der Korb bleibt
               24 Stunden stehen, und wer jetzt nicht zahlt, hat nichts verloren.
               „Zurück" würde daneben wie Abbrechen aussehen. */}
           <Text style={styles.backButtonText}>{wonCart ? 'Später' : 'Zurück'}</Text>
-        </Pressable>
+        </PressFeedback>
       </View>
     );
   }
@@ -768,9 +772,9 @@ export default function LiveAuctionRoom() {
         <Text style={styles.emptyBody}>
           Vielleicht ist sie zu Ende — schau, wer gerade sonst live ist.
         </Text>
-        <Pressable style={styles.backButton} onPress={leaveRoom}>
+        <PressFeedback style={styles.backButton} onPress={leaveRoom}>
           <Text style={styles.backButtonText}>Zurück</Text>
-        </Pressable>
+        </PressFeedback>
       </View>
     );
   }
@@ -827,11 +831,11 @@ export default function LiveAuctionRoom() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         pointerEvents="box-none"
       >
-        <View style={styles.header} pointerEvents="box-none">
+        <View style={styles.header} pointerEvents="box-none" onLayout={event => setHeaderHeight(event.nativeEvent.layout.height)}>
           {/* Kopf und Name öffnen das Verkäufer-Sheet. Ein eigener Pressable
               statt zweier: Der Name ist das größere Ziel, und wer den Kopf
               trifft, meint dasselbe. */}
-          <Pressable
+          <PressFeedback
             style={styles.identityTap}
             onPress={() => setSellerOpen(true)}
             accessibilityRole="button"
@@ -880,10 +884,10 @@ export default function LiveAuctionRoom() {
                 )}
               </View>
             </View>
-          </Pressable>
+          </PressFeedback>
 
           {follow.canFollow ? (
-            <Pressable
+            <PressFeedback
               onPress={() => follow.toggle()}
               disabled={follow.busy}
               style={[styles.followPill, follow.isFollowing && styles.followPillActive]}
@@ -892,14 +896,14 @@ export default function LiveAuctionRoom() {
               <Text style={[styles.followText, follow.isFollowing && styles.followTextActive]}>
                 {follow.isFollowing ? 'Folgt' : 'Folgen'}
               </Text>
-            </Pressable>
+            </PressFeedback>
           ) : null}
 
           {/* Antippbar NUR für den Gastgeber. Ein Zuschauer bekommt die Liste
               ohnehin nicht (die RLS gibt ihm genau eine Zeile: sich selbst) —
               und ein Knopf, der nichts tut, ist schlimmer als kein Knopf. */}
           {isHost ? (
-            <Pressable
+            <PressFeedback
               style={styles.viewerPill}
               onPress={() => setViewersOpen(true)}
               hitSlop={6}
@@ -908,7 +912,7 @@ export default function LiveAuctionRoom() {
             >
               <View style={styles.liveDot} />
               <Text style={styles.viewerText}>{session.viewer_count ?? 0}</Text>
-            </Pressable>
+            </PressFeedback>
           ) : (
             <View style={styles.viewerPill}>
               <View style={styles.liveDot} />
@@ -916,14 +920,15 @@ export default function LiveAuctionRoom() {
             </View>
           )}
 
-          <Pressable
+          <PressFeedback
             onPress={minimize}
             hitSlop={8}
             style={styles.closeButton}
+            accessibilityRole="button"
             accessibilityLabel="Show verkleinern"
           >
             <ChevronDown size={18} color={stage.text} />
-          </Pressable>
+          </PressFeedback>
         </View>
 
         {session.women_only ? (
@@ -961,9 +966,9 @@ export default function LiveAuctionRoom() {
               indicatorStyle="white"
             >
             {notice ? (
-              <Pressable style={styles.notice} onPress={() => setNotice(null)}>
+              <PressFeedback style={styles.notice} onPress={() => setNotice(null)}>
                 <Text style={styles.noticeText}>{notice}</Text>
-              </Pressable>
+              </PressFeedback>
             ) : access.error ? (
               <View style={styles.notice}>
                 <Text style={styles.noticeText}>
@@ -1034,7 +1039,7 @@ export default function LiveAuctionRoom() {
 
           {/* Holt den weggewischten Chat zurück. */}
           {chatHidden ? (
-            <Pressable
+            <PressFeedback
               onPress={() => slideChat(false)}
               style={styles.chatHandle}
               accessibilityRole="button"
@@ -1042,11 +1047,11 @@ export default function LiveAuctionRoom() {
             >
               <MessageSquare size={15} color={stage.text} />
               <ChevronRight size={13} color={stage.textMuted} />
-            </Pressable>
+            </PressFeedback>
           ) : null}
 
           <ScrollView style={styles.railScroll} contentContainerStyle={styles.rail} indicatorStyle="white" keyboardShouldPersistTaps="handled">
-            <Pressable
+            <PressFeedback
               style={styles.railItem}
               // Ohne Klammer bekäme `sendHeart` das Berührungs-Ereignis als
               // ersten Wert übergeben und hielte es für eine X-Koordinate.
@@ -1056,12 +1061,12 @@ export default function LiveAuctionRoom() {
             >
               <RailIcon icon={Heart} color={stage.live} fill={stage.live} />
               <Text style={styles.railLabel}>{formatCount(hearts.likes)}</Text>
-            </Pressable>
-            <Pressable style={styles.railItem} onPress={shareShow} accessibilityRole="button">
+            </PressFeedback>
+            <PressFeedback style={styles.railItem} onPress={shareShow} accessibilityRole="button">
               <RailIcon icon={Share2} color={stage.text} />
               <Text style={styles.railLabel}>Teilen</Text>
-            </Pressable>
-            <Pressable
+            </PressFeedback>
+            <PressFeedback
               style={styles.railItem}
               onPress={() => setItemsOpen(true)}
               accessibilityRole="button"
@@ -1075,7 +1080,7 @@ export default function LiveAuctionRoom() {
                 ) : null}
               </View>
               <Text style={styles.railLabel}>Shop</Text>
-            </Pressable>
+            </PressFeedback>
 
             {/* Nur der Gastgeber, und nur seine eigene Sendung.
                 ⚠️ Die BESCHRIFTUNG ist die Zahl — dasselbe Muster wie beim
@@ -1087,7 +1092,7 @@ export default function LiveAuctionRoom() {
                 eine Entmutigung (dieselbe Regel wie bei den Kategorie-Zählern,
                 Abschnitt 29). */}
             {isHost ? (
-              <Pressable
+              <PressFeedback
                 style={styles.railItem}
                 onPress={() => setEarningsOpen(true)}
                 accessibilityRole="button"
@@ -1103,7 +1108,7 @@ export default function LiveAuctionRoom() {
                     ? formatEuro(earnings.grossCents)
                     : 'Umsatz'}
                 </Text>
-              </Pressable>
+              </PressFeedback>
             ) : null}
           </ScrollView>
 
@@ -1156,7 +1161,7 @@ export default function LiveAuctionRoom() {
           LiveKit-Raum-Kontext, und den gibt es erst nach dem Verbinden. Ohne
           diese Bedingung wirft die Komponente, sobald der Gastgeber den Raum
           vor dem „Live gehen" öffnet. */}
-      {isHost && HostControls && stageReady ? <HostControls /> : null}
+      {isHost && HostControls && stageReady ? <HostControls topOffset={headerHeight + space.md} /> : null}
 
       <ShowItemsSheet
         visible={itemsOpen}
@@ -1287,13 +1292,15 @@ const styles = StyleSheet.create({
   },
   // Kopf und Name als ein Ziel. `flex: 1` liegt jetzt hier statt auf
   // headerText, sonst schöbe der Pressable die Folgen-Pille aus dem Bild.
-  identityTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  identityTap: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   headerText: { flex: 1, minWidth: 0 },
   hostName: { fontSize: 14, fontWeight: '700', color: stage.text },
   trustRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   trustText: { fontSize: 11, color: stage.textMuted },
 
   followPill: {
+    minHeight: 44,
+    justifyContent: 'center',
     backgroundColor: stage.gold,
     borderRadius: radius.pill,
     paddingHorizontal: 11,
@@ -1308,6 +1315,8 @@ const styles = StyleSheet.create({
   followTextActive: { color: stage.textMuted },
 
   viewerPill: {
+    minHeight: 44,
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -1322,7 +1331,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: stage.control,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1380,7 +1389,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: stage.lineStrong,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: stage.control,
     paddingHorizontal: space.md,
     fontSize: 13,
     color: stage.text,

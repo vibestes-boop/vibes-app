@@ -270,6 +270,8 @@ export const stage = {
   lineStrong: 'rgba(243,238,245,0.22)',
   /** Halbtransparente Unterlage für Text auf Video */
   scrim: 'rgba(0,0,0,0.40)',
+  /** Readable controls on arbitrary video, shared by room and mini-player. */
+  control: 'rgba(21,12,24,0.88)',
 } as const;
 
 export const radius = {

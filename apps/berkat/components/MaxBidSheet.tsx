@@ -5,18 +5,14 @@
 // Das steht deshalb ausdrücklich im Text und nicht im Kleingedruckten.
 
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+
+import { useWindowDimensions, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { stage, radius, space } from '../theme/tokens';
 import { formatEuro } from '../lib/useAuction';
 
@@ -42,6 +38,8 @@ export function MaxBidSheet({
   onClose,
   onSubmit,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const [value, setValue] = useState('');
 
@@ -56,73 +54,71 @@ export function MaxBidSheet({
   const tooLow = parsed !== null && parsed < minCents;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       {/* Das Feld hat autoFocus — ohne dies läge die Tastatur sofort darüber. */}
       <KeyboardAvoidingView
         style={styles.modalRoot}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom || space.md }]}>
-        <View style={styles.grabber} />
-        <View style={styles.head}>
-          <Text style={styles.title}>Max. Gebot</Text>
-          <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Schließen">
-            <X size={20} color={stage.textMuted} />
-          </Pressable>
-        </View>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+          <SheetHeader title="Maximales Gebot" surface="stage" onClose={onClose} />
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
+            <TextInput allowFontScaling={false}
+              value={value}
+              onChangeText={setValue}
+              keyboardType="decimal-pad"
+              placeholder={String(minCents / 100)}
+              placeholderTextColor={stage.textMuted}
+              style={[styles.input, { fontSize: styles.input.fontSize * fontScale, lineHeight: styles.input.fontSize * 1.4 * fontScale }]}
+              accessibilityLabel="Maximales Gebot in Euro"
+              autoFocus
+            />
 
-        <Text style={styles.explain}>
-          Du legst fest, wie weit du gehen würdest. Berkat bietet für dich mit — immer nur so
-          viel wie nötig. Bezahlt wird am Ende der Preis, bei dem du gewinnst, nicht dein
-          Maximum.
-        </Text>
+            <Text key={`copy-0-${fontScale}`} style={styles.explain}>
+              Du legst fest, wie weit du gehen würdest. Berkat bietet für dich mit — immer nur so
+              viel wie nötig. Bezahlt wird am Ende der Preis, bei dem du gewinnst, nicht dein
+              Maximum.
+            </Text>
 
-        {currentMaxCents ? (
-          <Text style={styles.current}>
-            Bisher hinterlegt: {formatEuro(currentMaxCents)} · Erhöhen ist möglich, senken nicht.
-          </Text>
-        ) : null}
+            {currentMaxCents ? (
+              <Text key={`copy-1-${fontScale}`} style={styles.current}>
+                Bisher hinterlegt: {formatEuro(currentMaxCents)} · Erhöhen ist möglich, senken nicht.
+              </Text>
+            ) : null}
 
-        <View style={styles.chipRow}>
-          {STEPS.map((extra) => {
-            const cents = minCents + extra;
-            return (
-              <Pressable
-                key={extra}
-                style={styles.chip}
-                onPress={() => setValue(String(cents / 100))}
-              >
-                <Text style={styles.chipText}>{formatEuro(cents)}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+            <View style={styles.chipRow}>
+              {STEPS.map((extra) => {
+                const cents = minCents + extra;
+                return (
+                  <PressFeedback
+                    key={extra}
+                    style={[styles.chip, parsed === cents && styles.chipSelected]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: parsed === cents }}
+                    onPress={() => setValue(String(cents / 100))}
+                  >
+                    <Text key={`copy-2-${fontScale}`} style={styles.chipText}>{formatEuro(cents)}</Text>
+                  </PressFeedback>
+                );
+              })}
+            </View>
 
-        <TextInput
-          value={value}
-          onChangeText={setValue}
-          keyboardType="decimal-pad"
-          placeholder={String(minCents / 100)}
-          placeholderTextColor={stage.textMuted}
-          style={styles.input}
-          autoFocus
-        />
+            {tooLow ? (
+              <Text key={`copy-3-${fontScale}`} style={styles.error}>Mindestens {formatEuro(minCents)}.</Text>
+            ) : null}
 
-        {tooLow ? (
-          <Text style={styles.error}>Mindestens {formatEuro(minCents)}.</Text>
-        ) : null}
-
-        <Pressable
-          style={[styles.submit, (!parsed || tooLow || busy) && styles.submitOff]}
-          disabled={!parsed || tooLow || busy}
-          onPress={() => parsed && onSubmit(parsed)}
-          accessibilityRole="button"
-        >
-          <Text style={styles.submitText}>
-            {parsed && !tooLow ? `Bis ${formatEuro(parsed)} mitbieten` : 'Betrag eingeben'}
-          </Text>
-          </Pressable>
+          </ScrollView>
+          <PressFeedback
+            style={[styles.submit, (!parsed || tooLow || busy) && styles.submitOff]}
+            disabled={!parsed || tooLow || busy}
+            onPress={() => parsed && onSubmit(parsed)}
+            accessibilityRole="button"
+          >
+            <Text key={`copy-4-${fontScale}`} style={styles.submitText}>
+              {parsed && !tooLow ? `Bis ${formatEuro(parsed)} mitbieten` : 'Betrag eingeben'}
+            </Text>
+          </PressFeedback>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -132,29 +128,26 @@ export function MaxBidSheet({
 const styles = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
+  body: { gap: space.sm, paddingBottom: space.sm },
   sheet: {
+    overflow: 'hidden',
+    maxHeight: '90%',
     backgroundColor: stage.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    paddingHorizontal: space.md,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
+    paddingHorizontal: space.lg,
     gap: space.sm,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: stage.lineStrong,
-    marginTop: space.sm,
-    marginBottom: space.xs,
-  },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 17, fontWeight: '700', color: stage.text },
+
   explain: { fontSize: 13, color: stage.textMuted, lineHeight: 19 },
   current: { fontSize: 12, color: stage.gold },
-  chipRow: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
+  chipSelected: { borderColor: stage.gold, backgroundColor: stage.surfaceHigh },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.xs },
   chip: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '40%',
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: stage.lineStrong,
@@ -163,7 +156,8 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontWeight: '600', color: stage.text },
   input: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: space.sm,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: stage.line,
@@ -175,7 +169,9 @@ const styles = StyleSheet.create({
   },
   error: { fontSize: 12, color: stage.live },
   submit: {
-    height: 50,
+    minHeight: 50,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     backgroundColor: stage.gold,
     alignItems: 'center',

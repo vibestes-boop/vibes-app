@@ -15,10 +15,16 @@
 // einzige. Deshalb „Zuschläge", und das ist die ehrlichere Zahl: Sie zählt, was
 // gerade wirklich passiert ist.
 
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useWindowDimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
 import { Image } from 'expo-image';
-import { Gift, TrendingUp, X } from 'lucide-react-native';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Gift } from 'lucide-react-native';
+
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { stage, radius, space } from '../theme/tokens';
 import { Avatar } from './Avatar';
 import { formatEuro } from '../lib/useAuction';
@@ -48,6 +54,8 @@ export function EarningsSheet({
   onClose,
   onOpenProfile,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const gross = data?.grossCents ?? 0;
   const sold = data?.soldCount ?? 0;
@@ -55,28 +63,20 @@ export function EarningsSheet({
   const events = data?.events ?? [];
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
       <View style={[s.sheet, { paddingBottom: insets.bottom + space.lg }]}>
-        <View style={s.head}>
-          <TrendingUp size={18} color={stage.text} />
-          <Text style={s.title}>Dieser Abend</Text>
-          <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Schließen">
-            <X size={20} color={stage.textMuted} />
-          </Pressable>
-        </View>
-
-        <Text style={s.hint}>Nur du siehst diese Zahlen.</Text>
+        <SheetHeader title="Dieser Abend" subtitle="Nur du siehst diese Zahlen." surface="stage" onClose={onClose} />
 
         {error ? (
           <View style={s.empty}>
-            <Text style={[s.emptyTitle, { color: stage.live }]}>Die Zahlen kamen nicht durch</Text>
-            <Text style={s.emptyBody}>
+            <Text key={`copy-0-${fontScale}`} style={[s.emptyTitle, { color: stage.live }]}>Die Zahlen kamen nicht durch</Text>
+            <Text key={`copy-1-${fontScale}`} style={s.emptyBody}>
               Das heißt nicht, dass nichts verkauft wurde. Die Zuschläge stehen weiter in deinen
               Bestellungen — hier ließen sie sich gerade nur nicht laden.
             </Text>
             {__DEV__ ? (
-              <Text style={[s.emptyBody, { marginTop: space.sm }]}>
+              <Text key={`copy-2-${fontScale}`} style={[s.emptyBody, { marginTop: space.sm }]}>
                 {error instanceof Error ? error.message : String(error)}
               </Text>
             ) : null}
@@ -85,17 +85,17 @@ export function EarningsSheet({
           <>
             <View style={s.stats}>
               <View style={s.stat}>
-                <Text style={s.statLabel}>Verkäufe</Text>
+                <Text key={`copy-3-${fontScale}`} style={s.statLabel}>Verkäufe</Text>
                 {/* Hellgrün, nicht gold. Gold ist auf der Bühne der KAUF —
                     Gebot, Preis, Zuschlag. Was der Verkäufer eingenommen hat,
                     ist eine Bestätigung, kein Kaufweg; dieselbe Unterscheidung
                     wie bei der Bürgen-Zeile (Abschnitt 15). */}
-                <Text style={[s.statValue, { color: stage.lead }]}>{formatEuro(gross)}</Text>
+                <Text key={`copy-4-${fontScale}`} style={[s.statValue, { color: stage.lead }]}>{loading && !data ? '—' : formatEuro(gross)}</Text>
               </View>
               <View style={s.statDivider} />
               <View style={s.stat}>
-                <Text style={s.statLabel}>Zuschläge</Text>
-                <Text style={s.statValue}>{sold}</Text>
+                <Text key={`copy-5-${fontScale}`} style={s.statLabel}>Zuschläge</Text>
+                <Text key={`copy-6-${fontScale}`} style={s.statValue}>{loading && !data ? '—' : sold}</Text>
               </View>
             </View>
 
@@ -105,7 +105,7 @@ export function EarningsSheet({
             {tips > 0 ? (
               <View style={s.tipLine}>
                 <Gift size={14} color={stage.lead} />
-                <Text style={s.tipText}>
+                <Text key={`copy-7-${fontScale}`} style={s.tipText}>
                   Dazu {formatEuro(tips)} Trinkgeld — das geht ganz an dich.
                 </Text>
               </View>
@@ -113,11 +113,11 @@ export function EarningsSheet({
 
             {events.length === 0 ? (
               <View style={s.empty}>
-                <Text style={s.emptyTitle}>
+                <Text key={`copy-8-${fontScale}`} style={s.emptyTitle}>
                   {loading ? 'Einen Moment …' : 'Noch ist nichts weggegangen'}
                 </Text>
                 {!loading ? (
-                  <Text style={s.emptyBody}>
+                  <Text key={`copy-9-${fontScale}`} style={s.emptyBody}>
                     Leg einen Artikel auf und starte ihn — sobald der erste Zuschlag fällt, steht
                     er hier.
                   </Text>
@@ -131,18 +131,18 @@ export function EarningsSheet({
                     <>
                       <Avatar uri={ev.avatarUrl} name={ev.username} size={36} />
                       <View style={s.body}>
-                        <Text numberOfLines={1} style={s.line}>
-                          <Text style={s.name}>{name}</Text>
+                        <Text key={`copy-10-${fontScale}`} numberOfLines={1} style={s.line}>
+                          <Text key={`copy-11-${fontScale}`} style={s.name}>{name}</Text>
                           {ev.kind === 'tip' ? (
-                            <Text style={{ color: stage.lead }}>
+                            <Text key={`copy-12-${fontScale}`} style={{ color: stage.lead }}>
                               {' '}
                               hat {formatEuro(ev.cents)} Trinkgeld gegeben
                             </Text>
                           ) : (
-                            <Text style={s.dim}> hat zugeschlagen</Text>
+                            <Text key={`copy-13-${fontScale}`} style={s.dim}> hat zugeschlagen</Text>
                           )}
                         </Text>
-                        <Text numberOfLines={1} style={s.meta}>
+                        <Text key={`copy-14-${fontScale}`} numberOfLines={1} style={s.meta}>
                           {ev.kind === 'sale'
                             ? `${formatEuro(ev.cents)} · ${ev.title ?? 'Artikel'}`
                             : eventAgo(ev.at)}
@@ -157,10 +157,10 @@ export function EarningsSheet({
                     </>
                   );
 
-                  // Ohne Konto-ID kein Profil-Weg — ein Pressable, der nichts
+                  // Ohne Konto-ID kein Profil-Weg — ein PressFeedback, der nichts
                   // tut, ist schlechter als keiner.
                   return ev.userId ? (
-                    <Pressable
+                    <PressFeedback
                       key={ev.key}
                       style={s.row}
                       onPress={() => onOpenProfile(ev.userId!)}
@@ -168,7 +168,7 @@ export function EarningsSheet({
                       accessibilityLabel={`Profil von ${name}`}
                     >
                       {row}
-                    </Pressable>
+                    </PressFeedback>
                   ) : (
                     <View key={ev.key} style={s.row}>
                       {row}
@@ -187,18 +187,16 @@ export function EarningsSheet({
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
+    overflow: 'hidden',
     backgroundColor: stage.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     paddingHorizontal: space.lg,
-    paddingTop: space.lg,
+    paddingTop: space.xs,
     // Wie beim Zuschauer-Blatt: Der Gastgeber sendet nebenbei und soll sein
     // eigenes Bild nicht verlieren, während er liest.
     maxHeight: '66%',
   },
-  head: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  title: { flex: 1, fontSize: 17, fontWeight: '700', color: stage.text },
-  hint: { fontSize: 12, color: stage.textMuted, marginTop: space.xs },
 
   stats: {
     flexDirection: 'row',

@@ -9,22 +9,17 @@
 // Wer das je ändert, ändert eine Rechtsfrage und nicht einen Text.
 
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useWindowDimensions, ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+
 import { Image } from 'expo-image';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ImagePlus, X } from 'lucide-react-native';
 
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { BUYER_DISPUTE_REASONS, type DisputeReason } from '../lib/useDispute';
 import { pickAndUploadEvidence, useEvidenceUri } from '../lib/uploadEvidence';
 import { radius, ratio, space, ui } from '../theme/tokens';
@@ -58,6 +53,8 @@ export function DisputeSheet({
   onClose,
   onSubmit,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const [reason, setReason] = useState<DisputeReason | null>(existingReason ?? null);
   const [detail, setDetail] = useState(existingDetail ?? '');
@@ -93,7 +90,7 @@ export function DisputeSheet({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={reducedMotion ? 'none' : 'slide'}
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
@@ -101,15 +98,7 @@ export function DisputeSheet({
         style={s.sheet}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={s.head}>
-          <Text style={s.headTitle}>Problem melden</Text>
-          {/* „Fertig" wäre hier falsch — anders als beim Vorbereiten-Blatt wird
-              hier NICHTS gespeichert, bevor man abschickt. Ein ✕ ist die
-              ehrliche Beschriftung (Übergabe 62, Fund 4). */}
-          <Pressable hitSlop={10} onPress={onClose} accessibilityLabel="Abbrechen">
-            <Text style={s.cancel}>Abbrechen</Text>
-          </Pressable>
-        </View>
+        <View style={{ paddingHorizontal: space.lg }}><SheetHeader title="Problem melden" onClose={onClose} closeLabel="Abbrechen" /></View>
 
         <ScrollView
           contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
@@ -121,38 +110,38 @@ export function DisputeSheet({
               weiß man nicht mehr, welche man erwischt hat. */}
           {orderTitle ? (
             <View style={s.about}>
-              <Text numberOfLines={1} style={s.aboutTitle}>
+              <Text key={`copy-0-${fontScale}`} numberOfLines={1} style={s.aboutTitle}>
                 {orderTitle}
               </Text>
-              {orderAmount ? <Text style={s.aboutAmount}>{orderAmount}</Text> : null}
+              {orderAmount ? <Text key={`copy-1-${fontScale}`} style={s.aboutAmount}>{orderAmount}</Text> : null}
             </View>
           ) : null}
 
-          <Text style={s.lead}>Was ist passiert?</Text>
+          <Text key={`copy-2-${fontScale}`} style={s.lead}>Was ist passiert?</Text>
 
           {BUYER_DISPUTE_REASONS.map((r) => {
             const active = reason === r.key;
             return (
-              <Pressable
+              <PressFeedback
                 key={r.key}
                 onPress={() => setReason(r.key)}
                 style={[s.row, active && s.rowOn]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[s.rowText, active && s.rowTextOn]}>{r.label}</Text>
+                <Text key={`copy-3-${fontScale}`} style={[s.rowText, active && s.rowTextOn]}>{r.label}</Text>
                 {active ? <Check size={18} color={ui.brand} /> : null}
-              </Pressable>
+              </PressFeedback>
             );
           })}
 
-          <Text style={s.label}>Was genau? (freiwillig)</Text>
-          <TextInput
+          <Text key={`copy-4-${fontScale}`} style={s.label}>Was genau? (freiwillig)</Text>
+          <TextInput allowFontScaling={false}
             value={detail}
             onChangeText={setDetail}
             placeholder="Ein, zwei Sätze reichen."
             placeholderTextColor={ui.textMuted}
-            style={s.input}
+            style={[s.input, { fontSize: s.input.fontSize * fontScale, lineHeight: s.input.fontSize * 1.4 * fontScale }]}
             multiline
             maxLength={2000}
           />
@@ -161,7 +150,7 @@ export function DisputeSheet({
               anderen Bildschirm zu schicken, verliert die Hälfte der Belege —
               und ein Foto am VORGANG überlebt die Unterhaltung, wird von
               Betreibern gelesen und steht beim Klären zur Verfügung. */}
-          <Text style={s.label}>Foto vom Problem (hilft am meisten)</Text>
+          <Text key={`copy-5-${fontScale}`} style={s.label}>Foto vom Problem (hilft am meisten)</Text>
           {photo ? (
             <View style={s.photoWrap}>
               {photoUri ? (
@@ -171,17 +160,17 @@ export function DisputeSheet({
                    Grösse des Bildes, damit das Blatt nicht springt. */
                 <View style={s.photo} />
               )}
-              <Pressable
+              <PressFeedback
                 style={s.photoRemove}
                 onPress={() => setPhoto(null)}
                 hitSlop={8}
                 accessibilityLabel="Foto entfernen"
               >
                 <X size={14} color={ui.bg} />
-              </Pressable>
+              </PressFeedback>
             </View>
           ) : (
-            <Pressable
+            <PressFeedback
               style={s.photoAdd}
               onPress={() => void addPhoto()}
               disabled={uploading}
@@ -193,29 +182,29 @@ export function DisputeSheet({
               ) : (
                 <>
                   <ImagePlus size={20} color={ui.textMuted} />
-                  <Text style={s.photoAddText}>Foto hinzufügen</Text>
+                  <Text key={`copy-6-${fontScale}`} style={s.photoAddText}>Foto hinzufügen</Text>
                 </>
               )}
-            </Pressable>
+            </PressFeedback>
           )}
 
-          <Pressable
-            style={[s.primary, (!reason || busy) && s.primaryOff]}
+          <PressFeedback
+            style={[s.primary, (!reason || busy || uploading) && s.primaryOff]}
             disabled={!reason || busy || uploading}
             onPress={() => reason && onSubmit(reason, detail.trim() || null, photo)}
             accessibilityRole="button"
             accessibilityLabel="Problem melden"
           >
             {busy ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={ui.card} />
             ) : (
-              <Text style={s.primaryText}>Melden</Text>
+              <Text key={`copy-7-${fontScale}`} style={s.primaryText}>Melden</Text>
             )}
-          </Pressable>
+          </PressFeedback>
 
           {/* ⚠️ Der einzige Satz, der eine Erwartung setzt — und er setzt
               bewusst nur die, die einlösbar ist. */}
-          <Text style={s.promise}>
+          <Text key={`copy-8-${fontScale}`} style={s.promise}>
             Der Verkäufer wird sofort benachrichtigt und meldet sich bei dir. Deine gesetzlichen
             Rechte bleiben davon unberührt.
           </Text>
@@ -227,17 +216,6 @@ export function DisputeSheet({
 
 const s = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: ui.bg },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.md,
-    paddingVertical: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ui.line,
-  },
-  headTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
-  cancel: { fontSize: 16, color: ui.textMuted },
 
   // Worum es geht — ruhig, weil es Zustand ist und keine Handlung.
   about: {
@@ -283,7 +261,6 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: ui.text,
   },
-  hint: { fontSize: 12, color: ui.textMuted, marginTop: space.sm, lineHeight: 17 },
 
   // Gestrichelter Rahmen: Es ist eine Ablagefläche, kein Knopf mit Folgen —
   // dieselbe Sprache wie bei Whatnots „Photos / Scan" (elfte Analyse).
@@ -334,7 +311,7 @@ const s = StyleSheet.create({
     marginTop: space.lg,
   },
   primaryOff: { opacity: 0.45 },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: ui.card },
 
   promise: { fontSize: 12, color: ui.textMuted, marginTop: space.md, lineHeight: 17 },
 });

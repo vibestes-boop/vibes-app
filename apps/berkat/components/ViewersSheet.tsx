@@ -10,9 +10,14 @@
 // Phase 0 ist das der Unterschied zwischen einer Sendung, nach der jemand
 // wiederkommt, und einer, nach der niemand wiederkommt.
 
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useWindowDimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AtSign, Users, X } from 'lucide-react-native';
+import { AtSign } from 'lucide-react-native';
+
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { stage, radius, space } from '../theme/tokens';
 import { Avatar } from './Avatar';
 import { watchingSince, type LiveViewer } from '../lib/useLiveViewers';
@@ -48,45 +53,38 @@ export function ViewersSheet({
   onMention,
   onOpenProfile,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
       <View style={[s.sheet, { paddingBottom: insets.bottom + space.lg }]}>
-        <View style={s.head}>
-          <Users size={18} color={stage.text} />
-          <Text style={s.title}>
-            {viewers.length === 1 ? '1 schaut zu' : `${viewers.length} schauen zu`}
-          </Text>
-          <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Schließen">
-            <X size={20} color={stage.textMuted} />
-          </Pressable>
-        </View>
+        <SheetHeader title={(error || loading) && !viewers.length ? 'Zuschauer' : viewers.length === 1 ? '1 schaut zu' : `${viewers.length} schauen zu`} subtitle="Nur du siehst diese Liste." surface="stage" onClose={onClose} />
 
         {/* Einmal gesagt statt an jeder Zeile: Die Liste ist nicht öffentlich. */}
-        <Text style={s.hint}>Nur du siehst diese Liste.</Text>
 
         {error ? (
           <View style={s.empty}>
-            <Text style={[s.emptyTitle, { color: stage.live }]}>Die Liste kam nicht durch</Text>
-            <Text style={s.emptyBody}>
+            <Text key={`copy-0-${fontScale}`} style={[s.emptyTitle, { color: stage.live }]}>Die Liste kam nicht durch</Text>
+            <Text key={`copy-1-${fontScale}`} style={s.emptyBody}>
               Das heißt nicht, dass niemand zusieht — die Zahl oben stimmt weiter. Nur die Namen
               ließen sich gerade nicht laden.
             </Text>
             {__DEV__ ? (
-              <Text style={[s.emptyBody, { marginTop: space.sm }]}>
+              <Text key={`copy-2-${fontScale}`} style={[s.emptyBody, { marginTop: space.sm }]}>
                 {error instanceof Error ? error.message : String(error)}
               </Text>
             ) : null}
           </View>
         ) : viewers.length === 0 ? (
           <View style={s.empty}>
-            <Text style={s.emptyTitle}>
+            <Text key={`copy-3-${fontScale}`} style={s.emptyTitle}>
               {loading ? 'Einen Moment …' : 'Noch schaut niemand zu'}
             </Text>
             {!loading ? (
-              <Text style={s.emptyBody}>
+              <Text key={`copy-4-${fontScale}`} style={s.emptyBody}>
                 Kündige den nächsten Termin an — wer dir folgt, bekommt 15 Minuten vorher eine
                 Erinnerung aufs Handy.
               </Text>
@@ -98,7 +96,7 @@ export function ViewersSheet({
               const name = viewer.username ?? 'Jemand';
               return (
                 <View key={viewer.user_id} style={s.row}>
-                  <Pressable
+                  <PressFeedback
                     style={s.who}
                     onPress={() => onOpenProfile(viewer.user_id)}
                     accessibilityRole="button"
@@ -106,16 +104,16 @@ export function ViewersSheet({
                   >
                     <Avatar uri={viewer.avatar_url} name={viewer.username} size={38} />
                     <View style={s.whoText}>
-                      <Text numberOfLines={1} style={s.name}>
+                      <Text key={`copy-5-${fontScale}`} numberOfLines={1} style={s.name}>
                         {name}
                       </Text>
-                      <Text style={s.since}>{watchingSince(viewer.joined_at)}</Text>
+                      <Text key={`copy-6-${fontScale}`} style={s.since}>{watchingSince(viewer.joined_at)}</Text>
                     </View>
-                  </Pressable>
+                  </PressFeedback>
 
                   {/* Ohne Namen kein Erwähnen — `@Jemand` träfe niemanden. */}
                   {viewer.username ? (
-                    <Pressable
+                    <PressFeedback
                       onPress={() => onMention(viewer.username!)}
                       style={s.mention}
                       hitSlop={6}
@@ -123,7 +121,7 @@ export function ViewersSheet({
                       accessibilityLabel={`${name} im Chat ansprechen`}
                     >
                       <AtSign size={17} color={stage.gold} />
-                    </Pressable>
+                    </PressFeedback>
                   ) : null}
                 </View>
               );
@@ -138,18 +136,16 @@ export function ViewersSheet({
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
+    overflow: 'hidden',
     backgroundColor: stage.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     paddingHorizontal: space.lg,
-    paddingTop: space.lg,
+    paddingTop: space.xs,
     // Höchstens zwei Drittel des Bildschirms: Der Gastgeber sendet nebenbei und
     // soll sein eigenes Bild nicht verlieren, während er die Liste liest.
     maxHeight: '66%',
   },
-  head: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  title: { flex: 1, fontSize: 17, fontWeight: '700', color: stage.text },
-  hint: { fontSize: 12, color: stage.textMuted, marginTop: space.xs },
 
   list: { marginTop: space.md },
   listInner: { paddingBottom: space.sm },
@@ -169,9 +165,9 @@ const s = StyleSheet.create({
   // Gold, weil es die Handlung ist, um die es hier geht — nicht als Kauf-Signal,
   // sondern als der eine Knopf, den dieses Blatt rechtfertigt.
   mention: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: stage.lineStrong,
     alignItems: 'center',

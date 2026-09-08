@@ -9,14 +9,19 @@
 // brauchen.
 
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { useWindowDimensions, StyleSheet, Text, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConnectionState, useLocalParticipant } from '@livekit/react-native';
 import { ConnectionState, type LocalVideoTrack } from 'livekit-client';
 import { Mic, MicOff, SwitchCamera, Video, VideoOff } from 'lucide-react-native';
+
+import { PressFeedback } from './PressFeedback';
 import { stage, radius, space } from '../theme/tokens';
 
-export function HostControls() {
+export function HostControls({ topOffset = 56 }: { topOffset?: number }) {
+  const { fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const connection = useConnectionState();
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled, cameraTrack } =
@@ -59,47 +64,49 @@ export function HostControls() {
         : { text: 'Nicht verbunden', dot: stage.live };
 
   return (
-    <View style={[styles.wrap, { top: insets.top + 44 }]} pointerEvents="box-none">
+    <View style={[styles.wrap, { top: insets.top + topOffset }]} pointerEvents="box-none">
       <View style={styles.statusPill}>
         <View style={[styles.dot, { backgroundColor: status.dot }]} />
-        <Text style={styles.statusText}>{status.text}</Text>
+        <Text key={`copy-0-${fontScale}`} style={styles.statusText}>{status.text}</Text>
       </View>
 
       <View style={styles.row}>
-        <Pressable
+        <PressFeedback
           onPress={toggleCamera}
           style={[styles.button, !isCameraEnabled && styles.buttonOff]}
           accessibilityRole="button"
           accessibilityLabel={isCameraEnabled ? 'Kamera ausschalten' : 'Kamera einschalten'}
         >
           {isCameraEnabled ? (
-            <Video size={16} color={stage.text} />
+            <Video size={20} color={stage.text} />
           ) : (
-            <VideoOff size={16} color={stage.liveInk} />
+            <VideoOff size={20} color={stage.liveInk} />
           )}
-        </Pressable>
+        </PressFeedback>
 
-        <Pressable
+        <PressFeedback
           onPress={toggleMic}
           style={[styles.button, !isMicrophoneEnabled && styles.buttonOff]}
           accessibilityRole="button"
           accessibilityLabel={isMicrophoneEnabled ? 'Mikrofon stumm' : 'Mikrofon an'}
         >
           {isMicrophoneEnabled ? (
-            <Mic size={16} color={stage.text} />
+            <Mic size={20} color={stage.text} />
           ) : (
-            <MicOff size={16} color={stage.liveInk} />
+            <MicOff size={20} color={stage.liveInk} />
           )}
-        </Pressable>
+        </PressFeedback>
 
-        <Pressable
+        <PressFeedback
           onPress={switchCamera}
-          style={styles.button}
+          style={[styles.button, (busy || !cameraTrack?.track) && { opacity: 0.5 }]}
+          disabled={busy || !cameraTrack?.track}
+          accessibilityState={{ disabled: busy || !cameraTrack?.track, busy }}
           accessibilityRole="button"
           accessibilityLabel="Kamera wechseln"
         >
-          <SwitchCamera size={16} color={stage.text} />
-        </Pressable>
+          <SwitchCamera size={20} color={stage.text} />
+        </PressFeedback>
       </View>
     </View>
   );
@@ -111,19 +118,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: stage.control,
     borderRadius: radius.pill,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 6,
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 11, fontWeight: '700', color: stage.text },
+  statusText: { fontSize: 12, fontWeight: '700', color: stage.text },
   row: { flexDirection: 'row', gap: 6 },
   button: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: stage.control,
     alignItems: 'center',
     justifyContent: 'center',
   },

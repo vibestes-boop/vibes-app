@@ -9,6 +9,7 @@
 // im Ring eine Person und sieht dann alles, was sie heute gezeigt hat.
 
 import { useCallback, useMemo } from 'react';
+
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { StoryStage } from '../../components/StoryStage';
@@ -20,7 +21,7 @@ export default function StoryViewer() {
   const { id: sellerId } = useLocalSearchParams<{ id: string }>();
   const myUserId = useSession((s) => s.userId);
 
-  const { data: groups = [], isLoading } = useBerkatStories();
+  const { data: groups = [], isLoading, isError, refetch } = useBerkatStories();
   const markViewed = useMarkStoryViewed();
   const del = useDeleteStory();
 
@@ -42,6 +43,8 @@ export default function StoryViewer() {
       items={items}
       who={group ? { username: group.username, avatarUrl: group.avatarUrl } : null}
       loading={isLoading}
+      error={isError}
+      onRetry={() => void refetch()}
       // Der Vermerk darf scheitern, ohne das Ansehen zu unterbrechen —
       // Begründung am Hook.
       onSeen={(storyId) => markViewed.mutate(storyId)}

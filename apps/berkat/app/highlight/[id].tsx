@@ -11,6 +11,7 @@
 //      gesehen" — die Scheibe auf dem Profil hat deshalb auch keinen Ring.
 
 import { useCallback, useMemo } from 'react';
+
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { StoryStage } from '../../components/StoryStage';
@@ -22,7 +23,7 @@ export default function HighlightViewer() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const myUserId = useSession((s) => s.userId);
 
-  const { data, isLoading } = useHighlight(id);
+  const { data, isLoading, isError, refetch } = useHighlight(id);
   const del = useDeleteHighlight();
 
   const sellerId = data?.highlight.user_id ?? null;
@@ -45,6 +46,8 @@ export default function HighlightViewer() {
       who={data ? { username: data.username, avatarUrl: data.avatarUrl } : null}
       caption={data?.highlight.title ?? null}
       loading={isLoading}
+      error={isError}
+      onRetry={() => void refetch()}
       onDelete={
         eigenes && id
           ? () => del.mutate(id, { onSuccess: schliessen })

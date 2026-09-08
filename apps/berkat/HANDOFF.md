@@ -5,6 +5,55 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Arbeitsstand · Schritt 2 · 08.09.2026
+
+**Schritt 2 ist im Quellcode umgesetzt und im iOS-Simulator geprüft.** Dieses
+Paket folgt auf `578c58e`; es ist noch nicht im installierten iPhone-Build 4
+enthalten. Der Fokus bleibt die App selbst, nicht die Richtigkeit der Testprodukte.
+
+- Elf Sheets verwenden `SheetHeader`, mindestens 44 pt große Schließen-Ziele,
+  gemeinsame Typografie und `PressFeedback`: ProfileEdit, Highlight, Review,
+  Viewers, Earnings, MaxBid, ShowItems, ShelfPick, Seller, AgeGate und Dispute.
+  Profil, Highlight und Bewertung haben feste Kopf-/Aktionsbereiche mit
+  scrollbarem Formular; MaxBid hält Betrag und Bestätigung bei der Tastatur
+  erreichbar. Verkäufer-Kennzahlen wechseln bei großer Schrift in lesbare Zeilen.
+- Alle elf sowie fünf weitere Modal-Übergänge beachten reduzierte Bewegung:
+  LineupPreview, zwei in Messages, Verkäufer-Profilmenü und SellerOrders-Bildzoom.
+  LineupPreview nutzt ebenfalls die gemeinsame Kopfzeile. Text wird bei einem
+  Systemschriftwechsel neu vermessen, ohne Eingaben und Auswahl zurückzusetzen.
+- Stories haben einen neuen Bildbereich, klare Navigation, Pause/Fortsetzen
+  sowie Lade-, Fehler- und Wiederholungszustände. Zeit und Gesehen-Markierung
+  beginnen erst nach tatsächlicher Bildanzeige; Hintergrund und Fokusverlust
+  pausieren. Bei reduzierter Bewegung erfolgt der Wechsel manuell. Der Fortschritt
+  läuft nativ statt über regelmäßige React-Updates; verspätete Bild-/Timer-
+  Rückrufe werden verworfen. Auswahl bleibt bei Umsortierung erhalten.
+- Live-Steuerung: größere Kamera-/Mikrofon-/Schließen-Ziele, kontrastreiche
+  Flächen und Abstand unter der gemessenen Kopfzeile. Der größere Mini-Player
+  trennt Schließen vom Wiederherstellen. LivePreview zeigt Preis, Status und
+  Countdown des aktuellen Eintrags ohne eingefrorenen Vorgänger; dezente,
+  abschaltbare Übergänge.
+
+**Prüfungen:** 185 Tests (neun neue Story-/Formularfälle), `npx tsc --noEmit`,
+iOS-Export und `git diff --check` bestanden. Native Sicht-/Bedienprüfung auf
+iPhone-17-Simulator/iOS 26.3: Sheets mit normaler und großer Systemschrift,
+MaxBid mit Bildschirmtastatur und erhaltenem eingegebenem Betrag, Story-
+Bildfehler → Pause → erfolgreiche Wiederholung bei erhaltener Pause sowie
+Verkäufer-Kennzahlen nach Layoutkorrektur. Profil mit festem Aktionsbereich
+abschließend geprüft. Live-Host-Steuerung nur ohne aktive Übertragung gesichtet.
+Die temporäre lokale Prüfansicht wurde vor dem finalen Export entfernt;
+Systemschrift auf `extra-large` zurückgestellt und normale Startseite geöffnet.
+Keine Backend-Schreibaktionen, neue Abhängigkeiten, OTA oder native Installation.
+
+Nachweise, Screenshots und Grenzen der Prüfung:
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-sheets-story-live-quality`.
+
+**Fortsetzung:** Einen neuen lokal signierten iPhone-Testbuild mit diesem
+UI-Paket erstellen und auf dem iPhone 16 Pro prüfen. Danach Rückmeldung zu
+Bedienung und Wirkung einarbeiten. Echte Live-Übertragung, Kamera/Mikrofon,
+Mini-Player-Wiederverbindung, höchste Schriftgrößen, Android und Startzeit-/FPS-
+Messungen sind noch offen. Ein Export oder Simulator-Test ersetzt diese
+Geräteprüfungen nicht; Aussagen zur tatsächlichen Nutzerbindung sind ungemessen.
+
 ## Aktueller Teststand · 08.09.2026
 
 Der Nutzer möchte die bisherige Modernisierung sichern und auf seinem iPhone
@@ -62,11 +111,11 @@ Build-/Testlogs liegen unter `/private/tmp/berkat-native-build-20260908`.
 IPA, kompakte Nachweise und Wiederholungsanleitung sind dauerhaft gesichert:
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-4`.
 
-**Danach:** Zuerst Rückmeldung aus dem physischen App-Test aufnehmen,
-anschließend weitere Sheets und Story-/Live-Effekte bearbeiten. Die bisherigen
-Simulator-Prüfungen ersetzen den Gerätetest nicht. Historische „Nächster Schritt“-
-Angaben in älteren Einträgen sind durch diesen Teststand und die jüngsten
-Einträge ersetzt. Weiterhin keine Prüfung der Testprodukt-Richtigkeit.
+**Danach:** Die Weiterarbeit an Sheets und Story-/Live-Ansichten ist im Abschnitt
+„Arbeitsstand · Schritt 2“ oben dokumentiert. Build 4 enthält sie noch nicht;
+für die nächste Geräteprüfung muss ein neuer Testbuild installiert werden.
+Historische „Nächster Schritt“-Angaben in älteren Einträgen sind durch den
+obersten Arbeitsstand ersetzt. Weiterhin keine Prüfung der Testprodukt-Richtigkeit.
 
 > **Konto/Aktivität/Verkaufsformulare · 08.09.2026:** 86 Druckziele in den
 > drei Tabs plus SellerStart, SavedList, CategoryPicker, SchedulePlanner und

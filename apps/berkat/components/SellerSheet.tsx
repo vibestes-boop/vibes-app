@@ -14,30 +14,18 @@
 // der Live-Raum ist die dunkle.
 
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { useWindowDimensions, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  AtSign,
-  Ban,
-  ChevronLeft,
-  ChevronRight,
-  CircleUser,
-  Flag,
-  Gift,
-  MessageSquare,
-  ShieldCheck,
-  Star,
-  Tag,
-  Truck,
-  X,
-} from 'lucide-react-native';
+import { AtSign, Ban, ChevronRight, CircleUser, Flag, Gift, MessageSquare, ShieldCheck, Star, Tag, Truck } from 'lucide-react-native';
+
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { stage, radius, space } from '../theme/tokens';
 import { Avatar } from './Avatar';
-import {
-  formatRating,
-  formatShipTime,
-  type SellerStats,
-} from '../lib/useSellerStats';
+import { formatRating, formatShipTime, type SellerStats } from '../lib/useSellerStats';
 import { REPORT_REASONS, type ReportReason } from '../lib/useSellerActions';
 
 type Props = {
@@ -86,6 +74,8 @@ export function SellerSheet({
   onUnblock,
   onReport,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<'main' | 'report'>('main');
 
@@ -109,68 +99,60 @@ export function SellerSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       <View style={styles.modalRoot}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom || space.md }]}>
-          <View style={styles.grabber} />
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+          <SheetHeader title={view === 'report' ? 'Was ist passiert?' : 'Verkäufer'} surface="stage" onClose={onClose} onBack={view === 'report' ? () => setView('main') : undefined} />
 
+          <ScrollView showsVerticalScrollIndicator={false}>
           {view === 'report' ? (
             <>
-              <View style={styles.head}>
-                <Pressable onPress={() => setView('main')} hitSlop={10} accessibilityLabel="Zurück">
-                  <ChevronLeft size={22} color={stage.text} />
-                </Pressable>
-                <Text style={styles.title}>Was ist passiert?</Text>
-                <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Schließen">
-                  <X size={20} color={stage.textMuted} />
-                </Pressable>
-              </View>
 
-              <Text style={styles.explain}>
+              <Text key={`copy-0-${fontScale}`} style={styles.explain}>
                 Deine Meldung geht nur an uns — {name} erfährt nicht, von wem sie kam.
               </Text>
 
-              <ScrollView style={styles.reasonList} bounces={false}>
+              <View style={styles.reasonList}>
                 {REPORT_REASONS.map((r) => (
-                  <Pressable
+                  <PressFeedback
                     key={r.key}
                     style={styles.reasonRow}
                     onPress={() => onReport(r.key)}
                     accessibilityRole="button"
                   >
-                    <Text style={styles.reasonText}>{r.label}</Text>
-                  </Pressable>
+                    <Text key={`copy-1-${fontScale}`} style={styles.reasonText}>{r.label}</Text>
+                  </PressFeedback>
                 ))}
-              </ScrollView>
+              </View>
             </>
           ) : (
             <>
               {/* Kopf: wer, und der einzige Knopf, der hier oben hingehört. */}
               <View style={styles.identity}>
                 <Avatar uri={avatarUrl} name={username} size={48} ring />
-                <Text numberOfLines={1} style={styles.name}>
+                <Text key={`copy-2-${fontScale}`} numberOfLines={2} style={styles.name}>
                   {name}
                 </Text>
                 {follow.canFollow ? (
-                  <Pressable
+                  <PressFeedback
                     onPress={() => follow.toggle()}
                     disabled={follow.busy}
                     style={[styles.followPill, follow.isFollowing && styles.followPillActive]}
                     accessibilityRole="button"
                   >
-                    <Text
+                    <Text key={`copy-3-${fontScale}`}
                       style={[styles.followText, follow.isFollowing && styles.followTextActive]}
                     >
                       {follow.isFollowing ? 'Folgt' : 'Folgen'}
                     </Text>
-                  </Pressable>
+                  </PressFeedback>
                 ) : null}
               </View>
 
               {/* Die drei Zahlen. Jede zeigt „—" statt einer erfundenen Zahl,
                   solange es nichts zu zeigen gibt. */}
-              <View style={styles.tiles}>
+              <View style={[styles.tiles, fontScale > 1.4 && { flexDirection: 'column' }]}>
                 <Tile
                   icon={<Star size={18} color={stage.text} />}
                   value={formatRating(stats?.rating ?? null)}
@@ -198,18 +180,18 @@ export function SellerSheet({
                   dieser Community ist das der Teil, der entscheidet. Antippen
                   führt aufs Profil, wo die vollständige Liste steht. */}
               {vouchLine ? (
-                <Pressable
+                <PressFeedback
                   style={styles.vouchLine}
                   onPress={onProfile}
                   accessibilityRole="button"
                   accessibilityLabel={vouchLine}
                 >
                   <ShieldCheck size={15} color={stage.lead} />
-                  <Text numberOfLines={2} style={styles.vouchText}>
+                  <Text key={`copy-4-${fontScale}`} numberOfLines={2} style={styles.vouchText}>
                     {vouchLine}
                   </Text>
                   <ChevronRight size={15} color={stage.textMuted} />
-                </Pressable>
+                </PressFeedback>
               ) : null}
 
               <View style={styles.rows}>
@@ -258,6 +240,7 @@ export function SellerSheet({
               </View>
             </>
           )}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -273,11 +256,12 @@ function Tile({
   value: string;
   label: string;
 }) {
+  const { fontScale } = useWindowDimensions();
   return (
-    <View style={styles.tile}>
+    <View style={[styles.tile, fontScale > 1.4 && styles.tileWide]}>
       {icon}
-      <Text style={styles.tileValue}>{value}</Text>
-      <Text numberOfLines={2} style={styles.tileLabel}>
+      <Text key={`copy-5-${fontScale}`} style={styles.tileValue}>{value}</Text>
+      <Text key={`copy-6-${fontScale}`} numberOfLines={fontScale > 1.4 ? undefined : 2} style={[styles.tileLabel, fontScale > 1.4 && { flex: 1 }]}>
         {label}
       </Text>
     </View>
@@ -299,20 +283,21 @@ function Row({
   muted?: boolean;
   disabled?: boolean;
 }) {
+  const { fontScale } = useWindowDimensions();
   if (disabled) return null;
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+    <PressFeedback
+      style={styles.row}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
       <View style={styles.rowIcon}>{icon}</View>
       <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, muted && styles.rowLabelMuted]}>{label}</Text>
-        {hint ? <Text style={styles.rowHint}>{hint}</Text> : null}
+        <Text key={`copy-7-${fontScale}`} style={[styles.rowLabel, muted && styles.rowLabelMuted]}>{label}</Text>
+        {hint ? <Text key={`copy-8-${fontScale}`} style={styles.rowHint}>{hint}</Text> : null}
       </View>
-    </Pressable>
+    </PressFeedback>
   );
 }
 
@@ -320,23 +305,14 @@ const styles = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
   sheet: {
+    overflow: 'hidden',
+    maxHeight: '88%',
     backgroundColor: stage.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     paddingHorizontal: space.md,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: stage.lineStrong,
-    marginTop: space.sm,
-    marginBottom: space.sm,
-  },
 
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 17, fontWeight: '700', color: stage.text },
   explain: { fontSize: 13, color: stage.textMuted, lineHeight: 19, marginTop: space.sm },
 
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.lg },
@@ -372,6 +348,7 @@ const styles = StyleSheet.create({
     padding: space.md,
     gap: 4,
   },
+  tileWide: { flex: 0, flexDirection: 'row', alignItems: 'center', gap: space.md },
   tileValue: { fontSize: 20, fontWeight: '700', color: stage.text, marginTop: 2 },
   tileLabel: { fontSize: 11, color: stage.textMuted, lineHeight: 15 },
 
@@ -382,7 +359,6 @@ const styles = StyleSheet.create({
     gap: space.md,
     paddingVertical: 11,
   },
-  rowPressed: { opacity: 0.55 },
   rowIcon: {
     width: 40,
     height: 40,

@@ -15,26 +15,18 @@
 // über der Navigationsleiste keine Berührungen (Übergabe, Abschnitt 3).
 
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+
+import { useWindowDimensions, ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+
 import { Image } from 'expo-image';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ImagePlus, X } from 'lucide-react-native';
 
-import {
-  HIGHLIGHT_ITEMS_MAX,
-  HIGHLIGHT_TITLE_MAX,
-  type HighlightItem,
-} from '../lib/useHighlights';
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
+import { HIGHLIGHT_ITEMS_MAX, HIGHLIGHT_TITLE_MAX, type HighlightItem } from '../lib/useHighlights';
 import { radius, ratio, space, ui } from '../theme/tokens';
 
 const THUMB = 66;
@@ -68,6 +60,9 @@ export function HighlightSheet({
   onCreate,
   onClose,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
+  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
 
   // Beim Öffnen zurücksetzen. Ohne das stünde nach einem Abbrechen beim
@@ -89,30 +84,27 @@ export function HighlightSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} accessibilityLabel="Schliessen" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={s.wrap}
+        pointerEvents="box-none"
       >
-        <View style={s.sheet}>
-          <View style={s.grabber} />
+        <View style={[s.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+          <SheetHeader title="Neues Highlight" subtitle="Deine Lieblingsmomente bleiben auf deinem Profil." onClose={onClose} />
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={s.title}>Neues Highlight</Text>
-            <Text style={s.sub}>
-              Bleibt auf deinem Profil stehen — auch wenn eine Story längst abgelaufen ist.
-            </Text>
 
             {/* ── Titel ─────────────────────────────────────────────────────
                 Steht zuerst, weil er die Frage beantwortet, die die Auswahl
                 erst sinnvoll macht: WOFÜR sammle ich hier Bilder. */}
-            <Text style={s.label}>Name</Text>
-            <TextInput
+            <Text key={`copy-0-${fontScale}`} style={s.label}>Name</Text>
+            <TextInput allowFontScaling={false}
               value={title}
               onChangeText={(text) => setTitle(text.slice(0, HIGHLIGHT_TITLE_MAX))}
               placeholder="z. B. Abayas"
               placeholderTextColor={ui.textMuted}
-              style={s.input}
+              style={[s.input, { fontSize: s.input.fontSize * fontScale, lineHeight: s.input.fontSize * 1.4 * fontScale }]}
               maxLength={HIGHLIGHT_TITLE_MAX}
               returnKeyType="done"
             />
@@ -122,7 +114,7 @@ export function HighlightSheet({
                 Überschrift „Ausgewählt" erklärt nur sich selbst. */}
             {items.length > 0 ? (
               <>
-                <Text style={s.label}>
+                <Text key={`copy-1-${fontScale}`} style={s.label}>
                   Ausgewählt · {items.length}
                   {items.length === HIGHLIGHT_ITEMS_MAX ? ' (mehr geht nicht)' : ''}
                 </Text>
@@ -135,7 +127,7 @@ export function HighlightSheet({
                             source={{ uri: item.thumbnail_url ?? item.media_url }}
                             style={StyleSheet.absoluteFill}
                             contentFit="cover"
-                            transition={120}
+                            transition={reducedMotion ? 0 : 120}
                           />
                         </View>
                         {/* Das erste Bild ist das Titelbild. Ohne diesen Hinweis
@@ -144,18 +136,18 @@ export function HighlightSheet({
                             auf seiner Scheibe steht. */}
                         {i === 0 ? (
                           <View style={s.coverTag}>
-                            <Text style={s.coverTagText}>Titelbild</Text>
+                            <Text key={`copy-2-${fontScale}`} style={s.coverTagText}>Titelbild</Text>
                           </View>
                         ) : null}
-                        <Pressable
+                        <PressFeedback
                           hitSlop={8}
                           style={s.remove}
                           onPress={() => onChangeItems(items.filter((x) => x.media_url !== item.media_url))}
                           accessibilityRole="button"
                           accessibilityLabel="Bild entfernen"
                         >
-                          <X size={12} color={ui.card} strokeWidth={3} />
-                        </Pressable>
+                          <View style={s.removeDisc}><X size={16} color={ui.card} strokeWidth={2.5} /></View>
+                        </PressFeedback>
                       </View>
                     ))}
                   </View>
@@ -164,7 +156,7 @@ export function HighlightSheet({
             ) : null}
 
             {/* ── Foto hinzufügen ───────────────────────────────────────── */}
-            <Pressable
+            <PressFeedback
               style={[s.add, (uploading || voll) && s.addOff]}
               onPress={onPickPhoto}
               disabled={uploading || voll}
@@ -176,27 +168,27 @@ export function HighlightSheet({
               ) : (
                 <>
                   <ImagePlus size={18} color={voll ? ui.textMuted : ui.text} />
-                  <Text style={[s.addText, voll && s.addTextOff]}>
+                  <Text key={`copy-3-${fontScale}`} style={[s.addText, voll && s.addTextOff]}>
                     {voll ? `Höchstens ${HIGHLIGHT_ITEMS_MAX} Bilder` : 'Foto hinzufügen'}
                   </Text>
                 </>
               )}
-            </Pressable>
+            </PressFeedback>
 
             {/* ── Aus den eigenen Stories ───────────────────────────────── */}
             {archive.length > 0 ? (
               <>
-                <Text style={s.label}>Aus deinen Stories</Text>
+                <Text key={`copy-4-${fontScale}`} style={s.label}>Aus deinen Stories</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={s.strip}>
                     {archive.map((item) => {
                       const on = chosen.has(item.media_url);
                       return (
-                        <Pressable
+                        <PressFeedback
                           key={item.media_url}
                           onPress={() => toggle(item)}
                           disabled={uploading || (voll && !on)}
-                          style={({ pressed }) => [s.thumb, on && s.thumbOn, pressed && s.pressed]}
+                          style={[s.thumb, on && s.thumbOn]}
                           accessibilityRole="button"
                           accessibilityState={{ selected: on }}
                           accessibilityLabel={on ? 'Bild abwählen' : 'Bild auswählen'}
@@ -205,14 +197,14 @@ export function HighlightSheet({
                             source={{ uri: item.thumbnail_url ?? item.media_url }}
                             style={StyleSheet.absoluteFill}
                             contentFit="cover"
-                            transition={120}
+                            transition={reducedMotion ? 0 : 120}
                           />
                           {on ? (
                             <View style={s.check}>
                               <Check size={12} color={ui.card} strokeWidth={3} />
                             </View>
                           ) : null}
-                        </Pressable>
+                        </PressFeedback>
                       );
                     })}
                   </View>
@@ -220,10 +212,12 @@ export function HighlightSheet({
               </>
             ) : null}
 
-            {notice ? <Text style={s.notice}>{notice}</Text> : null}
+            {notice ? <Text key={`copy-5-${fontScale}`} style={s.notice}>{notice}</Text> : null}
 
-            <Pressable
-              style={[s.primary, (busy || uploading || items.length === 0) && s.primaryOff]}
+          </ScrollView>
+          <View style={s.footer}>
+            <PressFeedback
+              style={[s.primary, { marginTop: 0 }, (busy || uploading || items.length === 0) && s.primaryOff]}
               disabled={busy || uploading || items.length === 0}
               onPress={() => onCreate(title)}
               accessibilityRole="button"
@@ -231,14 +225,14 @@ export function HighlightSheet({
               {busy ? (
                 <ActivityIndicator color={ui.goldInk} />
               ) : (
-                <Text style={s.primaryText}>Anlegen</Text>
+                <Text key={`copy-6-${fontScale}`} style={s.primaryText}>Anlegen</Text>
               )}
-            </Pressable>
+            </PressFeedback>
 
-            <Pressable style={s.ghost} onPress={onClose} accessibilityRole="button">
-              <Text style={s.ghostText}>Abbrechen</Text>
-            </Pressable>
-          </ScrollView>
+            <PressFeedback style={s.ghost} onPress={onClose} accessibilityRole="button">
+              <Text key={`copy-7-${fontScale}`} style={s.ghostText}>Abbrechen</Text>
+            </PressFeedback>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -249,27 +243,18 @@ const s = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: ui.scrim },
   wrap: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
+    overflow: 'hidden',
     maxHeight: '88%',
-    backgroundColor: ui.bg,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    backgroundColor: ui.card,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     padding: space.lg,
     paddingBottom: space.xl,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: ui.lineStrong,
-    marginBottom: space.md,
-  },
-  title: { fontSize: 18, fontWeight: '700', color: ui.text },
-  sub: { fontSize: 12, color: ui.textMuted, marginTop: 4, lineHeight: 17 },
 
-  label: { fontSize: 11, color: ui.textMuted, marginTop: space.lg, marginBottom: 6 },
+  label: { fontSize: 13, color: ui.textMuted, marginTop: space.lg, marginBottom: 6 },
   input: {
-    backgroundColor: ui.card,
+    backgroundColor: ui.bg,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: ui.line,
@@ -288,7 +273,7 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
   thumbOn: { borderWidth: 2, borderColor: ui.brand },
-  pressed: { opacity: 0.6 },
+
   check: {
     position: 'absolute',
     right: 4,
@@ -300,14 +285,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  removeDisc: { width: 28, height: 28, borderRadius: radius.pill, backgroundColor: ui.onImage, alignItems: 'center', justifyContent: 'center' },
   remove: {
     position: 'absolute',
-    right: -5,
-    top: -5,
-    width: 22,
-    height: 22,
+    right: 0,
+    top: 0,
+    width: 44,
+    height: 44,
     borderRadius: radius.pill,
-    backgroundColor: ui.onImage,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -324,7 +309,8 @@ const s = StyleSheet.create({
 
   add: {
     marginTop: space.md,
-    height: 46,
+    minHeight: 48,
+    paddingVertical: space.md,
     borderRadius: radius.md,
     backgroundColor: ui.card,
     borderWidth: StyleSheet.hairlineWidth,
@@ -340,8 +326,10 @@ const s = StyleSheet.create({
 
   notice: { fontSize: 12, color: ui.live, marginTop: space.md, lineHeight: 17 },
 
+  footer: { paddingTop: space.md, marginTop: space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.line },
   primary: {
-    height: 48,
+    minHeight: 50,
+    paddingVertical: space.md,
     borderRadius: radius.pill,
     backgroundColor: ui.gold,
     alignItems: 'center',
@@ -350,6 +338,6 @@ const s = StyleSheet.create({
   },
   primaryOff: { opacity: 0.5 },
   primaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
-  ghost: { height: 44, alignItems: 'center', justifyContent: 'center' },
+  ghost: { minHeight: 44, paddingVertical: space.sm, alignItems: 'center', justifyContent: 'center' },
   ghostText: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
 });

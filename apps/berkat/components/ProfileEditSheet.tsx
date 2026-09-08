@@ -17,20 +17,17 @@
 // wie beim Tab-Karussell in Serlo). Ein echtes Modal umgeht das.
 
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+
+import { useWindowDimensions, ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+
 import { Image } from 'expo-image';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ImagePlus, Trash2 } from 'lucide-react-native';
+
+import { SheetHeader } from './SheetHeader';
+import { PressFeedback } from './PressFeedback';
+import { useReducedMotion } from '../lib/useReducedMotion';
 import { ui, radius, space } from '../theme/tokens';
 import { BIO_MAX, NAME_MAX } from '../lib/useProfileEdit';
 
@@ -72,6 +69,9 @@ export function ProfileEditSheet({
   avatarUrl,
   onClearAvatar,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
+  const insets = useSafeAreaInsets();
   const [bio, setBio] = useState(initialBio ?? '');
   const [name, setName] = useState(initialDisplayName ?? '');
 
@@ -87,16 +87,16 @@ export function ProfileEditSheet({
   const left = BIO_MAX - bio.length;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reducedMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} accessibilityLabel="Schließen" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={s.wrap}
+        pointerEvents="box-none"
       >
-        <View style={s.sheet}>
-          <View style={s.grabber} />
+        <View style={[s.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+          <SheetHeader title="Dein Profil" subtitle="So lernen andere dich kennen." onClose={onClose} />
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={s.title}>Dein Profil</Text>
 
             {/* ── Profilbild ────────────────────────────────────────────── */}
             {/* Steht VOR dem Kopfbild, und das ist keine Reihenfolge nach
@@ -108,9 +108,9 @@ export function ProfileEditSheet({
                 `allowsEditing` genau richtig, weil iOS' Rahmen quadratisch IST
                 (Abschnitt 3). Nebeneffekt: Der Zuschnitt verkleinert die Datei,
                 das Bild läuft also nicht in die 8-MB-Grenze. */}
-            <Text style={s.label}>Profilbild</Text>
+            <Text key={`copy-0-${fontScale}`} style={s.label}>Profilbild</Text>
             <View style={s.avatarRow}>
-              <Pressable
+              <PressFeedback
                 style={s.avatar}
                 onPress={onPickAvatar}
                 disabled={uploading}
@@ -122,33 +122,32 @@ export function ProfileEditSheet({
                     source={{ uri: avatarUrl }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
-                    transition={120}
+                    transition={reducedMotion ? 0 : 120}
                   />
                 ) : (
                   <ImagePlus size={20} color={ui.textMuted} />
                 )}
-              </Pressable>
+              </PressFeedback>
               <View style={s.avatarText}>
-                <Text style={s.sub}>
-                  Zeigt sich im Live-Raum, an deinen Angeboten und in jedem Chat. Ohne Bild
-                  steht dort ein grauer Kreis.
+                <Text key={`copy-1-${fontScale}`} style={s.sub}>
+                  Ein Bild macht dein Profil persönlich und hilft anderen, dich wiederzuerkennen.
                 </Text>
                 {avatarUrl && !uploading ? (
-                  <Pressable
+                  <PressFeedback
                     style={s.remove}
                     onPress={onClearAvatar}
                     accessibilityRole="button"
                   >
                     <Trash2 size={14} color={ui.live} />
-                    <Text style={s.removeText}>Profilbild entfernen</Text>
-                  </Pressable>
+                    <Text key={`copy-2-${fontScale}`} style={s.removeText}>Profilbild entfernen</Text>
+                  </PressFeedback>
                 ) : null}
               </View>
             </View>
 
             {/* ── Kopfbild ──────────────────────────────────────────────── */}
-            <Text style={s.label}>Kopfbild</Text>
-            <Pressable
+            <Text key={`copy-3-${fontScale}`} style={s.label}>Kopfbild</Text>
+            <PressFeedback
               style={s.banner}
               onPress={onPickBanner}
               disabled={uploading}
@@ -160,7 +159,7 @@ export function ProfileEditSheet({
                   source={{ uri: bannerUrl }}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
-                  transition={120}
+                  transition={reducedMotion ? 0 : 120}
                 />
               ) : null}
               {uploading ? (
@@ -168,48 +167,49 @@ export function ProfileEditSheet({
               ) : bannerUrl ? null : (
                 <>
                   <ImagePlus size={20} color={ui.textMuted} />
-                  <Text style={s.bannerHint}>Bild wählen</Text>
+                  <Text key={`copy-4-${fontScale}`} style={s.bannerHint}>Bild wählen</Text>
                 </>
               )}
-            </Pressable>
+            </PressFeedback>
             {bannerUrl && !uploading ? (
-              <Pressable style={s.remove} onPress={onClearBanner} accessibilityRole="button">
+              <PressFeedback style={s.remove} onPress={onClearBanner} accessibilityRole="button">
                 <Trash2 size={14} color={ui.live} />
-                <Text style={s.removeText}>Kopfbild entfernen</Text>
-              </Pressable>
+                <Text key={`copy-5-${fontScale}`} style={s.removeText}>Kopfbild entfernen</Text>
+              </PressFeedback>
             ) : null}
 
             {/* ── Anzeigename ───────────────────────────────────────────── */}
-            <Text style={s.label}>Anzeigename</Text>
-            <TextInput
+            <Text key={`copy-6-${fontScale}`} style={s.label}>Anzeigename</Text>
+            <TextInput allowFontScaling={false}
               value={name}
               onChangeText={(text) => setName(text.slice(0, NAME_MAX))}
               placeholder="Mode und Vieles"
               placeholderTextColor={ui.textMuted}
-              style={s.input}
+              style={[s.input, { fontSize: s.input.fontSize * fontScale, lineHeight: s.input.fontSize * 1.4 * fontScale }]}
               maxLength={NAME_MAX}
             />
-            <Text style={s.sub}>
-              Frei wählbar. Dein Benutzername bleibt, wie er ist — er steht schon in Chats und
-              Bestellungen.
+            <Text key={`copy-7-${fontScale}`} style={s.sub}>
+              Dein Anzeigename ist frei wählbar. Dein @Benutzername bleibt bestehen.
             </Text>
 
             {/* ── Bio ───────────────────────────────────────────────────── */}
-            <Text style={s.label}>Über dich</Text>
-            <TextInput
+            <Text key={`copy-8-${fontScale}`} style={s.label}>Über dich</Text>
+            <TextInput allowFontScaling={false}
               value={bio}
               onChangeText={(text) => setBio(text.slice(0, BIO_MAX))}
               placeholder="Ich verkaufe Parfüm und Tücher, meist samstags ab 20 Uhr."
               placeholderTextColor={ui.textMuted}
-              style={[s.input, s.inputTall]}
+              style={[[s.input, s.inputTall], { fontSize: s.input.fontSize * fontScale, lineHeight: s.input.fontSize * 1.4 * fontScale }]}
               multiline
               maxLength={BIO_MAX}
               textAlignVertical="top"
             />
-            <Text style={[s.counter, left < 30 && s.counterLow]}>{left} Zeichen übrig</Text>
+            <Text key={`copy-9-${fontScale}`} style={[s.counter, left < 30 && s.counterLow]}>{left} Zeichen übrig</Text>
 
-            <Pressable
-              style={[s.primary, (busy || uploading) && s.primaryBusy]}
+          </ScrollView>
+          <View style={s.footer}>
+            <PressFeedback
+              style={[s.primary, { marginTop: 0 }, (busy || uploading) && s.primaryBusy]}
               disabled={busy || uploading}
               onPress={() => onSave(bio, name, bannerUrl, avatarUrl)}
               accessibilityRole="button"
@@ -217,14 +217,14 @@ export function ProfileEditSheet({
               {busy ? (
                 <ActivityIndicator color={ui.goldInk} />
               ) : (
-                <Text style={s.primaryText}>Speichern</Text>
+                <Text key={`copy-10-${fontScale}`} style={s.primaryText}>Speichern</Text>
               )}
-            </Pressable>
+            </PressFeedback>
 
-            <Pressable style={s.ghost} onPress={onClose} accessibilityRole="button">
-              <Text style={s.ghostText}>Abbrechen</Text>
-            </Pressable>
-          </ScrollView>
+            <PressFeedback style={s.ghost} onPress={onClose} accessibilityRole="button">
+              <Text key={`copy-11-${fontScale}`} style={s.ghostText}>Abbrechen</Text>
+            </PressFeedback>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -235,25 +235,17 @@ const s = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: ui.scrim },
   wrap: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
+    overflow: 'hidden',
     maxHeight: '88%',
-    backgroundColor: ui.bg,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    backgroundColor: ui.card,
+    borderTopLeftRadius: radius.phone,
+    borderTopRightRadius: radius.phone,
     padding: space.lg,
     paddingBottom: space.xl,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: ui.lineStrong,
-    marginBottom: space.md,
-  },
-  title: { fontSize: 18, fontWeight: '700', color: ui.text, marginBottom: space.sm },
 
-  label: { fontSize: 11, color: ui.textMuted, marginTop: space.md, marginBottom: 6 },
-  sub: { fontSize: 11, color: ui.textMuted, marginTop: 5, lineHeight: 16 },
+  label: { fontSize: 13, color: ui.textMuted, marginTop: space.md, marginBottom: 6 },
+  sub: { fontSize: 13, color: ui.textMuted, marginTop: 5, lineHeight: 19 },
 
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   avatar: {
@@ -282,7 +274,7 @@ const s = StyleSheet.create({
   removeText: { fontSize: 12, fontWeight: '600', color: ui.live },
 
   input: {
-    backgroundColor: ui.card,
+    backgroundColor: ui.bg,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: ui.line,
@@ -292,11 +284,13 @@ const s = StyleSheet.create({
     lineHeight: 21,
   },
   inputTall: { minHeight: 104 },
-  counter: { fontSize: 11, color: ui.textMuted, textAlign: 'right', marginTop: 5 },
+  counter: { fontSize: 13, color: ui.textMuted, textAlign: 'right', marginTop: 5 },
   counterLow: { color: ui.live },
 
+  footer: { paddingTop: space.md, marginTop: space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.line },
   primary: {
-    height: 48,
+    minHeight: 50,
+    paddingVertical: space.md,
     borderRadius: radius.pill,
     backgroundColor: ui.gold,
     alignItems: 'center',
@@ -305,6 +299,6 @@ const s = StyleSheet.create({
   },
   primaryBusy: { opacity: 0.6 },
   primaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
-  ghost: { height: 44, alignItems: 'center', justifyContent: 'center' },
+  ghost: { minHeight: 44, paddingVertical: space.sm, alignItems: 'center', justifyContent: 'center' },
   ghostText: { fontSize: 14, fontWeight: '600', color: ui.textMuted },
 });
