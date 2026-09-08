@@ -32,20 +32,22 @@ export const useSession = create<SessionState>((set) => ({
   setLoading: (loading) => set({ loading }),
 }));
 
-async function loadProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, username, avatar_url, women_only_verified')
-    .eq('id', userId)
-    .maybeSingle();
+async function loadProfile(userId: string, signal: AbortSignal): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url, women_only_verified')
+      .eq('id', userId)
+      .abortSignal(signal)
+      .maybeSingle();
 
-  if (error) {
-    // Profil-Fehler dürfen den Login nicht blockieren — die Sitzung steht
-    // bereits, das Profil ist nur Anzeige.
-    if (__DEV__) console.warn('[Berkat] Profil konnte nicht geladen werden:', error.message);
+    if (error) throw error;
+    return (data as Profile | null) ?? null;
+  } catch {
+    // Profilfehler ändern weder die bekannte Sitzung noch deren Bereitschaft.
+    if (__DEV__ && !signal.aborted) console.warn('[Berkat] Profil konnte nicht geladen werden.');
     return null;
   }
-  return (data as Profile | null) ?? null;
 }
 
 /**
@@ -53,31 +55,73 @@ async function loadProfile(userId: string): Promise<Profile | null> {
  * und hört auf Anmelden/Abmelden.
  */
 export function useSessionBootstrap(): void {
-  const setUser = useSession((s) => s.setUser);
-  const setProfile = useSession((s) => s.setProfile);
-  const setLoading = useSession((s) => s.setLoading);
-
   useEffect(() => {
     let cancelled = false;
+    let receivedAuthEvent = false;
+    let currentUserId: string | null | undefined;
+    let profileVersion = 0;
+    let profileTimer: ReturnType<typeof setTimeout> | null = null;
+    let profileRequest: AbortController | null = null;
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    const cancelProfile = () => {
+      profileVersion++;
+      if (profileTimer !== null) clearTimeout(profileTimer);
+      profileTimer = null;
+      profileRequest?.abort();
+      profileRequest = null;
+    };
+
+    const scheduleProfile = (userId: string, force = false) => {
+      // Gleichzeitige INITIAL_SESSION/getSession/SIGNED_IN teilen den Abruf.
+      if (!force && (profileTimer !== null || profileRequest !== null)) return;
+      cancelProfile();
+      const version = profileVersion;
+      // Auth wartet auf seine Listener. Netzarbeit gehört außerhalb dieses
+      // Rückrufs, damit nachfolgende Auth-Ereignisse sofort verarbeitet werden.
+      profileTimer = setTimeout(() => {
+        profileTimer = null;
+        const request = new AbortController();
+        profileRequest = request;
+        void loadProfile(userId, request.signal).then((profile) => {
+          if (!cancelled && version === profileVersion && !request.signal.aborted) {
+            useSession.setState({ profile });
+          }
+          if (profileRequest === request) profileRequest = null;
+        });
+      }, 0);
+    };
+
+    const applySession = (userId: string | null, event?: string) => {
       if (cancelled) return;
-      const userId = data.session?.user.id ?? null;
-      setUser(userId);
-      if (userId) setProfile(await loadProfile(userId));
-      if (!cancelled) setLoading(false);
+      if (currentUserId !== userId) {
+        currentUserId = userId;
+        cancelProfile();
+        // Atomar: niemals die neue Nutzer-ID mit dem alten Profil anzeigen.
+        // Der Auth-Check ist fertig; das Profil darf unabhängig davon laden.
+        useSession.setState({ userId, profile: null, loading: false });
+        if (userId) scheduleProfile(userId);
+      } else if (userId && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+        scheduleProfile(userId, event === 'USER_UPDATED');
+      }
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      receivedAuthEvent = true;
+      applySession(session?.user.id ?? null, event);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (cancelled) return;
-      const userId = session?.user.id ?? null;
-      setUser(userId);
-      setProfile(userId ? await loadProfile(userId) : null);
+    // Ein neueres Auth-Ereignis gewinnt gegen diesen eventuell langsamen
+    // Start-Snapshot. Auch ein fehlgeschlagener Check darf nicht endlos laden.
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!receivedAuthEvent) applySession(error ? null : data.session?.user.id ?? null);
+    }).catch(() => {
+      if (!receivedAuthEvent) applySession(null);
     });
 
     return () => {
       cancelled = true;
+      cancelProfile();
       sub.subscription.unsubscribe();
     };
-  }, [setUser, setProfile, setLoading]);
+  }, []);
 }

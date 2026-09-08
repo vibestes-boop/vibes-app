@@ -5,6 +5,52 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Startmessung und Sitzungsstart · 08.09.2026
+
+**Drei native Startaufzeichnungen von Build 5 auf dem iPhone 16 Pro sind
+gelungen.** iOS 26.6.1, Xcode 26.6, Instruments „App Launch“, USB,
+Development-signierter Release-Build mit lokalem Bundle. Ende der Phase
+„Initial Frame Rendering“ ungefähr **630 / 577 / 502 ms**, Median **577 ms**.
+Werte aus Start plus angezeigter Phasendauer der Instruments-Tabelle; kein
+CLI-Stoppuhrwert. Prozessneustarts mit bestehenden Caches, kein Geräte-Neustart.
+**Nicht gemessen:** vollständig geladene/bedienbare React-Native-Startseite,
+Scroll-FPS, RAM, uninstrumentierter Kaltstart oder Live-Verhalten. Keine
+Vorher-/Nachher-Beschleunigung behaupten. Die ersten beiden Versuche scheiterten
+am offline erkannten Gerät; nach USB-Bestätigung gelangen drei Traces. Der
+XML-Export der Lebenszyklustabelle stürzte ab, deshalb direkte UI-Auswertung.
+
+Im Code wurde unabhängig davon ein reproduzierbarer Startfehler behoben:
+`lib/session.ts` wartete mit der Sitzungsbereitschaft auf die Profilantwort,
+startete über Snapshot und Auth-Ereignis doppelte Abrufe und konnte nach
+Abmeldung/Kontowechsel/Unmount ein verspätetes Profil setzen. Nun wird die
+bekannte Sitzung atomar bereit, das Profil außerhalb des synchronen Auth-
+Listeners nachgeladen, laufende Arbeit zusammengeführt/abgebrochen und alte
+Antworten verworfen. Token-Erneuerung lädt das unveränderte Profil nicht neu;
+neue Auth-Ereignisse gewinnen gegen alte Start-Snapshots. Profil-/Snapshot-
+Fehler bleiben ohne endlosen Ladezustand; Profil-Updates können erneut laden.
+
+**Prüfungen:** Die sechs ursprünglichen Regressionstests schlugen vor der
+Änderung fehl; danach zehn neue Fälle und alle bestehenden Tests erfolgreich:
+**195 bestanden**, TypeScript und `git diff --check` bestanden. Kontrollierte
+Auth-/Profilantworten mit tatsächlichem Modul und Zustandsverwaltung; keine
+echten Kontowechsel oder Produktprüfungen. Derzeit wird **Build 6** mit dieser
+Korrektur gebaut. Native Komponenten und Bundle sind fertig; `codesign` wartet
+erneut auf den macOS-Schlüsselbunddialog. **Auf dem iPhone bleibt bis zum
+bestätigten Installationsnachweis Build 5.**
+
+Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-device-performance`
+(`README.md`, `startup-baseline.json`, drei `.trace`-Dateien, Tests/TypeScript).
+Build-6-Log und Paketvorbereitung:
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-6`.
+Der native Build verwendet den wiederverwendbaren `DerivedData/`-Cache unter
+`berkat-iphone-build-5`; dessen unverändertes Build-5-Paket bleibt in `Payload/`
+und IPA gesichert. Noch keine Veröffentlichung oder Git-Push.
+
+**Fortsetzung:** Signierung abschließen, Build 6 prüfen und über die vorhandene
+App installieren, regulären Start bestätigen. Anschließend Zeit bis zur
+tatsächlich bedienbaren Startseite und eine feste Scroll-Strecke mit Hänger-/
+Speichermessung untersuchen. Die obigen Startwerte gehören zu Build 5.
+
 ## Aktueller Gerätebuild 5 · installiert · 08.09.2026
 
 **Berkat 1.0.0 (5) ist auf dem iPhone 16 Pro installiert und ohne Metro-URL
