@@ -5,15 +5,18 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
-## Gastabnahme abgeschlossen · Build 8 wartet auf Signatur · 09.09.2026
+## Gastabnahme abgeschlossen · Build 8 installiert und gestartet · 09.09.2026
 
 **Aktueller Stand:** Die verbleibende Gastprüfung wurde mit der echten App auf
 einem frisch angelegten iPhone-17-Simulator ohne Anmeldung durchgeführt.
 Buildnummer 8 ist in `app.json` und der ignorierten nativen `Info.plist` gesetzt.
-Der lokale Release-Build läuft und wartet auf den macOS-Schlüsselbunddialog
-für `codesign`. Nutzer wurde um Bestätigung im Systemdialog gebeten.
-**Noch kein erfolgreich signiertes Build-8-Paket, keine Installation bestätigt;
-auf dem physischen iPhone bleibt Build 7.**
+**Der Nutzer hat den Schlüsselbunddialog bestätigt; Release-Build und strikte
+Signaturprüfung sind erfolgreich. Build 8 wurde über die bestehende App auf
+dem iPhone 16 Pro installiert.** `devicectl` bestätigt Version 1.0.0 (8).
+Regulärer Start ohne Metro-URL am 09.09.2026 um 15:21 Uhr erfolgreich,
+Prozess 68173 lief bei der Kontrolle 75 Sekunden später weiter. Quellstand
+`cfe6aee`, Änderungen seit Build 7: kompaktere Home-/
+Kategorienanordnung und persönliche Angebote, Lives und Termine.
 
 - Gast-Home lädt den tatsächlichen öffentlichen Bestand ohne Login-Zwang.
   Interesse Mode gespeichert, persönliche Home-Auswahl geprüft, App-Prozess
@@ -30,27 +33,29 @@ auf dem physischen iPhone bleibt Build 7.**
   null sichtbare Lives/Termine. Positive echte Live-/Termin-/Push-Zustände bleiben
   offen; vorherige lokale Beispiele sind kein positiver Backend-/RLS-Nachweis.
 - Erneut **226 Tests**, TypeScript und `git diff --check` bestanden. Keine neue
-  Prüfroutine im App-Router. Signatur-/Paketprüfung ist unter dem Nachweispfad
-  vorbereitet, erst nach erfolgreichem Build ausführen.
+  Prüfroutine im App-Router. Signiertes Paket, Hermes-Code, Version, gültige
+  Geräte-Provisionierung, aktuelle Entdeckungstexte und zwölf hashgleiche
+  3D-Motive geprüft. Frühere Prüfrouten nicht im Paket. IPA-CRC, eingebettetes
+  Bundle und SHA-256 geprüft; `EXUpdatesEnabled=false` im Paket bestätigt.
 
 Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-iphone-build-8`
 (README, Gast-Screenshots, Tests, TypeScript, öffentlicher Zustandsabruf,
-`build.log`, `verify-bundle.py`). Buildcache weiterhin unter
+`build.log`, Signatur-/Bundle-/Installations-/Startnachweise, Payload und IPA).
+`verify-bundle.py` hält Paketprüfung und Quell-Hashes fest. Buildcache weiterhin unter
 `../berkat-iphone-build-5/DerivedData`; frühere Payloads/IPAs bleiben erhalten.
 `EXUpdatesEnabled=false` lokal unverändert. Kein Push/OTA/TestFlight/App Store.
 
 **Direkt fortsetzen:**
-1. Nach Schlüsselbundbestätigung laufenden Xcode-Build prüfen (PID 71551,
-   Session 38452 in der vorbereitenden Runde); zuerst `build.log`/Prozessstand
-   ansehen, keinen zweiten Build parallel starten.
-2. Erfolgreiches Release-Paket nach `Payload/Berkat.app` im Build-8-Ordner sichern,
-   strikte Codesign-Prüfung und `verify-bundle.py`, dann IPA/ZIP/Hash prüfen.
-3. Als Update über bestehende iPhone-App installieren und Version/normalen Start
-   ohne Metro bestätigen. Erst danach Build 8 als installiert dokumentieren.
-   iPhone war über lokales Netzwerk erreichbar; Entsperren ggf. erst verlangen,
-   wenn iOS den tatsächlichen Start blockiert.
-4. Gesamten neuen Stand auf dem Gerät testen. Build-7-Messungen gelten nur für
-   Build 7; keine behauptete Performance-/Retention-Verbesserung aus Gastprüfung.
+1. Build 8 auf dem iPhone im Alltag kontrollieren: Home/Kategorien scrollen,
+   Interessen öffnen/speichern und nach erneutem Start prüfen. Native Sicht-/
+   Bedienprüfung ist bislang auf Simulatoren erfolgt; erfolgreicher Geräte-
+   Prozessstart ist keine vollständige visuelle Geräteabnahme.
+2. Echte Show-/Terminzustände und Erinnerungszustellung prüfen, sobald passende
+   Inhalte vorhanden sind. Keine echten Sendungen/Follows/Erinnerungen nur als
+   Prüfdaten anlegen. Positive Backend-/RLS-Fälle bleiben gesondert offen.
+3. Bei Bedarf reproduzierbare Gerätemessung des neuen Gesamtstands.
+   Build-7-Messungen gelten nur für Build 7; keine behauptete Performance-/
+   Retention-Verbesserung aus Gastprüfung oder erfolgreichem Start.
 
 ## Persönliche Lives und Termine · 09.09.2026
 
