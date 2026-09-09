@@ -15,9 +15,26 @@
 >   Arbeitsstand; **Push erfolgt am 09.09. abends** (siehe Commit-Log). Vorher lag vier Tage Arbeit
 >   nur auf diesem Rechner.
 > - **Gerät:** iPhone 16 Pro trägt **Build 8**, lokal per Xcode signiert, **ohne OTA**
->   (`EXUpdatesEnabled=false` in der ignorierten `ios/…/Expo.plist`). TestFlight trägt weiterhin
->   `1.0.0 (1)` mit OTA und altem Code. Zwei Welten — bis ein TestFlight-Build aus dem neuen
->   Stand beide zusammenführt.
+>   (`EXUpdatesEnabled=false` in der ignorierten `ios/…/Expo.plist`). TestFlight trägt
+>   `1.0.0 (1)` mit OTA und altem Code. **Build 9** (EAS, Commit `97bc894`, ID `1198aa88…`)
+>   ist am 09.09. um 22:17 **fertig gebaut** (sechs Minuten, `m-medium`, Status `finished`) und
+>   um 22:2x **bei App Store Connect eingereicht** (Submission `174fd5f3…`). ⚠️ Was noch fehlt,
+>   ist der Handgriff am Telefon: **Build 9 aus TestFlight installieren.** Er ersetzt den lokalen
+>   Build 8 — gleicher Code plus Login-Umbau — und ab dann gibt es eine Welt statt zwei.
+> - **Nach der Installation:** einen OTA aus `97bc894` veröffentlichen (Riegel-Form aus
+>   Abschnitt 3), damit der Kopf des Branches `production` zum eingebetteten Bündel passt. Vorher
+>   nicht — siehe die rote Zeile unten. Der Build selbst startet auch ohne diesen OTA richtig:
+>   sein eingebettetes Bündel ist jünger als der letzte OTA (`7b668f90`, 27.08.), und
+>   expo-updates wählt das jüngere.
+> - 🔴 **Bis dahin KEIN OTA.** Zwischen Build 1 und dem neuen Stand hat sich ein natives Modul
+>   geändert: `expo-image-manipulator` war in Build 1 als **57.0.12** installiert, jetzt **14.0.8**
+>   (`package-lock.json`, gemessen). Beide Builds teilen aber die Runtime **1.0.0** — ein OTA
+>   träfe Build 1 mit JavaScript, das ein anderes natives Modul erwartet. Genau die Falle aus
+>   Abschnitt 8 („vor einem OTA prüfen, ob native Abhängigkeiten dazukamen"). Erst wenn Build 9
+>   auf jedem Gerät liegt, das Build 1 hatte (heute: nur Zaurs), sind OTAs wieder sicher.
+>   ⚠️ Strukturell bleibt es eine Schwäche, dass zwei Builds mit verschiedenen Natives eine
+>   Runtime teilen; `runtimeVersion: { policy: "fingerprint" }` würde das dauerhaft lösen —
+>   eine Entscheidung, kein Handgriff.
 > - ⚠️ **Offen und nicht entschieden:** Ob **Connect Standard** (99) weiterläuft. Der Fokus unten
 >   schließt „Produkt-Prüflisten und Seed-Pläne" aus — der Geldweg ist keins von beiden. B16 ist
 >   grün, B17/B18 und der Sandbox-Webhook sind offen. Ein Satz hier genügt.
