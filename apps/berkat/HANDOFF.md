@@ -21,23 +21,28 @@
 >   um 22:2x **bei App Store Connect eingereicht** (Submission `174fd5f3…`). ⚠️ Was noch fehlt,
 >   ist der Handgriff am Telefon: **Build 9 aus TestFlight installieren.** Er ersetzt den lokalen
 >   Build 8 — gleicher Code plus Login-Umbau — und ab dann gibt es eine Welt statt zwei.
-> - **Nach der Installation:** einen OTA aus `97bc894` veröffentlichen (Riegel-Form aus
->   Abschnitt 3), damit der Kopf des Branches `production` zum eingebetteten Bündel passt. Vorher
->   nicht — siehe die rote Zeile unten. Der Build selbst startet auch ohne diesen OTA richtig:
->   sein eingebettetes Bündel ist jünger als der letzte OTA (`7b668f90`, 27.08.), und
->   expo-updates wählt das jüngere.
-> - 🔴 **Bis dahin KEIN OTA.** Zwischen Build 1 und dem neuen Stand hat sich ein natives Modul
->   geändert: `expo-image-manipulator` war in Build 1 als **57.0.12** installiert, jetzt **14.0.8**
->   (`package-lock.json`, gemessen). Beide Builds teilen aber die Runtime **1.0.0** — ein OTA
->   träfe Build 1 mit JavaScript, das ein anderes natives Modul erwartet. Genau die Falle aus
->   Abschnitt 8 („vor einem OTA prüfen, ob native Abhängigkeiten dazukamen"). Erst wenn Build 9
->   auf jedem Gerät liegt, das Build 1 hatte (heute: nur Zaurs), sind OTAs wieder sicher.
->   ⚠️ Strukturell bleibt es eine Schwäche, dass zwei Builds mit verschiedenen Natives eine
->   Runtime teilen; `runtimeVersion: { policy: "fingerprint" }` würde das dauerhaft lösen —
->   eine Entscheidung, kein Handgriff.
-> - ⚠️ **Offen und nicht entschieden:** Ob **Connect Standard** (99) weiterläuft. Der Fokus unten
->   schließt „Produkt-Prüflisten und Seed-Pläne" aus — der Geldweg ist keins von beiden. B16 ist
->   grün, B17/B18 und der Sandbox-Webhook sind offen. Ein Satz hier genügt.
+> - ✅ **Build 9 ist seit dem 09.09. abends auf dem iPhone installiert** (aus TestFlight, ersetzt
+>   den lokalen Build 8). Danach OTA aus `a1e0e4c` veröffentlicht, Gruppe `162e8813…` — für das
+>   Gerät ein Nullschritt (derselbe Code liegt eingebettet vor), für den Branch die Konsistenz:
+>   `production` zeigt jetzt auf den Stand von Build 9. **Es gibt wieder eine Welt.** Ab hier gilt
+>   die alte Arbeitsweise: JS-Änderungen per OTA (Riegel-Form aus Abschnitt 3), zweimal schließen
+>   und öffnen, Kennung unten im Konto lesen.
+> - ⚠️ **Was dabei fast schiefgegangen wäre, und deshalb stehen bleibt:** Zwischen Build 1 (21.08.)
+>   und Build 9 hat sich ein natives Modul geändert — `expo-image-manipulator` **57.0.12 → 14.0.8**
+>   (`package-lock.json`, gemessen). Beide teilen die Runtime **1.0.0**. Ein OTA **vor** der
+>   Installation von Build 9 hätte Build 1 mit JavaScript getroffen, das ein anderes natives Modul
+>   erwartet — die Falle aus Abschnitt 8. Gelöst durch Reihenfolge (erst installieren, dann OTA),
+>   nicht durch Struktur: **Zwei Builds mit verschiedenen Natives teilen weiterhin eine Runtime.**
+>   `runtimeVersion: { policy: "fingerprint" }` würde das dauerhaft lösen; das ist eine
+>   Entscheidung für den nächsten nativen Build, kein Handgriff jetzt.
+> - ✅ **Entschieden am 09.09.2026 — Connect Standard läuft weiter.** Zaur wörtlich: *„Verkäufer
+>   bekommt sein Geld direkt — wegen der Regulierungen werde ich in Deutschland das nicht selber
+>   schaffen, die Finanzen zu kontrollieren und korrekt abzuwickeln."* Das ist die Begründung, die
+>   trägt: nicht Bequemlichkeit, sondern die Einsicht, dass ein Einzelner die Pflichten eines
+>   Zahlungsabwicklers (ZAG, DAC7, § 25e UStG) nicht stemmen kann. Der Fokus unten schließt
+>   Produkt-Prüflisten aus — **der Geldweg gehört ausdrücklich NICHT dazu.** Offen: B17 (Onboarding
+>   zu Ende), B18 (Direktzahlung), der Sandbox-Webhook (99, Tabelle). Alles drei braucht Zaur am
+>   Dashboard oder ein zweites Konto.
 
 > **Verbindlicher Fokus – Nutzerkorrektur:** Nur App-Qualität, moderne Gestaltung,
 > Bedienbarkeit, Geschwindigkeit und sinnvolle Wiederkehr bearbeiten. Testprodukte,
