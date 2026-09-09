@@ -1,5 +1,27 @@
 # Berkat — Übergabe
 
+> ## ⚠️ Einstieg — es gibt GENAU EINEN Anschlusspunkt, und das ist dieser Kopf
+>
+> Diese Datei hat 14.700 Zeilen und ist in zwei Stilen geschrieben. **Der aktuelle Stand steht
+> hier oben** (Berichte vom 06.–09.09.2026, jüngster zuerst). Darunter, ab „## 0. Wo du gerade
+> stehst — 26.08.2026", beginnt die ältere Übergabe mit ihren nummerierten Abschnitten 1–99.
+>
+> - **Weiterarbeiten:** den obersten Abschnitt lesen („Direkt fortsetzen"), nicht Abschnitt 95.
+>   Abschnitt 95 war der Anschlusspunkt bis zum 27.08. und ist **abgelöst**.
+> - **Warum etwas so ist:** Abschnitte 1–99. Die Fallen in **3**, der Sicherheits-Audit in **73**,
+>   der Geldweg in **96–99**. Die Prüfliste **56** ist nach dem Fokus unten nicht mehr das
+>   Arbeitsprogramm — sie bleibt als Nachschlagewerk, was je geprüft wurde und was nicht.
+> - **Git, Stand 09.09.2026:** Branch `berkat`, Arbeit vom 06.–09.09. lokal in 16 Commits plus
+>   Arbeitsstand; **Push erfolgt am 09.09. abends** (siehe Commit-Log). Vorher lag vier Tage Arbeit
+>   nur auf diesem Rechner.
+> - **Gerät:** iPhone 16 Pro trägt **Build 8**, lokal per Xcode signiert, **ohne OTA**
+>   (`EXUpdatesEnabled=false` in der ignorierten `ios/…/Expo.plist`). TestFlight trägt weiterhin
+>   `1.0.0 (1)` mit OTA und altem Code. Zwei Welten — bis ein TestFlight-Build aus dem neuen
+>   Stand beide zusammenführt.
+> - ⚠️ **Offen und nicht entschieden:** Ob **Connect Standard** (99) weiterläuft. Der Fokus unten
+>   schließt „Produkt-Prüflisten und Seed-Pläne" aus — der Geldweg ist keins von beiden. B16 ist
+>   grün, B17/B18 und der Sandbox-Webhook sind offen. Ein Satz hier genügt.
+
 > **Verbindlicher Fokus – Nutzerkorrektur:** Nur App-Qualität, moderne Gestaltung,
 > Bedienbarkeit, Geschwindigkeit und sinnvolle Wiederkehr bearbeiten. Testprodukte,
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
@@ -1143,9 +1165,10 @@ ein Phasenplan mit Abbruchkriterien. **Phase 1 ist gebaut, Phase 0 nie begonnen*
 Der Einstieg für einen frischen Chat. Die Abschnitte 1–17 sind die Begründungen; hier steht nur,
 was gilt.
 
-> **Wer neu einsteigt, liest 0 → 95 → 56.** Abschnitt 95 ist der Anschlusspunkt (er löste 89 ab, davor 87,
-> davor 82, 75, 74, 69, 61, 54, 46, 38 und 26), Abschnitt 56 ist die Prüfliste — alles Ungeprüfte an einer Stelle,
-> nach Voraussetzung gruppiert. Danach bei Bedarf rückwärts.
+> ⚠️ **Dieser Abschnitt ist seit dem 06.09.2026 nicht mehr der Einstieg.** Der Anschlusspunkt steht
+> jetzt **ganz oben in der Datei**, über diesem Abschnitt. Die Regel „0 → 95 → 56" galt bis zum
+> 27.08.; Abschnitt 95 ist abgelöst, und die Prüfliste 56 ist nach dem Fokus im Kopf kein
+> Arbeitsprogramm mehr, sondern ein Nachschlagewerk. Was hier folgt, ist der Stand vom 26.08.
 >
 > ⚠️ **Wer nur EINEN Abschnitt liest, liest 73.** Der Sicherheits-Audit vom 22.08.2026 hat vier
 > Löcher geschlossen, die seit Monaten offen standen — darunter eines, mit dem sich jeder
@@ -12911,9 +12934,14 @@ Datei vorher schon etwas verschoben hatte. Zurückgesetzt, mit gezielten Edits n
 
 ---
 
-## 95. Anschlusspunkt für den nächsten Chat (Stand 26.08.2026, nachts)
+## 95. Anschlusspunkt vom 26.08.2026 (Nacht) — abgelöst vom Kopf der Datei
 
-**Hier anfangen.** Löst Abschnitt 89 ab (davor 87, 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach
+⚠️ **Nicht mehr hier anfangen.** Seit dem 06.09.2026 steht der Anschlusspunkt **ganz oben** in
+dieser Datei (Berichte vom 06.–09.09., jüngster zuerst). Dieser Abschnitt bleibt als Stand vom
+26.08. stehen — die Punkte darin sind teils erledigt (B1, A31), teils durch den neuen Fokus
+zurückgestellt.
+
+Löste Abschnitt 89 ab (davor 87, 82, 75, 74, 69, 61, 54, 46, 38, 26). Danach
 [Abschnitt 56](#56-die-prüfliste--alles-ungeprüfte-an-einer-stelle-21082026) — die Prüfliste bleibt
 der Motor.
 

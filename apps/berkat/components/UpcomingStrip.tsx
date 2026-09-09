@@ -15,7 +15,7 @@ import { BerkatMark } from './BerkatMark';
 
 type Props = { series: Series[]; reasons?: ShowReasons; onSelect: (hostId: string) => void };
 
-export function ReminderBell({ show }: { show: PlannedShow }) {
+export function ReminderBell({ show }: { show: Pick<PlannedShow, 'id' | 'host_id' | 'title' | 'scheduled_at'> }) {
   const myUserId = useSession((state) => state.userId);
   const { on, flip, busy } = useShowReminder(show.id, myUserId);
   if (myUserId === show.host_id) return null;

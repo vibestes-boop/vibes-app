@@ -27,6 +27,7 @@ export type AnnouncedShow = {
   title: string | null;
   scheduled_at: string;
   women_only: boolean;
+  cover_url: string | null;
 };
 
 export function useSellerShows(sellerId: string | undefined, enabled = true, includePast = true) {
@@ -55,7 +56,7 @@ export function useSellerShows(sellerId: string | undefined, enabled = true, inc
     queryFn: async ({ signal }): Promise<AnnouncedShow[]> => {
       const { data, error } = await supabase
         .from('scheduled_lives')
-        .select('id, title, scheduled_at, women_only')
+        .select('id, title, scheduled_at, women_only, cover_url')
         .eq('host_id', sellerId!)
         .eq('app', 'berkat')
         .in('status', ['scheduled', 'reminded'])

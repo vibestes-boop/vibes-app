@@ -540,7 +540,7 @@ export default function ListingScreen() {
         <ChevronLeft size={24} color={ui.text} />
       </Pressable>
       <View style={styles.back} />
-      <Text style={styles.headerTitle}>Angebot</Text>
+      <Text accessibilityRole="header" style={styles.headerTitle}>Angebot</Text>
       <Pressable
         hitSlop={8}
         style={[styles.back, (!listing || isPreview) && styles.off]}
@@ -850,7 +850,7 @@ export default function ListingScreen() {
           >
             <Avatar uri={seller?.avatarUrl} name={seller?.username} size={40} />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={1} style={styles.sellerName}>
+              <Text numberOfLines={fontScale > 1.5 ? undefined : 1} style={styles.sellerName}>
                 {seller?.username ?? '…'}
               </Text>
               <View style={styles.sellerStats}>
@@ -883,7 +883,7 @@ export default function ListingScreen() {
                   (HANDOFF 15: „Vertrauen ist personal, nicht institutionell").
                   Dieselbe Zeile wie im Verkäufer-Sheet des Live-Raums. */}
               {vouchLine ? (
-                <Text numberOfLines={1} style={styles.vouchLine}>
+                <Text numberOfLines={fontScale > 1.5 ? undefined : 1} style={styles.vouchLine}>
                   {vouchLine}
                 </Text>
               ) : null}
@@ -1454,7 +1454,7 @@ const styles = StyleSheet.create({
     borderColor: ui.line,
     padding: space.md,
   },
-  sellerName: { fontSize: 15, fontWeight: '700', color: ui.text },
+  sellerName: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: ui.text },
   sellerStats: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 2 },
   sellerStatText: { fontSize: 12, color: ui.textMuted },
 

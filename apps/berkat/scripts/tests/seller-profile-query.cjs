@@ -92,3 +92,16 @@ test('profile request failure differs from missing profile and a switched ID can
     assert.equal(observer.getCurrentResult().data, undefined);
   } finally { stop(); client.clear(); }
 });
+
+test('seller schedule loads its real cover with the existing account, app and future boundaries', async () => {
+  let call;
+  const schedule = options('lib/useSellerShows.ts', 'useSellerShows', ['host'], async request => { call = request; return { data: [{ id: 'plan', cover_url: 'https://example.test/cover.png' }], error: null }; })[1];
+  const result = await schedule.queryFn({ signal: new AbortController().signal });
+  assert.equal(result[0].cover_url, 'https://example.test/cover.png');
+  assert.ok(call.filters.some(f => f[0] === 'select' && f[1].split(', ').includes('cover_url')));
+  assert.ok(call.filters.some(f => f[0] === 'eq' && f[1] === 'host_id' && f[2] === 'host'));
+  assert.ok(call.filters.some(f => f[0] === 'eq' && f[1] === 'app' && f[2] === 'berkat'));
+  assert.ok(call.filters.some(f => f[0] === 'in' && f[1] === 'status' && JSON.stringify(f[2]) === '["scheduled","reminded"]'));
+  assert.ok(call.filters.some(f => f[0] === 'gt' && f[1] === 'scheduled_at'));
+  assert.ok(call.filters.some(f => f[0] === 'limit' && f[1] === 10));
+});

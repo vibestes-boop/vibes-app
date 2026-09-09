@@ -3,10 +3,11 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowUpRight, ChevronRight, Search, UsersRound } from 'lucide-react-native';
+import { ArrowLeft, ArrowUpRight, ChevronRight, Search, SlidersHorizontal, UsersRound } from 'lucide-react-native';
 import { Avatar } from '../components/Avatar';
 import { useFollowing } from '../lib/useFollowing';
 import { useSession } from '../lib/session';
+import { goBack } from '../lib/nav';
 import { radius, space, ui } from '../theme/tokens';
 
 export default function FollowingScreen() {
@@ -72,9 +73,12 @@ export default function FollowingScreen() {
 
   return <View style={[s.screen, { paddingTop: insets.top }]}>
     <View key={`header:${fontScale}`} style={s.header}>
-      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Zurück"
+      <Pressable onPress={() => goBack()} accessibilityRole="button" accessibilityLabel="Zurück"
         style={({ pressed }) => [s.back, pressed && s.pressed]}><ArrowLeft size={23} color={ui.brand} /></Pressable>
       <Text style={s.title} accessibilityRole="header">Gefolgt</Text>
+      <Pressable onPress={() => router.push('/interests')} accessibilityRole="button" accessibilityLabel="Interessen auswählen"
+        accessibilityHint="Passe die Themen und die Gewichtung gefolgter Verkäufer auf deiner Startseite an."
+        style={({ pressed }) => [s.back, pressed && s.pressed]}><SlidersHorizontal size={21} color={ui.brand} /></Pressable>
     </View>
     <FlatList
       key={userId ?? 'guest'} data={userId && !sessionLoading ? rows : []} keyExtractor={(item) => item.following_id}
@@ -121,7 +125,7 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: ui.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm, paddingVertical: space.sm },
   back: { width: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', color: ui.text, flexShrink: 1 },
+  title: { fontSize: 25, lineHeight: 31, fontWeight: '700', color: ui.text, flex: 1 },
   content: { paddingHorizontal: space.lg },
   intro: { fontSize: 15, lineHeight: 22, color: ui.textMuted, marginBottom: space.lg },
   discover: { flexDirection: 'row', gap: space.sm, alignItems: 'center', minHeight: 56, backgroundColor: ui.card, padding: space.md, borderRadius: radius.lg, marginBottom: space.lg },

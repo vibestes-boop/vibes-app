@@ -52,6 +52,7 @@ import { useReducedMotion } from '../../lib/useReducedMotion';
 import { useSellerProfile, useSellerLiveShow, useSellerSoldItems } from '../../lib/useSellerProfile';
 import { SellerSectionState } from '../../components/SellerSectionState';
 import { SellerShowEntry } from '../../components/SellerShowEntry';
+import { SellerScheduleCard } from '../../components/SellerScheduleCard';
 import { useSession } from '../../lib/session';
 import { useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { useFollow, useFollowCounts } from '../../lib/useFollow';
@@ -389,7 +390,7 @@ export default function SellerScreen() {
       sessionId: null,
       planId: s.id,
       title: s.title,
-      thumbnail: null,
+      thumbnail: s.cover_url,
       when: showWhen(s.scheduled_at),
       women_only: s.women_only,
     }));
@@ -415,6 +416,7 @@ export default function SellerScreen() {
   // Der nächste angekündigte Termin — die Abfrage sortiert bereits aufsteigend
   // und filtert die Vergangenheit weg, der erste Eintrag IST also der nächste.
   const nextPlanned = announced.data?.[0] ?? null;
+  const plannedById = useMemo(() => new Map((announced.data ?? []).map((show) => [show.id, show])), [announced.data]);
 
   // Was für die angekündigten Abende bereitliegt. EINE Abfrage für alle, wie im
   // Verkaufen-Reiter und im „Demnächst"-Streifen — und dieselbe, also denselben
@@ -906,7 +908,12 @@ export default function SellerScreen() {
             // ── Live-Shows ────────────────────────────────────────────────
             if ('kind' in item) {
               const soon = item.kind === 'announced';
+              const planned = item.planId ? plannedById.get(item.planId) : undefined;
               const lineup = item.planId ? (lineupByPlan.get(item.planId) ?? []) : [];
+              if (planned && id) return <View key={fontScale} style={styles.showBlock}>
+                <SellerScheduleCard show={planned} hostId={id} />
+                <LineupPreview items={lineup} when={item.when} />
+              </View>;
               return (
                 // ⚠️ Die Trennlinie sitzt am BLOCK, nicht an der Zeile.
                 // Vorher trug `showRow` den `borderBottom` — und weil die
@@ -914,25 +921,16 @@ export default function SellerScreen() {
                 // zwischen einer Show und IHREN EIGENEN Artikeln. Optisch
                 // gehörten die Kacheln damit zur nächsten Show. Das war der
                 // Grund, warum der Abschnitt zerfallen aussah (21.08.2026).
-                <View style={styles.showBlock}>
-                <Pressable
-                  style={({ pressed }) => [styles.showRow, pressed && styles.rowPressed]}
-                  // Eine vergangene Show hat keinen Raum mehr, in den man gehen
-                  // könnte — Berkat hat kein Replay. Deshalb ist nur die
-                  // Ankündigung „tot" und die alte Show erst recht: beides
-                  // steht als Beleg da, nicht als Knopf.
-                  disabled
-                >
-                  {/* Das Cover, wenn es eines gibt — eine gelaufene Show ist
-                      wiedererkennbar an ihrem Bild, nicht an „Berkat-Show".
-                      Eine Ankündigung hat keins (es entsteht erst beim
-                      Starten), die behält das Kalender-Symbol. */}
+                <View key={fontScale} style={styles.showBlock}>
+                <View style={styles.showRow}>
+                  {/* Vorhandene Cover tragen angekündigte und vergangene Shows. */}
                   {item.thumbnail ? (
                     <View style={styles.showThumb}>
                       <Image
                         source={{ uri: item.thumbnail }}
                         style={StyleSheet.absoluteFill}
                         contentFit="cover"
+                        enforceEarlyResizing
                         transition={120}
                       />
                     </View>
@@ -946,7 +944,7 @@ export default function SellerScreen() {
                     </View>
                   )}
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={2} style={styles.showTitle}>
+                    <Text numberOfLines={fontScale > 1.5 ? undefined : 2} style={styles.showTitle}>
                       {item.title ?? (soon ? 'Angekündigte Show' : 'Show')}
                     </Text>
                     <Text style={styles.showMeta}>
@@ -957,7 +955,7 @@ export default function SellerScreen() {
                     </Text>
                   </View>
                   {item.women_only ? <Text style={styles.womenLabel}>Nur Frauen</Text> : null}
-                </Pressable>
+                </View>
 
                 {/* Was an diesem Abend drankommt. Steht UNTER der Zeile und
                     nicht darin: Die Zeile selbst ist bewusst tot (es gibt
@@ -1318,8 +1316,8 @@ const styles = StyleSheet.create({
     backgroundColor: ui.sunken,
     overflow: 'hidden',
   },
-  showTitle: { fontSize: 15, fontWeight: '700', color: ui.text },
-  showMeta: { fontSize: 12, color: ui.textMuted, marginTop: 2 },
+  showTitle: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: ui.text },
+  showMeta: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: space.xs },
 
   review: {
     paddingVertical: space.md,
