@@ -40,9 +40,14 @@
 >   schaffen, die Finanzen zu kontrollieren und korrekt abzuwickeln."* Das ist die Begründung, die
 >   trägt: nicht Bequemlichkeit, sondern die Einsicht, dass ein Einzelner die Pflichten eines
 >   Zahlungsabwicklers (ZAG, DAC7, § 25e UStG) nicht stemmen kann. Der Fokus unten schließt
->   Produkt-Prüflisten aus — **der Geldweg gehört ausdrücklich NICHT dazu.** Offen: B17 (Onboarding
->   zu Ende), B18 (Direktzahlung), der Sandbox-Webhook (99, Tabelle). Alles drei braucht Zaur am
->   Dashboard oder ein zweites Konto.
+>   Produkt-Prüflisten aus — **der Geldweg gehört ausdrücklich NICHT dazu.**
+>   ✅ **B17 ist am 09.09. abends am echten iPhone durch:** Onboarding → Rückkehr-Seite → „bereit".
+>   `zaur` hat `checkout_enabled = true` **von Stripe**, von aussen gemessen. ⚠️ Und das ohne
+>   Webhook — das `refresh`-Netz in `stripe-connect-onboard` hat den Zustand geholt. Für den
+>   Verkäufer reicht das; **für den Käufer nicht:** Wenn jemand zahlt, fragt keine App nach,
+>   dann muss Stripe anrufen. Deshalb bleibt der **Sandbox-Webhook** (99, Tabelle) der letzte
+>   fehlende Schritt vor B18. `STRIPE_WEBHOOK_SECRET_CONNECT` ist am 09.09. **noch nicht gesetzt**
+>   (`supabase secrets list`, gemessen).
 
 > **Verbindlicher Fokus – Nutzerkorrektur:** Nur App-Qualität, moderne Gestaltung,
 > Bedienbarkeit, Geschwindigkeit und sinnvolle Wiederkehr bearbeiten. Testprodukte,
@@ -8078,7 +8083,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 |---|---|---|
 | ~~B1~~ | ~~**Der Kaufknopf am Regal-Artikel**~~ — ✅ **27.08.2026 zweimal komplett durchlaufen** (Zaur), nachdem die Kassen-Freigabe eingespielt war: goldener „Kaufen · X €" → Sammelkorb → Stripe → **„Bezahlt · wird gepackt"** bei 29 € und 85 €. Damit ist der letzte nie gegangene Geldweg gegangen. ⚠️ Dabei kam Abschnitt **98** heraus (zweimal Versand beim selben Verkäufer). Offen bleibt nur noch die Verkäufer-Seite: packen, Sendungsnummer, „versendet" | 33, 54, 98 |
 | B16 | 🔴 **Die Regressionsprobe nach dem Connect-Deploy** (99) — die wichtigste der Liste, weil sie einen Weg schützt, der schon läuft: Nach `supabase functions deploy create-checkout-session` **sofort** einen Regal-Artikel kaufen und bezahlen. Solange kein Verkäufer ein Stripe-Konto verbunden hat, muss alles exakt wie am 27.08. laufen — Kasse öffnet, `paid`, „wird gepackt". Weicht irgendetwas ab, **zurückrollen statt weitersuchen** | 99 |
-| B17 | **Der Verbinden-Weg von vorne** (99): Konto → Als Verkäufer → „Geld empfangen" → Stripes Onboarding → zurück. Danach muss die Zeile **„Stripe prüft"** oder **„bereit"** sagen, nicht mehr „nicht eingerichtet". ⚠️ Gegenprobe im Stripe-Dashboard unter Connect → Verbundene Konten: Dort muss genau **ein** neues Konto stehen, nicht zwei. Zwei hiessen, dass die Zeile nach dem Anlegen nicht gespeichert wurde | 99 |
+| ~~B17~~ | ~~**Der Verbinden-Weg von vorne**~~ — ✅ **09.09.2026 am echten iPhone durchgespielt** (Zaur, Build 9): Konto → „Geld empfangen" → Stripes Formular → Rückkehr-Seite `stripe-fertig.html` im In-App-Blatt mit „Fertig" → zurück in der App steht **„bereit"** in Grün. ⚠️ **Bemerkenswert: Der Connect-Webhook war dabei noch NICHT eingerichtet.** Der Zustand kam über die Aktion `refresh` in `stripe-connect-onboard` — das Sicherheitsnetz für genau den Moment nach der Rückkehr hat gegriffen. Von aussen gemessen (öffentliche REST-Abfrage auf `berkat_sellers`): **`zaur · business · true`** — die Freigabe kommt jetzt von Stripe. `brandwerkx1` (Simulator, Onboarding bei „unvollständig" abgebrochen) hat sie **nicht**. ⚠️ Im **Sandbox**-Dashboard stehen deshalb **zwei** verbundene Konten, eins je Verkäufer, der es angestossen hat — das ist richtig, nicht doppelt | 99 |
 | B18 | **Die Direktzahlung selbst** — der eigentliche Zweck: Mit einem **zweiten** Konto bei dem verbundenen Verkäufer kaufen und bezahlen. Das Geld muss im Dashboard **auf dessen Konto** auftauchen, nicht auf dem der Plattform. ⚠️ Und die Bestellung muss trotzdem auf `paid` springen — das ist die Probe für den Connect-Webhook | 99 |
 | B15 | **Die Altersabfrage von vorne** (war A33): Mit einem **frischen Konto** kaufen oder bieten → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal, geht durch. App neu starten: Das Blatt darf **nicht** wiederkommen. ⚠️ Zwei Proben gehören dazu: **der 31. Februar** (muss „Diesen Tag gibt es in dem Monat nicht" sagen) und ein Datum vor 17 Jahren (muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder). Die alten A34/A35 gehen darin auf | 90, 97 |
 | B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
