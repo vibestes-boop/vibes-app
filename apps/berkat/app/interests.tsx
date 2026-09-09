@@ -48,7 +48,7 @@ function InterestEditor({ userId, sessionLoading }: { userId: string | null; ses
     <ScrollView contentContainerStyle={s.content}>
       <View key={`content:${fontScale}`}>
         <Text style={s.intro}>Was möchtest du häufiger entdecken?</Text>
-        <Text style={s.body}>Wähle deine Themen. Wir mischen passende Angebote mit neuen Funden. Du kannst deine Auswahl jederzeit ändern.</Text>
+        <Text style={s.body}>Wähle deine Themen. Entdecke passende Angebote, Live-Shows und Termine. Du kannst deine Auswahl jederzeit ändern.</Text>
         {!ready && !preferences.isError ? <ActivityIndicator style={s.loading} color={ui.brand}
           accessibilityLabel="Deine Auswahl wird geladen" /> : null}
         {!sessionLoading && preferences.isError && !selection ? <View style={s.notice} accessibilityLiveRegion="polite">
@@ -92,12 +92,12 @@ function InterestEditor({ userId, sessionLoading }: { userId: string | null; ses
             <UsersRound size={22} color={ui.brand} />
             <View style={s.followCopy}>
               <Text style={s.followTitle}>Gefolgte Verkäufer</Text>
-              <Text style={s.body}>Ihre Angebote häufiger zeigen.</Text>
+              <Text style={s.body}>Ihre Angebote, Shows und Termine häufiger zeigen.</Text>
             </View>
             <Switch value={selection.useFollowing} disabled={save.isPending}
               onValueChange={(useFollowing) => change({ ...selection, useFollowing })}
               trackColor={{ false: ui.sunken, true: ui.brand }} thumbColor={ui.card}
-              accessibilityLabel="Angebote gefolgter Verkäufer bevorzugen" />
+              accessibilityLabel="Angebote und Shows gefolgter Verkäufer bevorzugen" />
           </View> : null}
           <View style={s.resetRow}>
             <Text style={s.summary}>{selection.categorySlugs.length === 1 ? '1 Thema gewählt'

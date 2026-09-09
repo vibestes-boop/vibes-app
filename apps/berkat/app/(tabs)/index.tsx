@@ -11,7 +11,9 @@ import { useIsFocused, useScrollToTop } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowUpRight, Bell, Heart, Lock, MessageSquare, Search, ShoppingBag, SlidersHorizontal } from 'lucide-react-native';
-import { useLiveShows, type LiveShow } from '../../lib/useLiveShows';
+import { type LiveShow } from '../../lib/useLiveShows';
+import { useLiveDiscovery, useUpcomingDiscovery } from '../../lib/useShowDiscovery';
+import { showReasonText } from '../../lib/showDiscovery';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
 import { Avatar } from '../../components/Avatar';
@@ -21,7 +23,6 @@ import { StoryRail } from '../../components/StoryRail';
 import { useBerkatStories, useCreateStory } from '../../lib/useStories';
 import { LivePreview } from '../../components/LivePreview';
 import { UpcomingStrip } from '../../components/UpcomingStrip';
-import { useUpcomingShows } from '../../lib/useSchedule';
 import { useCategories, useCategoryOptions } from '../../lib/useCategories';
 import {
   useCategoryListings,
@@ -85,6 +86,18 @@ export default function HomeScreen() {
   const userId = useSession((st) => st.userId);
   const sessionLoading = useSession((st) => st.loading);
   const preferences = useDiscoveryPreferences(userId, !sessionLoading);
+  const [filter, setFilter] = useState(ALL);
+  const categoryOptions = useCategoryOptions();
+  const { groups: categoryGroups } = categoryOptions;
+  const selection = preferences.data ?? DEFAULT_DISCOVERY;
+  const interestSlugs = useMemo(() => expandInterests(selection.categorySlugs, categoryGroups), [selection.categorySlugs, categoryGroups]);
+  const preferencesReady = !sessionLoading && (preferences.isSuccess || preferences.isError) &&
+    (selection.categorySlugs.length === 0 || categoryOptions.isSuccess || categoryOptions.isError);
+  const filterSlugs = useMemo(() => {
+    if (filter === ALL) return [];
+    const parent = categoryGroups.find((g) => g.slug === filter);
+    return parent ? [parent.slug, ...parent.children.map((c) => c.slug)] : [filter];
+  }, [filter, categoryGroups]);
   // Stories: der Ring über dem Regal. Begründung in `lib/useStories.ts`.
   //
   // ⚠️ Das eigene Profil wird hier NICHT mehr gebraucht. Bis zum 24.08.2026
@@ -99,8 +112,15 @@ export default function HomeScreen() {
   // eine Frage zur Lieferadresse bekommt, findet sie sonst nur, wenn er zufällig
   // ins Konto geht — bis zum 16.08.2026 war das der einzige Weg dorthin.
   const { data: unreadMessages = 0, refetch: refetchMessages } = useUnreadMessageCount(userId, isFocused);
-  const { data: shows = [], isLoading, isError: showsError, refetch } = useLiveShows(isFocused);
-  const { data: upcoming = [], refetch: refetchUpcoming } = useUpcomingShows();
+  const liveDiscovery = useLiveDiscovery({ userId, interests: filter === ALL ? interestSlugs : [],
+    useFollowing: filter === ALL && selection.useFollowing, categoryFilter: filterSlugs,
+    enabled: isFocused && preferencesReady });
+  const { data: shows = [], refetch } = liveDiscovery;
+  const isLoading = liveDiscovery.isLoading || !preferencesReady;
+  const showsError = liveDiscovery.isError || liveDiscovery.partial;
+  const upcomingDiscovery = useUpcomingDiscovery({ userId, interests: interestSlugs,
+    useFollowing: selection.useFollowing, enabled: isFocused && filter === ALL && preferencesReady });
+  const { data: upcoming = [], refetch: refetchUpcoming } = upcomingDiscovery;
 
   // Der Kreisel gehört NUR zum Ziehen von Hand. Hinge er an isRefetching,
   // würde er alle 20 Sekunden beim automatischen Abruf aufspringen — die Liste
@@ -155,8 +175,6 @@ export default function HomeScreen() {
     }, [queryClient]),
   );
 
-  const [filter, setFilter] = useState(ALL);
-
   /**
    * ⚠️ EIN Wert treibt beide Bewegungen — Verschiebung der Leiste UND das
    * Überblenden darin. Zwei getrennte Animationen für eine Geste laufen
@@ -172,8 +190,6 @@ export default function HomeScreen() {
   // Anzeigenamen. Ohne diese Übersetzung stünde in der Leiste „beauty" und
   // „buecher" statt „Beauty & Duft" und „Bücher & Medien" — vorher fiel das
   // nicht auf, weil dort immer die Konstante `'shopping'` stand.
-  const categoryOptions = useCategoryOptions();
-  const { groups: categoryGroups } = categoryOptions;
   // Die Zähler für die Entdeckungs-Leiste. Derselbe Abruf, den der
   // Kategorien-Reiter ohnehin macht — React Query gibt beiden dieselbe Antwort.
   const { data: counted = [], isLoading: categoriesLoading, refetch: refetchCategories } = useCategories(isFocused);
@@ -225,11 +241,11 @@ export default function HomeScreen() {
     );
 
     return [
-      { slug: ALL, name: 'Entdecken', liveCount: shows.length, art: false },
+      { slug: ALL, name: 'Entdecken', liveCount: tiles.reduce((sum, tile) => sum + tile.liveCount, 0), art: false },
       { slug: FOLLOWING, name: 'Gefolgt', liveCount: 0, following: true },
       ...tiles,
     ];
-  }, [shows.length, counted]);
+  }, [counted]);
 
   // Die beiden festen Einstiege bleiben auch während leerer Kategorie-Abfragen erreichbar.
   const railOn = categories.length > 1 || categoriesLoading;
@@ -255,10 +271,7 @@ export default function HomeScreen() {
   });
 
 
-  const visible = useMemo(
-    () => shows.filter((show) => filter === ALL || show.category === filter),
-    [shows, filter],
-  );
+  const visible = shows;
 
   /**
    * Der Ruhezustand: keine laufende Show im Raster und keine Suche.
@@ -292,27 +305,17 @@ export default function HomeScreen() {
   const browsing = isFocused;
   /** Niemand sendet — nur noch für die Überschrift und den Leerzustand. */
   const idle = visible.length === 0;
-  /** Die Kategorie und ihre Kinder — „Mode" muss auch zeigen, was unter „Abaya" liegt. */
-  const filterSlugs = useMemo(() => {
-    if (filter === ALL) return [];
-    const parent = categoryGroups.find((g) => g.slug === filter);
-    return parent ? [parent.slug, ...parent.children.map((c) => c.slug)] : [filter];
-  }, [filter, categoryGroups]);
-
-  const selection = preferences.data ?? DEFAULT_DISCOVERY;
-  const interestSlugs = useMemo(() => expandInterests(selection.categorySlugs, categoryGroups), [selection.categorySlugs, categoryGroups]);
-  const preferencesReady = !sessionLoading && (preferences.isSuccess || preferences.isError) &&
-    (selection.categorySlugs.length === 0 || categoryOptions.isSuccess || categoryOptions.isError);
   const wholeShelfQuery = useDiscoveryListings(userId, interestSlugs, selection.useFollowing,
     browsing && filter === ALL && preferencesReady);
   const categoryShelfQuery = useCategoryListings(filterSlugs, browsing);
   const shelfQuery = filter === ALL ? wholeShelfQuery : categoryShelfQuery;
   const categoryShelf = categoryShelfQuery.data ?? [];
   const shelf = useMemo(() => (shelfQuery.data ?? []).slice(0, SHELF_PREVIEW), [shelfQuery.data]);
-  const shelfLoading = browsing && shelfQuery.isLoading;
+  const shelfLoading = browsing && (shelfQuery.isLoading || (filter === ALL && !preferencesReady));
   const discoveryWarning = filter === ALL && (wholeShelfQuery.partial || preferences.isError ||
     (selection.categorySlugs.length > 0 && categoryOptions.isError));
-  const homeError = showsError || (browsing && (shelfQuery.isError || discoveryWarning));
+  const homeError = showsError || (browsing && (shelfQuery.isError || discoveryWarning ||
+    (filter === ALL && (upcomingDiscovery.isError || upcomingDiscovery.partial))));
   const reasons = Object.values(wholeShelfQuery.reasons);
   const hasInterests = reasons.some((reason) => reason === 'interest' || reason === 'both');
   const hasFollowing = reasons.some((reason) => reason === 'following' || reason === 'both');
@@ -354,7 +357,8 @@ export default function HomeScreen() {
     setPulling(true);
     try {
       await Promise.all([
-        refetch(), refetchUpcoming(), refetchStories(), refetchCategories(), refetchShopCount(),
+        ...(browsing && preferencesReady ? [refetch(), ...(filter === ALL ? [refetchUpcoming()] : [])] : []),
+        refetchStories(), refetchCategories(), refetchShopCount(),
         ...(browsing ? [refetchShelf()] : []),
         ...(filter === ALL && preferences.isError ? [preferences.refetch()] : []),
         ...(filter === ALL && categoryOptions.isError ? [categoryOptions.refetch()] : []),
@@ -366,7 +370,7 @@ export default function HomeScreen() {
       refreshingHome.current = false;
       setPulling(false);
     }
-  }, [browsing, userId, refetch, refetchUpcoming, refetchStories, refetchCategories,
+  }, [browsing, preferencesReady, userId, refetch, refetchUpcoming, refetchStories, refetchCategories,
     refetchShopCount, refetchShelf, refetchUnread, refetchMessages, queryClient,
     filter, preferences.isError, preferences.refetch, categoryOptions.isError, categoryOptions.refetch]);
 
@@ -420,6 +424,11 @@ export default function HomeScreen() {
     [savedIds, saveCounts, shelfProfiles, toggleSaved, userId],
   );
 
+  const selectionButton = filter === ALL ? <PressFeedback onPress={() => router.push('/interests')}
+    style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Auswahl anpassen"
+    accessibilityHint="Wähle deine Interessen und ob gefolgte Verkäufer bevorzugt werden.">
+    <SlidersHorizontal size={19} color={ui.brand} />
+  </PressFeedback> : null;
   const shelfHeading = (
     <View style={styles.shelfHead}>
       <View style={styles.sectionRow}>
@@ -427,11 +436,7 @@ export default function HomeScreen() {
           <Text accessibilityRole="header" style={[styles.shelfTitle, { flex: 1 }]}>
             {filter === ALL ? discoveryTitle : categoryNames.get(filter) ?? 'Entdecken'}
           </Text>
-          {filter === ALL ? <PressFeedback onPress={() => router.push('/interests')}
-            style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Auswahl anpassen"
-            accessibilityHint="Wähle deine Interessen und ob gefolgte Verkäufer bevorzugt werden.">
-            <SlidersHorizontal size={19} color={ui.brand} />
-          </PressFeedback> : null}
+          {selectionButton}
         </View>
         <PressFeedback onPress={() => router.push(filter === ALL ? '/shop' : `/category/${filter}`)}
           accessibilityRole="button"
@@ -561,12 +566,12 @@ export default function HomeScreen() {
                   </PressFeedback>
                 </View>
               ) : null}
-              {/* Ein Termin gehört zu keiner Kategorie — bei gesetztem Filter
-                  wäre der Streifen eine Antwort auf eine nicht gestellte
-                  Frage. */}
-              {filter === ALL && shelf.length === 0 ? (
+              {/* Persönliche Termine gehören in Entdecken. Ein ausdrücklich
+                  gewählter Kategoriepfad zeigt seine Angebote und Lives. */}
+              {idle && filter === ALL && shelf.length === 0 ? (
                 <UpcomingStrip
-                  shows={upcoming}
+                  series={upcoming}
+                  reasons={upcomingDiscovery.reasons}
                   // `?tab=shows`: Wer auf einen TERMIN tippt, will den Termin sehen
                   // — nicht das Regal. Ohne den Parameter öffnet das Profil auf
                   // „Shop", und die Ankündigung liegt hinter dem dritten Reiter.
@@ -576,8 +581,9 @@ export default function HomeScreen() {
 
               {idle ? shelfHeading : null}
               {!idle ? (
-                <View style={styles.shelfHead}>
+                <View style={[styles.shelfHead, styles.sectionRow]}>
                   <Text accessibilityRole="header" style={styles.shelfTitle}>Jetzt live</Text>
+                  {selectionButton}
                 </View>
               ) : null}
             </View>
@@ -657,7 +663,7 @@ export default function HomeScreen() {
                   ⚠️ Die Überschrift steht NUR im Sende-Fall. Ohne Show trägt
                   sie schon der Kopf („Direkt kaufen") — zweimal derselbe Satz auf einem Bildschirm wäre
                   Lärm. */}
-              {!idle ? shelfHeading : null}
+              {!idle && (shelf.length > 0 || shelfLoading) ? shelfHeading : null}
 
               {/* Ein eigenes, umbrechendes Raster statt weiterer Zeilen in der
                   Liste: Ein Abschnittskopf mitten in einem `numColumns={2}`-
@@ -674,9 +680,10 @@ export default function HomeScreen() {
                 </View>
               ) : null}
 
-              {filter === ALL && shelf.length > 0 ? (
+              {filter === ALL && (shelf.length > 0 || !idle) ? (
                 <UpcomingStrip
-                  shows={upcoming}
+                  series={upcoming}
+                  reasons={upcomingDiscovery.reasons}
                   onSelect={(hostId) => router.push(`/seller/${hostId}?tab=shows`)}
                 />
               ) : null}
@@ -746,7 +753,7 @@ export default function HomeScreen() {
             <PressFeedback kind="card"
               onPress={() => router.push(`/live/${item.id}`)}
               accessibilityRole="button"
-              accessibilityLabel={item.title ?? 'Live-Show'}
+              accessibilityLabel={`${item.title ?? 'Live-Show'}${liveDiscovery.reasons[item.id] ? `, ${showReasonText(liveDiscovery.reasons[item.id])}` : ''}`}
             >
               <View style={styles.sellerRow}>
                 <Avatar uri={host?.avatarUrl} name={host?.username} size={24} />
@@ -786,6 +793,7 @@ export default function HomeScreen() {
               <Text numberOfLines={2} style={styles.cardTitle}>
                 {item.title ?? 'Ohne Titel'}
               </Text>
+              {liveDiscovery.reasons[item.id] ? <Text style={styles.discoveryCaption}>{showReasonText(liveDiscovery.reasons[item.id])}</Text> : null}
             </PressFeedback>
 
             {/* ⚠️ AUSSERHALB des Karten-Knopfes, nicht darin.

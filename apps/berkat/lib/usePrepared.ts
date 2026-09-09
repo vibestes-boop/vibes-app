@@ -173,6 +173,7 @@ export function usePrepareActions() {
 
   const invalidate = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'prepared'] });
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows', 'discovery'] });
     // Der zweite Ort, an dem dieselben Zeilen stehen: „vorbereitet, ohne
     // Termin". Ohne das bliebe ein verworfener Artikel dort stehen — dieselbe
     // Regel wie beim zurückgezogenen Dauerangebot (HANDOFF 18): Wer etwas an

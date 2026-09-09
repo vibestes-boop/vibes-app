@@ -11,7 +11,12 @@ export type LiveShow = {
   women_only: boolean;
 };
 
-// Home und Suche teilen Cache und Polling; nur die sichtbare Ansicht aktiviert es.
+export const LIVE_SHOW_COLUMNS = 'id, host_id, title, viewer_count, thumbnail_url, category, women_only';
+export function liveShowsQuery(columns = LIVE_SHOW_COLUMNS) {
+  return supabase.from('live_sessions').select(columns).eq('status', 'active').eq('app', 'berkat');
+}
+
+// Allgemeine Suche; Home nutzt eigene Quellen unter demselben Invalidierungspräfix.
 export function useLiveShows(enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'shows'],
@@ -22,19 +27,12 @@ export function useLiveShows(enabled = true) {
       // Frauen-Only-Shows filtert die RLS auf live_sessions selbst heraus —
       // hier ist bewusst kein zusätzlicher Filter, sonst gäbe es zwei
       // Wahrheiten über dieselbe Grenze.
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .select('id, host_id, title, viewer_count, thumbnail_url, category, women_only')
-        .eq('status', 'active')
-        // `live_sessions` teilt sich Berkat mit Serlo. Ohne diesen Filter
-        // standen hier auch ganz normale Serlo-Lives — ohne Artikel, ohne
-        // Gebote, in einer reinen Auktions-App.
-        .eq('app', 'berkat')
+      const { data, error } = await liveShowsQuery()
         .order('viewer_count', { ascending: false })
         .limit(60)
         .abortSignal(signal).retry(false);
       if (error) throw error;
-      return (data ?? []) as LiveShow[];
+      return (data ?? []) as unknown as LiveShow[];
     },
   });
 }

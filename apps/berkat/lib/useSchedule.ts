@@ -8,11 +8,8 @@
 // 21.04.2026 (`scheduled_lives` + vier RPCs + pg_cron), und Berkat hängt sich
 // mit `20260815120000` nur an — getrennt über die Spalte `app`.
 //
-// ⚠️ **Erinnert werden die Follower des Gastgebers**, 15 Minuten vorher, vom
-// Cron. Es gibt bewusst keinen „Erinnere mich"-Knopf: Das wäre ein zweiter
-// Mechanismus neben `follows`, und Folgen ist die Beziehung, die auch sonst
-// zählt. Wer erinnert werden will, folgt — und bekommt damit gleich alle
-// weiteren Termine desselben Verkäufers.
+// Follower und ausdrücklich vorgemerkte Termine teilen den vorhandenen
+// Erinnerungs-Fanout. Die Glocke nutzt `useShowReminders`, keine zweite Planung.
 
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,7 +38,7 @@ export type PlannedShow = {
 };
 
 /** Die Spalten für beide Abfragen — einmal, damit sie nicht auseinanderlaufen. */
-const COLUMNS =
+export const PLANNED_SHOW_COLUMNS =
   'id, host_id, title, scheduled_at, status, women_only, session_id, cover_url, ' +
   'profiles!host_id(username, avatar_url)';
 
@@ -67,8 +64,8 @@ export type Series = { next: PlannedShow; count: number };
  *
  * Ohne das stünden vier gleiche Karten nebeneinander im „Demnächst"-Streifen und
  * verdrängten die anderen Verkäufer. Der Streifen beantwortet „wann kommt als
- * Nächstes was?", nicht „zeig mir einen Kalender". Die Anzahl bleibt erhalten —
- * aus ihr wird der Hinweis „jede Woche", und genau der ist das Ritual-Signal.
+ * Nächstes was?", nicht „zeig mir einen Kalender". Die Anzahl der gefundenen
+ * Termine bleibt erhalten; sie belegt allein noch keinen wöchentlichen Rhythmus.
  */
 export function nextPerSeries(shows: PlannedShow[]): Series[] {
   const byKey = new Map<string, Series>();
@@ -92,9 +89,14 @@ type Row = Omit<PlannedShow, 'host'> & {
   profiles: { username: string | null; avatar_url: string | null } | null;
 };
 
-function toShow(row: Row): PlannedShow {
+export function toPlannedShow(row: Row): PlannedShow {
   const { profiles, ...rest } = row;
   return { ...rest, host: profiles };
+}
+
+export function upcomingShowsQuery(columns = PLANNED_SHOW_COLUMNS, now = Date.now()) {
+  return supabase.from('scheduled_lives').select(columns).eq('app', 'berkat')
+    .in('status', UPCOMING).gt('scheduled_at', new Date(now - GRACE_MS).toISOString());
 }
 
 /** Was demnächst ansteht — für die Startseite. */
@@ -103,17 +105,11 @@ export function useUpcomingShows(limit = 12) {
     queryKey: ['berkat', 'upcoming-shows', limit],
     staleTime: 60_000,
     queryFn: async (): Promise<PlannedShow[]> => {
-      const { data, error } = await supabase
-        .from('scheduled_lives')
-        .select(COLUMNS)
-        // Ohne diesen Filter stünden Serlos geplante Lives in Berkats Liste.
-        .eq('app', 'berkat')
-        .in('status', UPCOMING)
-        .gt('scheduled_at', new Date(Date.now() - GRACE_MS).toISOString())
+      const { data, error } = await upcomingShowsQuery()
         .order('scheduled_at', { ascending: true })
         .limit(limit);
       if (error) throw error;
-      return ((data ?? []) as unknown as Row[]).map(toShow);
+      return ((data ?? []) as unknown as Row[]).map(toPlannedShow);
     },
   });
 }
@@ -127,14 +123,14 @@ export function useMyPlannedShows(userId: string | null) {
     queryFn: async (): Promise<PlannedShow[]> => {
       const { data, error } = await supabase
         .from('scheduled_lives')
-        .select(COLUMNS)
+        .select(PLANNED_SHOW_COLUMNS)
         .eq('app', 'berkat')
         .eq('host_id', userId!)
         .in('status', UPCOMING)
         .order('scheduled_at', { ascending: true })
         .limit(20);
       if (error) throw error;
-      return ((data ?? []) as unknown as Row[]).map(toShow);
+      return ((data ?? []) as unknown as Row[]).map(toPlannedShow);
     },
   });
 }
@@ -323,5 +319,6 @@ export function formatUntil(iso: string, now = Date.now()): string {
   if (minutes < 60) return `in ${minutes} Min`;
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `in ${hours} Std`;
-  return `in ${Math.round(hours / 24)} Tagen`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? 'in 1 Tag' : `in ${days} Tagen`;
 }

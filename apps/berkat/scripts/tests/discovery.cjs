@@ -13,7 +13,8 @@ function load(file, dependencies = {}) {
   const code = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
-  const context = vm.createContext({ exports: {}, AbortController, setTimeout, clearTimeout, require: name => dependencies[name] ?? {} });
+  const context = vm.createContext({ exports: {}, AbortController, setTimeout, clearTimeout,
+    require: name => dependencies[name] ?? (name === './discoveryRequest' ? load('lib/discoveryRequest.ts') : {}) });
   vm.runInContext(code, context);
   return context.exports;
 }

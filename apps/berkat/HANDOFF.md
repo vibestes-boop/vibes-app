@@ -5,6 +5,77 @@
 > Titel-/Bildrichtigkeit und Vorführbestand sind ausdrücklich NICHT Teil des Auftrags.
 > Ältere Produkt-Prüflisten und Seed-/Katalogpläne nicht weiterverfolgen.
 
+## Persönliche Lives und Termine · 09.09.2026
+
+**Der nächste Schritt aus der persönlichen Entdeckung ist umgesetzt:** Home
+berücksichtigt Interessen und gefolgte Gastgeber jetzt auch bei laufenden und
+geplanten Shows. Dieser Abschnitt ersetzt den noch offenen Schritt 1 im direkt
+darunterliegenden Stand. Auf dem physischen iPhone bleibt **Build 7**; die neuen
+Änderungen sind Quellcode-/Simulatorstand. Kein Gerätebuild, keine Migration,
+kein Push und keine Veröffentlichung.
+
+- **Live-Auswahl:** Allgemeine Shows, Interessentreffer und gefolgte Gastgeber
+  kommen aus getrennten, begrenzten Quellen. Tatsächlich persönliche Treffer
+  stehen zuerst, danach Zuschauerzahl; keine Doppelungen. Karten nennen den
+  Grund. Eigene Shows bekommen keinen persönlichen Empfehlungsgrund. Ein
+  ausdrücklich gewählter Kategoriepfad gilt für alle Quellen inklusive Kinder.
+  „Auswahl anpassen“ bleibt auch bei laufenden Shows erreichbar.
+- **Termine:** Gleiche Gastgeber/Titel werden auf den nächsten gefundenen Termin
+  zusammengefasst. Die nächsten sechs Stunden bleiben chronologisch vorn;
+  spätere Termine berücksichtigen Interessen/Folgen. Ein Treffer in einer
+  späteren Folge verleiht dem früheren Termin keinen falschen Interessengrund.
+  `scheduled_lives` hat keine Kategorie: Interessentreffer verwenden vorhandene
+  vorbereitete Angebote (`planned_for`, Status scheduled, ohne session_id).
+- **Karten:** Eine einzelne Ankündigung nutzt eine breite Karte, mehrere einen
+  horizontalen Streifen. Gastgeber, Grund, Titel und Zeitpunkt haben eine klare
+  Reihenfolge; große Schrift lässt Texte und Karten wachsen. Terminerinnerung
+  ist eine eigene mindestens 48-pt-Aktion neben der Profilaktion im
+  Accessibility-Baum. Vorhandenes `useShowReminder` bleibt der Schreibpfad.
+  Fehler sind sichtbar; „N Termine“ behauptet keinen wöchentlichen Rhythmus.
+  Live-Inhalte stehen auch ohne normale Angebote vor den Terminen.
+- **Abfragen:** bestehende App-/Status-/RLS-Grenzen gemeinsam verwendet; verifizierte
+  Fremdschlüssel für Follow-/Vorbereitungs-Joins. Maximal 60 allgemeine Lives,
+  sonst 24 Kandidaten je Quelle; Anzeige maximal 60 Lives bzw. 12 Terminreihen.
+  Auswahl und Anzahl beziehen sich auf diese Kandidaten, nicht den Gesamtbestand.
+  Konto-/Präferenz-getrennte Caches, Abbruch, 8-s-Grenze je Quelle; erfolgreiche
+  Quellen bleiben bei Teilausfall mit erneutem Ladeangebot sichtbar. Polling
+  nur bei aktivierter Ansicht (Lives 20 s, Termine 60 s). Speichern, Folgen,
+  vorbereitete Angebote und bestehende Show-/Planänderungen invalidieren mit.
+
+**Prüfung:** TypeScript, **226 Tests** (13 neue), `git diff --check` und lokaler
+iOS-/Hermes-Export bestanden. Neue Tests decken Auswahl, Quellgrenzen, Gast/
+Opt-out, Konto-Wechsel, Abbruch, Teil-/Totalausfälle, Invalidierung sowie
+getrennte Profil-/Erinnerungsaktionen und sichtbare Fehler ab.
+
+Native Prüfung auf iPhone-17-Simulator/iOS 26.3: tatsächliche Home-/Terminkomponenten
+mit isolierten lokalen Beispielen für Lives, einzelne/mehrere Termine und
+sehr große Schrift; getrennte Bedienaktionen und nativer Fehlerdialog geprüft.
+Die echte Erinnerungsmutation war im Prüfszenario vor der Netzwerkfunktion
+blockiert. Keine neuen Folgebeziehungen, echten Erinnerungen oder Sendungen
+angelegt. Prüfrouten vor dem Export entfernt; Systemschrift `extra-large`
+wiederhergestellt. Danach echter App-Neustart und Interessen-Einstieg geprüft,
+ohne gespeicherte Interessen oder Anmeldung zu ändern. Keine Produktprüfung.
+
+Öffentliche lesende Join-Proben für Live-Follow, Termin-Follow und Termin-
+Interesse lieferten jeweils HTTP 200/keine Treffer mit Dummy-ID/-Kategorie.
+Dies bestätigt die Join-Syntax, keinen positiven angemeldeten RLS-Rollentest.
+Die aktuellen echten App-Daten hatten keine sichtbaren Lives/Termine; die
+positiven Zustände sind ausdrücklich lokale Beispiele. Keine neue Aussage
+zu Retention, Bildrate oder Geräteperformance.
+
+Nachweise: `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-show-discovery`
+(README, Screenshots mit Kennzeichnung der Beispiele, archivierte Prüfansicht,
+Tests/TypeScript/Export, Quell-Hashes und Commit).
+
+**Nächste Schritte:**
+1. Vor dem nächsten Gerätebuild die verbleibenden Gast-/wenig-Inhalt-Zustände
+   sowie echte Live-/Terminzustände nativ abnehmen, soweit ohne echte Sendung
+   oder neue Serveraktionen möglich. Positive angemeldete RLS-Zugriffe gesondert
+   prüfen; lokale Beispieldaten nicht als Backend-Nachweis ausgeben.
+2. Anschließend nächsten signierten iPhone-Testbuild aus dem neuen Gesamtstand
+   erstellen, installieren und Home/Kategorien/Interessen/Termine auf dem Gerät
+   kontrollieren. Build-7-Messungen gelten weiterhin nur für Build 7.
+
 ## Persönliche Entdeckung aus Interessen und Folgen · 09.09.2026
 
 **Der nächste Schritt aus dem Whatnot-Vergleich ist im Quellcode umgesetzt:**

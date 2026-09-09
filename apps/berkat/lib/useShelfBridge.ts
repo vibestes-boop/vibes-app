@@ -66,6 +66,7 @@ export function useShelfBridge() {
   const invalidate = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop'] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'discovery'] });
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows', 'discovery'] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'shop-count'] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'standing'] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'category-listings'] });

@@ -1,26 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { browseQuery, LISTING_COLUMNS, withVisibleShow, type Listing } from './useListings';
 import { selectDiscovery } from './discovery';
+import { withDiscoveryDeadline } from './discoveryRequest';
+export { withDiscoveryDeadline } from './discoveryRequest';
 
 const CANDIDATES = 16;
 // Verified foreign keys: live_auctions.seller_id → profiles.id ← follows.following_id.
 // The server filters all follow relationships; no first-page truncation or per-seller requests.
 const FOLLOW_COLUMNS = `${LISTING_COLUMNS},seller:profiles!live_auctions_seller_id_fkey!inner(followers:follows!follows_following_id_fkey!inner(follower_id))`;
-
-/** A stalled personal source must not hold the whole home feed indefinitely. */
-export async function withDiscoveryDeadline<T>(signal: AbortSignal, read: (requestSignal: AbortSignal) => Promise<T>, timeoutMs = 8_000): Promise<T> {
-  if (signal.aborted) throw new Error('discovery_aborted');
-  const request = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let abort = () => {};
-  const deadline = new Promise<never>((_, reject) => {
-    abort = () => { request.abort(); reject(new Error('discovery_aborted')); };
-    signal.addEventListener('abort', abort);
-    timer = setTimeout(() => { request.abort(); reject(new Error('discovery_timeout')); }, timeoutMs);
-  });
-  try { return await Promise.race([read(request.signal), deadline]); }
-  finally { clearTimeout(timer); signal.removeEventListener('abort', abort); }
-}
 
 export function useDiscoveryListings(
   userId: string | null, interests: string[], useFollowing: boolean, enabled = true,

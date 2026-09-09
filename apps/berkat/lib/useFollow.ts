@@ -55,6 +55,8 @@ export function useFollow(targetUserId: string | undefined, myUserId: string | n
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', myUserId] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'following', myUserId] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'discovery', myUserId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'shows', 'discovery', myUserId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows', 'discovery', myUserId] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'activity', myUserId] });
     },
   });

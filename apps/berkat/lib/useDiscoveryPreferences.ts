@@ -36,6 +36,8 @@ export function useSaveDiscoveryPreferences(userId: string | null) {
       await client.cancelQueries({ queryKey: preferenceKey(owner), exact: true });
       client.setQueryData(preferenceKey(owner), preferences);
       void client.invalidateQueries({ queryKey: ['berkat', 'discovery', owner] });
+      void client.invalidateQueries({ queryKey: ['berkat', 'shows', 'discovery', owner] });
+      void client.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows', 'discovery', owner] });
     },
   });
 }
