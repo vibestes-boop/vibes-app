@@ -14771,3 +14771,137 @@ cd /Users/zaurhatuev/vibes-app && npx eas project:info 2>&1 | grep -q "@zaurhat/
 > **Wer sich merkt „immer in den App-Ordner", macht beim zweiten Projekt denselben Fehler mit
 > umgekehrtem Vorzeichen.** Die Regel ist nicht „welcher Ordner", sondern **„die Probe im selben
 > Aufruf"** — sie stimmt in beide Richtungen und braucht kein Gedächtnis.
+
+---
+
+## 100. Berkat wartet nicht mehr auf Stripe — es fragt nach (10.09.2026)
+
+### Die Lücke
+
+Seit Abschnitt 99 verbinden Verkäufer ihr **eigenes** Stripe-Konto, und der Käufer zahlt per
+`Stripe-Account`-Kopfzeile direkt dorthin. Das funktioniert. Was nicht funktionierte, war der
+Rückweg:
+
+> Bei einer Direktzahlung feuert `checkout.session.completed` auf dem **verbundenen Konto**.
+> Stripe stellt solche Ereignisse ausschließlich an einen **Connect-Endpunkt** zu — und der war
+> nie eingerichtet.
+
+Also: Käufer zahlt → Geld liegt beim Verkäufer → Bestellung bleibt auf `payment_requested` → nach
+48 Stunden darf der Verkäufer ihn als **Nichtzahler melden**. Für jemanden, der bezahlt hat.
+
+Nicht „kein Geld", sondern **„Geld da, aber niemand weiß es"**.
+
+### Die Entscheidung
+
+Der Connect-Webhook bleibt der beste Weg, und sein Code steht seit dem 27.08. (`stripe-webhook`
+prüft zwei Geheimnisse). Er scheiterte aber an etwas, das mit Berkat nichts zu tun hat: Der
+Betreiber kam im Stripe-Dashboard nicht aus einem Test-Connect-Konto heraus, „Sandbox verlassen"
+war ausgegraut.
+
+⚠️ **Ein Navigationsproblem in einem fremden Dashboard darf nicht der Grund sein, warum Geld nicht
+ankommt.** Deshalb wurde der Teil gebaut, der von niemandem abhängt — und der Webhook damit vom
+*Blocker* zum *Upgrade*.
+
+### Was jetzt steht
+
+| Weg | Auslöser | Deckt ab |
+|---|---|---|
+| **Nachfrage** | Käufer kommt aus der Kasse zurück | Normalfall — und schneller als jeder Webhook |
+| **Nachtdienst** | Cron alle 15 Min | Wer die App abgewürgt hat; SEPA/Klarna Stunden später |
+| **Konten-Blick** | Cron stündlich | Stripe sperrt einen Verkäufer (siehe unten) |
+| *Connect-Webhook* | *Stripe ruft an* | *sobald eingerichtet — dann läuft der Rest ins Leere, und genau das soll er* |
+
+**Eine Tür für alle.** `handleBerkatTipPaid` und `handleProductOrderPaid` sind aus
+`stripe-webhook/index.ts` nach **`supabase/functions/_shared/berkatPaid.ts`** gewandert,
+unverändert. Webhook, Nachfrage und Nachtdienst rufen buchstäblich dieselbe Funktion — mit
+demselben Claim-before-update und demselben `payment_status`-Riegel. Der `isSettled()`-Helfer steht
+dort ebenfalls, damit die SEPA-Regel nicht in zwei Fassungen existiert.
+
+> **Zwei Stellen, die eigenständig „bezahlt" schreiben dürfen, sind zwei Wahrheiten über Geld.**
+
+### Die zwei Fallen im Nachfrage-Weg
+
+**1. Ohne `Stripe-Account` findet Stripe die Zahlung nicht.** Die Sitzung liegt auf dem Konto des
+Verkäufers. Fragt man ohne die Kopfzeile, antwortet Stripe „No such checkout session" — das sieht
+aus wie *nicht bezahlt* und heißt *falsch gefragt*. Ob die Sitzung dort oder auf dem
+Plattform-Konto liegt, hing am `charges_enabled` **von damals** und lässt sich nachträglich nicht
+herleiten; `fetchSessionAnywhere()` fragt deshalb erst dort, wo es wahrscheinlich ist, und bei 404
+einmal auf dem anderen Konto. Zwei Anläufe, mehr kann es nicht sein.
+
+**2. Der Nachfrage-Weg merkt NICHT, wenn Stripe einen Verkäufer sperrt.** Dann bliebe
+`checkout_enabled = true`, und der nächste Käufer landete auf einer Kasse, die im letzten Moment
+abbricht. Nur der stündliche Konten-Blick schließt das. Geschrieben wird dabei ausschließlich
+`berkat_seller_stripe` — den Kaufknopf schaltet weiterhin allein der Trigger aus `20260827100000`,
+denn zwei Schreiber auf `checkout_enabled` waren schon einmal der Fehler (Abschnitt 99).
+
+### ⚠️ Zwei stille Fehler in meinem eigenen Bau — und wie sie gefunden wurden
+
+Der erste Anlauf war **auf Anhieb tot**, und jede einzelne Prüfung war grün: `db push` lief durch,
+beide Wecker standen aktiv, `deno check` sauber, die Function ausgerollt, die Auth-Riegel per curl
+belegt (401 ohne Kopfzeile, 403 mit anon).
+
+**Fehler 1 — `search_path` ohne `vault`.** `berkat_ask_stripe` las `vault.decrypted_secrets` mit
+`SET search_path = public, pg_temp`. Voll qualifiziert, sieht richtig aus, ist es nicht: Die View
+entschlüsselt über Funktionen aus `vault`/`extensions`. Darüber saß ein
+`EXCEPTION WHEN OTHERS THEN RAISE WARNING` — zusammen eine Schweigemaschine.
+
+Gefunden nicht durch Nachdenken, sondern durch **Nachsehen**: Im Repo lesen sechs Funktionen aus
+dem Vault, und *alle sechs* setzen `search_path TO 'public', 'vault', 'extensions', 'pg_temp'`.
+Der Satz steht sogar im Kopf von `20260814220000`: „`vault` muss dafür in den search_path — sonst
+findet die Funktion die View nicht, und der EXCEPTION-Block würde den Fehler stumm schlucken."
+Wortwörtlich dieselbe Falle, ein zweites Mal.
+
+**Fehler 2 — der Schlüssel im Vault ist nicht der Schlüssel der Function.** Der Gate lautete
+`bearer === SUPABASE_SERVICE_ROLE_KEY`. Der Cron holt seinen Schlüssel aber aus dem Vault, und der
+stammt aus einer früheren Runde — seither wurde rotiert. Ergebnis: **403**, und pg_net schickt
+fire-and-forget und sieht die Antwort nie an.
+
+Beides fand erst das **Fahrtenbuch** (`berkat_night_service_log` + `berkat_night_service_health()`),
+das eigens dafür gebaut wurde:
+
+```sql
+SELECT * FROM public.berkat_night_service_health();
+```
+
+> ⚠️ **Ein fire-and-forget-Ruf ohne Fahrtenbuch ist nicht prüfbar — und was nicht prüfbar ist, gilt
+> als kaputt.** Dieselbe Familie wie der R2-Aufräumer (sieben Wochen stumm),
+> `live_sessions.updated_at` (Spalte gab es nicht) und der tote Web-Push (`app.settings` mit
+> Länge 0). Vier Mal derselbe Mechanismus: *sieht aus wie Erfolg*.
+
+Repariert wurde Fehler 2 **nicht** durch Angleichen der Schlüssel — das hätte die Falle für die
+nächste Rotation stehen gelassen. Stattdessen prüft `isServiceRole()` den `role`-Anspruch im JWT.
+Die Signatur hat die Plattform schon geprüft (`verify_jwt` ist AN, belegt: 401 ohne Kopfzeile), zu
+entscheiden bleibt nur *wer* darin steht. Das gilt für jeden gültigen Dienstschlüssel, heute wie
+nach der nächsten Rotation.
+
+⚠️ **`berkat-confirm-payment` darf niemals mit `--no-verify-jwt` ausgerollt werden.** Dann prüfte
+niemand mehr die Signatur, und ein selbst geschriebenes `{"role":"service_role"}` käme durch. Sie
+steht bewusst **nicht** in `config.toml`.
+
+### Belegt am 10.09.2026
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npx tsc --noEmit` (Berkat) | ✅ 0 Fehler |
+| `deno check` beide Functions | ✅ sauber |
+| Ohne Kopfzeile → 401 | ✅ |
+| anon-Schlüssel + `sweep` → 403 | ✅ (auch nach dem Umbau) |
+| anon-Schlüssel + fremde Bestellung → 401 | ✅ |
+| Vault `service_role_key` lesbar | ✅ 219 Zeichen |
+| Beide Wecker aktiv | ✅ `*/15 * * * *` · `7 * * * *` |
+| **Cron → Function, Ende zu Ende** | ✅ **200 angenommen** |
+
+⚠️ **Was das NICHT beweist:** dass eine echte Zahlung auf einem verbundenen Konto ankommt und die
+Bestellung umspringt. Die Kette ist an jedem Glied belegt und am Ganzen nicht — genau die
+Fehlerklasse, aus der die zwei Funde oben stammen. Die Probe steht als **B18** in der Prüfliste.
+
+### Offen
+
+- **B18** — echte Direktzahlung: Geld landet auf dem verbundenen Konto, Bestellung springt auf
+  „Bezahlt". Braucht einen zweiten Menschen oder einen Testkauf.
+- **Connect-Webhook** — bleibt das Upgrade. Endpunkt in der brandwerkx-**Sandbox** anlegen, Typ
+  „Verbundene Konten", sechs Ereignisse, dann
+  `supabase secrets set STRIPE_WEBHOOK_SECRET_CONNECT=whsec_…`. Danach ist der Nachtdienst ein
+  Netz, das nie fängt — und genau so soll ein Netz sein.
+- Aus Abschnitt 99 unverändert offen: Versandgutschrift beim Verkäufer, Name auf dem
+  Kartenauszug, wer die Rechnung ausstellt.

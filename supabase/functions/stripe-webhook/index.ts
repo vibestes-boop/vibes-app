@@ -32,6 +32,9 @@
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Die zwei Berkat-Bestätigungen liegen geteilt — siehe den Verweis weiter
+// unten, wo sie bis zum 10.09.2026 standen.
+import { handleBerkatTipPaid, handleProductOrderPaid, isSettled } from '../_shared/berkatPaid.ts';
 
 const MAX_EVENT_AGE_MS = 10 * 60 * 1000;
 
@@ -163,11 +166,10 @@ async function handlePaid(admin: SupabaseClient, event: StripeEvent) {
   // (bzw. 'no_payment_required' defensiv); sonst 200 quittieren und auf das
   // separate `async_payment_succeeded`-Event warten (Handler existiert).
   // Karten/Apple/Google Pay liefern immer 'paid' → Guard ist dort ein No-Op.
-  if (
-    session.payment_status &&
-    session.payment_status !== 'paid' &&
-    session.payment_status !== 'no_payment_required'
-  ) {
+  //
+  // Die Regel selbst steht seit dem 10.09.2026 in `_shared/berkatPaid.ts`,
+  // damit der Nachfrage-Weg sie nicht in einer zweiten Fassung mitschleppt.
+  if (!isSettled(session.payment_status)) {
     console.log(
       `[stripe-webhook] ${event.type} mit payment_status='${session.payment_status}' — warte auf async_payment_succeeded (session ${session.id})`,
     );
@@ -316,150 +318,15 @@ async function handlePaid(admin: SupabaseClient, event: StripeEvent) {
   }
 }
 
-// ── Produkt-Bestellung bezahlt (echte Ware, z.B. Parfüm) ─────────────────────
-// Kein Coin-Credit — das Geld liegt direkt auf Zaurs Stripe (er = Verkäufer).
-// Claim-before-update: nur 'payment_requested' → 'paid' (idempotent gegen Retries).
-// Speichert die von Stripe Checkout eingesammelte Versandadresse.
-/**
- * Trinkgeld bestätigen (Berkat).
- *
- * Bewusst schmal: Es gibt nichts zu versenden, nichts gutzuschreiben und keine
- * Adresse zu übernehmen. Die Zeile wechselt von 'pending' auf 'paid', mehr
- * nicht.
- *
- * Idempotent über den Zustand: Stripe stellt Ereignisse mehrfach zu, und der
- * UPDATE filtert deshalb auf `status = 'pending'`. Ein zweites Ereignis trifft
- * dann null Zeilen statt einen zweiten Eintrag zu erzeugen.
- */
-async function handleBerkatTipPaid(admin: SupabaseClient, obj: unknown) {
-  const session = obj as {
-    id: string;
-    metadata?: Record<string, string>;
-  };
-
-  const tipId = session.metadata?.tip_id;
-  if (!tipId) {
-    console.error('[stripe-webhook] berkat_tip ohne tip_id', session.id);
-    return;
-  }
-
-  const { data: updated, error } = await admin
-    .from('berkat_tips')
-    .update({ status: 'paid', paid_at: new Date().toISOString() })
-    .eq('id', tipId)
-    .eq('status', 'pending')
-    .select('id, recipient_id, amount_cents');
-
-  if (error) {
-    console.error('[stripe-webhook] berkat_tip update fehlgeschlagen', error.message);
-    return;
-  }
-  if (!updated || updated.length === 0) {
-    // Kein Fehler: entweder schon bestätigt (Doppel-Zustellung) oder storniert.
-    console.log(`[stripe-webhook] berkat_tip ${tipId} war nicht mehr pending`);
-    return;
-  }
-
-  console.log(`[stripe-webhook] Trinkgeld ${tipId} bestätigt (${updated[0].amount_cents} Cent)`);
-}
-
-async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
-  const session = obj as {
-    id: string;
-    client_reference_id?: string;
-    payment_intent?: string;
-    metadata?: Record<string, string>;
-    shipping_details?: { name?: string; address?: Record<string, string> };
-    customer_details?: { name?: string; address?: Record<string, string> };
-    // Der tatsächlich gezahlte Versand. Stripe rechnet ihn aus der vom Käufer
-    // gewählten `shipping_option` und meldet ihn hier zurück — er steht NICHT in
-    // `amount_eur`, weil Ware und Versand bei Stripe Connect getrennt verrechnet
-    // werden. Fehlt das Feld (Serlo-Produktkauf ohne Versandoptionen), bleibt es
-    // bei 0.
-    total_details?: { amount_shipping?: number };
-  };
-
-  const orderId = session.client_reference_id ?? session.metadata?.order_id;
-  if (!orderId) {
-    console.warn('[stripe-webhook] product_order without order_id');
-    return;
-  }
-
-  const ship = session.shipping_details ?? session.customer_details;
-  const addr = ship?.address ?? {};
-  const street = [addr.line1, addr.line2].filter(Boolean).join(', ') || null;
-
-  const { data: claimed, error: claimErr } = await admin
-    .from('product_orders')
-    .update({
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      stripe_payment_intent: session.payment_intent ?? null,
-      shipping_cents: session.total_details?.amount_shipping ?? 0,
-      ship_name: ship?.name ?? null,
-      ship_street: street,
-      ship_zip: addr.postal_code ?? null,
-      ship_city: addr.city ?? null,
-      ship_country: addr.country ?? null,
-    })
-    .eq('id', orderId)
-    .eq('status', 'payment_requested')
-    // `cart_id` unterscheidet die Herkunft: gesetzt = Berkat-Sammelkorb,
-    // NULL = Serlo-Produktkauf. Dieselbe Weiche wie in create-checkout-session.
-    // `title` kommt seit dem 16.08.2026 mit — siehe die Meldung unten.
-    .select('id, buyer_id, seller_id, product_id, quantity, cart_id, title');
-
-  if (claimErr) {
-    console.error('[stripe-webhook] product claim failed', claimErr);
-    throw new Error(`product_claim_failed: ${claimErr.message}`);
-  }
-
-  if (!claimed || claimed.length === 0) {
-    console.log(`[stripe-webhook] product order ${orderId} already paid/not payable — skip`);
-    return;
-  }
-
-  const row = claimed[0];
-  // Verkauf zählen (products.sold_count) — sonst bleibt das Parfüm auf „0× verkauft".
-  if (row?.product_id) {
-    try {
-      await admin.rpc('bump_product_sold_count', { p_product_id: row.product_id, p_qty: row.quantity ?? 1 });
-    } catch (e) {
-      console.warn('[stripe-webhook] sold_count bump failed (non-fatal):', e);
-    }
-  }
-
-  // Verkäufer informieren: bezahlt → bitte versenden.
-  //
-  // `app` entscheidet, auf welchem Gerät die Meldung landet. Ohne die Spalte
-  // greift der Default 'serlo' — bei einem Berkat-Verkauf also die falsche App.
-  // Heute rettet das noch der Rückfall in send_push_to_user (kein Gerät der
-  // Ziel-App → alle Geräte des Nutzers), aber sobald ein Verkäufer BEIDE Apps
-  // installiert hat, käme die Berkat-Verkaufsmeldung in Serlo an.
-  await admin.from('notifications').insert({
-    recipient_id: row.seller_id,
-    sender_id: row.buyer_id,
-    type: 'order_paid',
-    // Ohne Emoji. Am 16.08.2026 kam das frühere „… versenden 📦" in der App als
-    // Ersatzzeichen an (Kästchen mit Fragezeichen) — dasselbe Muster, das in
-    // diesem Projekt schon einmal Mojibake in die Produktiv-Datenbank
-    // geschrieben hat. In der Meldungsliste trägt ohnehin das Symbol daneben
-    // die Bedeutung; der Satz braucht das Zeichen nicht.
-    comment_text: 'Eine Bestellung wurde bezahlt — bitte versenden',
-    // Welcher Artikel — sonst stehen bei vier offenen Bestellungen vier
-    // wortgleiche Zeilen untereinander, und der Verkäufer weiß nicht, welche
-    // gemeint ist. Am 16.08.2026 im Simulator genau so gesehen.
-    //
-    // NUR für Berkat gesetzt: `product_name` in Serlos Meldungsliste zu füllen
-    // wäre eine Verhaltensänderung an einem laufenden Produkt — dieselbe Linie,
-    // aus der `notify_order_shipped` auf Berkat begrenzt wurde. Bei einer
-    // Berkat-Bestellung ist `title` entweder der Artikelname oder „3 Artikel
-    // aus der Live-Show" (gesetzt in `checkout_auction_cart`); beides sagt
-    // mehr als gar nichts.
-    product_name: row.cart_id ? row.title ?? null : null,
-    app: row.cart_id ? 'berkat' : 'serlo',
-  });
-}
+// ── Berkats zwei Bestätigungen liegen jetzt in `_shared/berkatPaid.ts` ──────
+//
+// Verschoben am 10.09.2026, unverändert. Grund: Seit die Zahlung auf dem Konto
+// des VERKÄUFERS entsteht, ist der Webhook nicht mehr der einzige Weg, auf dem
+// Berkat davon erfährt — die App fragt nach der Kasse nach, und ein Nachtdienst
+// sieht regelmäßig nach (`berkat-confirm-payment`).
+//
+// ⚠️ Alle drei rufen dieselbe Funktion auf. Eine Kopie hier wäre eine zweite
+// Wahrheit über Geld.
 
 async function handleFailed(admin: SupabaseClient, event: StripeEvent) {
   const session = event.data.object as {

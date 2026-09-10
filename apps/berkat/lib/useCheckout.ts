@@ -106,7 +106,10 @@ export function useCheckoutCart() {
       }
 
       await openPaymentPage(url);
-      await refetchAfterPayment(queryClient);
+      // Die Bestell-Nummer mitgeben: Damit fragt Berkat selbst bei Stripe nach,
+      // statt auf einen Webhook zu warten, der bei einem verbundenen
+      // Verkäufer-Konto vielleicht nie kommt. Siehe `payBrowser.ts`.
+      await refetchAfterPayment(queryClient, { orderId: orderId as string });
       return { ok: true };
     },
     [queryClient],

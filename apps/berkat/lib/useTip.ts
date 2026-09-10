@@ -12,7 +12,7 @@
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
-import { openPaymentPage } from './payBrowser';
+import { openPaymentPage, refetchAfterPayment } from './payBrowser';
 import { reportProblem } from './report';
 import {
   functionErrorCode,
@@ -106,7 +106,9 @@ export function useSendTip() {
       if (!url) return { ok: false, message: 'Stripe hat keine Bezahlseite geliefert.' };
 
       await openPaymentPage(url);
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'tips-received'] });
+      // Wie beim Sammelkorb: nachfragen statt warten. Beim Trinkgeld liegt das
+      // verbundene Konto beim EMPFÄNGER — die Function weiß das.
+      await refetchAfterPayment(queryClient, { tipId: tipId as string });
       return { ok: true };
     },
     [queryClient],

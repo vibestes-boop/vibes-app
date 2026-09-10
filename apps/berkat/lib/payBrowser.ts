@@ -25,6 +25,9 @@ import type { QueryClient } from '@tanstack/react-query';
 // Nur der Typ — `import type` verschwindet beim Übersetzen und lädt zur
 // Laufzeit nichts. Das Modul selbst kommt unten per `require`.
 import type * as WebBrowserModule from 'expo-web-browser';
+// Rein in JavaScript, kein natives Modul — anders als `expo-web-browser`
+// darunter darf das statisch stehen.
+import { supabase } from './supabase';
 import { ui } from '../theme/tokens';
 
 /**
@@ -94,19 +97,42 @@ export async function openPaymentPage(url: string): Promise<void> {
 /**
  * Nachladen, nachdem die Kasse zu ist.
  *
- * Bestätigt wird die Zahlung ausschließlich vom Stripe-Webhook — zwischen
- * „Blatt zu" und „Korb bezahlt" liegt also ein Serverweg. Ein einzelnes
+ * Zwischen „Blatt zu" und „Korb bezahlt" liegt ein Serverweg. Ein einzelnes
  * Nachladen direkt nach dem Schließen träfe fast immer noch den Stand von
  * vorher: Der Käufer hätte bezahlt und sähe sein Paket weiter als offen — der
  * schlimmste Moment für einen falschen Stand.
  *
- * Deshalb dreimal mit wachsendem Abstand. Nur der erste Ruf wird abgewartet,
- * damit der Knopf nicht sekundenlang blockiert bleibt; die beiden späteren
- * laufen nach und korrigieren still.
+ * Deshalb dreimal mit wachsendem Abstand. Nichts davon wird abgewartet, damit
+ * der Knopf nicht sekundenlang blockiert bleibt; die späteren Rufe korrigieren
+ * still.
+ *
+ * ── SEIT DEM 10.09.2026 WARTET BERKAT NICHT MEHR NUR ────────────────────────
+ *
+ * Früher stand hier „bestätigt wird die Zahlung ausschließlich vom
+ * Stripe-Webhook". Das stimmt nicht mehr, und es war der wunde Punkt: Seit
+ * Verkäufer ihr eigenes Stripe verbinden, entsteht die Zahlung auf IHREM Konto,
+ * und Stripe meldet das nur an einen eigenen Connect-Endpunkt. Ist der nicht
+ * eingerichtet, liegt das Geld beim Verkäufer und Berkat erfährt es nie.
+ *
+ * `target` dreht die Richtung um: Berkat fragt selbst bei Stripe nach. Das ist
+ * zugleich der schnellste Weg — der Käufer sieht „Bezahlt", noch bevor ein
+ * Webhook gelaufen wäre.
+ *
+ * Ohne `target` verhält sich alles wie bisher. Schlägt die Nachfrage fehl,
+ * ebenfalls: Der Nachtdienst holt die Bestellung spätestens 15 Minuten später
+ * nach, und der Webhook (sobald eingerichtet) sowieso. Drei Netze, eines reicht.
  */
-export async function refetchAfterPayment(queryClient: QueryClient): Promise<void> {
+export async function refetchAfterPayment(
+  queryClient: QueryClient,
+  target?: { orderId: string } | { tipId: string },
+): Promise<void> {
   const invalidate = () => {
-    for (const key of [['berkat', 'my-carts'], ['berkat', 'cart'], ['berkat', 'my-orders']]) {
+    for (const key of [
+      ['berkat', 'my-carts'],
+      ['berkat', 'cart'],
+      ['berkat', 'my-orders'],
+      ['berkat', 'tips-received'],
+    ]) {
       void queryClient.invalidateQueries({ queryKey: key });
     }
   };
@@ -115,4 +141,23 @@ export async function refetchAfterPayment(queryClient: QueryClient): Promise<voi
   for (const delay of [1_500, 4_000]) {
     setTimeout(invalidate, delay);
   }
+
+  if (!target) return;
+
+  // Bewusst NICHT abgewartet: Die Nachfrage geht über Stripe und dauert rund
+  // eine Sekunde. Der Knopf soll in dieser Zeit schon wieder frei sein; kommt
+  // die Antwort, wird eben noch einmal nachgeladen.
+  void (async () => {
+    try {
+      await supabase.functions.invoke('berkat-confirm-payment', {
+        body: 'orderId' in target ? { order_id: target.orderId } : { tip_id: target.tipId },
+      });
+    } catch (e) {
+      // Stumm. Hier steht ein Mensch, der gerade bezahlt hat — eine
+      // Fehlermeldung über einen Weg, den er nicht kennt und der zweifach
+      // abgesichert ist, wäre nur Beunruhigung.
+      if (__DEV__) console.warn('[Berkat] Nachfrage bei Stripe fehlgeschlagen:', e);
+    }
+    invalidate();
+  })();
 }
