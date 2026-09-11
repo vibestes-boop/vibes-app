@@ -14890,6 +14890,7 @@ steht bewusst **nicht** in `config.toml`.
 | Vault `service_role_key` lesbar | ✅ 219 Zeichen |
 | Beide Wecker aktiv | ✅ `*/15 * * * *` · `7 * * * *` |
 | **Cron → Function, Ende zu Ende** | ✅ **200 angenommen** |
+| OTA auf Build 9 ausgerollt | ✅ 11.09., Gruppe `29c4c0bb`, Commit `20f853f` |
 
 ⚠️ **Was das NICHT beweist:** dass eine echte Zahlung auf einem verbundenen Konto ankommt und die
 Bestellung umspringt. Die Kette ist an jedem Glied belegt und am Ganzen nicht — genau die
