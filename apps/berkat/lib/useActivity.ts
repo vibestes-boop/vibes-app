@@ -158,9 +158,9 @@ export function useActivity(userId: string | null, enabled = true) {
           body: `${a.title ?? 'Artikel'} · ${euro(a.current_bid_cents)}`,
           userId: a.seller_id,
           imageUrl: a.image_url,
-          // Ins Konto, nicht in die Show: Dort liegt das Paket, und dort wird
-          // bezahlt. Die Show ist womöglich längst vorbei.
-          target: '/(tabs)/account',
+          // Den gewonnenen Artikel zeigen, auch nach Show-Ende oder Ablauf
+          // des Sammelkorbs. Das Konto allein verliert den Artikelbezug.
+          target: `/listing/${a.id}`,
         });
       }
 

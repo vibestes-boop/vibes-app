@@ -1,5 +1,41 @@
 # Berkat — Übergabe
 
+## Fehlerbehebung · Zuschlag aus Aktivitäten · Build 11 · 12.09.2026
+
+**Vom Nutzer gemeldet und nativ reproduziert:** „Zuschlag — du hast gewonnen“
+öffnete das eigene Konto; der Artikel war dort nicht sichtbar. `useActivity.ts`
+setzte alle `won`-Ziele fest auf `/(tabs)/account`, obwohl die Auktions-ID bereits
+vorlag. Der reproduzierte Eintrag öffnete „Aktuell kein Paket offen“.
+
+**Korrigiert:** Jeder Zuschlag in Aktivitäten führt direkt zu `/listing/<id>`.
+Die vorhandene Detailabfrage unterstützt bereits verkaufte Live- und Regalartikel;
+der Gewinner sieht Foto, Beschreibung und den bestehenden Zuschlag-Balken.
+Keine Zahlungs-/Bestands-/Backendänderung. Die getrennte Glocken-/Push-Navigation
+ist durch diesen gezielten Fix nicht geändert.
+
+**Geprüft:** Im angemeldeten iPhone-17-Simulator mit bestehenden Einträgen:
+Aktivität → „Pflegeset Gesicht · 24 €“ öffnet dessen Artikelseite und sichtbar
+„Du hast den Zuschlag · 24 €“. Zurück führt zur Aktivität; zweiter Eintrag
+„Herrenhemd Leinen, weiß · 29 €“ öffnet dessen eigene Seite. Kein Prüfen der
+Testprodukt-Richtigkeit und keine Käufe, Gebote oder Nachrichten ausgelöst.
+Zwei Regressionstests verbinden die echte Aktivitätsabfrage über ihr Ziel mit
+der echten Detailabfrage (lokal simulierte Antworten, Live-/Regal-Zuschlag ohne
+Korb). Insgesamt 265 Tests und TypeScript bestanden. Keine temporären Prüfrouten.
+
+**Ausgeliefert:** Build 11 als lokales Release-Update auf dem iPhone 16 Pro
+installiert; Xcode meldet „Running Berkat on iPhone“, `main` gestartet.
+Geräteübersicht bestätigt Berkat / 11 / com.berkat.app. Damit ersetzt 11 den
+vorherigen Gerätestand 10. Signatur mit codesign --verify --deep --strict geprüft,
+Hermes, Quell-Hashes, 12 Kategoriemotive, Version und Profilfelder geprüft.
+Sentry-Autoupload und lokale OTA-Updates weiter deaktiviert wie bei Build 10.
+Keine OTA-/TestFlight-/App-Store-Veröffentlichung, kein Git-Push.
+Nachweise: `outputs/berkat-activity-won` und `outputs/berkat-iphone-build-11`.
+
+**Nächste Abnahme:** Nutzer tippt auf dem iPhone erneut denselben Zuschlag in
+Aktivitäten. Geräteinstallation/Start sind bestätigt; der direkte Klickpfad
+wurde von uns im Simulator geprüft. Frühere Live-/Push-Abnahmen bleiben offen.
+
+
 ## iPhone-Auslieferung · Build 10 · 12.09.2026
 
 **Installiert und gestartet:** Der Nutzer hat das Bündeln für sein iPhone
