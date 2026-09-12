@@ -1,5 +1,44 @@
 # Berkat — Übergabe
 
+## App-Qualität · Live-Kopf und Verkäufer-Sheet · 12.09.2026
+
+**Fortsetzung nach `a567750`:** Die native Sichtprüfung hat zwei Layoutfehler
+gezeigt: Auf 320 pt verdrängte „Erneut versuchen“ den Verkäufernamen beinahe
+vollständig. Im geöffneten Verkäufer-Sheet wurde der Fehlertext nach einer
+Systemschrift-Vergrößerung zunächst abgeschnitten.
+
+**Korrigiert:** Die rein darstellende `LiveSellerHeader`-Komponente ordnet bei
+wenig Breite, großer Schrift sowie Lade-/Fehlerzuständen die Aktionen unter der
+Identität an. Name und Bürgschaft dürfen dann vollständig umbrechen; „Show
+verkleinern“ bleibt ein eigenes 44-pt-Ziel. Die gemessene Gesamthöhe enthält jetzt
+auch den Fehlerhinweis und steuert die Position der Gastgeber-Steuerung sowie
+den oberen Verlauf. Die Live-Abfragen und Aktionen bleiben im bestehenden Raum.
+Das Verkäufer-Sheet trennt Identität und Folgen-Aktion unter denselben Bedingungen;
+der Fehlertext wird bei einer Schriftänderung neu angelegt und bricht korrekt um.
+
+**Native Prüfung:** Lokale Vorschau im iPhone-17-Simulator, Live-Kopf auf 320 pt,
+normale und drei Stufen größere Systemschrift. Ladezustand, Lese-/Speicherfehler
+und ausgewähltes „Du folgst“ geprüft; nach der Extraktion verwendet die Vorschau
+die tatsächliche Produktionskomponente. Echtes Verkäufer-Sheet mit simuliertem
+Speicherfehler bei normaler/großer Schrift geprüft, Schließen erfolgreich. Untere
+Sheet-Aktionen nach vorübergehendem programmgesteuertem Scrollen bis zum Ende
+sichtbar; die automatisierten Wischversuche waren nicht zuverlässig auswertbar
+und gelten nicht als vollständige Gestenabnahme. Keine echte Folgebeziehung,
+Nachricht, Zahlung, Meldung oder Live-Sendung ausgelöst.
+
+**Abschluss:** 252 Tests bestanden, TypeScript fehlerfrei, lokaler iOS-Hermes-Export
+erfolgreich. Temporäre Prüfroute, Such-Umleitung und Diagnose-Callbacks entfernt;
+Startseite → normale Suche → zurück nativ bestätigt. Ursprüngliche Simulator-
+Schriftgröße wiederhergestellt. Nachweise im Codex-Arbeitsordner unter
+`outputs/berkat-live-follow-qa`. Kein Push, OTA oder neuer iPhone-Build.
+
+**Nächster Schritt:** Termin-Erinnerungen auf dieselbe Trennung von unbekanntem
+Status, Laden, bestätigter Auswahl und wiederholbaren Fehlern prüfen. Vor einer
+neuen Geräteauslieferung den Gesamtstand bündeln; die geänderte Live-Anordnung
+mit echter Videofläche und Gesten auf dem iPhone kontrollieren. Testprodukte und
+Produkt-Richtigkeit bleiben außerhalb des Auftrags.
+
+
 ## App-Qualität · Folgen zuverlässig bedienen · 12.09.2026
 
 Die am 09.09. begonnene Überarbeitung von Anmeldung, Profil-Terminen und

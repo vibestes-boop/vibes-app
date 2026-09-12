@@ -37,14 +37,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ChevronDown,
   ChevronRight,
   Heart,
   Lock,
   MessageSquare,
   Package,
   Share2,
-  ShieldCheck,
   ShoppingBag,
   TrendingUp,
   type LucideIcon,
@@ -93,6 +91,7 @@ import {
 } from '../../lib/useAuction';
 import { AuctionPanel } from '../../components/AuctionPanel';
 import { Avatar } from '../../components/Avatar';
+import { LiveSellerHeader } from '../../components/LiveSellerHeader';
 import { FloatingHearts, TapHearts } from '../../components/FloatingHearts';
 import { GiveawayCard } from '../../components/GiveawayCard';
 import { MaxBidSheet } from '../../components/MaxBidSheet';
@@ -812,7 +811,7 @@ export default function LiveAuctionRoom() {
 
       <LinearGradient
         colors={['rgba(11,21,18,0.8)', 'rgba(11,21,18,0)']}
-        style={[styles.topScrim, { height: insets.top + 84 }]}
+        style={[styles.topScrim, { height: insets.top + Math.max(84, headerHeight + space.md) }]}
         pointerEvents="none"
       />
       <LinearGradient
@@ -831,109 +830,10 @@ export default function LiveAuctionRoom() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         pointerEvents="box-none"
       >
-        <View style={styles.header} pointerEvents="box-none" onLayout={event => setHeaderHeight(event.nativeEvent.layout.height)}>
-          {/* Kopf und Name öffnen das Verkäufer-Sheet. Ein eigener Pressable
-              statt zweier: Der Name ist das größere Ziel, und wer den Kopf
-              trifft, meint dasselbe. */}
-          <PressFeedback
-            style={styles.identityTap}
-            onPress={() => setSellerOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={`Mehr über ${host?.username ?? 'den Verkäufer'}`}
-          >
-            <Avatar uri={host?.avatarUrl} name={host?.username} size={32} ring />
-            <View style={styles.headerText}>
-              <Text numberOfLines={1} style={styles.hostName}>
-                {host?.username ?? '…'}
-              </Text>
-              {/* ⚠️ WER FÜR IHN BÜRGT SCHLÄGT WIE VIEL ER VERKAUFT HAT.
-                  Bis zum 21.08.2026 stand hier ausschließlich die Zahl der
-                  Zuschläge — eine Kennzahl, die Whatnot genauso hat. Die
-                  Bürgen lagen derweil einen Tipp tief im Verkäufer-Sheet, und
-                  wer den Kopf nie antippt (also fast jeder), sah sie nie.
-
-                  Das ist genau verkehrt herum: Whatnot setzt an diese Stelle
-                  dauerhaft „★ 5.0" — eine Institution. Berkats Antwort darauf
-                  ist eine PERSON, und die Ausgangsanalyse nennt sie den einen
-                  Vorteil, den Whatnot strukturell nicht bauen kann (§ B5:
-                  „Ein 5-Sterne-Durchschnitt bedeutet weniger als ‚mein Cousin
-                  kennt ihn'"). Ein Fremder, der in einen Stream stolpert,
-                  entscheidet in drei Sekunden — und in diesen drei Sekunden
-                  soll der Name stehen, nicht die Zahl.
-
-                  Die Zuschläge bleiben als Rückfall: Wer noch keine Bürgen
-                  hat, zeigt, was er sonst vorzuweisen hat. Beides zugleich
-                  wäre eine Zeile zu viel für diesen Kopf. */}
-              <View style={styles.trustRow}>
-                {vouchShort ? (
-                  <>
-                    {/* Hellgrün wie im Sheet (Abschnitt 15): Gold ist auf der
-                        Bühne der Kauf, eine Bürgschaft ist kein Kaufknopf. */}
-                    <ShieldCheck size={10} color={stage.lead} />
-                    <Text numberOfLines={1} style={[styles.trustText, { color: stage.lead }]}>
-                      {vouchShort}
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Package size={10} color={stage.textMuted} />
-                    <Text numberOfLines={1} style={styles.trustText}>
-                      {soldCount != null ? `${soldCount} Zuschläge` : 'Neu hier'}
-                    </Text>
-                  </>
-                )}
-              </View>
-            </View>
-          </PressFeedback>
-
-          {follow.canFollow ? (
-            <PressFeedback
-              onPress={() => follow.toggle()}
-              disabled={follow.busy}
-              style={[styles.followPill, follow.isFollowing && styles.followPillActive]}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: follow.busy, busy: follow.busy, selected: follow.isFollowing }}
-              accessibilityHint={follow.error ?? undefined}
-            >
-              <Text style={[styles.followText, follow.isFollowing && styles.followTextActive]}>
-                {follow.label}
-              </Text>
-            </PressFeedback>
-          ) : null}
-
-          {/* Antippbar NUR für den Gastgeber. Ein Zuschauer bekommt die Liste
-              ohnehin nicht (die RLS gibt ihm genau eine Zeile: sich selbst) —
-              und ein Knopf, der nichts tut, ist schlimmer als kein Knopf. */}
-          {isHost ? (
-            <PressFeedback
-              style={styles.viewerPill}
-              onPress={() => setViewersOpen(true)}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel={`${session.viewer_count ?? 0} schauen zu — Liste öffnen`}
-            >
-              <View style={styles.liveDot} />
-              <Text style={styles.viewerText}>{session.viewer_count ?? 0}</Text>
-            </PressFeedback>
-          ) : (
-            <View style={styles.viewerPill}>
-              <View style={styles.liveDot} />
-              <Text style={styles.viewerText}>{session.viewer_count ?? 0}</Text>
-            </View>
-          )}
-
-          <PressFeedback
-            onPress={minimize}
-            hitSlop={8}
-            style={styles.closeButton}
-            accessibilityRole="button"
-            accessibilityLabel="Show verkleinern"
-          >
-            <ChevronDown size={18} color={stage.text} />
-          </PressFeedback>
-        </View>
-
-        {follow.error ? <Text style={styles.followError} accessibilityLiveRegion="polite">{follow.error}</Text> : null}
+        <LiveSellerHeader name={host?.username} avatarUrl={host?.avatarUrl} vouch={vouchShort} soldCount={soldCount}
+          viewerCount={session.viewer_count ?? 0} isHost={isHost} follow={follow}
+          onSeller={() => setSellerOpen(true)} onViewers={() => setViewersOpen(true)} onMinimize={minimize}
+          onLayout={event => setHeaderHeight(event.nativeEvent.layout.height)} />
 
         {session.women_only ? (
           <View style={styles.wozBadge}>
@@ -1287,60 +1187,6 @@ const styles = StyleSheet.create({
   column: { flex: 1 },
   topScrim: { position: 'absolute', left: 0, right: 0, top: 0 },
   bottomScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 340 },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: space.md,
-  },
-  // Kopf und Name als ein Ziel. `flex: 1` liegt jetzt hier statt auf
-  // headerText, sonst schöbe der Pressable die Folgen-Pille aus dem Bild.
-  identityTap: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  headerText: { flex: 1, minWidth: 0 },
-  hostName: { fontSize: 14, fontWeight: '700', color: stage.text },
-  trustRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  trustText: { fontSize: 11, color: stage.textMuted },
-
-  followPill: {
-    minHeight: 44,
-    justifyContent: 'center',
-    backgroundColor: stage.text,
-    maxWidth: '34%',
-    borderRadius: radius.pill,
-    paddingHorizontal: 11,
-    paddingVertical: 4,
-  },
-  followPillActive: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: stage.lineStrong,
-  },
-  followText: { fontSize: 12, lineHeight: 17, textAlign: 'center', fontWeight: '700', color: stage.ink },
-  followError: { fontSize: 13, lineHeight: 19, color: stage.text, backgroundColor: stage.surface, padding: space.sm, borderRadius: radius.md, marginBottom: space.sm },
-  followTextActive: { color: stage.textMuted },
-
-  viewerPill: {
-    minHeight: 44,
-    justifyContent: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: stage.live,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: stage.liveInk },
-  viewerText: { fontSize: 12, fontWeight: '700', color: stage.liveInk },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: stage.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   wozBadge: {
     flexDirection: 'row',

@@ -75,7 +75,7 @@ export function SellerSheet({
   onUnblock,
   onReport,
 }: Props) {
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<'main' | 'report'>('main');
@@ -87,6 +87,7 @@ export function SellerSheet({
   }, [visible]);
 
   const name = username ?? 'Verkäufer';
+  const spaciousIdentity = width < 375 || fontScale > 1.4 || Boolean(follow.error) || follow.busy;
 
   const confirmBlock = () => {
     Alert.alert(
@@ -130,16 +131,18 @@ export function SellerSheet({
           ) : (
             <>
               {/* Kopf: wer, und der einzige Knopf, der hier oben hingehört. */}
-              <View style={styles.identity}>
-                <Avatar uri={avatarUrl} name={username} size={48} ring />
-                <Text key={`copy-2-${fontScale}`} numberOfLines={2} style={styles.name}>
-                  {name}
-                </Text>
+              <View style={[styles.identity, spaciousIdentity && styles.identityStacked]}>
+                <View style={[styles.identityInfo, spaciousIdentity && styles.identityInfoStacked]}>
+                  <Avatar uri={avatarUrl} name={username} size={48} ring />
+                  <Text key={`copy-2-${fontScale}`} numberOfLines={spaciousIdentity ? undefined : 2} style={styles.name}>
+                    {name}
+                  </Text>
+                </View>
                 {follow.canFollow ? (
                   <PressFeedback
                     onPress={() => follow.toggle()}
                     disabled={follow.busy}
-                    style={[styles.followPill, follow.isFollowing && styles.followPillActive]}
+                    style={[styles.followPill, spaciousIdentity && styles.followPillStacked, follow.isFollowing && styles.followPillActive]}
                     accessibilityRole="button"
                     accessibilityState={{ disabled: follow.busy, busy: follow.busy, selected: follow.isFollowing }}
                     accessibilityHint={follow.error ?? undefined}
@@ -153,7 +156,7 @@ export function SellerSheet({
                 ) : null}
               </View>
 
-              {follow.error ? <Text style={styles.followError} accessibilityLiveRegion="polite">{follow.error}</Text> : null}
+              {follow.error ? <Text key={`follow-error:${fontScale}`} style={styles.followError} accessibilityLiveRegion="polite">{follow.error}</Text> : null}
 
               {/* Die drei Zahlen. Jede zeigt „—" statt einer erfundenen Zahl,
                   solange es nichts zu zeigen gibt. */}
@@ -321,6 +324,10 @@ const styles = StyleSheet.create({
   explain: { fontSize: 13, color: stage.textMuted, lineHeight: 19, marginTop: space.sm },
 
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.lg },
+  identityStacked: { flexDirection: 'column', alignItems: 'stretch' },
+  identityInfo: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: space.md },
+  identityInfoStacked: { flex: 0 },
+  followPillStacked: { maxWidth: '100%', alignSelf: 'flex-start' },
   name: { flex: 1, fontSize: 19, fontWeight: '700', color: stage.text },
   followPill: {
     minHeight: 48,
