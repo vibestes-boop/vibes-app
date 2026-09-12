@@ -8075,7 +8075,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | A36 | **Startseite bei laufender Sendung**: Live gehen → auf der Startseite muss **unter** der Show-Karte „Aus dem Regal" mit dem Raster stehen. ⚠️ Vorher prüfen, wie viele Follower das sendende Konto hat — der Start schickt ihnen einen Push | 91 |
 | A37 | **Sendung vormerken**: Termin auf „in 14 Minuten" legen, mit einem Konto vormerken, das dem Gastgeber **nicht** folgt → nach dem Cron muss die Erinnerung ankommen, und die Glocke ist wieder leer (verbraucht). ⚠️ Gegenprobe: ein Konto, das folgt **und** vormerkt, bekommt **eine** Meldung, nicht zwei | 92 |
 | A38 | **Das Konto als Liste**: Zwei Gruppen mit Haarlinien statt sechs Karten, Überschrift „Als Verkäufer" über den letzten zweien. Die Seite muss **ohne Scrollen** bis „Abmelden" reichen | 94 |
-| A39 | **Der Käufer-Weg am Stück**: Aus „Deine Zuschläge" schreiben → beim Käufer trägt die Nachricht eine **Artikelkarte mit Bild und Preis** → antippen → Artikelseite mit grünem **„Du hast den Zuschlag · 5 €"** → antippen → landet im Konto beim Paket. Und von dort die Paket-Zeile antippen → wieder auf der Artikelseite. **Der Kreis muss zu sein** | 94 |
+| ~~A39~~ | ⚠️ **Verschoben nach D8 (11.09.2026).** Stand hier falsch: Der Weg beginnt bei „Deine Zuschläge", und ein Zuschlag lässt sich **allein nicht erzeugen** — dafür braucht es eine Sendung und ein zweites Konto, das bietet. Am 11.09. am Gerät aufgefallen, als alle Zuschläge gelöscht oder abgelaufen waren | 94 |
 
 ### B — zweites Konto, aber keine Sendung nötig
 
@@ -8123,6 +8123,7 @@ in diesem Projekt zu haben ist — und der Grund, warum sich das Ansammeln geloh
 | D3 | **Vormerkung/Glocke**, vier Proben: vormerken am fremden Artikel · „N warten" beim Verkäufer · Fan-out beim Start (Meldung entsteht, Vormerkung verschwindet) · **der Push selbst** | 51 |
 | D4 | **Bezahl-Rückfrage** „Der Verkäufer sendet noch …" — feuert nur bei offenem Korb *und* sendendem Verkäufer | 53 |
 | D5 | **Max-Gebot unter echtem Gegendruck** — Anti-Snipe ist seit 16.08. belegt, das Stellvertreterbieten nicht | 8 |
+| D8 | **Der Käufer-Weg am Stück** (war A39): Aus „Deine Zuschläge" schreiben → beim Käufer trägt die Nachricht eine **Artikelkarte mit Bild und Preis** → antippen → Artikelseite mit grünem **„Du hast den Zuschlag · 5 €"** → antippen → landet im Konto beim Paket → von dort die Paket-Zeile antippen → wieder auf der Artikelseite. **Der Kreis muss zu sein** | 94 |
 | D6 | **„Du führst / Überboten"** gegen echte Gebote statt Beispieldaten | 39 |
 | D7 | **Bezahl-Knopf auf dem Show-Ende-Bildschirm** — braucht einen offenen Korb aus einem echten Zuschlag | 11 |
 | D8 | **Problem melden**: vom Käufer-Konto an einer bezahlten Bestellung melden — beim Verkäufer muss die Meldung **in Berkat** ankommen (nicht in Serlo), rot, Tipp führt in die Bestellliste. Beim Käufer steht danach „Problem gemeldet" | 67 |
@@ -14989,3 +14990,39 @@ mit unerlaubtem Zeichen oder ein Formular-Rest würde Stripe erst **vor dem Käu
 
 > **Das ist ab sofort Teil von B18** — und der Grund, warum B18 vor dem ersten fremden Verkäufer
 > laufen muss, nicht danach.
+
+---
+
+## 102. Zwei Altlasten abgeräumt (11.09.2026)
+
+### Der tote Knopf auf `abgebrochen.html` — vierzehn Tage nach dem Fund
+
+Abschnitt 99 notierte ihn als *„nebenbei gefunden und NICHT behoben"*: `abgebrochen.html` trug
+weiterhin `<a class="cta" href="berkat://">` als grosse Schaltfläche, obwohl der Kommentar auf
+`bezahlt.html` seit dem **15.08.** davor warnt. Eine Seite repariert, die andere vergessen.
+
+Jetzt trägt sie dasselbe Muster wie ihre Schwester: vorne die Handlung, die wirklich funktioniert
+(„Tipp oben links auf **Fertig**"), hinten der Deeplink als kleine Zeile für den Fall, dass jemand
+doch in einem echten Browser landet.
+
+⚠️ **Die Regel ist nicht „nie `berkat://`", sondern „nicht im Blatt".** `live.html` und
+`listing.html` behalten ihren `cta`-Knopf **zu Recht** — die werden aus einem echten Browser
+geöffnet, wenn jemand einen Link teilt. Wer die Regel zu breit anwendet, zerstört die beiden
+Teilen-Seiten. Geprüft: von den sechs Seiten mit `berkat://` war genau eine falsch.
+
+Ausgeliefert und an der veröffentlichten Adresse nachgemessen: `https://berkat-live.pages.dev/abgebrochen`
+trägt keine CTA mehr, nur noch die Inline-Zeile mit `berkat://account`.
+
+### A39 stand in der falschen Gruppe → jetzt D8
+
+Die Prüfliste führte den Käufer-Weg unter **A — „nur dein iPhone"**. Am Gerät fiel auf, warum das
+nicht stimmt: Der Weg beginnt bei „Deine Zuschläge", und **ein Zuschlag lässt sich allein nicht
+erzeugen**. Dafür braucht es eine Sendung und ein zweites Konto, das bietet — also Gruppe D.
+
+> **Eine Prüfliste sortiert nach VORAUSSETZUNG, nicht nach Aufwand.** Ein Punkt, der schnell geht,
+> aber ein zweites Konto braucht, gehört trotzdem nach D. Sonst plant jemand eine halbe Stunde allein
+> ein und steht nach zwei Minuten.
+
+Damit hat Gruppe A noch **vier** Punkte (A32, A36, A37, A38) — und davon braucht A37 ebenfalls ein
+zweites Konto („ein Konto, das dem Gastgeber **nicht** folgt"). ⚠️ Beim nächsten Durchgang durch die
+Liste prüfen, ob A37 aus demselben Grund nach D gehört.

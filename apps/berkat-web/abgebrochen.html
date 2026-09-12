@@ -31,7 +31,32 @@
         verfällt es, und der Verkäufer stellt die Artikel wieder ein.
       </p>
 
-      <a class="cta" href="berkat://">Zurück zu Berkat</a>
+      <!--
+        Hier stand bis zum 11.09.2026 `<a class="cta" href="berkat://">` als
+        grosse Schaltfläche — derselbe tote Knopf, vor dem der Kommentar in
+        `bezahlt.html` seit dem 15.08.2026 warnt. Beim Reparieren damals wurde
+        diese Seite schlicht vergessen; gefunden am 27.08. (Übergabe 99),
+        behoben erst jetzt.
+
+        Der Grund noch einmal: Berkat öffnet die Kasse als Blatt ÜBER der App
+        (SFSafariViewController bzw. Android Custom Tab). Darin öffnet das Blatt
+        KEINE eigenen Schemata — der Knopf sah aus wie der Weg zurück und tat
+        nichts.
+
+        ⚠️ `live.html` und `listing.html` behalten ihren `cta`-Knopf zu Recht:
+        Die werden aus einem ECHTEN Browser geöffnet, wenn jemand einen Link
+        teilt. Die Regel ist nicht „nie berkat://", sondern „nicht im Blatt".
+
+        Deshalb steht auch hier vorne die Handlung, die wirklich funktioniert.
+      -->
+      <p class="lead">
+        Tipp oben links auf <strong>Fertig</strong> — du bist sofort wieder in Berkat,
+        und dein Paket liegt dort, wo du es gelassen hast.
+      </p>
+      <p class="note">
+        Im Browser gelandet? <a href="berkat://account">Berkat öffnen</a>. Klappt auch
+        das nicht, wechsle von Hand zur App — es wurde ohnehin nichts abgebucht.
+      </p>
     </main>
 
     <footer>
