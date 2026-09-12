@@ -15077,4 +15077,4 @@ der Datei (Kommissionsmodell, EIN Stripe-Konto) war aus demselben Grund veraltet
 > im Code, sondern auch in Fußzeilen, Hinweisen und Kopfkommentaren. Hier hat einer zwei Wochen
 > lang das Gegenteil behauptet.
 
-Belegt: `tsc` 0 Fehler, im Simulator per Hot-Reload beide Hälften gesehen. Als OTA raus.
+Belegt: `tsc` 0 Fehler, im Simulator per Hot-Reload beide Hälften gesehen. OTA raus: Gruppe `2604675d`, Commit `09eb6fe`.
