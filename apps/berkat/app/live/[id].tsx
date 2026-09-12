@@ -892,9 +892,11 @@ export default function LiveAuctionRoom() {
               disabled={follow.busy}
               style={[styles.followPill, follow.isFollowing && styles.followPillActive]}
               accessibilityRole="button"
+              accessibilityState={{ disabled: follow.busy, busy: follow.busy, selected: follow.isFollowing }}
+              accessibilityHint={follow.error ?? undefined}
             >
               <Text style={[styles.followText, follow.isFollowing && styles.followTextActive]}>
-                {follow.isFollowing ? 'Folgt' : 'Folgen'}
+                {follow.label}
               </Text>
             </PressFeedback>
           ) : null}
@@ -930,6 +932,8 @@ export default function LiveAuctionRoom() {
             <ChevronDown size={18} color={stage.text} />
           </PressFeedback>
         </View>
+
+        {follow.error ? <Text style={styles.followError} accessibilityLiveRegion="polite">{follow.error}</Text> : null}
 
         {session.women_only ? (
           <View style={styles.wozBadge}>
@@ -1301,7 +1305,8 @@ const styles = StyleSheet.create({
   followPill: {
     minHeight: 44,
     justifyContent: 'center',
-    backgroundColor: stage.gold,
+    backgroundColor: stage.text,
+    maxWidth: '34%',
     borderRadius: radius.pill,
     paddingHorizontal: 11,
     paddingVertical: 4,
@@ -1311,7 +1316,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: stage.lineStrong,
   },
-  followText: { fontSize: 12, fontWeight: '700', color: stage.goldInk },
+  followText: { fontSize: 12, lineHeight: 17, textAlign: 'center', fontWeight: '700', color: stage.ink },
+  followError: { fontSize: 13, lineHeight: 19, color: stage.text, backgroundColor: stage.surface, padding: space.sm, borderRadius: radius.md, marginBottom: space.sm },
   followTextActive: { color: stage.textMuted },
 
   viewerPill: {

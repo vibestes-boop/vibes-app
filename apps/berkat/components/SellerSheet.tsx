@@ -23,6 +23,7 @@ import { AtSign, Ban, ChevronRight, CircleUser, Flag, Gift, MessageSquare, Shiel
 import { SheetHeader } from './SheetHeader';
 import { PressFeedback } from './PressFeedback';
 import { useReducedMotion } from '../lib/useReducedMotion';
+import type { useFollow } from '../lib/useFollow';
 import { stage, radius, space } from '../theme/tokens';
 import { Avatar } from './Avatar';
 import { formatRating, formatShipTime, type SellerStats } from '../lib/useSellerStats';
@@ -44,7 +45,7 @@ type Props = {
    * dumm, und die Abfrage läuft einmal je Live-Raum statt bei jedem Öffnen.
    */
   vouchLine?: string | null;
-  follow: { canFollow: boolean; isFollowing: boolean; busy: boolean; toggle: () => void };
+  follow: ReturnType<typeof useFollow>;
   onClose: () => void;
   onTip: () => void;
   onProfile: () => void;
@@ -140,15 +141,19 @@ export function SellerSheet({
                     disabled={follow.busy}
                     style={[styles.followPill, follow.isFollowing && styles.followPillActive]}
                     accessibilityRole="button"
+                    accessibilityState={{ disabled: follow.busy, busy: follow.busy, selected: follow.isFollowing }}
+                    accessibilityHint={follow.error ?? undefined}
                   >
                     <Text key={`copy-3-${fontScale}`}
                       style={[styles.followText, follow.isFollowing && styles.followTextActive]}
                     >
-                      {follow.isFollowing ? 'Folgt' : 'Folgen'}
+                      {follow.label}
                     </Text>
                   </PressFeedback>
                 ) : null}
               </View>
+
+              {follow.error ? <Text style={styles.followError} accessibilityLiveRegion="polite">{follow.error}</Text> : null}
 
               {/* Die drei Zahlen. Jede zeigt „—" statt einer erfundenen Zahl,
                   solange es nichts zu zeigen gibt. */}
@@ -318,13 +323,17 @@ const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.lg },
   name: { flex: 1, fontSize: 19, fontWeight: '700', color: stage.text },
   followPill: {
+    minHeight: 48,
+    maxWidth: '45%',
+    justifyContent: 'center',
     borderRadius: radius.pill,
-    backgroundColor: stage.gold,
+    backgroundColor: stage.text,
     paddingHorizontal: 18,
     paddingVertical: 9,
   },
   followPillActive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: stage.lineStrong },
-  followText: { fontSize: 14, fontWeight: '700', color: stage.goldInk },
+  followText: { fontSize: 14, lineHeight: 20, textAlign: 'center', fontWeight: '700', color: stage.ink },
+  followError: { fontSize: 14, lineHeight: 21, color: stage.textMuted, marginBottom: space.md },
   followTextActive: { color: stage.textMuted },
 
   tiles: { flexDirection: 'row', gap: space.sm },

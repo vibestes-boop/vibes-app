@@ -717,8 +717,9 @@ export default function SellerScreen() {
                     onPress={() => myUserId ? follow.toggle() : router.push('/login')}
                     disabled={follow.busy}
                     style={({ pressed }) => [styles.followBtn, follow.isFollowing && styles.followBtnActive, pressed && styles.rowPressed]}
-                    accessibilityRole="button" accessibilityState={{ disabled: follow.busy, busy: follow.busy }}>
-                    <Text style={[styles.followText, follow.isFollowing && styles.followTextActive]}>{follow.isFollowing ? 'Du folgst' : 'Folgen'}</Text>
+                    accessibilityRole="button" accessibilityState={{ disabled: follow.busy, busy: follow.busy, selected: follow.isFollowing }}
+                    accessibilityHint={follow.error ?? undefined}>
+                    <Text style={[styles.followText, follow.isFollowing && styles.followTextActive]}>{follow.label}</Text>
                   </Pressable>
                   {myUserId && id ? <Pressable
                     style={({ pressed }) => [styles.contactBtn, pressed && styles.rowPressed]}
@@ -727,6 +728,8 @@ export default function SellerScreen() {
                   </Pressable> : null}
                 </View>
               )}
+
+              {follow.error ? <Text style={styles.followError} accessibilityLiveRegion="polite">{follow.error}</Text> : null}
 
               <SellerShowEntry live={liveQuery.isError ? null : liveShow} planned={tab === 'shows' || announced.isError ? null : nextPlanned}
                 onLive={(showId) => router.push(`/live/${showId}`)} onSchedule={() => setTab('shows')} />
@@ -1455,7 +1458,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   followBtnActive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: ui.lineStrong },
-  followText: { fontSize: 15, fontWeight: '700', color: ui.card },
+  followText: { fontSize: 15, lineHeight: 21, textAlign: 'center', fontWeight: '700', color: ui.card },
+  followError: { fontSize: 14, lineHeight: 21, color: ui.textMuted, marginBottom: space.md },
   followTextActive: { color: ui.text },
 
   // `marginBottom`, seit die Kacheln vor der Bio stehen statt am Ende.

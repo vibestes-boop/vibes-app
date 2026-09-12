@@ -1,5 +1,44 @@
 # Berkat — Übergabe
 
+## App-Qualität · Folgen zuverlässig bedienen · 12.09.2026
+
+Die am 09.09. begonnene Überarbeitung von Anmeldung, Profil-Terminen und
+Interessen-Einstieg wurde bereits mit `b3b4ea7` übernommen; die temporäre
+Prüfroute ist entfernt. Der Nutzer hat seinen iPhone-Test als durchgeführt
+bestätigt; daraus werden keine zusätzlichen Messwerte oder Sichtbefunde abgeleitet.
+Der unten dokumentierte Geräte-/TestFlight-/OTA-Stand bleibt ein eigener Nachweis.
+
+**Neue lokale Änderung:** Folgen im Profil, Live-Kopf und Verkäufer-Sheet zeigt
+Laden, bestätigten Folgestatus und verständliche Fehler mit erneutem Versuch.
+Ein unbekannter oder fehlgeschlagener Status führt zuerst zu einer Leseanfrage,
+nicht zu einer angenommenen Folgebeziehung. Doppeltipps sind während einer
+Anfrage gesperrt; späte Ergebnisse aktualisieren den ursprünglichen Nutzer und
+das ursprüngliche Profil. Konkurrierende Leseanfragen können die bestätigte
+Änderung nicht überschreiben. Bestehende Listen-/Entdeckungs-Invalidierungen bleiben.
+Die Folgen-Pillen auf der dunklen Bühne verwenden jetzt helle neutrale Flächen;
+Bernstein bleibt der Kaufaktion vorbehalten. Beschriftungen dürfen umbrechen,
+Schaltflächen melden beschäftigt/ausgewählt auch an assistive Technologien.
+
+**Prüfung:** TypeScript ohne Fehler; 249 lokale Tests bestanden, darunter elf neue
+Verhaltenstests mit echten Query-/Mutation-Observern und ausschließlich simulierten
+Anfragen. Keine echten Folgebeziehungen, Nachrichten, Käufe oder Testprodukt-
+Änderungen. Erneut im Originalprojekt geprüft; lokaler iOS-Hermes-Export erfolgreich.
+Native Sichtprüfung im iPhone-17-Simulator: öffentliches Verkäuferprofil mit normaler
+und drei Stufen vergrößerter Systemschrift; Folgen/Nachricht bleiben lesbar und
+bedienbar. Anschließend ursprüngliche Schriftgröße wiederhergestellt. Kein echter
+Follow wurde ausgelöst. Fehlerzustände und Live-Sheet sind bislang durch
+Code-/Verhaltenstests geprüft, nicht durch eine vollständige native Sichtabnahme.
+
+**Gerätestand:** Diese Änderung ist lokal übernommen; kein Push, OTA oder neuer
+nativer Gerätebuild. Der iOS-Export unter `outputs/berkat-follow-reliability/ios-export`
+im Codex-Arbeitsordner ist ein JavaScript-/Asset-Export, keine installierbare IPA.
+
+**Nächster App-Schritt:** Fehlerzustände im Live-Kopf und Verkäufer-Sheet auf
+schmalem Bildschirm und mit großer Schrift visuell abnehmen. Danach dieselbe
+Statusklarheit bei Termin-Erinnerungen prüfen. Aktueller Umfang ist App-Bedienung,
+nicht Testprodukt-Richtigkeit. Neue iPhone-Auslieferung bleibt ein separater Schritt.
+
+
 > ## ⚠️ Einstieg — es gibt GENAU EINEN Anschlusspunkt, und das ist dieser Kopf
 >
 > Diese Datei hat 14.700 Zeilen und ist in zwei Stilen geschrieben. **Der aktuelle Stand steht

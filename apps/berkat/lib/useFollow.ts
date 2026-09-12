@@ -4,11 +4,16 @@
 // Benachrichtigung erzeugen. Wer in Berkat einem Verkäufer folgt, taucht also
 // auch in dessen Serlo-Mitteilungen auf. Eine Community, zwei Oberflächen.
 
+import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 
+type FollowChange = { followerId: string; targetId: string; wasFollowing: boolean };
+const followKey = (followerId: string, targetId: string) => ['berkat', 'follows', followerId, targetId];
+
 export function useFollow(targetUserId: string | undefined, myUserId: string | null) {
   const queryClient = useQueryClient();
+  const locked = useRef(false);
   const queryKey = ['berkat', 'follows', myUserId, targetUserId];
   const enabled = Boolean(myUserId && targetUserId && myUserId !== targetUserId);
 
@@ -16,58 +21,80 @@ export function useFollow(targetUserId: string | undefined, myUserId: string | n
     queryKey,
     enabled,
     staleTime: 60_000,
-    queryFn: async (): Promise<boolean> => {
+    retry: 1,
+    queryFn: async ({ signal }): Promise<boolean> => {
       const { count, error } = await supabase
         .from('follows')
         .select('id', { count: 'exact', head: true })
         .eq('follower_id', myUserId!)
-        .eq('following_id', targetUserId!);
+        .eq('following_id', targetUserId!)
+        .abortSignal(signal)
+        .retry(false);
       if (error) throw error;
-      return (count ?? 0) > 0;
+      if (count == null) throw new Error('follow_state_missing');
+      return count > 0;
     },
   });
 
-  const toggle = useMutation({
-    mutationFn: async (): Promise<boolean> => {
-      if (!myUserId || !targetUserId) throw new Error('not_authenticated');
-      if (state.data) {
-        const { error } = await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', myUserId)
-          .eq('following_id', targetUserId);
+  const change = useMutation({
+    retry: false,
+    // Bind the request and its cache updates to the account/profile at tap time.
+    mutationFn: async ({ followerId, targetId, wasFollowing }: FollowChange): Promise<boolean> => {
+      if (wasFollowing) {
+        const { error } = await supabase.from('follows').delete()
+          .eq('follower_id', followerId).eq('following_id', targetId);
         if (error) throw error;
         return false;
       }
-      const { error } = await supabase
-        .from('follows')
-        .insert({ follower_id: myUserId, following_id: targetUserId });
-      // Doppeltes Folgen ist kein Fehler — der Unique-Index auf dem Paar
-      // fängt Doppel-Taps ab, das Ergebnis ist dasselbe.
-      if (error && !error.message.includes('duplicate')) throw error;
+      const { error } = await supabase.from('follows')
+        .insert({ follower_id: followerId, following_id: targetId });
+      if (error && error.code !== '23505') throw error;
       return true;
     },
-    onSuccess: (following) => {
-      queryClient.setQueryData(queryKey, following);
-      // Die Zahl auf dem Profil muss mitgehen — sonst steht dort weiter der
-      // alte Stand, während der Knopf schon „Du folgst" sagt.
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', targetUserId] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', myUserId] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'following', myUserId] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'discovery', myUserId] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'shows', 'discovery', myUserId] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows', 'discovery', myUserId] });
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'activity', myUserId] });
+    onMutate: ({ followerId, targetId }) => queryClient.cancelQueries({ queryKey: followKey(followerId, targetId), exact: true }),
+    onSuccess: async (following, { followerId, targetId }) => {
+      const key = followKey(followerId, targetId);
+      // A refresh started while saving must not overwrite the confirmed result.
+      await queryClient.cancelQueries({ queryKey: key, exact: true });
+      queryClient.setQueryData(key, following);
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', targetId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'follow-counts', followerId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'following', followerId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'discovery', followerId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'shows', 'discovery', followerId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'upcoming-shows', 'discovery', followerId] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'activity', followerId] });
     },
   });
 
-  return {
-    /** Nur sinnvoll, wenn ein fremdes Profil angezeigt wird */
-    canFollow: enabled,
-    isFollowing: state.data ?? false,
-    toggle: toggle.mutate,
-    busy: toggle.isPending,
+  const currentChange = change.variables?.followerId === myUserId && change.variables?.targetId === targetUserId;
+  const readFailed = enabled && state.isError;
+  const writeFailed = enabled && currentChange && change.isError;
+  const busy = enabled && (state.isFetching && (state.data === undefined || state.isError) || change.isPending);
+  const isFollowing = enabled && state.data === true;
+  const error = readFailed ? 'Dein Folgestatus konnte nicht geladen werden. Bitte lade ihn erneut.'
+    : writeFailed ? 'Die Änderung konnte nicht gespeichert werden. Bitte versuche es erneut.' : null;
+  const label = busy ? 'Einen Moment …' : readFailed || (enabled && state.data === undefined) ? 'Erneut laden'
+    : writeFailed ? 'Erneut versuchen' : isFollowing ? 'Du folgst' : 'Folgen';
+
+  const toggle = async () => {
+    if (!enabled || !myUserId || !targetUserId || locked.current || change.isPending) return;
+    locked.current = true;
+    try {
+      // An unknown/failed status is a read retry, never an inferred follow.
+      if (state.isError || state.data === undefined) {
+        await state.refetch({ cancelRefetch: false });
+        return;
+      }
+      await change.mutateAsync({ followerId: myUserId, targetId: targetUserId, wasFollowing: state.data });
+    } catch {
+      // Query/mutation state supplies visible, retryable feedback at every entry.
+    } finally {
+      locked.current = false;
+    }
   };
+
+  return { canFollow: enabled, isFollowing, toggle, busy, error, label };
 }
 
 /**

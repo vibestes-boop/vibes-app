@@ -14,7 +14,7 @@ function load(file, query, api) {
   const code = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText;
-  const context = vm.createContext({ exports: {}, require: name => name === '@tanstack/react-query' ? query : { supabase: api } });
+  const context = vm.createContext({ exports: {}, require: name => name === '@tanstack/react-query' ? query : name === 'react' ? { useRef: value => ({ current: value }) } : { supabase: api } });
   vm.runInContext(code, context);
   return context.exports;
 }
@@ -149,7 +149,7 @@ test('permission errors do not retry; transient errors retry only once', () => {
   assert.equal(config.retry(1, new Error('offline')), false);
 });
 
-test('follow and unfollow success invalidate the current user directory, activity and discovery', () => {
+test('follow and unfollow success invalidate the current user directory, activity and discovery', async () => {
   for (const following of [true, false]) {
     const client = clientFor(); let mutation;
     const keys = [['berkat', 'following', 'me'], ['berkat', 'activity', 'me'], ['berkat', 'following', 'other'], ['berkat', 'activity', 'other'], ['berkat', 'discovery', 'me', [], true], ['berkat', 'discovery', 'other', [], true]];
@@ -159,7 +159,7 @@ test('follow and unfollow success invalidate the current user directory, activit
       useMutation: value => { mutation = value; return {}; },
     }, { from: () => { throw new Error('Mutation must never run during this test'); } });
     try {
-      exports.useFollow('seller', 'me'); mutation.onSuccess(following);
+      exports.useFollow('seller', 'me'); await mutation.onSuccess(following, { followerId: 'me', targetId: 'seller', wasFollowing: !following });
       assert.equal(client.getQueryState(keys[0]).isInvalidated, true);
       assert.equal(client.getQueryState(keys[1]).isInvalidated, true);
       assert.equal(client.getQueryState(keys[2]).isInvalidated, false);

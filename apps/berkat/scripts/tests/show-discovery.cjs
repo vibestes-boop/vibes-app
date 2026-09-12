@@ -139,17 +139,17 @@ test('account changes abort old sources and never retain another account selecti
   } finally { stop(); client.clear(); }
 });
 
-test('show invalidation prefixes reach personal sources and keep accounts distinct', () => {
+test('show invalidation prefixes reach personal sources and keep accounts distinct', async () => {
   const client = clientFor();
   const keys = [options('live', {}, () => {}).queryKey, options('upcoming', {}, () => {}).queryKey,
     options('live', { userId: 'other' }, () => {}).queryKey];
   keys.forEach(key => client.setQueryData(key, sources()));
   let mutation;
-  const follow = load('lib/useFollow.ts', { '@tanstack/react-query': {
+  const follow = load('lib/useFollow.ts', { react: { useRef: value => ({ current: value }) }, '@tanstack/react-query': {
     useQueryClient: () => client, useQuery: () => ({ data: false }), useMutation: config => { mutation = config; return {}; },
   } });
   try {
-    follow.useFollow('seller', 'me'); mutation.onSuccess(true);
+    follow.useFollow('seller', 'me'); await mutation.onSuccess(true, { followerId: 'me', targetId: 'seller', wasFollowing: false });
     assert.equal(client.getQueryState(keys[0]).isInvalidated, true); assert.equal(client.getQueryState(keys[1]).isInvalidated, true);
     assert.equal(client.getQueryState(keys[2]).isInvalidated, false);
     assert.deepEqual(options('live', { interests: ['mode', 'beauty'] }, () => {}).queryKey,
