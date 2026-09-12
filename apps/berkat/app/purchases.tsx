@@ -196,7 +196,7 @@ export default function PurchasesScreen() {
           </Text>
         )}
       </PressFeedback> : null}
-      
+
       <Text style={styles.payHint}>
         {isWindowClosed(cart)
           ? 'Dieses Paket ist geschlossen. Bei Fragen kannst du den Verkäufer über den Artikel kontaktieren.'
