@@ -3,32 +3,46 @@
  * ============================================================================
  *
  * Aus der Liste in Übergabe 69, Punkt 3: „Kein Bildschirm für die eigenen
- * Versandsätze — ein Verkäufer kann seine Pauschalen nirgends ansehen. Trifft
- * heute niemanden ausser Zaur, ab dem zweiten Verkäufer sofort."
+ * Versandsätze — ein Verkäufer kann seine Pauschalen nirgends ansehen."
  *
  * ⚠️ ANSEHEN, NICHT ÄNDERN — und das ist eine Entscheidung, keine Lücke.
  *
- * Eigene Sätze zu hinterlegen hiesse, jedem Verkäufer den Versandpreis selbst
- * bestimmen zu lassen. Solange Berkat rechtlich der Verkäufer ist
- * (Kommissionsmodell, Strategie Abschnitt 8) und das Geld über EIN Stripe-Konto
- * läuft, ist der Satz eine Angabe des Betreibers — der Verkäufer trägt das
- * Porto nicht selbst. Ein Formular hier wäre ein Versprechen, das die
- * Abrechnung nicht einlöst.
+ * Die Sätze sind Berkats Vorgaben (`berkat_shipping_rates` mit
+ * `seller_id IS NULL`). Eigene Sätze liest die Anzeige schon und zieht sie den
+ * Vorgaben vor — nur das Formular dafür fehlt absichtlich: Seit Connect
+ * (Übergabe 99) landet das Porto zwar beim verbundenen Verkäufer, aber wer den
+ * Satz selbst bestimmt, bestimmt auch, was der Käufer in der Kasse sieht. Das
+ * gehört in eine Phase, in der es mehr als einen Verkäufer gibt.
  *
- * `berkat_shipping_rates.seller_id` steht bereit, damit sich das mit Stripe
- * Connect ohne Umbau ändern lässt. Wer es aufmacht, baut das Formular HIER —
- * die Anzeige liest schon eigene Sätze und zieht sie den Vorgaben vor.
+ * Der Urlaub steht auf demselben Bildschirm, weil er dieselbe Frage
+ * beantwortet: **Wie kommt meine Ware zum Käufer — und kommt sie gerade
+ * überhaupt?**
  *
- * Der Urlaub steht auf demselben Bildschirm, weil er dieselbe Frage beantwortet:
- * **Wie kommt meine Ware zum Käufer — und kommt sie gerade überhaupt?**
+ * ── ⚠️ AUS KARTE UND PILLEN WURDE EINE LISTE (11.09.2026) ──────────────────
+ *
+ * Am Gerät gemeldet: „vibecodet, unübersichtlich". Vier Dinge waren es:
+ *
+ *   1. Deutschland stand ganz UNTEN — sortiert nach Länderkürzel (AT, CH, DE).
+ *      Der Hauptmarkt zuletzt.
+ *   2. Österreich und Schweiz hatten denselben Satz und dieselbe Entschuldigung
+ *      („nur ein Satz — auch ein Brief kostet so viel"), jede zweimal.
+ *   3. Drei Absätze Prosa. Die Seite erklärte sich ständig selbst.
+ *   4. Eine Rahmen-Karte mit Pillen für den Urlaub — statt der Liste, die das
+ *      Konto seit dem 26.08. hat (Übergabe 94: „die GRUPPE trägt die Fläche,
+ *      die Zeile nur eine Haarlinie").
+ *
+ * Jetzt: dasselbe Muster wie `(tabs)/account.tsx`. Länder mit identischen
+ * Sätzen werden zu EINER Gruppe („Österreich und Schweiz"), Deutschland kommt
+ * zuerst, und jeder Satz Erklärung ist entweder ein Zeilen-Hinweis oder weg.
  */
 
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, PackageCheck, Palmtree } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Palmtree } from 'lucide-react-native';
 
+import { PressFeedback } from '../components/PressFeedback';
 import { goBack } from '../lib/nav';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -56,6 +70,21 @@ type Rate = {
   cents: number;
   seller_id: string | null;
 };
+
+type ZoneRow = { tier: number; label: string; examples: string; cents: number };
+type Zone = { title: string; rows: ZoneRow[] };
+
+const countryName = (code: string) => COUNTRY_NAME[code] ?? code;
+
+/** „Österreich und Schweiz" — oder bei dreien „A, B und C". */
+function joinNames(codes: string[]): string {
+  const names = codes.map(countryName);
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}`;
+}
+
+/** „bis übermorgen" → „Bis übermorgen": als Zeile in einer Liste, nicht als Pille im Satz. */
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function ShippingScreen() {
   // Kein StatusBar-Aufruf: Berkat hat zwei feste Flächen und setzt sie global
@@ -86,18 +115,59 @@ export default function ShippingScreen() {
    * Je Land und Stufe genau eine Zeile — der eigene Satz schlägt die Vorgabe.
    * Dieselbe Regel wie serverseitig; sie steht hier nur, weil dieser Bildschirm
    * ALLE Stufen zeigt statt der einen, die für einen Korb gilt.
+   *
+   * Danach: Länder mit identischen Sätzen zu einer Gruppe zusammenlegen.
+   * Deutschland zuerst, der Rest nach Namen — nicht nach Kürzel, sonst steht
+   * der Hauptmarkt hinter Österreich.
    */
-  const byCountry = useMemo(() => {
-    const map = new Map<string, Map<number, Rate>>();
+  const zones = useMemo<Zone[]>(() => {
+    const byCountry = new Map<string, Map<number, Rate>>();
     for (const r of rates) {
       if (r.seller_id !== null && r.seller_id !== myUserId) continue;
-      const tiers = map.get(r.country) ?? new Map<number, Rate>();
+      const tiers = byCountry.get(r.country) ?? new Map<number, Rate>();
       const seen = tiers.get(r.tier);
       if (!seen || (seen.seller_id === null && r.seller_id !== null)) tiers.set(r.tier, r);
-      map.set(r.country, tiers);
+      byCountry.set(r.country, tiers);
     }
-    return map;
+
+    const order = [...byCountry.keys()].sort((a, b) => {
+      if (a === 'DE') return -1;
+      if (b === 'DE') return 1;
+      return countryName(a).localeCompare(countryName(b), 'de');
+    });
+
+    // Map hält die Einfügereihenfolge — die Deutschland-Gruppe bleibt vorn.
+    const bySignature = new Map<string, { codes: string[]; rows: ZoneRow[] }>();
+    for (const code of order) {
+      const tiers = byCountry.get(code)!;
+      const rows: ZoneRow[] = SHIPPING_TIERS.filter((t) => tiers.has(t.tier)).map((t) => ({
+        tier: t.tier,
+        label: t.label,
+        examples: t.examples,
+        cents: tiers.get(t.tier)!.cents,
+      }));
+      const signature = rows.map((r) => `${r.tier}:${r.cents}`).join('|');
+      const existing = bySignature.get(signature);
+      if (existing) existing.codes.push(code);
+      else bySignature.set(signature, { codes: [code], rows });
+    }
+
+    return [...bySignature.values()].map((z) => ({ title: joinNames(z.codes), rows: z.rows }));
   }, [rates, myUserId]);
+
+  const setAway = (days: number | null) =>
+    void setVacation
+      .mutateAsync(days)
+      .then(() =>
+        setNotice(
+          days === null
+            ? 'Willkommen zurück — dein Regal ist wieder offen.'
+            : 'Eingetragen — deine Angebote sind bis dahin ausgeblendet.',
+        ),
+      )
+      .catch((e: unknown) =>
+        setNotice(e instanceof Error ? e.message : 'Das ließ sich nicht ändern.'),
+      );
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -123,105 +193,95 @@ export default function ShippingScreen() {
         ) : null}
 
         {/* ── Urlaub ───────────────────────────────────────────────────────── */}
-        <View style={[styles.card, away && styles.cardAway]}>
-          <View style={styles.cardHead}>
-            <Palmtree size={18} color={away ? ui.bg : ui.text} />
-            <Text style={[styles.cardTitle, away && styles.onAway]}>
-              {away ? `Du bist im Urlaub — ${vacationLabel(seller?.vacation_until)}` : 'Urlaub'}
-            </Text>
+        <Text style={styles.sectionLabel}>Urlaub</Text>
+        <View style={styles.group}>
+          {/* Die Zustandszeile: was gerade gilt, und in einem Satz, was das
+              heisst. Nicht antippbar — die Handlung steht darunter. */}
+          <View style={styles.row}>
+            <Palmtree size={21} color={ui.brand} />
+            <View style={styles.copy}>
+              <Text style={styles.label}>
+                {away ? capitalize(vacationLabel(seller?.vacation_until) ?? 'Im Urlaub') : 'Kein Urlaub'}
+              </Text>
+              <Text style={styles.hint}>
+                {away
+                  ? 'Deine Angebote sind ausgeblendet. Du siehst sie weiter, niemand kann sie kaufen.'
+                  : 'Weg? Deine Angebote verschwinden solange — und kommen von selbst wieder.'}
+              </Text>
+            </View>
           </View>
 
-          <Text style={[styles.cardBody, away && styles.onAway]}>
-            {away
-              ? 'Deine Angebote sind für andere gerade nicht sichtbar. Du siehst sie weiter, und niemand kann sie kaufen.'
-              : 'Wenn du weg bist, verschwinden deine Angebote — ohne dass du sie zurückziehen musst. Sie kommen von selbst wieder.'}
-          </Text>
-
           {away ? (
-            <Pressable
-              style={styles.backNow}
+            <PressFeedback
+              style={[styles.row, styles.rowSlim, styles.rowLast]}
               disabled={setVacation.isPending}
-              onPress={() =>
-                void setVacation
-                  .mutateAsync(null)
-                  .then(() => setNotice('Willkommen zurück — dein Regal ist wieder offen.'))
-                  .catch((e: unknown) =>
-                    setNotice(e instanceof Error ? e.message : 'Das ließ sich nicht ändern.'),
-                  )
-              }
+              onPress={() => setAway(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Urlaub beenden"
             >
-              <Text style={styles.backNowText}>Ich bin zurück</Text>
-            </Pressable>
+              <View style={styles.copy}>
+                <Text style={styles.action}>Ich bin zurück</Text>
+              </View>
+              <ChevronRight size={18} color={ui.textMuted} />
+            </PressFeedback>
           ) : (
-            <View style={styles.presetRow}>
-              {VACATION_PRESETS.map((preset) => (
-                <Pressable
-                  key={preset.days}
-                  style={styles.preset}
-                  disabled={setVacation.isPending}
-                  onPress={() =>
-                    void setVacation
-                      .mutateAsync(preset.days)
-                      .then(() =>
-                        setNotice('Eingetragen — deine Angebote sind bis dahin ausgeblendet.'),
-                      )
-                      .catch((e: unknown) =>
-                        setNotice(e instanceof Error ? e.message : 'Das ließ sich nicht ändern.'),
-                      )
-                  }
-                >
-                  <Text style={styles.presetText}>{preset.label}</Text>
-                </Pressable>
-              ))}
-            </View>
+            VACATION_PRESETS.map((preset, i) => (
+              <PressFeedback
+                key={preset.days}
+                style={[
+                  styles.row,
+                  styles.rowSlim,
+                  i === VACATION_PRESETS.length - 1 && styles.rowLast,
+                ]}
+                disabled={setVacation.isPending}
+                onPress={() => setAway(preset.days)}
+                accessibilityRole="button"
+                accessibilityLabel={`Urlaub ${preset.label}`}
+              >
+                <View style={styles.copy}>
+                  <Text style={styles.label}>{capitalize(preset.label)}</Text>
+                </View>
+                <ChevronRight size={18} color={ui.textMuted} />
+              </PressFeedback>
+            ))
           )}
         </View>
 
         {/* ── Die Sätze ────────────────────────────────────────────────────── */}
-        <View style={styles.cardHead}>
-          <PackageCheck size={18} color={ui.text} />
-          <Text style={styles.cardTitle}>Was der Käufer zahlt</Text>
-        </View>
-        <Text style={styles.intro}>
-          Der Satz richtet sich nach dem größten Stück im Paket. Was du beim Einstellen als
-          Versandart wählst, entscheidet also mit — nicht nur, wohin es geht.
+        <Text style={styles.sectionLabel}>Was der Käufer zahlt</Text>
+        <Text style={styles.sectionHint}>
+          Der Satz richtet sich nach dem größten Stück im Paket.
         </Text>
 
-        {[...byCountry.keys()].sort().map((country) => {
-          const tiers = byCountry.get(country)!;
-          return (
-            <View key={country} style={styles.zone}>
-              <Text style={styles.zoneTitle}>{COUNTRY_NAME[country] ?? country}</Text>
-              {SHIPPING_TIERS.map((t) => {
-                const rate = tiers.get(t.tier);
-                if (!rate) return null;
-                return (
-                  <View key={t.tier} style={styles.rateRow}>
-                    <View style={styles.rateLeft}>
-                      <Text style={styles.rateLabel}>{t.label}</Text>
-                      <Text style={styles.rateEx}>{t.examples}</Text>
-                    </View>
-                    <Text style={styles.rateCents}>{formatCents(rate.cents)}</Text>
+        {zones.map((zone) => (
+          <View key={zone.title}>
+            <Text style={styles.zoneTitle}>{zone.title}</Text>
+            <View style={styles.group}>
+              {zone.rows.map((r, i) => (
+                <View
+                  key={r.tier}
+                  style={[styles.row, i === zone.rows.length - 1 && styles.rowLast]}
+                >
+                  <View style={styles.copy}>
+                    <Text style={styles.label}>{r.label}</Text>
+                    <Text style={styles.hint}>{r.examples}</Text>
                   </View>
-                );
-              })}
-              {/* ⚠️ Ehrlich statt beruhigend: Für AT und CH gibt es nur eine
-                  Stufe, und der Grund gehört hierher — sonst hält es jemand für
-                  einen Fehler und sucht ihn im Code. */}
-              {tiers.size === 1 ? (
-                <Text style={styles.zoneNote}>
-                  Für dieses Land gibt es bisher nur einen Satz — auch ein Brief kostet also so
-                  viel.
-                </Text>
-              ) : null}
+                  <Text style={styles.price}>{formatCents(r.cents)}</Text>
+                </View>
+              ))}
             </View>
-          );
-        })}
+            {/* ⚠️ Ehrlich statt beruhigend: Gibt es nur eine Stufe, gehört der
+                Grund hierher — sonst hält es jemand für einen Fehler und sucht
+                ihn im Code. Einmal je Gruppe, nicht je Land. */}
+            {zone.rows.length === 1 ? (
+              <Text style={styles.zoneNote}>
+                Bisher nur ein Satz — auch ein Brief kostet so viel.
+              </Text>
+            ) : null}
+          </View>
+        ))}
 
-        <Text style={styles.foot}>
-          Die Sätze legt Berkat fest, nicht du — das Porto läuft über das Konto des Betreibers.
-          Wenn du eigene hinterlegen willst, sag Bescheid.
-        </Text>
+        <Text style={styles.foot}>Die Sätze legt Berkat fest. Eigene Sätze: sag Bescheid.</Text>
       </ScrollView>
     </View>
   );
@@ -246,60 +306,61 @@ const styles = StyleSheet.create({
   },
   noticeText: { fontSize: 13, color: ui.text },
 
-  card: {
-    borderWidth: 1,
-    borderColor: ui.line,
+  sectionLabel: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '700',
+    color: ui.text,
+    marginTop: space.md,
+    marginBottom: space.sm,
+  },
+  sectionHint: { fontSize: 13, lineHeight: 18, color: ui.textMuted, marginBottom: space.md },
+
+  /* Dasselbe Muster wie `(tabs)/account.tsx` (Übergabe 94): Die Gruppe trägt
+     die Fläche, die Zeile nur eine Haarlinie. Die letzte Zeile trägt keine —
+     sonst läge sie auf der abgerundeten Kante. */
+  group: {
+    backgroundColor: ui.card,
     borderRadius: radius.lg,
-    padding: space.md,
-    marginBottom: space.lg,
+    overflow: 'hidden',
+    marginBottom: space.md,
   },
-  // Markengrün gefüllt, nicht gold und nicht rot: Urlaub ist ein Zustand, kein
-  // Kaufweg und keine Frist (`theme/tokens.ts`).
-  cardAway: { backgroundColor: ui.brand, borderColor: ui.brand },
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: ui.text },
-  cardBody: { fontSize: 13, color: ui.textMuted, lineHeight: 18 },
-  onAway: { color: ui.bg },
-
-  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: space.sm },
-  preset: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: ui.line,
-    backgroundColor: ui.sunken,
-  },
-  presetText: { fontSize: 13, fontWeight: '600', color: ui.text },
-
-  backNow: {
-    marginTop: space.sm,
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
-    backgroundColor: ui.bg,
-  },
-  backNowText: { fontSize: 13, fontWeight: '600', color: ui.brand },
-
-  intro: { fontSize: 13, color: ui.textMuted, lineHeight: 18, marginBottom: space.md },
-
-  zone: { marginBottom: space.lg },
-  zoneTitle: { fontSize: 14, fontWeight: '600', color: ui.text, marginBottom: 6 },
-  zoneNote: { fontSize: 11, color: ui.textMuted, marginTop: 4 },
-
-  rateRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: ui.line,
+    gap: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 14,
+    minHeight: 64,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
   },
-  rateLeft: { flex: 1, paddingRight: space.sm },
-  rateLabel: { fontSize: 13, fontWeight: '600', color: ui.text },
-  rateEx: { fontSize: 11, color: ui.textMuted, marginTop: 1 },
-  rateCents: { fontSize: 14, fontWeight: '600', color: ui.text },
+  /* Einzeilige Zeilen (die Urlaubs-Dauern) brauchen die 64 nicht — vier davon
+     übereinander wären sonst ein Turm. */
+  rowSlim: { minHeight: 48, paddingVertical: 12 },
+  rowLast: { borderBottomWidth: 0 },
+  copy: { flex: 1, minWidth: 0, gap: 3 },
+  label: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text },
+  hint: { fontSize: 12, lineHeight: 18, color: ui.textMuted },
+  action: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.brand },
+  price: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text },
 
-  foot: { fontSize: 11, color: ui.textMuted, lineHeight: 16 },
+  zoneTitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+    color: ui.textMuted,
+    marginBottom: space.sm,
+    marginLeft: space.xs,
+  },
+  zoneNote: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: ui.textMuted,
+    marginTop: -space.xs,
+    marginBottom: space.md,
+    marginLeft: space.xs,
+  },
+
+  foot: { fontSize: 12, lineHeight: 18, color: ui.textMuted, marginTop: space.sm },
 });

@@ -15046,3 +15046,35 @@ erzeugen**. Dafür braucht es eine Sendung und ein zweites Konto, das bietet —
 Damit hat Gruppe A noch **vier** Punkte (A32, A36, A37, A38) — und davon braucht A37 ebenfalls ein
 zweites Konto („ein Konto, das dem Gastgeber **nicht** folgt"). ⚠️ Beim nächsten Durchgang durch die
 Liste prüfen, ob A37 aus demselben Grund nach D gehört.
+
+---
+
+## 103. Versand: aus Karte und Pillen wurde eine Liste (11.09.2026)
+
+Am Gerät gemeldet: *„die Seite Versand ist vibecodet, unübersichtlich."* Vier Ursachen, alle im
+Bild sichtbar:
+
+| | Vorher | Nachher |
+|---|---|---|
+| Reihenfolge | **Deutschland ganz unten** — sortiert nach Kürzel (AT, CH, DE) | Deutschland zuerst, Rest nach Namen |
+| Österreich / Schweiz | zwei Blöcke, identischer Satz, identische Entschuldigung — **zweimal** | **eine** Gruppe „Österreich und Schweiz", ein Hinweis |
+| Prosa | drei Absätze (Einleitung, Entschuldigung ×2, Fußtext) | je Abschnitt ein Satz oder gar keiner |
+| Urlaub | Rahmen-Karte mit vier Pillen | Zustandszeile + vier Listen-Zeilen, Haarlinien |
+
+Muster: dasselbe wie `(tabs)/account.tsx` seit dem 26.08. (Übergabe 94) — **die Gruppe trägt die
+Fläche, die Zeile nur eine Haarlinie.** Die Länder-Zusammenlegung ist datengetrieben (gleiche
+Signatur aus Stufe und Betrag → gleiche Gruppe), nicht hart verdrahtet: Bekommt die Schweiz
+eigene Sätze, trennt sie sich von selbst wieder.
+
+### Nebenbei: der Fußtext log seit Connect
+
+Er behauptete: *„das Porto läuft über das Konto des Betreibers."* Seit Übergabe 99 stimmt das für
+verbundene Verkäufer nicht mehr — bei Direktzahlung landet der Versand bei ihnen. Der Satz ist
+jetzt schlicht wahr: „Die Sätze legt Berkat fest. Eigene Sätze: sag Bescheid." Der Kopfkommentar
+der Datei (Kommissionsmodell, EIN Stripe-Konto) war aus demselben Grund veraltet und ist nachgezogen.
+
+> ⚠️ Wer den Geldweg umbaut, muss die Sätze finden, die ihn **beschreiben** — sie stehen nicht nur
+> im Code, sondern auch in Fußzeilen, Hinweisen und Kopfkommentaren. Hier hat einer zwei Wochen
+> lang das Gegenteil behauptet.
+
+Belegt: `tsc` 0 Fehler, im Simulator per Hot-Reload beide Hälften gesehen. Als OTA raus.
