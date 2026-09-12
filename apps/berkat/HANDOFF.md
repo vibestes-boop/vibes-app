@@ -14984,9 +14984,29 @@ ist jede Zeile davon tot** — und Serlos Shop erreicht der Bestellzweig ohnehin
 | `supabase db push` | ✅ Migration eingespielt |
 | `supabase functions deploy` | ✅ ausgerollt |
 
+### Nachtrag am selben Tag: das Suffix ist gegen die Dokumentation geprüft
+
+Der Absatz unten nannte `statement_descriptor_suffix` als Restrisiko — ein Feld, das ich ausgerollt
+hatte, ohne es nachzuschlagen. Nachgeholt, mit klarem Ergebnis:
+
+| Frage | Antwort aus Stripes Dokumentation |
+|---|---|
+| Gibt es das Feld auf `checkout/sessions`? | ✅ `payment_intent_data.statement_descriptor_suffix` |
+| Wessen Präfix gilt bei direct charges? | ✅ **das des verbundenen Kontos** — genau das Gewollte |
+| Kann die Länge überlaufen? | ❌ **unmöglich.** Präfix ist auf 2–10 Zeichen gedeckelt, Trenner `*` + Leerzeichen = 2, `BERKAT` = 6 → höchstens 18 von 22 |
+| Verbotene Zeichen? | `< > \ ' " *` — `BERKAT` enthält keines |
+| Hat ein neues Verkäufer-Konto überhaupt ein Präfix? | ✅ Stripes Onboarding erzeugt es aus `business_profile.name`, sonst aus den ersten 10 Zeichen der Beschreibung |
+
+⚠️ **Dynamische Suffixe gelten nur für KARTEN-Zahlungen.** Bei SEPA oder Klarna bleibt das Feld
+wirkungslos — es wird ignoriert, nicht abgewiesen. Die Sitzung entsteht ohnehin, bevor der Käufer
+seine Zahlart wählt; an dieser Stelle kann die Kasse also nicht scheitern.
+
+> Die Lehre ist dieselbe wie beim Nachtdienst zwei Abschnitte weiter oben: **Ein Feld, das ich nicht
+> nachgeschlagen habe, ist kein gebautes Feld.** Hier ging es gut aus — beim Schlüsselvergleich nicht.
+
 ⚠️ **Was das NICHT beweist:** dass eine Kasse mit verbundenem Konto tatsächlich aufgeht. Die drei
-Änderungen greifen genau dort, wo bisher nie eine echte Zahlung lief. Ein `statement_descriptor_suffix`
-mit unerlaubtem Zeichen oder ein Formular-Rest würde Stripe erst **vor dem Käufer** abweisen.
+Änderungen greifen genau dort, wo bisher nie eine echte Zahlung lief. Das Suffix ist inzwischen gegen die
+Dokumentation geprüft (oben); ungeprüft bleibt, ob das Formular als Ganzes durchgeht.
 
 > **Das ist ab sofort Teil von B18** — und der Grund, warum B18 vor dem ersten fremden Verkäufer
 > laufen muss, nicht danach.
