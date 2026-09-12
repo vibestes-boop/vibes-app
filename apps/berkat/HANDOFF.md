@@ -1,5 +1,60 @@
 # Berkat — Übergabe
 
+## Suche und Verkäuferkontakt · Build 13 · 13.09.2026
+
+**Bestätigten nächsten UX-Schritt umgesetzt:** Suche → Artikeldetails →
+Verkäuferkontakt. Fokus auf die App, keine Prüfung der Testprodukt-Richtigkeit.
+
+- Suche: Eingabehinweis passend zum Tab, direkter Kategorieeinstieg und sicherer
+  Rückweg. Suchbegriff und Treffer bleiben nach dem Artikelbesuch erhalten.
+- Artikeldetails: Verkäufer vor Beschreibung und Preisvorschlägen. Gemeinsame
+  `ScreenHeader`, `ActionButton` und `FeedbackState` für Kopfzeilen, Kontakt,
+  Anmeldung und Wiederholung. Kopfaktionen mindestens 44 Punkte; bei zwei rechten
+  Aktionen bleibt der Titel mittig. Kauf- und Zahlungslogik unverändert.
+- Posteingang: klare Zeilen mit Vorschau, explizite Lade-/Fehlerzustände und
+  Wiederholung mit erhaltenem Cache. Bei großer Schrift steht der Zeitstempel
+  unter dem Namen. Nach Schriftwechsel wird die Zeile neu vermessen; native
+  Prüfung fand und beseitigte hier abgeschnittene Namen.
+- Chat: Fehler beim Nachschlagen einer Unterhaltung werden nicht mehr als neuer,
+  leerer Verlauf behandelt. Fehlender/fehlerhafter Verlauf oder Artikelanhang
+  verhindert Versand und bietet Wiederholung. Kontogebundener Nachrichtencache;
+  Lesen, Realtime und Gelesen-Markierungen folgen dem sichtbaren Gespräch.
+- `useMessageDraft`: Versandstatus und synchrone Sperre gegen Doppeltipps.
+  Fehlgeschlagener Versand erhält Text, Foto und Artikel. Erfolgsantwort leert
+  den Entwurf. Ein Konto-/Empfängerwechsel startet eine eigene Entwurfsinstanz.
+  Fehler entfernen nur den eigenen optimistischen Eintrag; gleichzeitig
+  eingegangene Nachrichten bleiben im Cache.
+- Angehängter Artikel öffnet seine Details; Zurück erhält auch bearbeiteten Text.
+  Entfernen hat ein 44-Punkt-Ziel. Fotoauswahl lädt zunächst eine Vorschau hoch;
+  erst der ausdrückliche Sendeknopf versendet sie als Nachricht. Abbruch/Fehler
+  erhält den vorhandenen Entwurf. Eingabe bleibt über der Softwaretastatur.
+
+**Geprüft:** TypeScript und 316 lokale Tests bestanden, davon 24 neue. Tests mit
+lokalen Daten-Doubles und echtem QueryClient/QueryObserver decken Lesefehler,
+Cache-Isolation, Abbruch, Bildvorschau, schnelle Doppeltipps, Versandfehler,
+Erhalt eingehender Zeilen und Versandbedingungen ab. Kein echter Testversand.
+Native Prüfung im iPhone-17-Simulator: Suche → Artikel → Kontakt, Entwurf ändern,
+Anhang öffnen/zurück, leeres Textfeld deaktiviert Senden; zurück zur Suche erhält
+Begriff/Treffer. Posteingang und Kontakt mit extra-large und accessibility-medium
+geprüft, einschließlich sichtbarer Softwaretastatur. Schrift wieder zurückgestellt.
+Keine Testprodukt-Richtigkeitsprüfung, Nachrichten, Foto-Uploads, Transaktionen
+oder Live-Sendungen ausgelöst. Nachweise: `outputs/berkat-search-contact`.
+
+**Geräteauslieferung:** Build 13 erfolgreich als lokales Release gebaut,
+signiert, als IPA gesichert und auf dem verbundenen iPhone 16 Pro als Update
+installiert. CoreDevice bestätigt com.berkat.app / 1.0.0 / 13. Der automatische
+Start wird derzeit von der iOS-Bildschirmsperre blockiert (CoreDevice: Locked);
+Entsperren für die abschließende Startprüfung wurde angefragt. Hermes, eingefrorene Quell-Hashes, neue UI-Texte, 12 Kategoriemotive,
+Signatur/Profilfelder und IPA-CRC geprüft. Nachweise:
+`outputs/berkat-iphone-build-13`. Lokale Expo-Updates und Sentry-Autoupload bleiben
+deaktiviert. Keine Backendmigration, kein Git-Push, OTA, TestFlight oder App Store.
+
+**Nächste Abnahme:** Den neuen Such-/Kontaktweg im Alltag auf dem iPhone prüfen.
+Live-Gesten und echte Termin-Push-Zustellung bleiben gesonderte Geräteabnahmen.
+Entwürfe bleiben im geöffneten Gespräch; keine neue dauerhafte Speicherung nach
+Schließen/Beenden der App. Bestehende Grenzen: neueste 200 Nachrichten je Verlauf,
+50 Gespräche im Posteingang. Keine neuen Leistungswerte behauptet.
+
 ## App-Klarheit · Käufe, Profile und Verkäuferübersicht · 12.09.2026
 
 **Bestätigtes Design-Audit umgesetzt:** Der Nutzer wollte die unübersichtlichen

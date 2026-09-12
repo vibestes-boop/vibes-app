@@ -4,10 +4,12 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Radio, Search, X } from 'lucide-react-native';
+import { ArrowLeft, Grid2X2, Radio, Search, X } from 'lucide-react-native';
 import { ListingResults } from '../components/ListingResults';
 import { SellerResults, isSearchPermissionError } from '../components/SellerResults';
 import { SearchResultsState } from '../components/SearchResultsState';
+import { goBack } from '../lib/nav';
+import { NavigationRow } from '../components/NavigationRow';
 import { Avatar } from '../components/Avatar';
 import { useListingSearch } from '../lib/useListings';
 import { SEARCH_MIN, useSellerSearch } from '../lib/useSellerSearch';
@@ -53,15 +55,15 @@ export default function SearchScreen() {
     emptyText="Zu diesem Begriff läuft gerade keine Show. Versuche einen anderen Titel oder Verkäufernamen – oder entdecke die Artikel." />;
 
   return <View style={[s.screen, { paddingTop: insets.top }]}>
-    <View key={fontScale} style={s.searchRow}>
-      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Zurück"
+    <View style={s.searchRow}>
+      <Pressable onPress={() => goBack('/(tabs)/')} accessibilityRole="button" accessibilityLabel="Zurück"
         style={({ pressed }) => [s.iconButton, pressed && s.pressed]}>
         <ArrowLeft size={23} color={ui.brand} />
       </Pressable>
       <View style={s.field}>
         <Search size={18} color={ui.textMuted} />
         <TextInput ref={input} autoFocus value={query} onChangeText={setQuery}
-          placeholder="Berkat durchsuchen" accessibilityLabel="Suchbegriff"
+          placeholder={tab === 'sellers' ? 'Verkäufername' : tab === 'live' ? 'Show oder Verkäufer' : 'Artikel suchen'} accessibilityLabel="Suchbegriff"
           placeholderTextColor={ui.textMuted} style={s.input} maxLength={100}
           autoCapitalize="none" autoCorrect={false} returnKeyType="search"
           onSubmitEditing={Keyboard.dismiss} />
@@ -81,9 +83,12 @@ export default function SearchScreen() {
     </View>
     {!ready ? <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
       contentContainerStyle={[s.intro, { paddingBottom: insets.bottom + space.xl }]}>
-      <View style={s.introIcon}><Search size={30} strokeWidth={1.5} color={ui.brand} /></View>
-      <Text key={`title:${fontScale}`} accessibilityRole="header" style={s.introTitle}>{tab === 'sellers' ? 'Wen möchtest du entdecken?' : 'Was möchtest du entdecken?'}</Text>
+      <Text key={`title:${fontScale}`} accessibilityRole="header" style={s.introTitle}>{tab === 'sellers' ? 'Finde deinen Verkäufer' : tab === 'live' ? 'Finde eine Live-Show' : 'Finde deinen nächsten Favoriten'}</Text>
       <Text key={`hint:${fontScale}`} style={s.introBody}>{term.length === 1 ? 'Noch ein Zeichen, dann geht’s los.' : tab === 'sellers' ? 'Suche nach dem Benutzernamen eines Verkäufers. Zwei Zeichen genügen.' : 'Suche nach einem Artikel, einem Verkäufer oder einer Live-Show. Zwei Zeichen genügen.'}</Text>
+      <View style={{ alignSelf: 'stretch', marginTop: space.sm }}>
+        <NavigationRow title="Kategorien entdecken" detail="Alle Bereiche im Überblick" Icon={Grid2X2}
+          onPress={() => { Keyboard.dismiss(); router.push('/(tabs)/categories'); }} />
+      </View>
     </ScrollView> : <>
       <View key={`context:${fontScale}`} style={s.context}>
         <Text accessibilityRole="header" style={s.heading}>{tab === 'articles' ? 'Passende Artikel' : tab === 'sellers' ? 'Verkäufer entdecken' : 'Live entdecken'}</Text>
@@ -135,9 +140,8 @@ const s = StyleSheet.create({
   context: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.lg, gap: space.xs },
   heading: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: ui.text },
   contextText: { fontSize: 13, lineHeight: 19, color: ui.textMuted },
-  intro: { alignItems: 'center', paddingHorizontal: space.xl, paddingTop: space.xl * 2, gap: space.lg },
-  introIcon: { width: 72, height: 72, borderRadius: radius.lg, backgroundColor: ui.card, alignItems: 'center', justifyContent: 'center' },
-  introTitle: { fontSize: 24, lineHeight: 30, fontWeight: '700', color: ui.text, textAlign: 'center' },
+  intro: { alignItems: 'center', paddingHorizontal: space.xl, paddingTop: space.xl, gap: space.md },
+  introTitle: { fontSize: 22, lineHeight: 29, fontWeight: '700', color: ui.text, textAlign: 'center' },
   introBody: { fontSize: 15, lineHeight: 23, color: ui.textMuted, textAlign: 'center' },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: ui.card, padding: space.md, borderRadius: radius.lg, marginBottom: space.sm },
   liveImage: { width: 76, height: 92, borderRadius: radius.md, backgroundColor: ui.sunken },

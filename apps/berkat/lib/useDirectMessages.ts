@@ -89,20 +89,22 @@ function sortedPair(a: string, b: string): [string, string] {
  * Verlauf funktioniert unverändert — er hat nur noch keine ID, und das merkt
  * niemand.
  */
-export function useConversationWith(myUserId: string | null, otherId: string | undefined) {
+export function useConversationWith(myUserId: string | null, otherId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'conversation', myUserId, otherId],
-    enabled: Boolean(myUserId && otherId),
+    enabled: enabled && Boolean(myUserId && otherId && myUserId !== otherId),
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<string | null> => {
+    retry: 1,
+    queryFn: async ({ signal }): Promise<string | null> => {
       const [p1, p2] = sortedPair(myUserId!, otherId!);
 
-      const { data: existing } = await supabase
+      const { data: existing, error } = await supabase
         .from('conversations')
         .select('id')
         .eq('participant_1', p1)
         .eq('participant_2', p2)
-        .maybeSingle();
+        .abortSignal(signal).retry(false).maybeSingle();
+      if (error) throw error;
       return (existing as { id: string } | null)?.id ?? null;
     },
   });
@@ -136,13 +138,14 @@ async function ensureConversation(myUserId: string, otherId: string): Promise<st
 }
 
 /** Der Verlauf. Neueste unten, wie in jedem Messenger. */
-export function useMessages(conversationId: string | null | undefined) {
+export function useMessages(conversationId: string | null | undefined, myUserId: string | null, enabled = true) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['berkat', 'messages', conversationId],
-    enabled: Boolean(conversationId),
-    queryFn: async (): Promise<DirectMessage[]> => {
+    queryKey: ['berkat', 'messages', myUserId, conversationId],
+    enabled: enabled && Boolean(conversationId && myUserId),
+    retry: 1,
+    queryFn: async ({ signal }): Promise<DirectMessage[]> => {
       /**
        * ⚠️ ABSTEIGEND holen, dann umdrehen — NICHT aufsteigend mit `limit`.
        *
@@ -165,7 +168,7 @@ export function useMessages(conversationId: string | null | undefined) {
         .select('id, conversation_id, sender_id, content, image_url, listing_id, created_at, read')
         .eq('conversation_id', conversationId!)
         .order('created_at', { ascending: false })
-        .limit(200);
+        .limit(200).abortSignal(signal).retry(false);
       if (error) throw error;
       return ((data ?? []) as DirectMessage[]).reverse();
     },
@@ -175,20 +178,22 @@ export function useMessages(conversationId: string | null | undefined) {
   // Ohne den Filter zahlte jedes offene Gerät für jede Nachricht der ganzen
   // Plattform (Übergabe: Realtime-Kostenhygiene).
   useEffect(() => {
-    if (!conversationId) return;
+    if (!enabled || !conversationId || !myUserId) return;
     return subscribeToTable(
       `messages-${conversationId}`,
       { event: 'INSERT', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
       () => {
         void queryClient.invalidateQueries({
-          queryKey: ['berkat', 'messages', conversationId],
+          queryKey: ['berkat', 'messages', myUserId, conversationId],
         });
       },
     );
-  }, [conversationId, queryClient]);
+  }, [enabled, conversationId, myUserId, queryClient]);
 
   return query;
 }
+
+let pendingMessageSequence = 0;
 
 export type SendResult = { ok: true } | { ok: false; message: string };
 
@@ -236,23 +241,11 @@ export function useSendMessage(
       const cid = conversationId ?? (await ensureConversation(myUserId, otherId));
       if (!cid) return { ok: false, message: 'Die Unterhaltung ließ sich nicht öffnen. Nochmal?' };
 
-      /**
-       * ⚠️ Sofort anzeigen, dann erst senden.
-       *
-       * Ohne das verschwindet der getippte Satz aus dem Feld und erscheint erst
-       * nach der Serverantwort — bei schlechtem Netz eine Sekunde ins Leere, in
-       * der die App aussieht, als hätte sie nichts getan. Serlos Hook macht es
-       * seit jeher optimistisch, Berkats nicht.
-       *
-       * Der Platzhalter braucht eine ID, die mit keiner echten kollidieren
-       * kann; `optimistic-` plus Zeitstempel reicht, weil er Sekunden lebt. Er
-       * verschwindet von selbst, sobald das Nachladen die echte Liste bringt —
-       * die ersetzt das Feld vollständig, es gibt also kein Aufräumen und keine
-       * Dublette.
-       */
-      const key = ['berkat', 'messages', cid];
+      // Eigene ausstehende Nachricht sofort zeigen. Der bestätigte Verlauf
+      // ersetzt den Platzhalter; Fehler entfernen nur diesen einen Eintrag.
+      const key = ['berkat', 'messages', myUserId, cid];
       const optimistic: DirectMessage = {
-        id: `optimistic-${Date.now()}`,
+        id: `optimistic-${Date.now()}-${++pendingMessageSequence}`,
         conversation_id: cid,
         sender_id: myUserId,
         content,
@@ -261,44 +254,47 @@ export function useSendMessage(
         created_at: new Date().toISOString(),
         read: false,
       };
-      const before = queryClient.getQueryData<DirectMessage[]>(key);
       queryClient.setQueryData<DirectMessage[]>(key, (old) => [...(old ?? []), optimistic]);
 
-      const { error } = await supabase.from('messages').insert({
-        conversation_id: cid,
-        sender_id: myUserId,
-        content,
-        image_url: imageUrl ?? null,
-        // ⚠️ IMMER mitschicken — anders als `listing_id` darunter.
-        //
-        // Bis zum 23.08.2026 entschied allein `listing_id`, ob eine Meldung in
-        // Berkats oder Serlos Glocke landet. Wer hier einfach jemanden
-        // anschrieb — vom Profil, aus dem Posteingang, als Antwort —, hängte
-        // an keinem Angebot: Die Meldung ging nach SERLO. Von Zaur am Gerät
-        // gefunden.
-        //
-        // `listing_id IS NOT NULL` hiess nie „kommt aus Berkat", es hiess
-        // „hängt an einem Angebot". Solange es nur einen Weg in den Chat gab,
-        // war das dasselbe — und genau bis zum zweiten Weg.
-        //
-        // Siehe `20260823200000`; dort entscheidet `notify_on_dm` jetzt über
-        // BEIDE Merkmale.
-        app: 'berkat',
-        // ⚠️ Nur mitschicken, wenn wirklich etwas dranhängt. Ein `listing_id`
-        // auf JEDER Nachricht wäre kein Bezug mehr, sondern Rauschen — und die
-        // Karte im Verlauf würde sich unter jeder Zeile wiederholen.
-        ...(listingId ? { listing_id: listingId } : {}),
-      });
+      let error: unknown;
+      try {
+        const result = await supabase.from('messages').insert({
+          conversation_id: cid,
+          sender_id: myUserId,
+          content,
+          image_url: imageUrl ?? null,
+          // ⚠️ IMMER mitschicken — anders als `listing_id` darunter.
+          //
+          // Bis zum 23.08.2026 entschied allein `listing_id`, ob eine Meldung in
+          // Berkats oder Serlos Glocke landet. Wer hier einfach jemanden
+          // anschrieb — vom Profil, aus dem Posteingang, als Antwort —, hängte
+          // an keinem Angebot: Die Meldung ging nach SERLO. Von Zaur am Gerät
+          // gefunden.
+          //
+          // `listing_id IS NOT NULL` hiess nie „kommt aus Berkat", es hiess
+          // „hängt an einem Angebot". Solange es nur einen Weg in den Chat gab,
+          // war das dasselbe — und genau bis zum zweiten Weg.
+          //
+          // Siehe `20260823200000`; dort entscheidet `notify_on_dm` jetzt über
+          // BEIDE Merkmale.
+          app: 'berkat',
+          // ⚠️ Nur mitschicken, wenn wirklich etwas dranhängt. Ein `listing_id`
+          // auf JEDER Nachricht wäre kein Bezug mehr, sondern Rauschen — und die
+          // Karte im Verlauf würde sich unter jeder Zeile wiederholen.
+          ...(listingId ? { listing_id: listingId } : {}),
+        });
+        error = result.error;
+      } catch (cause) { error = cause; }
       if (error) {
         // Zurücknehmen, sonst steht eine Nachricht da, die es nicht gibt — die
         // schlimmste Form von optimistisch.
-        queryClient.setQueryData<DirectMessage[]>(key, before);
-        return { ok: false, message: 'Die Nachricht ging nicht raus. Nochmal?' };
+        queryClient.setQueryData<DirectMessage[]>(key, current => (current ?? []).filter(message => message.id !== optimistic.id));
+        return { ok: false, message: 'Der Versand konnte nicht bestätigt werden. Dein Entwurf bleibt erhalten.' };
       }
 
       // `last_message_at` pflegt in Serlo ein Trigger. Falls der je verschwindet,
       // sortiert der Posteingang falsch — er fällt dann auf created_at zurück.
-      void queryClient.invalidateQueries({ queryKey: ['berkat', 'messages', cid] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'messages', myUserId, cid] });
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'conversations', myUserId] });
       // ⚠️ Beim ERSTEN Absenden gibt es die ID auf dem Bildschirm noch nicht —
       // ohne diese Zeile bliebe der Verlauf ohne Realtime-Abo und ohne
@@ -315,19 +311,20 @@ export function useSendMessage(
 }
 
 /** Der Posteingang. Ohne ihn wäre jede eingehende Nachricht unauffindbar. */
-export function useConversations(myUserId: string | null) {
+export function useConversations(myUserId: string | null, enabled = true) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['berkat', 'conversations', myUserId],
-    enabled: Boolean(myUserId),
-    queryFn: async (): Promise<Conversation[]> => {
+    enabled: enabled && Boolean(myUserId),
+    retry: 1,
+    queryFn: async ({ signal }): Promise<Conversation[]> => {
       const { data, error } = await supabase
         .from('conversations')
         .select('id, participant_1, participant_2, last_message_at')
         .or(`participant_1.eq.${myUserId},participant_2.eq.${myUserId}`)
         .order('last_message_at', { ascending: false, nullsFirst: false })
-        .limit(50);
+        .limit(50).abortSignal(signal).retry(false);
       if (error) throw error;
 
       const base = ((data ?? []) as {
@@ -370,7 +367,7 @@ export function useConversations(myUserId: string | null) {
           .select('id, messages(content, image_url, sender_id, created_at)')
           .in('id', ids)
           .order('created_at', { referencedTable: 'messages', ascending: false })
-          .limit(1, { referencedTable: 'messages' });
+          .limit(1, { referencedTable: 'messages' }).abortSignal(signal).retry(false);
         if (previewError) throw previewError;
 
         const newest = new Map<
@@ -407,7 +404,7 @@ export function useConversations(myUserId: string | null) {
           .select('conversation_id')
           .in('conversation_id', ids)
           .eq('read', false)
-          .neq('sender_id', myUserId!);
+          .neq('sender_id', myUserId!).abortSignal(signal).retry(false);
         if (unreadError) throw unreadError;
 
         const withUnread = new Set(
@@ -444,7 +441,7 @@ export function useConversations(myUserId: string | null) {
    * bei jeder neuen Nachricht. Die Zeile selbst entsteht nur einmal.
    */
   useEffect(() => {
-    if (!myUserId) return;
+    if (!enabled || !myUserId) return;
     const bump = () => {
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'conversations', myUserId] });
     };
@@ -462,7 +459,7 @@ export function useConversations(myUserId: string | null) {
       offA();
       offB();
     };
-  }, [myUserId, queryClient]);
+  }, [enabled, myUserId, queryClient]);
 
   return { ...query, refresh };
 }
@@ -513,7 +510,7 @@ export function useMarkMessagesRead(
       .then(({ error }) => {
         if (error && __DEV__) console.warn('[Berkat] gelesen setzen:', error.message);
         void queryClient.invalidateQueries({ queryKey: ['berkat', 'unread-messages', myUserId] });
-        void queryClient.invalidateQueries({ queryKey: ['berkat', 'messages', conversationId] });
+        void queryClient.invalidateQueries({ queryKey: ['berkat', 'messages', myUserId, conversationId] });
         // ⚠️ Seit der Posteingang je Zeile einen Ungelesen-Punkt trägt, steht
         // dieselbe Wahrheit an ZWEI Orten: an der Glocke und in der Liste. Wer
         // nur einen zurücksetzt, lässt den Punkt stehen, obwohl der Zähler

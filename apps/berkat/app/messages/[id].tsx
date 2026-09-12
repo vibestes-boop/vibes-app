@@ -2,7 +2,7 @@
 //
 // Der Parameter ist die **Gegenseite**, nicht die Unterhaltung — man kommt aus
 // dem Live-Raum, und dort kennt man den Menschen, nicht die Konversations-ID.
-// Die wird beim Öffnen aufgelöst oder angelegt.
+// Sie wird beim Öffnen gesucht und erst beim ersten Absenden angelegt.
 //
 // Helle Fläche: Schreiben ist kein Zuschauen.
 
@@ -19,15 +19,15 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Ban,
-  ChevronLeft,
   Flag,
   ImagePlus,
   MoreHorizontal,
@@ -36,6 +36,11 @@ import {
   X,
 } from 'lucide-react-native';
 
+import { useIsFocused } from '@react-navigation/native';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { FeedbackState } from '../../components/FeedbackState';
+import { ActionButton } from '../../components/ActionButton';
+import { useMessageDraft } from '../../lib/useMessageDraft';
 import { useReducedMotion } from '../../lib/useReducedMotion';
 import { useSession } from '../../lib/session';
 import { useProfiles } from '../../lib/useAuction';
@@ -109,7 +114,15 @@ function dayLabel(iso: string): string {
   });
 }
 
-export default function ConversationScreen() {
+export default function ConversationRoute() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const userId = useSession(s => s.userId);
+  return <ConversationScreen key={`${userId ?? 'guest'}:${id}`} />;
+}
+
+function ConversationScreen() {
+  const focused = useIsFocused();
+  const { fontScale } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const {
     id: otherId,
@@ -138,27 +151,28 @@ export default function ConversationScreen() {
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
 
-  const { data: conversationId, isLoading: resolving } = useConversationWith(myUserId, otherId);
-  const { data: messages = [], isLoading } = useMessages(conversationId);
+  const conversation = useConversationWith(myUserId, otherId, focused);
+  const conversationId = conversation.data;
+  const history = useMessages(conversationId, myUserId, focused);
+  const messages = history.data ?? [];
   const send = useSendMessage(conversationId, myUserId, otherId);
   const markRead = useMarkMessagesRead(conversationId, myUserId);
-
   const profiles = useProfiles(otherId ? [otherId] : []);
   const other = profiles[otherId ?? ''];
-
-  const [draft, setDraft] = useState(() => presetDraft ?? '');
-  const [notice, setNotice] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  /**
-   * Der Artikel, der an der NÄCHSTEN Nachricht hängt.
-   *
-   * Als Anfangswert, nicht als Effekt — dieselbe Begründung wie beim Entwurf
-   * darüber: Ein Effekt hängte ihn wieder an, nachdem der Käufer ihn bewusst
-   * abgenommen hat.
-   */
-  const [attached, setAttached] = useState<string | null>(() => presetListing ?? null);
-  const { data: attachedListing } = useListing(attached ?? undefined);
+  const uploadPhoto = useCallback(() => pickAndUpload('cover', 'portrait'), []);
+  const { draft, setDraft, attached, setAttached, photo, setPhoto, notice, setNotice, busy, onSend, addPhoto } =
+    useMessageDraft(presetDraft ?? '', presetListing ?? null, send, uploadPhoto);
+  const attachedQuery = useListing(attached ?? undefined, focused);
+  const attachedListing = attachedQuery.data;
+  const resolving = conversation.isPending;
+  const isLoading = Boolean(conversationId && history.isPending);
+  const readError = conversation.isError || Boolean(conversationId && history.isError);
+  const retryHistory = () => { void conversation.refetch({ cancelRefetch: false }); if (conversationId) void history.refetch({ cancelRefetch: false }); };
+  useFocusEffect(useCallback(() => {
+    if (!myUserId || !otherId || myUserId === otherId) return;
+    void conversation.refetch({ cancelRefetch: false });
+    if (conversationId) void history.refetch({ cancelRefetch: false });
+  }, [myUserId, otherId, conversationId, conversation.refetch, history.refetch]));
 
   /**
    * Die Artikel für die Karten im Verlauf — EINE Abfrage für die ganze
@@ -237,102 +251,33 @@ export default function ConversationScreen() {
   // ersten Öffnen: Wer den Bildschirm offen hält, während die Gegenseite
   // schreibt, hat es auch gelesen.
   useEffect(() => {
-    if (!conversationId) return;
+    if (!focused || !conversationId || readError) return;
     if (messages.some((m) => m.sender_id !== myUserId && !m.read)) markRead();
-  }, [conversationId, messages, myUserId, markRead]);
+  }, [focused, readError, conversationId, messages, myUserId, markRead]);
 
-  const onSend = useCallback(async () => {
-    const text = draft;
-    if (!text.trim()) return;
-    // ⚠️ Der Anhang wird VOR dem Senden gelöst, nicht danach. Geht die Zeile
-    // nicht raus, kommt er mit dem Text zurück — sonst hinge er an der
-    // nächsten Nachricht, die davon nichts weiß.
-    const withListing = attached;
-    setDraft('');
-    setAttached(null);
-    const res = await send(text, null, withListing);
-    if (!res.ok) {
-      setDraft(text);
-      setAttached(withListing);
-      setNotice(res.message);
-    }
-  }, [draft, attached, send]);
-
-  /**
-   * Foto wählen und sofort senden.
-   *
-   * ⚠️ Der getippte Text geht MIT, wenn welcher dasteht — und das Feld wird
-   * dabei geleert. Sonst schickt der Nutzer sein Bild ab, sieht seinen Satz
-   * weiter im Feld stehen und tippt ihn ein zweites Mal ab. Zwei Nachrichten
-   * für eine Aussage.
-   *
-   * ⚠️ Zuschnitt `portrait`, also GAR KEIN Rahmen (`allowsEditing: false`).
-   *
-   * Hier stand zuerst `square`, und das war falsch: Ein Handyfoto ist hochkant,
-   * und ein quadratischer Rahmen schneidet zuerst ein Viertel der Höhe weg —
-   * bei einem Beleg für „so kam es an" ausgerechnet den Teil, den man zeigen
-   * wollte. Am Gerät sofort gesehen (21.08.2026).
-   *
-   * `portrait` lädt das ganze Bild, und `contentFit="cover"` in der Blase wählt
-   * den Ausschnitt erst beim Zeichnen — nichts geht verloren, und das Original
-   * bleibt vollständig hinter der URL. Ein 3:4-Handyfoto verliert dabei wenige
-   * Prozent oben und unten, weil die Blase 4:5 zeichnet.
-   *
-   * ⚠️ Der Preis steht in `uploadImage.ts`: Ohne Rahmen kommt das Foto in voller
-   * Auflösung, und ein 48-MP-Bild kann die 8-MB-Grenze reißen. Bis
-   * `expo-image-manipulator` im nächsten Build steckt, greift nur die gesenkte
-   * Qualität (Übergabe 60, Fund 1).
-   */
-  const addPhoto = useCallback(async () => {
-    if (uploading) return;
-    setUploading(true);
-    setNotice(null);
-    try {
-      const url = await pickAndUpload('cover', 'portrait');
-      if (!url) return;
-      const text = draft;
-      const withListing = attached;
-      setDraft('');
-      setAttached(null);
-      const res = await send(text, url, withListing);
-      if (!res.ok) {
-        setDraft(text);
-        setAttached(withListing);
-        setNotice(res.message);
-      }
-    } catch {
-      setNotice('Das Foto ließ sich nicht senden. Nochmal?');
-    } finally {
-      setUploading(false);
-    }
-  }, [draft, attached, send, uploading]);
+  const attachmentReady = !attached || (attachedQuery.isSuccess && !attachedQuery.isError && Boolean(attachedListing));
+  const canWrite = Boolean(myUserId && otherId && myUserId !== otherId && !resolving && !isLoading && !readError && !isBlocked);
+  const sendDisabled = !canWrite || !attachmentReady || Boolean(busy) || (!draft.trim() && !photo);
+  const readState = readError ? <FeedbackState title="Nachrichten gerade nicht erreichbar"
+    body={messages.length ? 'Du siehst den zuletzt geladenen Verlauf. Lade ihn erneut, bevor du sendest.' : 'Lade den Verlauf erneut. Dein Entwurf bleibt erhalten.'}
+    action={{ label: 'Erneut laden', onPress: retryHistory, busy: conversation.isFetching || history.isFetching }} /> : null;
+  if (!myUserId || !otherId || myUserId === otherId) return <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <ScreenHeader title="Nachricht" onBack={() => goBack('/messages')} />
+    <View style={{ padding: space.lg }}><FeedbackState title={!myUserId ? 'Melde dich zum Schreiben an' : 'Wähle einen Verkäufer'}
+      body={!myUserId ? 'Danach kannst du deine Frage direkt zum Artikel stellen.' : 'Eine Unterhaltung braucht eine andere Person.'}
+      action={{ label: !myUserId ? 'Anmelden' : 'Artikel entdecken', onPress: () => router.push(!myUserId ? '/login' : '/search') }} /></View>
+  </View>;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => goBack('/messages')} style={styles.back}>
-          <ChevronLeft size={24} color={ui.text} />
+      <ScreenHeader onBack={() => goBack('/messages')} right={
+        <Pressable onPress={() => setMenuOpen(true)} style={styles.back} accessibilityRole="button" accessibilityLabel="Mehr"><MoreHorizontal size={22} color={ui.text} /></Pressable>
+      }>
+        <Pressable style={styles.headerIdentity} onPress={() => router.push(`/seller/${otherId}`)} accessibilityRole="button" accessibilityLabel={`Profil von ${other?.username ?? 'Verkäufer'} ansehen`}>
+          <Avatar uri={other?.avatarUrl} name={other?.username} size={32} />
+          <Text style={styles.headerTitle} numberOfLines={fontScale > 1.5 ? 2 : 1}>{other?.username ?? 'Verkäufer'}</Text>
         </Pressable>
-        <Pressable
-          style={styles.headerIdentity}
-          onPress={() => otherId && router.push(`/seller/${otherId}`)}
-          accessibilityRole="button"
-        >
-          <Avatar uri={other?.avatarUrl} name={other?.username} size={30} />
-          <Text numberOfLines={1} style={styles.headerTitle}>
-            {other?.username ?? '…'}
-          </Text>
-        </Pressable>
-        <Pressable
-          hitSlop={10}
-          onPress={() => setMenuOpen(true)}
-          style={styles.back}
-          accessibilityRole="button"
-          accessibilityLabel="Mehr"
-        >
-          <MoreHorizontal size={22} color={ui.text} />
-        </Pressable>
-      </View>
+      </ScreenHeader>
 
       {/* ⚠️ KEIN POSITIVER `keyboardVerticalOffset`. Nicht `insets.top`, nicht
           `+ 52`. Hier stand erst `insets.top + 52`, dann `insets.top` — beides
@@ -423,7 +368,7 @@ export default function ConversationScreen() {
       >
         {resolving || isLoading ? (
           <View style={styles.center}>
-            <ActivityIndicator color={ui.brand} />
+            <FeedbackState title="Gespräch wird geladen" body="Einen Moment …" loading />
           </View>
         ) : (
           <FlatList
@@ -431,6 +376,9 @@ export default function ConversationScreen() {
             data={rows}
             keyExtractor={(r) => (r.kind === 'case' ? `case-${r.at}` : r.msg.id)}
             contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            ListHeaderComponent={readState}
             onContentSizeChange={() => {
               if (atBottom.current) listRef.current?.scrollToEnd({ animated: false });
             }}
@@ -462,14 +410,13 @@ export default function ConversationScreen() {
                 contentSize.height - (contentOffset.y + layoutMeasurement.height) < 80;
             }}
             scrollEventThrottle={100}
-            ListEmptyComponent={
-              <View style={styles.empty}>
-                <Avatar uri={other?.avatarUrl} name={other?.username} size={56} />
+            ListEmptyComponent={readError ? null :
+              <View key={`empty-${fontScale}`} style={styles.empty}>
                 <Text style={styles.emptyTitle}>
-                  Schreib {other?.username ?? 'ihm'} die erste Nachricht 👋
+                  {attached ? 'Deine Frage zum Artikel' : 'Starte das Gespräch'}
                 </Text>
                 <Text style={styles.emptyBody}>
-                  Fragen zum Artikel, zum Versand, oder einfach hallo.
+                  Kläre Details und Versand direkt mit {other?.username ?? 'dem Verkäufer'}.
                 </Text>
               </View>
             }
@@ -645,45 +592,27 @@ export default function ConversationScreen() {
         )}
 
         {notice ? (
-          <Pressable style={styles.notice} onPress={() => setNotice(null)}>
+          <Pressable key={`notice-${fontScale}`} style={styles.notice} onPress={() => setNotice(null)} accessibilityRole="button" accessibilityLabel={`${notice} Hinweis schließen`} accessibilityLiveRegion="polite">
             <Text style={styles.noticeText}>{notice}</Text>
           </Pressable>
         ) : null}
 
-        {/* ⚠️ Der Anhang ist SICHTBAR, bevor er rausgeht.
-            Ein Bezug, den nur der Empfänger sieht, ist eine Überraschung — und
-            wer aus dem Angebot heraus schreibt, soll erkennen, dass der Artikel
-            mitgeht, statt ihn im Text noch einmal zu beschreiben. Das ✕ ist
-            kein Beiwerk: Man kommt manchmal über ein Angebot in einen Chat und
-            will dann etwas ganz anderes fragen. */}
-        {attachedListing ? (
-          <View style={styles.attach}>
-            {attachedListing.image_url ? (
-              <Image
-                source={{ uri: attachedListing.image_url }}
-                style={styles.attachThumb}
-                contentFit="cover"
-                transition={120}
-              />
-            ) : (
-              <View style={styles.attachThumb} />
-            )}
-            <View style={styles.attachBody}>
-              <Text style={styles.attachLabel}>Zu diesem Angebot</Text>
-              <Text numberOfLines={1} style={styles.attachTitle}>
-                {attachedListing.title}
-              </Text>
-            </View>
-            <Pressable
-              hitSlop={10}
-              onPress={() => setAttached(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Angebot nicht mitschicken"
-            >
-              <X size={18} color={ui.textMuted} />
-            </Pressable>
-          </View>
-        ) : null}
+        {attached ? <View key={`attachment-${fontScale}`} style={styles.attach}>
+          {attachedListing && !attachedQuery.isError ? <Pressable style={styles.attachLink} onPress={() => router.push(`/listing/${attachedListing.id}`)} accessibilityRole="button" accessibilityLabel={`${attachedListing.title} ansehen`}>
+            {attachedListing.image_url ? <Image source={{ uri: attachedListing.image_url }} style={styles.attachThumb} contentFit="cover" /> : <View style={styles.attachThumb} />}
+            <View style={styles.attachBody}><Text style={styles.attachLabel}>Wird mitgesendet</Text><Text style={styles.attachTitle} numberOfLines={2}>{attachedListing.title}</Text></View>
+          </Pressable> : <View style={styles.attachBody}>
+            <Text style={styles.attachTitle}>{attachedQuery.isPending ? 'Artikel wird geladen …' : attachedQuery.isError ? 'Artikel gerade nicht erreichbar' : 'Artikel nicht verfügbar'}</Text>
+            {attachedQuery.isError ? <ActionButton quiet label="Erneut laden" busy={attachedQuery.isFetching} onPress={() => void attachedQuery.refetch({ cancelRefetch: false })} /> : null}
+          </View>}
+          <Pressable style={styles.back} disabled={Boolean(busy)} onPress={() => setAttached(null)} accessibilityRole="button" accessibilityLabel="Artikel nicht mitschicken"><X size={18} color={ui.textMuted} /></Pressable>
+        </View> : null}
+        {photo ? <View style={styles.attach}>
+          <Pressable onPress={() => setZoom(photo)} accessibilityRole="button" accessibilityLabel="Fotovorschau vergrößern"><Image source={{ uri: photo }} style={styles.photoPreview} contentFit="cover" /></Pressable>
+          <View style={styles.attachBody}><Text style={styles.attachTitle}>Foto bereit</Text><Text style={styles.attachLabel}>Wird erst mit „Senden“ verschickt</Text></View>
+          <Pressable style={styles.back} disabled={Boolean(busy)} onPress={() => setPhoto(null)} accessibilityRole="button" accessibilityLabel="Foto entfernen"><X size={18} color={ui.textMuted} /></Pressable>
+        </View> : null}
+        {isBlocked ? <View style={styles.attach}><Text style={styles.attachTitle}>Dieser Nutzer ist gesperrt. Über „Mehr“ kannst du die Sperre aufheben.</Text></View> : null}
 
         {/* ⚠️ KONSTANT, nicht mehr vom Tastatur-Zustand abhängig. Der Wechsel
             zwischen zwei Werten war die zweite Uhr — Begründung am
@@ -695,13 +624,14 @@ export default function ConversationScreen() {
               (elfte Whatnot-Analyse). Links vom Feld, wie überall: erst was man
               mitschickt, dann was man schreibt. */}
           <Pressable
-            onPress={addPhoto}
-            disabled={uploading}
+            onPress={() => { if (canWrite && !busy) void addPhoto(); }}
+            disabled={!canWrite || Boolean(busy)}
             style={styles.photoBtn}
             accessibilityRole="button"
-            accessibilityLabel="Foto senden"
+            accessibilityLabel="Foto hinzufügen"
+            accessibilityState={{ disabled: !canWrite || Boolean(busy), busy: busy === 'upload' }}
           >
-            {uploading ? (
+            {busy === 'upload' ? (
               <ActivityIndicator size="small" color={ui.textMuted} />
             ) : (
               <ImagePlus size={21} color={ui.textMuted} />
@@ -710,6 +640,8 @@ export default function ConversationScreen() {
           <TextInput
             value={draft}
             onChangeText={setDraft}
+            editable={!busy}
+            accessibilityLabel="Nachricht"
             placeholder="Nachricht schreiben …"
             placeholderTextColor={ui.textMuted}
             style={styles.input}
@@ -717,13 +649,14 @@ export default function ConversationScreen() {
             maxLength={1000}
           />
           <Pressable
-            onPress={() => void onSend()}
-            disabled={!draft.trim()}
-            style={[styles.sendBtn, !draft.trim() && styles.sendBtnOff]}
+            onPress={() => { if (!sendDisabled) void onSend(); }}
+            disabled={sendDisabled}
+            style={[styles.sendBtn, sendDisabled && styles.sendBtnOff]}
             accessibilityRole="button"
-            accessibilityLabel="Senden"
+            accessibilityLabel={busy === 'send' ? 'Wird gesendet' : 'Senden'}
+            accessibilityState={{ disabled: sendDisabled, busy: busy === 'send' }}
           >
-            <SendHorizontal size={19} color={ui.goldInk} />
+            {busy === 'send' ? <ActivityIndicator size="small" color={ui.card} /> : <SendHorizontal size={19} color={ui.card} />}
           </Pressable>
         </View>
       </KeyboardBody>
@@ -856,16 +789,8 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space.sm,
-    paddingBottom: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ui.line,
-  },
-  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerIdentity: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  headerIdentity: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   headerTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: ui.text },
 
   listContent: { padding: space.md, gap: space.sm, flexGrow: 1 },
@@ -919,10 +844,12 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: ui.line,
   },
-  attachThumb: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: ui.sunken },
+  photoPreview: { width: 52, height: 64, borderRadius: radius.sm },
+  attachLink: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  attachThumb: { width: 44, height: 52, borderRadius: radius.sm, backgroundColor: ui.sunken },
   attachBody: { flex: 1, minWidth: 0 },
-  attachLabel: { fontSize: 10, color: ui.textMuted, fontWeight: '600' },
-  attachTitle: { fontSize: 13, fontWeight: '600', color: ui.text },
+  attachLabel: { fontSize: 12, lineHeight: 17, color: ui.textMuted, fontWeight: '600' },
+  attachTitle: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.text },
 
   // ── Tagestrenner ──────────────────────────────────────────────────────────
   // Mittig, klein, gedämpft — die übliche Form, weil sie keine Nachricht ist,
@@ -980,7 +907,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
 
-  photoBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  photoBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
   // ── Melden / Sperren ──────────────────────────────────────────────────────
   // Wortgleich zum Menü auf dem Verkäufer-Profil (`app/seller/[id].tsx`).
@@ -1038,7 +965,7 @@ const styles = StyleSheet.create({
   menuCancelText: { fontSize: 16, fontWeight: '700', color: ui.text },
   bubbleTimeMine: { color: 'rgba(255,255,255,0.65)' },
 
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.sm, padding: space.xl },
+  empty: { alignItems: 'center', marginTop: space.md, gap: space.sm, padding: space.md },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: ui.text, textAlign: 'center' },
   emptyBody: { fontSize: 13, color: ui.textMuted, textAlign: 'center', lineHeight: 19 },
 
@@ -1073,10 +1000,10 @@ const styles = StyleSheet.create({
     color: ui.text,
   },
   sendBtn: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 21,
-    backgroundColor: ui.gold,
+    backgroundColor: ui.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },

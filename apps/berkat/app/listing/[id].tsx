@@ -61,10 +61,8 @@ import {
   BellRing,
   CalendarClock,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Heart,
-  MessageCircle,
   Package,
   Share2,
   Star,
@@ -72,6 +70,8 @@ import {
   X,
 } from 'lucide-react-native';
 
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { ActionButton } from '../../components/ActionButton';
 import { PurchaseStatusCard } from '../../components/PurchaseStatusCard';
 import { useSession } from '../../lib/session';
 import { errText } from '../../lib/errorText';
@@ -495,23 +495,8 @@ export default function ListingScreen() {
     [listing, needsLogin, sellerActions],
   );
 
-  // Rechts zwei Knöpfe, links deshalb ein unsichtbarer Zwilling — sonst rutscht
-  // der Titel aus der Mitte. Teilen und Merken stehen im Kopf, weil beides
-  // AUCH für einen verkauften Artikel sinnvoll bleibt, wenn die Leiste unten
-  // längst „Schon verkauft" sagt.
-  const header = (
-    <View key={fontScale} style={styles.header}>
-      <Pressable
-        hitSlop={10}
-        onPress={() => goBack('/shop')}
-        style={styles.back}
-        accessibilityRole="button"
-        accessibilityLabel="Zurück"
-      >
-        <ChevronLeft size={24} color={ui.text} />
-      </Pressable>
-      <View style={styles.back} />
-      <Text accessibilityRole="header" style={styles.headerTitle}>Angebot</Text>
+  // Merken und Teilen bleiben auch bei verkauften Angeboten erreichbar.
+  const header = <ScreenHeader title="Angebot" actionsWidth={88} onBack={() => goBack('/shop')} right={<>
       <Pressable
         hitSlop={8}
         style={[styles.back, (!listing || isPreview) && styles.off]}
@@ -538,8 +523,7 @@ export default function ListingScreen() {
       >
         <Share2 size={20} color={ui.text} />
       </Pressable>
-    </View>
-  );
+    </>} />;
 
   if (isLoading) {
     return (
@@ -749,7 +733,59 @@ export default function ListingScreen() {
             </Pressable>
           ) : null}
 
-          {/* ── Die Beschreibung. Bis heute unsichtbar. ──────────────────── */}
+          {/* ── Der Verkäufer. Das war bis heute das ZIEL jedes Tipps auf ein
+              Angebot; jetzt ist es eine Zeile auf der Seite, die man
+              eigentlich sehen wollte. ────────────────────────────────────── */}
+          <Pressable
+            key={`seller-${fontScale}`}
+            style={({ pressed }) => [styles.sellerRow, pressed && styles.pressed]}
+            onPress={() => sellerId && router.push(`/seller/${sellerId}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Profil von ${seller?.username ?? 'Verkäufer'} ansehen`}
+          >
+            <Avatar uri={seller?.avatarUrl} name={seller?.username} size={40} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={fontScale > 1.5 ? undefined : 1} style={styles.sellerName}>
+                {seller?.username ?? '…'}
+              </Text>
+              <View style={styles.sellerStats}>
+                {/* Kein erfundener Wert: Ohne Bewertung steht dort, dass es
+                    keine gibt. „5,0" ohne eine einzige Bewertung behauptet
+                    Vertrauen, das niemand vergeben hat (HANDOFF 10). */}
+                {stats?.rating != null ? (
+                  <>
+                    <Star size={12} color={ui.gold} fill={ui.gold} />
+                    <Text style={styles.sellerStatText}>
+                      {formatRating(stats.rating)} · {stats.ratingCount}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.sellerStatText}>Noch keine Bewertung</Text>
+                )}
+                {stats?.sold ? (
+                  <Text style={styles.sellerStatText}>· {stats.sold} Zuschläge</Text>
+                ) : null}
+                {/* Versandtempo — dieselbe Zahl wie die Kachel auf dem Profil.
+                    Nur wenn es Versände gab; ein erfundenes „—" wäre Lärm. */}
+                {stats?.shipHours != null ? (
+                  <View style={styles.sellerStatIconPair}>
+                    <Truck size={11} color={ui.textMuted} />
+                    <Text style={styles.sellerStatText}>{formatShipTime(stats.shipHours)}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {/* Die Bürgen — für diese Community das eigentliche Signal
+                  (HANDOFF 15: „Vertrauen ist personal, nicht institutionell").
+                  Dieselbe Zeile wie im Verkäufer-Sheet des Live-Raums. */}
+              {vouchLine ? (
+                <Text numberOfLines={fontScale > 1.5 ? undefined : 1} style={styles.vouchLine}>
+                  {vouchLine}
+                </Text>
+              ) : null}
+            </View>
+            <ChevronRight size={18} color={ui.textMuted} />
+          </Pressable>
+
           {listing.description ? (
             <View key={`description-${fontScale}`} style={styles.block}>
               <Text style={styles.blockLabel}>Beschreibung</Text>
@@ -809,58 +845,6 @@ export default function ListingScreen() {
             />
           ) : null}
 
-          {/* ── Der Verkäufer. Das war bis heute das ZIEL jedes Tipps auf ein
-              Angebot; jetzt ist es eine Zeile auf der Seite, die man
-              eigentlich sehen wollte. ────────────────────────────────────── */}
-          <Pressable
-            key={`seller-${fontScale}`}
-            style={({ pressed }) => [styles.sellerRow, pressed && styles.pressed]}
-            onPress={() => sellerId && router.push(`/seller/${sellerId}`)}
-            accessibilityRole="button"
-            accessibilityLabel={`Profil von ${seller?.username ?? 'Verkäufer'} ansehen`}
-          >
-            <Avatar uri={seller?.avatarUrl} name={seller?.username} size={40} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={fontScale > 1.5 ? undefined : 1} style={styles.sellerName}>
-                {seller?.username ?? '…'}
-              </Text>
-              <View style={styles.sellerStats}>
-                {/* Kein erfundener Wert: Ohne Bewertung steht dort, dass es
-                    keine gibt. „5,0" ohne eine einzige Bewertung behauptet
-                    Vertrauen, das niemand vergeben hat (HANDOFF 10). */}
-                {stats?.rating != null ? (
-                  <>
-                    <Star size={12} color={ui.gold} fill={ui.gold} />
-                    <Text style={styles.sellerStatText}>
-                      {formatRating(stats.rating)} · {stats.ratingCount}
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={styles.sellerStatText}>Noch keine Bewertung</Text>
-                )}
-                {stats?.sold ? (
-                  <Text style={styles.sellerStatText}>· {stats.sold} Zuschläge</Text>
-                ) : null}
-                {/* Versandtempo — dieselbe Zahl wie die Kachel auf dem Profil.
-                    Nur wenn es Versände gab; ein erfundenes „—" wäre Lärm. */}
-                {stats?.shipHours != null ? (
-                  <View style={styles.sellerStatIconPair}>
-                    <Truck size={11} color={ui.textMuted} />
-                    <Text style={styles.sellerStatText}>{formatShipTime(stats.shipHours)}</Text>
-                  </View>
-                ) : null}
-              </View>
-              {/* Die Bürgen — für diese Community das eigentliche Signal
-                  (HANDOFF 15: „Vertrauen ist personal, nicht institutionell").
-                  Dieselbe Zeile wie im Verkäufer-Sheet des Live-Raums. */}
-              {vouchLine ? (
-                <Text numberOfLines={fontScale > 1.5 ? undefined : 1} style={styles.vouchLine}>
-                  {vouchLine}
-                </Text>
-              ) : null}
-            </View>
-            <ChevronRight size={18} color={ui.textMuted} />
-          </Pressable>
 
           {/* ── Versand. Der Satz stand bisher nur im Live-Raum und im Regal,
               also überall außer dort, wo jemand gerade kauft. ─────────────── */}
@@ -1164,15 +1148,7 @@ export default function ListingScreen() {
           // ⚠️ Nicht deaktivieren, wenn niemand angemeldet ist. Ein grauer
           // Knopf ohne Text ist eine Sackgasse — `onContact` schickt zur
           // Anmeldung, so wie es der Live-Raum und die Trinkgeld-Seite auch tun.
-          <Pressable
-            style={styles.contact}
-            onPress={onContact}
-            accessibilityRole="button"
-            accessibilityLabel={`${listing.title} — Verkäufer anschreiben`}
-          >
-            <MessageCircle size={17} color={ui.bg} />
-            <Text style={styles.contactText}>Nachricht schreiben</Text>
-          </Pressable>
+          <ActionButton label="Nachricht schreiben" onPress={onContact} />
         )}
       </View>
 
@@ -1334,15 +1310,7 @@ const styles = StyleSheet.create({
   loadError: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.sm },
   refreshError: { margin: space.lg, padding: space.md, borderRadius: radius.md, backgroundColor: ui.card, alignItems: 'center', gap: space.sm },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space.sm,
-    paddingTop: space.sm,
-    paddingBottom: space.sm,
-  },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: ui.text },
   pressed: { opacity: 0.7 },
 
   body: { padding: space.lg, gap: space.md },
@@ -1430,18 +1398,6 @@ const styles = StyleSheet.create({
   // Dieselbe Fläche trägt schon die aktive Sortier-Kachel im Kategorien-Reiter,
   // es ist also keine neue Sprache. Whatnots Handlungsknopf ist ausnahmslos
   // gefüllt — auch der graue (Analyse 4).
-  contact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.sm,
-    minHeight: 52,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    borderRadius: radius.pill,
-    backgroundColor: ui.brand,
-  },
-  contactText: { flexShrink: 1, fontSize: 15, fontWeight: '700', color: ui.bg, textAlign: 'center' },
   ghost: {
     minHeight: 52,
     paddingVertical: space.sm,

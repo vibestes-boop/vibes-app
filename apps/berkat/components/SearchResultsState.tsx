@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { RefreshCw, Search } from 'lucide-react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Search } from 'lucide-react-native';
+import { ActionButton } from './ActionButton';
 import { radius, space, ui } from '../theme/tokens';
 
 export type SearchStateProps = {
@@ -23,9 +24,7 @@ export function SearchResultsState({ loading, error, onRetry, onSignIn, needsLog
     return <View style={s.notice} accessibilityLiveRegion="polite">
       <Text style={s.title}>Verkäufer finden</Text>
       <Text style={s.body}>Melde dich für die Verkäufersuche an. Artikel kannst du auch ohne Anmeldung finden.</Text>
-      <Pressable onPress={onSignIn} accessibilityRole="button" style={({ pressed }) => [s.action, pressed && s.pressed]}>
-        <Text style={s.actionText}>Anmelden</Text>
-      </Pressable>
+      <ActionButton quiet label="Anmelden" onPress={() => onSignIn?.()} />
     </View>;
   }
   if (loading) {
@@ -45,10 +44,7 @@ export function SearchResultsState({ loading, error, onRetry, onSignIn, needsLog
   if (error) return <View style={s.notice} accessibilityLiveRegion="polite">
     <Text style={s.title}>{hasResults ? 'Aktualisieren hat nicht geklappt' : 'Die Suche braucht einen neuen Versuch'}</Text>
     <Text style={s.body}>{hasResults ? 'Deine bisherigen Treffer bleiben hier. Lade sie noch einmal, um den aktuellen Stand zu sehen.' : `${kind} konnten gerade nicht geladen werden. Versuch es noch einmal.`}</Text>
-    <Pressable onPress={onRetry} accessibilityRole="button" accessibilityLabel={`${kind} erneut suchen`}
-      style={({ pressed }) => [s.action, pressed && s.pressed]}>
-      <RefreshCw size={16} color={ui.brand} /><Text style={s.actionText}>Erneut versuchen</Text>
-    </Pressable>
+    <ActionButton quiet label="Erneut versuchen" onPress={onRetry} />
   </View>;
   if (hasResults) return null;
   return <View style={s.empty} accessibilityLiveRegion="polite">
@@ -62,9 +58,6 @@ const s = StyleSheet.create({
   notice: { padding: space.lg, backgroundColor: ui.card, borderRadius: radius.lg, gap: space.sm, marginBottom: space.md },
   title: { fontSize: 18, lineHeight: 24, fontWeight: '700', color: ui.text },
   body: { fontSize: 14, lineHeight: 21, color: ui.textMuted, flexShrink: 1 },
-  action: { minHeight: 48, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.sm, paddingVertical: space.sm },
-  actionText: { fontSize: 14, fontWeight: '600', color: ui.brand, flexShrink: 1 },
-  pressed: { opacity: 0.65 },
   empty: { alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.xl * 2, gap: space.md },
   center: { textAlign: 'center' },
   icon: { width: 64, height: 64, borderRadius: radius.lg, backgroundColor: ui.card, alignItems: 'center', justifyContent: 'center' },
