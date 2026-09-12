@@ -15078,3 +15078,30 @@ der Datei (Kommissionsmodell, EIN Stripe-Konto) war aus demselben Grund veraltet
 > lang das Gegenteil behauptet.
 
 Belegt: `tsc` 0 Fehler, im Simulator per Hot-Reload beide Hälften gesehen. OTA raus: Gruppe `2604675d`, Commit `09eb6fe`.
+
+---
+
+## 104. Benachrichtigungen: aus einem Block wurden zwei Gruppen (11.09.2026)
+
+Direkt nach dem Versand gemeldet — dieselbe Frage, dieselben Muster:
+
+| | Vorher | Nachher |
+|---|---|---|
+| Schalter | **iOS-Systemgrün** — kommt sonst nirgends in Berkat vor | `ui.brand`, wie `interests.tsx` es schon tat |
+| Gliederung | sechs Zeilen in einem Block, „Nur für Verkäufer." **zweimal** als Hinweis | Gruppen „Als Käufer" (4) und „Als Verkäufer" (2), wie im Konto |
+| Hinweise der Verkäufer-Zeilen | „Nur für Verkäufer." | sagen jetzt, was die Meldung ist |
+| Fußtext | zwei Absätze, sieben Zeilen | zwei Sätze |
+| Rahmen | Karte mit `borderWidth: 1` | Gruppe trägt die Fläche, Zeile die Haarlinie |
+
+`MUTABLE_PUSH` trägt dafür ein Feld `audience: 'buyer' | 'seller'`. Der DB-CHECK aus
+`20260822130000` prüft Typen, keine Texte — die Änderung ist rein clientseitig.
+
+> ⚠️ **Ein Hinweis, der die Arbeit einer Überschrift tut, ist ein Hinweis zu viel.** „Nur für
+> Verkäufer." an zwei Zeilen und „Für dieses Land gibt es nur einen Satz" an zwei Ländern sind
+> derselbe Fehler: Die Gliederung fehlt, und der Text versucht, sie zu ersetzen.
+
+⚠️ **Noch grün:** `HostControls.tsx`, `GoLiveGate.tsx`, `StandingComposer.tsx` haben Schalter
+ohne `trackColor`. Nicht angefasst — Live-Komponenten, andere Fläche, eigene Prüfung. Wer sie
+nachzieht, nimmt dieselben zwei Zeilen wie hier.
+
+Belegt: `tsc` 0 Fehler, im Simulator beide Hälften gesehen.

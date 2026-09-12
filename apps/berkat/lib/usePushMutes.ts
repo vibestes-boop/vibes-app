@@ -30,36 +30,55 @@ import { supabase } from './supabase';
  * Die Datenbank hält dieselbe Liste als CHECK. Wer hier einen Typ ergänzt, muss
  * dort eine Migration schreiben — sonst läuft das Speichern in einen 23514.
  */
-export const MUTABLE_PUSH: { type: string; label: string; hint: string }[] = [
+/**
+ * `audience` teilt den Bildschirm in zwei Gruppen. Bis zum 11.09.2026 stand
+ * stattdessen „Nur für Verkäufer." als Hinweis an zwei Zeilen — ein Hinweis,
+ * der die Arbeit einer Überschrift tat, und das zweimal. Jetzt trägt die
+ * Gruppe den Titel, und der Hinweis darf sagen, was die Meldung wirklich ist.
+ */
+export type PushAudience = 'buyer' | 'seller';
+
+export const MUTABLE_PUSH: {
+  type: string;
+  audience: PushAudience;
+  label: string;
+  hint: string;
+}[] = [
   {
     type: 'scheduled_live_reminder',
+    audience: 'buyer',
     label: 'Erinnerung an Sendungen',
     hint: '15 Minuten bevor jemand live geht, dem du folgst.',
   },
   {
     type: 'live',
+    audience: 'buyer',
     label: 'Wenn jemand live geht',
     hint: 'Sofort, wenn ein Verkäufer seine Sendung aufmacht.',
   },
   {
     type: 'saved_search_hit',
+    audience: 'buyer',
     label: 'Treffer auf gespeicherte Suchen',
     hint: 'Wenn etwas eingestellt wird, das zu deiner Suche passt.',
   },
   {
     type: 'auction_up',
+    audience: 'buyer',
     label: 'Vorgemerkte Artikel',
     hint: 'Wenn ein Artikel drankommt, für den du die Glocke gesetzt hast.',
   },
   {
     type: 'product_saved',
+    audience: 'seller',
     label: 'Jemand merkt sich deinen Artikel',
-    hint: 'Nur für Verkäufer.',
+    hint: 'Wenn ein Angebot von dir aufs Herz genommen wird.',
   },
   {
     type: 'order_review',
+    audience: 'seller',
     label: 'Neue Bewertung',
-    hint: 'Nur für Verkäufer.',
+    hint: 'Wenn ein Käufer dich nach der Lieferung bewertet.',
   },
 ];
 
