@@ -62,11 +62,12 @@ export type CartItem = {
  */
 export function useMyOrder(orderId: string | undefined, userId: string | null) {
   return useQuery({
-    queryKey: ['berkat', 'my-order', orderId],
+    queryKey: ['berkat', 'my-order', userId, orderId],
     enabled: Boolean(orderId && userId),
     staleTime: 15_000,
+    retry: 1,
     refetchOnWindowFocus: true,
-    queryFn: async (): Promise<(MyOrder & { shipping_cents: number }) | null> => {
+    queryFn: async ({ signal }): Promise<(MyOrder & { shipping_cents: number }) | null> => {
       const { data, error } = await supabase
         .from('product_orders')
         .select(
@@ -74,18 +75,20 @@ export function useMyOrder(orderId: string | undefined, userId: string | null) {
         )
         .eq('id', orderId!)
         .eq('buyer_id', userId!)
-        .maybeSingle();
+        .abortSignal(signal).retry(false).maybeSingle();
       if (error) throw error;
       if (!data) return null;
 
       const order = data as unknown as Omit<MyOrder, 'items'> & { shipping_cents: number };
       if (!order.cart_id) return { ...order, items: [] };
 
-      const { data: won } = await supabase
+      const { data: won, error: itemsError } = await supabase
         .from('live_auctions')
         .select('id, title, image_url, current_bid_cents')
         .eq('cart_id', order.cart_id)
-        .eq('status', 'sold');
+        .eq('status', 'sold').eq('winner_id', userId!)
+        .abortSignal(signal).retry(false);
+      if (itemsError) throw itemsError;
 
       return {
         ...order,

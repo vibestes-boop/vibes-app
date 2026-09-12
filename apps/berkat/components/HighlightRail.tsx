@@ -33,6 +33,9 @@ type Props = {
 
 function HighlightRailInner({ highlights, isSelf, onOpen, onCreate }: Props) {
   if (highlights.length === 0 && !isSelf) return null;
+  if (highlights.length === 0) return <Pressable onPress={onCreate} style={s.createRow} accessibilityRole="button" accessibilityLabel="Neues Highlight anlegen">
+    <Plus size={17} color={ui.brand} /><Text style={s.createLabel}>Highlight hinzufügen</Text>
+  </Pressable>;
 
   return (
     <ScrollView
@@ -85,6 +88,8 @@ function HighlightRailInner({ highlights, isSelf, onOpen, onCreate }: Props) {
 export const HighlightRail = memo(HighlightRailInner);
 
 const s = StyleSheet.create({
+  createRow: { minHeight: 44, flexDirection: 'row', gap: space.sm, alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.sm },
+  createLabel: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '600', color: ui.brand },
   wrap: { backgroundColor: ui.bg },
   row: { paddingHorizontal: space.lg, paddingVertical: space.sm, gap: space.md },
   item: { width: SIZE + 6, alignItems: 'center' },

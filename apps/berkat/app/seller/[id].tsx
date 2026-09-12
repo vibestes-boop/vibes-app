@@ -81,6 +81,7 @@ import { HighlightSheet } from '../../components/HighlightSheet';
 import { LineupPreview } from '../../components/LineupPreview';
 import { ProfileEditSheet } from '../../components/ProfileEditSheet';
 import { RatingStars } from '../../components/RatingStars';
+import { ProfileDisclosure } from '../../components/ProfileDisclosure';
 import { VouchPanel } from '../../components/VouchPanel';
 import { SellerListingRow, SellerSoldRow, sellerShopStyles } from '../../components/SellerShopRow';
 import { sellerShopRows, type SellerShopRow } from '../../lib/sellerShopRows';
@@ -120,7 +121,7 @@ import { radius, space, stage, ui } from '../../theme/tokens';
  * Whatnot gemessen war der erste Entwurf bereits zu hoch, und jeder Punkt
  * Bannerhöhe schiebt alles darunter mit.
  */
-const BANNER_H = 152;
+const BANNER_H = 136;
 const AVATAR = 80;
 
 /**
@@ -747,9 +748,9 @@ export default function SellerScreen() {
                   Über den Reitern bleibt es aus dem alten Grund: Für diese
                   Community ist das der Teil, der entscheidet — er gehört nicht
                   hinter einen Reiter, den man erst antippen muss. */}
+              <ProfileDisclosure key={`vouches-${id}`} title={vouches.length ? `Bürgschaften · ${vouches.length}` : 'Bürgschaften'} Icon={ShieldCheck}>
               <VouchPanel
                 key={id}
-                compactEmpty
                 vouches={vouches}
                 isSelf={isSelf}
                 myUserId={myUserId}
@@ -772,6 +773,7 @@ export default function SellerScreen() {
                 }
                 onOpenProfile={(userId) => router.push(`/seller/${userId}`)}
               />
+              </ProfileDisclosure>
 
               {vouchNotice ? (
                 <Pressable onPress={() => setVouchNotice(null)}>
@@ -800,10 +802,9 @@ export default function SellerScreen() {
                   jetzt nur noch dort, wo er handlungsleitend ist: an den
                   eigenen Angeboten des Verkäufers. ─────────────────────────── */}
               {sellerRow?.kind === 'business' && imprintLines.length > 0 ? (
-                <View style={styles.imprintBlock}>
-                  <Text style={styles.imprintLabel}>Anbieterangaben</Text>
-                  <Text style={styles.imprintText}>{imprintLines.join('\n')}</Text>
-                </View>
+                <ProfileDisclosure key={`imprint-${id}`} title="Anbieterangaben" Icon={ShieldCheck}>
+                  <Text selectable style={styles.imprintText}>{imprintLines.join('\n')}</Text>
+                </ProfileDisclosure>
               ) : null}
 
               {/* ── Highlights, direkt über den Reitern (24.08.2026) ────────
@@ -1413,7 +1414,7 @@ const styles = StyleSheet.create({
   bio: { fontSize: 14, color: ui.text, marginBottom: space.sm, lineHeight: 21 },
   bioMore: { fontSize: 12, fontWeight: '700', color: ui.brand, marginBottom: space.sm },
 
-  counts: { fontSize: 13, color: ui.textMuted, marginBottom: space.md },
+  counts: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginBottom: space.sm },
   countsNum: { fontWeight: '700', color: ui.text },
 
   editBtn: {
@@ -1465,18 +1466,19 @@ const styles = StyleSheet.create({
   // `marginBottom`, seit die Kacheln vor der Bio stehen statt am Ende.
   newSellerInfo: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.lg },
   newSellerText: { flex: 1, fontSize: 12, lineHeight: 18, color: ui.textMuted },
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ui.line },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.sm, paddingVertical: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ui.line },
   tile: {
     flexGrow: 1,
+    flexBasis: 90,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     minWidth: 90,
-    paddingVertical: space.sm,
-    paddingHorizontal: space.sm,
+    paddingVertical: space.xs,
+    paddingHorizontal: 0,
     gap: 3,
   },
-  tileValue: { fontSize: 17, fontWeight: '700', color: ui.text },
+  tileValue: { fontSize: 15, fontWeight: '700', color: ui.text },
   tileLabel: { flexShrink: 1, fontSize: 12, color: ui.textMuted, lineHeight: 18 },
 
   vouchNotice: {

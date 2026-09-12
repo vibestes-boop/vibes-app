@@ -131,6 +131,9 @@ export async function refetchAfterPayment(
       ['berkat', 'my-carts'],
       ['berkat', 'cart'],
       ['berkat', 'my-orders'],
+      ['berkat', 'my-order'],
+      ['berkat', 'purchase-status'],
+      ['berkat', 'unassigned-wins'],
       ['berkat', 'tips-received'],
     ]) {
       void queryClient.invalidateQueries({ queryKey: key });

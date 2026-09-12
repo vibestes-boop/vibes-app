@@ -52,6 +52,8 @@ export function useOrderReviewActions(userId: string | null) {
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'my-orders', userId] });
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'my-order', userId] });
+    void queryClient.invalidateQueries({ queryKey: ['berkat', 'purchase-status', userId] });
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'my-reviews', userId] });
     // Der Schnitt des Verkäufers ändert sich mit — im Sheet und auf seiner Seite.
     void queryClient.invalidateQueries({ queryKey: ['berkat', 'seller-stats'] });

@@ -1,5 +1,62 @@
 # Berkat — Übergabe
 
+## App-Klarheit · Käufe, Profile und Verkäuferübersicht · 12.09.2026
+
+**Bestätigtes Design-Audit umgesetzt:** Der Nutzer wollte die unübersichtlichen
+bzw. uneinheitlich wirkenden App-Bereiche überarbeiten. Testprodukt-Richtigkeit
+bleibt ausdrücklich außerhalb des Auftrags.
+
+- Neue Seite `/purchases` (Meine Käufe), erreichbar aus Konto und Aktivität.
+  Offene Pakete, bezahlte Bestellungen und eingeklappte letzte geschlossene Pakete
+  haben eigene Bereiche. Zuschläge ohne Berkat-Korb bleiben unter Weitere Zuschläge
+  erreichbar. Im Konto verbleiben Profil, Nachrichten und Einstellungen.
+- `usePurchaseStatus` löst die eigene verkaufte Auktion über deren `cart_id` in
+  ihr exaktes Paket und ihre Bestellung auf. Kein beliebiger offener Verkäuferkorb.
+  `PurchaseStatusCard` zeigt Bezahlt/Unterwegs/Angekommen mit direkter Bestellung,
+  offene Zahlung mit zugehörigem Paket, abgelaufen/abgebrochen mit Verkäuferkontakt
+  sowie Lade-, Fehler- und unbekannte Zustände mit Wiederholung. Direkte Abwicklung
+  ohne Korb behauptet keine Berkat-Zahlung. Keine automatische Zahlung.
+- Bezahlte Zuschläge zeigen den Zuschlagspreis und keine Aufforderung zum
+  Weitersammeln in einem bereits geschlossenen Paket. Bestelldetails haben nun
+  Rückweg, Login-, Lade- und Wiederholungszustand statt leerem Bildschirm.
+  Bestellungscache und Artikelabfrage sind ausdrücklich an den Käufer gebunden.
+  Rückkehr von Zahlung und Empfangsbestätigung aktualisiert die Kaufstatus-Caches.
+- Offene Pakete werden vollständig geladen; die zusätzliche abgeschlossene
+  Historie ist separat auf die letzten 30 begrenzt. Abgelaufene, leere oder bei
+  Lesefehler unsichere Pakete starten keinen Checkout. Vor dem Checkout wird das
+  Fenster erneut geprüft, parallele Starts sind gesperrt. Bestehende Rückfrage
+  beim Bezahlen während einer Live-Show bleibt bestehen. Keine Backendmigration.
+- Verkäuferprofil kompakter: kleinere Kennzahlenabstände, Bürgschaften und
+  Anbieterangaben aufklappbar, leeres eigenes Highlight als kompakte Zeile.
+  Der Shop rückt nach oben; Anbietertexte bleiben erreichbar. Verkäuferübersicht:
+  ein Einstieg Deine Artikel statt doppeltem Regalzugang, Einrichtung aufklappbar.
+  `NavigationRow` vereinheitlicht die neuen Bereichseinstiege.
+
+**Geprüft:** TypeScript und 292 lokale Tests bestanden (27 neue). Native Prüfung
+mit bestehenden Einträgen im iPhone-17-Simulator: Konto/Aktivität → Meine Käufe,
+Bestellung öffnen/zurück, bezahlter Zuschlag → genaue Bestellung, abgelaufener
+Zuschlag → Status. Verkäuferprofil und Einrichtung auf-/zugeklappt. Artikelleisten
+und Anbieterangaben bei extra-large sowie drei Stufen größer (accessibility-medium)
+lesbar; Schrift anschließend zurückgestellt. Screenshots und Protokoll unter
+`outputs/berkat-purchase-clarity`. Keine Testprodukt-Prüfung und keine echten
+Transaktionen, Nachrichten, Folgebeziehungen oder Live-Sendung erzeugt.
+
+**Geräteauslieferung:** Build 12 lokal als Release erfolgreich gebaut, signiert
+und als IPA gesichert. Hermes-Bundle/Quell-Hashes, neue Texte, 12 Kategoriemotive,
+Signatur und Profilfelder sowie IPA-CRC geprüft. Lokale Updates und Sentry-Upload
+bleiben deaktiviert. Nachweise unter `outputs/berkat-iphone-build-12`.
+Nach erneuter USB-Verbindung und Entsperren durch den Nutzer erfolgreich als
+Update auf dem iPhone 16 Pro installiert. CoreDevice bestätigt com.berkat.app /
+1.0.0 / 12; App gestartet und ihr Prozess 32 Sekunden später weiterhin vorhanden.
+Build 12 ist damit der letzte bestätigte Gerätestand und ersetzt Build 11.
+Die anfängliche getrennte Geräteverbindung ist behoben. Keine Deinstallation.
+
+**Nächster Schritt:** Den neuen Aufbau auf dem iPhone im Alltag abnehmen;
+Live-Gesten und echte Termin-Push-Zustellung bleiben gesonderte Abnahmen.
+Die bestehende Liste bezahlter Bestellungen zeigt maximal 30 Einträge; vollständige
+Archivsuche/Paginierung wäre eine eigene Erweiterung. Keine neuen Leistungswerte
+behauptet. Kein Push, OTA-, TestFlight- oder App-Store-Upload.
+
 ## Fehlerbehebung · Zuschlag aus Aktivitäten · Build 11 · 12.09.2026
 
 **Vom Nutzer gemeldet und nativ reproduziert:** „Zuschlag — du hast gewonnen“

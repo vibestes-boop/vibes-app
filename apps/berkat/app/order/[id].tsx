@@ -16,7 +16,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ChevronLeft, ChevronRight, Package, Truck } from 'lucide-react-native';
@@ -49,7 +49,7 @@ export default function OrderScreen() {
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
 
-  const { data: order, isLoading, refetch } = useMyOrder(id, myUserId);
+  const { data: order, isLoading, isError, isFetching, refetch } = useMyOrder(id, myUserId);
   const sellerNames = useUsernames([order?.seller_id]);
   const orderIds = useMemo(() => (order ? [order.id] : []), [order]);
   const { data: myReviews = {} } = useMyReviews(myUserId, orderIds);
@@ -64,8 +64,8 @@ export default function OrderScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-    }, [refetch]),
+      if (myUserId) void refetch({ cancelRefetch: false });
+    }, [myUserId, refetch]),
   );
 
   const confirmArrived = useCallback(async () => {
@@ -89,20 +89,24 @@ export default function OrderScreen() {
     [order, submitReview],
   );
 
-  if (isLoading || !order) {
-    return (
-      <View style={[styles.screen, styles.center, { paddingTop: insets.top }]}>
-        {isLoading ? null : (
-          <>
-            <BerkatMark size={38} color={ui.sunken} />
-            <Text style={styles.emptyTitle}>Diese Bestellung gibt es nicht</Text>
-            <Text style={styles.emptyBody}>
-              Vielleicht gehört sie zu einem anderen Konto.
-            </Text>
-          </>
-        )}
+  if (!myUserId || isLoading || isError || !order) {
+    return <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Pressable onPress={() => goBack('/purchases')} style={styles.back} accessibilityRole="button" accessibilityLabel="Zurück"><ChevronLeft size={24} color={ui.text} /></Pressable>
+        <Text style={styles.headerTitle}>Bestellung</Text><View style={styles.back} />
       </View>
-    );
+      <ScrollView contentContainerStyle={[styles.center, { flexGrow: 1, padding: space.lg }]}>
+        {isLoading && myUserId ? <ActivityIndicator color={ui.brand} /> : <BerkatMark size={38} color={ui.brand} />}
+        <Text style={styles.emptyTitle}>{!myUserId ? 'Deine Bestellung ansehen' : isLoading ? 'Bestellung wird geladen' : isError ? 'Bestellung gerade nicht erreichbar' : 'Bestellung nicht gefunden'}</Text>
+        <Text style={styles.emptyBody}>{!myUserId ? 'Melde dich mit dem Konto an, mit dem du gekauft hast.' : isLoading ? 'Einen Moment …' : isError ? 'Lade den Stand erneut. Deine Bestellung bleibt erhalten.' : 'Für dieses Konto ist unter diesem Link keine Bestellung hinterlegt.'}</Text>
+        {!myUserId || isError ? <Pressable
+          style={{ minHeight: 44, justifyContent: 'center', padding: space.sm }} disabled={isFetching}
+          accessibilityRole="button" accessibilityState={{ disabled: isFetching, busy: isFetching }}
+          onPress={() => !myUserId ? router.push('/login') : void refetch({ cancelRefetch: false })}>
+          <Text style={{ color: ui.brand, fontWeight: '700' }}>{!myUserId ? 'Anmelden' : 'Erneut laden'}</Text>
+        </Pressable> : null}
+      </ScrollView>
+    </View>;
   }
 
   const link = trackingUrl(order.tracking_carrier, order.tracking_number);
@@ -113,7 +117,7 @@ export default function OrderScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/account')} style={styles.back}>
+        <Pressable hitSlop={10} onPress={() => goBack('/purchases')} style={styles.back} accessibilityRole="button" accessibilityLabel="Zurück">
           <ChevronLeft size={24} color={ui.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Bestellung</Text>

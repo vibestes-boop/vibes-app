@@ -72,16 +72,14 @@ import {
   X,
 } from 'lucide-react-native';
 
+import { PurchaseStatusCard } from '../../components/PurchaseStatusCard';
 import { useSession } from '../../lib/session';
 import { errText } from '../../lib/errorText';
 import { goBack } from '../../lib/nav';
 import { listingLink } from '../../lib/links';
 import {
-  formatCartWindow,
   formatEuro,
-  useCart,
   useProfiles,
-  useServerClock,
 } from '../../lib/useAuction';
 import {
   conditionLabel,
@@ -199,33 +197,6 @@ export default function ListingScreen() {
   // Satz überhaupt (1,19 € Brief), und die Kasse verlangte 4,90 € — zwei
   // Wahrheiten über denselben Preis, und die teurere gewinnt beim Bezahlen.
   const { data: shipFrom } = useShippingFrom(sellerId, listing?.shipping_tier);
-
-  /**
-   * Das offene Paket bei diesem Verkäufer — nur für den Weg zum Bezahlen.
-   *
-   * ⚠️ **HIER STEHT BEWUSST KEIN BEZAHL-KNOPF, und das ist keine Faulheit.**
-   * Der Sammelkorb ist **pro VERKÄUFER**, nicht pro Artikel: Wer drei Sachen
-   * bei zaur gewinnt, bekommt EIN Paket mit EINEM Versand. Ein „5 € bezahlen"
-   * auf einer einzelnen Artikelseite würde entweder den ganzen Korb bezahlen
-   * (dann lügt die Beschriftung) oder ihn zerlegen — und dann zahlt der Käufer
-   * dreimal 4,90 €.
-   *
-   * Genau aus diesem Grund gibt es auch im Live-Raum keinen (Übergabe 11).
-   * Whatnot macht es gleich: Produktseite sagt „Sold", bezahlt wird in den
-   * Orders, Versand pro Verkäufer gebündelt.
-   *
-   * Was fehlte, war nicht der Knopf, sondern der WEG. Am 26.08.2026 von Zaur
-   * gemeldet: „das UI für bezahlte Produkte ist nicht schön" — der Balken
-   * stand da und tat nichts.
-   *
-   * ⚠️ `useCart` findet nur OFFENE Körbe. Ein eingefrorener (Zahlung
-   * angefangen) kommt als `null` zurück; der Weg ins Konto bleibt trotzdem
-   * richtig, nur ohne Restzeit (Übergabe 4).
-   */
-  const { data: wonCart } = useCart(myUserId, sellerId);
-  // Die Serveruhr, damit die Restzeit nicht an einem falsch gestellten
-  // Telefon haengt (Uebergabe 4: `ends_at` ist die einzige Uhr).
-  const { serverNow } = useServerClock();
 
   const actions = useStandingActions(sellerId, myUserId);
   const setTier = useSetShippingTier();
@@ -697,9 +668,9 @@ export default function ListingScreen() {
             <Text style={styles.price}>
               {upcoming
                 ? `ab ${formatEuro(listing.start_price_cents)}`
-                : formatEuro(listing.buy_now_cents)}
+                : formatEuro(listing.status === 'sold' ? listing.current_bid_cents ?? listing.buy_now_cents : listing.buy_now_cents)}
             </Text>
-            <Text style={styles.priceAdd}>{ship || 'zzgl. Versand'}</Text>
+            {!gone ? <Text style={styles.priceAdd}>{ship || 'zzgl. Versand'}</Text> : null}
           </View>
 
           {/* Der Termin direkt unter dem Titel — vor Zustand, Ort und
@@ -893,13 +864,13 @@ export default function ListingScreen() {
 
           {/* ── Versand. Der Satz stand bisher nur im Live-Raum und im Regal,
               also überall außer dort, wo jemand gerade kauft. ─────────────── */}
-          <View key={`shipRow-${fontScale}`} style={styles.shipRow}>
+          {!gone ? <View key={`shipRow-${fontScale}`} style={styles.shipRow}>
             <Package size={15} color={ui.textMuted} />
             <Text style={styles.shipText}>
               {ship ? `${ship}. ` : ''}
               Kommt in dasselbe Paket wie deine Zuschläge — du zahlst nur einmal Versand.
             </Text>
-          </View>
+          </View> : null}
 
           {/* ── Anbieterangaben eines gewerblichen Verkäufers — NUR NOCH FÜR
               IHN SELBST (seit 18.08.2026).
@@ -1029,7 +1000,7 @@ export default function ListingScreen() {
           {notice.cta === 'cart' ? (
             <Pressable
               style={styles.noticeBtn}
-              onPress={() => router.push('/(tabs)/account')}
+              onPress={() => router.push('/purchases')}
               accessibilityRole="button"
               accessibilityLabel="Zum Sammelkorb"
             >
@@ -1047,40 +1018,8 @@ export default function ListingScreen() {
           // Lese-Policy filtert nicht auf den Status). Das ist Absicht: Wer aus
           // einer Nachricht auf etwas kommt, das vor zehn Minuten weg ging,
           // soll das erfahren — und nicht auf einer Fehlerseite landen.
-          listing.status === 'sold' && listing.winner_id === myUserId ? (
-            /* ── ⚠️ DER GEWINNER BEKOMMT EINEN WEG, KEINEN TOTEN BALKEN ─────
-               „Schon verkauft" war für ihn die falsche Auskunft, und ein
-               grauer Streifen, der nichts tut, ist die zweite Hälfte davon.
-               Er ist hier, weil er nachsehen will, worum es geht — und danach
-               will er bezahlen.
-
-               Bezahlt wird im Konto, weil der Korb pro VERKÄUFER gilt (siehe
-               `wonCart` oben). Die zweite Zeile sagt genau das, damit der
-               Sprung nicht wie ein Umweg wirkt: Sie nennt das Paket, seinen
-               Umfang und die Restzeit. */
-            <Pressable
-              style={({ pressed }) => [styles.wonBar, pressed && { opacity: 0.7 }]}
-              onPress={() => router.push('/(tabs)/account')}
-              accessibilityRole="button"
-              accessibilityLabel="Zum Paket im Konto, dort bezahlst du"
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.wonTitle}>
-                  Du hast den Zuschlag
-                  {listing.current_bid_cents !== null
-                    ? ` · ${formatEuro(listing.current_bid_cents)}`
-                    : ''}
-                </Text>
-                <Text style={styles.wonBody}>
-                  {wonCart
-                    ? `Im Paket bei ${seller?.username ?? 'diesem Verkäufer'} · ${
-                        wonCart.itemCount === 1 ? '1 Artikel' : `${wonCart.itemCount} Artikel`
-                      } · ${formatCartWindow(wonCart.closes_at, serverNow)}`
-                    : 'Bezahlen kannst du im Konto unter „Deine Pakete".'}
-                </Text>
-              </View>
-              <ChevronRight size={18} color={ui.success} />
-            </Pressable>
+          listing.status === 'sold' && Boolean(myUserId) && listing.winner_id === myUserId ? (
+            <PurchaseStatusCard auctionId={id} userId={myUserId} />
           ) : (
             <View style={styles.goneBar}>
               <Text style={styles.goneText}>
@@ -1524,21 +1463,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   goneText: { fontSize: 14, fontWeight: '700', color: ui.textMuted },
-  /* Grün und antippbar statt grau und tot: Es ist ein Erfolg, kein Ende. */
-  wonBar: {
-    minHeight: 52,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: ui.success,
-    backgroundColor: ui.sunken,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-  },
-  wonTitle: { fontSize: 15, fontWeight: '700', color: ui.success },
-  wonBody: { fontSize: 12, color: ui.textMuted, marginTop: 2 },
   waiting: { height: 52, alignItems: 'center', justifyContent: 'center' },
 
   /* ── Show-Ware ─────────────────────────────────────────────────────────────

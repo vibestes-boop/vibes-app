@@ -90,7 +90,7 @@ export type BerkatNotificationType =
  *
  * > **Eilig und mit eigenem Ziel** (laufende Auktion, zu packende Bestellung) →
  * > direkt dorthin, egal woher der Tipp kam.
- * > **Käufer-Sachen ohne Frist** → aus der Glocke ins Konto, aus einem Push in
+ * > **Käufer-Sachen ohne Frist** → aus der Glocke zu Meine Käufe, aus einem Push in
  * > die Liste. Aus der Liste heraus wäre die Liste kein Ziel, und von außen
  * > kommend ist sie der Ort, an dem auch alles andere Offene steht.
  *
@@ -148,7 +148,11 @@ export function notificationTarget(
     // trägt beides, `senderId` ist das richtige Feld.
     case 'dm':
       return n.senderId ? `/messages/${n.senderId}` : '/messages';
-    // Zuschlag, Zahlungserinnerung, Versand, Bewertung: alles Käufer-Sachen.
+    case 'auction_won':
+    case 'order_payment_reminder':
+    case 'order_shipped':
+      return from === 'push' ? '/notifications' : '/purchases';
+    // Sonstige Meldungen behalten ihren bisherigen Einstieg.
     // Siehe die Regel im Kopf: von außen in die Liste, aus der Liste ins Konto.
     default:
       return from === 'push' ? '/notifications' : '/(tabs)/account';

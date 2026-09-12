@@ -122,7 +122,7 @@ function Row({ item }: { item: BerkatNotification }) {
               query: item.product_name,
             },
             // Wir stehen schon in der Liste — für Käufer-Meldungen ist das
-            // Konto das Ziel, die Liste wäre hier ein Sprung auf der Stelle.
+            // Kaufbereich das Ziel, die Liste wäre hier ein Sprung auf der Stelle.
             'list',
           ) as never,
         )}

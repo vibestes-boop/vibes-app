@@ -30,8 +30,8 @@ const cases = [
   ['lib/useListings.ts', 'useSellerListings', ['seller']],
   ['lib/usePrepared.ts', 'usePreparedByPlan', [['plan']]],
   ['lib/useListings.ts', 'useCategoryListings', [['mode']]],
-  ['app/(tabs)/account.tsx', 'useLiveSellers', [['seller']]],
-  ['app/(tabs)/account.tsx', 'useMyCarts', ['user']],
+  ['lib/usePurchases.ts', 'useLiveSellers', [['seller']]],
+  ['lib/usePurchases.ts', 'useMyCarts', ['user']],
 ];
 
 function optionsFor(file, name, args, enabled) {

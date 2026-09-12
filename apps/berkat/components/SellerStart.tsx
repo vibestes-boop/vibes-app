@@ -151,7 +151,7 @@ export function SellerStart({
   onOpen: (target: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const visibleSteps = expanded ? steps : steps.filter((step) => !step.done).slice(0, 1);
+  const visibleSteps = expanded ? steps : [];
   const done = steps.filter((s) => s.done).length;
 
   // Restlos weg, sobald alles steht. Eine Karte, die dauerhaft „4 von 4" sagt,
@@ -161,7 +161,7 @@ export function SellerStart({
   return (
     <View style={s.card}>
       <View style={s.head}>
-        <Text style={s.title}>Deine ersten Schritte</Text>
+        <Text style={s.title}>Verkäuferprofil einrichten</Text>
         <Text style={s.count}>
           {done} von {steps.length}
         </Text>
@@ -213,7 +213,7 @@ export function SellerStart({
         accessibilityState={{ expanded }}
         style={s.toggle}
       >
-        <Text style={s.toggleText}>{expanded ? 'Weniger anzeigen' : 'Alle Schritte ansehen'}</Text>
+        <Text style={s.toggleText}>{expanded ? 'Schritte ausblenden' : 'Einrichtung fortsetzen'}</Text>
       </PressFeedback>
     </View>
   );

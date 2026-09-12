@@ -83,6 +83,7 @@ import { BerkatMark } from '../../components/BerkatMark';
 import { PrepareSheet } from '../../components/PrepareSheet';
 import { SchedulePlanner } from '../../components/SchedulePlanner';
 import { CategoryPicker } from '../../components/CategoryPicker';
+import { NavigationRow } from '../../components/NavigationRow';
 import { SellerStart, useProfileFilled, useSellerEverStarted, type StartStep } from '../../components/SellerStart';
 import { useSellerShows } from '../../lib/useSellerShows';
 // Nur noch zum Zählen — bearbeitet wird das Regal auf `/shelf`.
@@ -447,19 +448,14 @@ export default function SellScreen() {
               der Hub selbst zeigt, was ansteht (sechste Analyse). Genau das
               war Zaurs Kritik vom 18.08.: nicht die Kacheln im Sendeplan waren
               zu viel, sondern dass die Übersicht das Formular IST. ────────── */}
-          <PressFeedback
-            style={({ pressed }) => [styles.shelfDoor, pressed && styles.doorPressed]}
-            onPress={() => router.push('/shelf')}
-            accessibilityRole="button"
-            accessibilityLabel="Artikel einstellen und verwalten"
-          >
-            <ShoppingBag size={22} color={ui.brand} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.doorText}>Artikel einstellen & verwalten</Text>
-              <Text style={styles.shelfDoorHint}>Dein Regal für direkt kaufbare Angebote</Text>
-            </View>
-            <ChevronRight size={18} color={ui.brand} />
-          </PressFeedback>
+          <View style={{ marginBottom: space.sm }}>
+            <NavigationRow title="Deine Artikel" Icon={ShoppingBag}
+              detail={standing.length === 0 ? 'Artikel einstellen und verwalten' : [
+                shelfPriced > 0 ? `${shelfPriced} kaufbar` : null,
+                shelfUnpriced > 0 ? `${shelfUnpriced} ohne Preis` : null,
+              ].filter(Boolean).join(' · ')}
+              onPress={() => router.push('/shelf')} />
+          </View>
           <View style={styles.doorRow}>
             <PressFeedback
               style={({ pressed }) => [styles.door, styles.doorPrimary, pressed && styles.doorPressed]}
@@ -1267,46 +1263,7 @@ export default function SellScreen() {
             <ChevronRight size={18} color={ui.textMuted} />
           </PressFeedback>
 
-          <PressFeedback kind="card"
-            style={[
-              styles.jobRow,
-              styles.jobRowSplit,
-            ]}
-            onPress={() => router.push('/shelf')}
-            accessibilityRole="button"
-            accessibilityLabel="Dein Regal"
-          >
-            <ShoppingBag size={19} color={ui.text} />
-            <Text style={styles.jobLabel}>Dein Regal</Text>
-            {/* ⚠️ HIER STAND `{standing.length} kaufbar`, UND DAS WAR SEIT DEM
-                24.08.2026 FALSCH.
 
-                `release_prepared_on_plan_end` (`20260824180000`) legt
-                vorbereitete Ware bei abgesagtem Termin zurück ins Regal, ohne
-                einen Preis zu setzen. Solche Zeilen sind NICHT kaufbar und seit
-                dem 25.08. auch nicht auffindbar (`BROWSABLE`) — die Zeile zählte
-                sie trotzdem als „kaufbar" mit.
-
-                Das ist zugleich die Antwort auf die Lücke, die der Riegel offen
-                liess: **Wer unsichtbar wird, erfährt es nicht.** Die Zahl richtig
-                zu machen IST der Hinweis — kein Banner, keine neue Abfrage, kein
-                neuer Bildschirm. Die Zeile führt ohnehin ins Regal, und dort
-                sagt jede betroffene Karte, was zu tun ist. */}
-            {standing.length === 0 ? (
-              <Text style={styles.jobMeta}>leer</Text>
-            ) : (
-              <Text style={styles.jobMeta}>
-                {shelfPriced > 0 ? `${shelfPriced} kaufbar` : null}
-                {shelfPriced > 0 && shelfUnpriced > 0 ? ' · ' : null}
-                {shelfUnpriced > 0 ? (
-                  <Text style={styles.jobMetaWarn}>
-                    {shelfUnpriced === 1 ? '1 ohne Preis' : `${shelfUnpriced} ohne Preis`}
-                  </Text>
-                ) : null}
-              </Text>
-            )}
-            <ChevronRight size={18} color={ui.textMuted} />
-          </PressFeedback>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1315,8 +1272,6 @@ export default function SellScreen() {
 
 const styles = StyleSheet.create({
   priorityCard: { backgroundColor: ui.card, borderRadius: radius.lg, padding: space.md, marginBottom: space.md },
-  shelfDoor: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: ui.card, borderRadius: radius.lg, padding: space.lg, marginBottom: space.sm },
-  shelfDoorHint: { fontSize: 12, lineHeight: 18, color: ui.textMuted, marginTop: 4 },
   screen: { flex: 1, backgroundColor: ui.bg },
   center: { alignItems: 'center', justifyContent: 'center', gap: space.sm },
   header: { paddingHorizontal: space.md, paddingBottom: space.sm },
@@ -1452,8 +1407,6 @@ const styles = StyleSheet.create({
   jobRowSplit: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.line },
   jobLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
   jobMeta: { fontSize: 12, color: ui.textMuted },
-  /** Nicht rot als Alarm, sondern als das eine Wort, das hier heraussticht. */
-  jobMetaWarn: { fontSize: 12, fontWeight: '700', color: ui.live },
   // Gold, nicht Grau: Diese Zahl hat eine Frist, und die Versandzeit steht als
   // Kachel auf dem öffentlichen Profil.
   jobBadge: {

@@ -26,17 +26,7 @@
 //   Vorschläge   `useMyOpenOffers`
 //   Gemerkt      `SavedList` — dieselbe Liste wie unter `/saved`
 //
-// ⚠️ „Käufe" fehlt mit Absicht. Whatnot hat den Reiter, bei uns steckt das
-// Gegenstück im Konto unter „Deine Pakete" — und dort hängt nicht nur die
-// Bestellliste, sondern der ganze Sammelkorb mit `useCheckoutCart` und
-// `useShippingLookup`. Das ist der Geld-Pfad. Ihn für eine Umsortierung
-// anzufassen wäre der falsche Handel; das gehört in einen eigenen Schritt mit
-// eigener Prüfung.
-//
-// ⚠️ Und der Strom bleibt der Vorgabe-Reiter, obwohl „Gebote" das Dringendste
-// enthält. Grund: `outbid` und `won` sind ohnehin Ereignis-Arten im Strom — wer
-// überboten wurde, sieht es also weiterhin sofort beim Öffnen, ohne einen
-// Reiter suchen zu müssen. Ein leerer Vorgabe-Reiter wäre der schlechtere Tausch.
+// „Meine Käufe“ öffnet Pakete und Bestellungen; die Register bleiben beim Verlauf.
 
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -72,6 +62,7 @@ import { useActivity, type ActivityItem, type ActivityKind } from '../../lib/use
 import { formatEuro, useProfiles } from '../../lib/useAuction';
 import { useMyBids } from '../../lib/useMyBids';
 import { useMyOpenOffers } from '../../lib/useOffers';
+import { NavigationRow } from '../../components/NavigationRow';
 import { Avatar } from '../../components/Avatar';
 import { SavedList } from '../../components/SavedList';
 import { BerkatMark } from '../../components/BerkatMark';
@@ -241,6 +232,9 @@ export default function ActivityScreen() {
         </PressFeedback>
       </View>
 
+      <View style={{ paddingHorizontal: space.md, paddingBottom: space.sm }}>
+        <NavigationRow title="Meine Käufe" detail="Zuschläge, offene Pakete und Bestellungen" Icon={ShoppingBag} onPress={() => router.push('/purchases')} />
+      </View>
       <View style={styles.tabBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
           {TABS.map((t) => {
