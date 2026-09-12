@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Bell, BellRing, CalendarClock, Lock, Repeat } from 'lucide-react-native';
@@ -15,20 +15,39 @@ import { BerkatMark } from './BerkatMark';
 
 type Props = { series: Series[]; reasons?: ShowReasons; onSelect: (hostId: string) => void };
 
-export function ReminderBell({ show }: { show: Pick<PlannedShow, 'id' | 'host_id' | 'title' | 'scheduled_at'> }) {
+type ReminderShow = Pick<PlannedShow, 'id' | 'host_id' | 'title' | 'scheduled_at'>;
+type ReminderState = Pick<ReturnType<typeof useShowReminder>, 'on' | 'busy' | 'error' | 'label' | 'needsLoad'>;
+
+export function ReminderBell({ show }: { show: ReminderShow }) {
   const myUserId = useSession((state) => state.userId);
-  const { on, flip, busy } = useShowReminder(show.id, myUserId);
+  const reminder = useShowReminder(show.id, myUserId === show.host_id ? null : myUserId);
   if (myUserId === show.host_id) return null;
-  return <Pressable style={({ pressed }) => [s.reminder, on && s.reminderOn, pressed && s.pressed]}
-    disabled={busy} accessibilityRole="button" accessibilityState={{ selected: on, busy, disabled: busy }}
-    accessibilityLabel={on ? `Nicht mehr an ${show.title} erinnern` : `An ${show.title} erinnern, ${formatSlot(show.scheduled_at)}`}
-    onPress={() => {
-      if (!myUserId) { router.push('/login'); return; }
-      void flip().catch(() => Alert.alert('Erinnerung nicht geändert', 'Bitte versuche es noch einmal.'));
-    }}>
-    {on ? <BellRing size={17} color={ui.successInk} /> : <Bell size={17} color={ui.brand} />}
-    <Text style={[s.reminderText, on && s.reminderTextOn]}>{busy ? 'Einen Moment …' : on ? 'Vorgemerkt' : 'Erinnern'}</Text>
-  </Pressable>;
+  return <ReminderControl show={show} reminder={reminder} onPress={() => {
+    if (!myUserId) { router.push('/login'); return; }
+    void reminder.flip();
+  }} />;
+}
+
+/** Shared presentation; request state stays in the existing reminder hook. */
+export function ReminderControl({ show, reminder: { on, busy, error, label, needsLoad }, onPress }: {
+  show: ReminderShow; reminder: ReminderState; onPress: () => void;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const actionLabel = busy ? `Erinnerung für ${show.title} wird bearbeitet`
+    : needsLoad ? `Erinnerung für ${show.title} erneut laden`
+    : error ? `Erinnerung für ${show.title} erneut ändern`
+    : on ? `Nicht mehr an ${show.title} erinnern` : `An ${show.title} erinnern, ${formatSlot(show.scheduled_at)}`;
+  return <View key={fontScale} style={s.reminderArea}>
+    <Pressable style={({ pressed }) => [s.reminder, on && s.reminderOn, pressed && s.pressed]}
+      disabled={busy} accessibilityRole="button" accessibilityState={{ selected: on, busy, disabled: busy }}
+      accessibilityLabel={actionLabel} accessibilityHint={error ?? undefined}
+      onPress={onPress}>
+      {busy ? <ActivityIndicator size="small" color={on ? ui.successInk : ui.brand} />
+        : on ? <BellRing size={17} color={ui.successInk} /> : <Bell size={17} color={ui.brand} />}
+      <Text style={[s.reminderText, on && s.reminderTextOn]}>{label}</Text>
+    </Pressable>
+    {error ? <Text style={s.reminderError} accessibilityLiveRegion="polite">{error}</Text> : null}
+  </View>;
 }
 
 /** Shared display; the reminder is a sibling of the card action, also for VoiceOver. */
@@ -112,6 +131,8 @@ const s = StyleSheet.create({
   peek: { width: 28, height: 28, borderRadius: radius.sm, backgroundColor: ui.sunken },
   meta: { fontSize: 12, lineHeight: 18, color: ui.textMuted },
   repeat: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  reminderArea: { backgroundColor: ui.bg },
+  reminderError: { fontSize: 13, lineHeight: 19, color: ui.textMuted, paddingHorizontal: space.md, paddingBottom: space.md },
   reminder: { minHeight: 48, paddingVertical: space.sm, paddingHorizontal: space.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, backgroundColor: ui.bg },
   reminderOn: { backgroundColor: ui.success },
   reminderText: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.brand, flexShrink: 1 },

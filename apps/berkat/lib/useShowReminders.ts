@@ -27,65 +27,105 @@
 // erfüllt. Für die Oberfläche heisst das: Nach dem Erinnerungs-Push steht der
 // Knopf wieder leer da — das ist richtig, der Termin ist ja gleich.
 
-import { useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
+import { useIsMutating, useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 
 const KEY = ['berkat', 'show-reminders'] as const;
+const changeKey = (userId: string | null, scheduleId: string) => [...KEY, 'change', userId, scheduleId];
+type ReminderChange = { owner: string; scheduleId: string; on: boolean };
 
-/**
- * Welche Termine habe ich vorgemerkt?
- *
- * EINE Abfrage für alle sichtbaren Karten statt einer je Karte — der
- * „Demnächst"-Streifen zeigt bis zu zwölf, und zwölf Abfragen für ein Glöckchen
- * wären die Kostenhygiene-Sünde aus Übergabe 4. Die RLS filtert ohnehin auf das
- * eigene Konto; ein `eq('user_id', …)` wäre eine zweite Wahrheit darüber.
- */
+/** One shared query for all visible cards, explicitly bound to its account. */
 export function useMyShowReminders(userId: string | null) {
   return useQuery({
     queryKey: [...KEY, userId],
     enabled: Boolean(userId),
     staleTime: 30_000,
-    queryFn: async (): Promise<Set<string>> => {
-      const { data, error } = await supabase
-        .from('berkat_show_reminders')
-        .select('schedule_id');
+    retry: 1,
+    networkMode: 'always',
+    refetchOnReconnect: true,
+    queryFn: async ({ signal }): Promise<Set<string>> => {
+      const { data, error } = await supabase.from('berkat_show_reminders')
+        .select('schedule_id').eq('user_id', userId!).abortSignal(signal).retry(false);
       if (error) throw error;
-      return new Set((data ?? []).map((r) => (r as { schedule_id: string }).schedule_id));
+      if (!data) throw new Error('reminder_state_missing');
+      return new Set(data.map((row) => (row as { schedule_id: string }).schedule_id));
     },
   });
 }
 
-export function useShowReminderActions(userId: string | null) {
+export function useShowReminderActions(userId: string | null, scheduleId: string) {
   const qc = useQueryClient();
-
   const toggle = useMutation({
-    mutationFn: async ({ scheduleId, on }: { scheduleId: string; on: boolean }) => {
-      if (!userId) throw new Error('not_signed_in');
+    mutationKey: changeKey(userId, scheduleId),
+    retry: false,
+    // Fail visibly while offline rather than enqueue a write for a later session.
+    networkMode: 'always',
+    mutationFn: async ({ owner, scheduleId: target, on }: ReminderChange) => {
       if (on) {
-        const { error } = await supabase
-          .from('berkat_show_reminders')
-          // ⚠️ `ignoreDuplicates` statt eines Fehlers: Ein zweiter Tipp auf
-          // denselben Knopf ist kein Fehlverhalten, sondern ein doppelter
-          // Finger. Der Primärschlüssel fängt es ab, und der Nutzer soll
-          // davon nichts merken.
-          .upsert({ schedule_id: scheduleId, user_id: userId }, { ignoreDuplicates: true });
+        const { error } = await supabase.from('berkat_show_reminders')
+          .upsert({ schedule_id: target, user_id: owner }, { ignoreDuplicates: true }).retry(false);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('berkat_show_reminders')
-          .delete()
-          .eq('schedule_id', scheduleId)
-          .eq('user_id', userId);
+        const { error } = await supabase.from('berkat_show_reminders').delete()
+          .eq('schedule_id', target).eq('user_id', owner).retry(false);
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: KEY });
+    onMutate: ({ owner }) => qc.cancelQueries({ queryKey: [...KEY, owner], exact: true }),
+    onSuccess: async (_, { owner, scheduleId: target, on }) => {
+      const key = [...KEY, owner];
+      await qc.cancelQueries({ queryKey: key, exact: true });
+      // Merge only the confirmed item so concurrent changes keep each other.
+      qc.setQueryData<Set<string>>(key, previous => {
+        if (!previous) return previous;
+        const next = new Set(previous);
+        if (on) next.add(target); else next.delete(target);
+        return next;
+      });
+      // Reminders are consumed by the server when the event starts.
+      void qc.invalidateQueries({ queryKey: key, exact: true });
     },
   });
-
   return { toggle };
+}
+
+/** State and in-flight requests are shared between home and profile cards. */
+export function useShowReminder(scheduleId: string, userId: string | null) {
+  const qc = useQueryClient();
+  const state = useMyShowReminders(userId);
+  const { toggle } = useShowReminderActions(userId, scheduleId);
+  const locked = useRef(false);
+  const mutationKey = changeKey(userId, scheduleId);
+  const pending = useIsMutating({ mutationKey, exact: true }) > 0;
+  const changes = useMutationState({ filters: { mutationKey, exact: true }, select: mutation => mutation.state.status });
+  const lastChange = changes[changes.length - 1];
+  const enabled = Boolean(userId && scheduleId);
+  const on = enabled && Boolean(state.data?.has(scheduleId));
+  const needsLoad = enabled && (state.isError || state.data === undefined);
+  const busy = enabled && (pending || (needsLoad && state.isFetching));
+  const error = enabled && state.isError ? 'Deine Erinnerung konnte nicht geladen werden. Bitte lade sie erneut.'
+    : enabled && lastChange === 'error' ? 'Die Erinnerung konnte nicht geändert werden. Bitte versuche es erneut.' : null;
+  const label = busy ? 'Einen Moment …' : needsLoad ? 'Erneut laden'
+    : error ? 'Erneut versuchen' : on ? 'Vorgemerkt' : 'Erinnern';
+
+  const flip = async () => {
+    if (!enabled || !userId || locked.current || qc.isMutating({ mutationKey, exact: true })) return;
+    locked.current = true;
+    try {
+      const current = qc.getQueryState<Set<string>>([...KEY, userId]);
+      if (current?.status !== 'success' || !current.data) {
+        await state.refetch({ cancelRefetch: false });
+        return;
+      }
+      await toggle.mutateAsync({ owner: userId, scheduleId, on: !current.data.has(scheduleId) });
+    } catch {
+      // The shared query/mutation state keeps a visible retry at the affected card.
+    } finally {
+      locked.current = false;
+    }
+  };
+  return { on, flip, busy, error, label, needsLoad };
 }
 
 export function showReminderError(message: string): string {
@@ -103,20 +143,4 @@ export function showReminderError(message: string): string {
   // Kein Sammel-Satz: Was der Server sagt, steht hier (die Regel aus
   // `useStanding.ts`).
   return message ? `Der Server sagt: ${message}` : 'Das hat gerade nicht geklappt.';
-}
-
-/**
- * Der Knopf-Zustand für EINEN Termin, aus der gemeinsamen Menge.
- *
- * Bewusst kein eigener Hook mit eigener Abfrage je Karte — siehe oben.
- */
-export function useShowReminder(scheduleId: string, userId: string | null) {
-  const { data: marked } = useMyShowReminders(userId);
-  const { toggle } = useShowReminderActions(userId);
-  const on = Boolean(marked?.has(scheduleId));
-  const flip = useCallback(
-    () => toggle.mutateAsync({ scheduleId, on: !on }),
-    [toggle, scheduleId, on],
-  );
-  return { on, flip, busy: toggle.isPending };
 }

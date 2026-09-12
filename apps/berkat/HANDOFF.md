@@ -1,5 +1,48 @@
 # Berkat — Übergabe
 
+## App-Qualität · Termin-Erinnerungen · 12.09.2026
+
+**Fortsetzung nach `4bff442`:** Die Glocke auf Startseite und Verkäuferprofil
+unterscheidet jetzt unbekannten Status, Laden, bestätigte Vormerkung und Fehler.
+Ein unbekannter/fehlgeschlagener Lesestatus wird zuerst erneut geladen; ein
+solcher Tipp legt keine Erinnerung an. Fehler bleiben an der betroffenen Karte
+sichtbar, mit passender Wiederholung. Laden zeigt einen Spinner und sperrt die
+Schaltfläche; die bestätigte Vormerkung bleibt grün. `ReminderControl` ist die
+gemeinsame reine Darstellung, `ReminderBell` bindet das bestehende Konto und den
+Erinnerungs-Hook an. Eigene Termine blenden die Aktion aus, Gäste öffnen Login.
+
+**Datenverhalten:** Weiterhin eine gemeinsame Abfrage aller Vormerkungen pro
+Konto. Der explizite `user_id`-Filter und AbortSignal binden die Abfrage an ihren
+Kontostand. Tabellenfeld/Rechte sind in der bestehenden Migration
+`20260825140000` belegt; keine Migration oder Backend-Änderung nötig.
+Speicherzustand und Fehler sind für denselben Termin zwischen Karten geteilt;
+auch gleichzeitige Doppeltipps auf zwei Karten erzeugen nur eine Mutation.
+Bestätigte Änderungen werden sofort in die gemeinsame Menge übernommen, ohne
+parallel geänderte andere Termine zu verlieren. Anschließendes Nachladen gleicht
+vom Server verbrauchte Vormerkungen ab. Anfrage/Cache bleiben an ursprüngliches
+Konto und Termin gebunden. Offline-Schreibversuche werden nicht für eine spätere
+Sitzung eingereiht, sondern liefern einen sichtbaren Fehler.
+
+**Geprüft:** 263 Tests bestanden, einschließlich elf neuer Tests mit echten
+Query-/Mutation-Observern und lokal simulierten Anfragen; TypeScript fehlerfrei.
+Lokaler iOS-Hermes-Export nach Entfernen der Prüfroute erfolgreich. Native
+Sichtprüfung im iPhone-17-Simulator: tatsächliche Erinnerungsdarstellung auf
+208 pt Breite, normale und drei Stufen größere Systemschrift, Speicherfehler,
+Lesefehler, Laden (busy/disabled) und Vormerkung (selected). Fehlertexte vollständig
+lesbar. Die Terminkarten-Vorschau nutzt ebenfalls die Produktionskomponente;
+Zustände kommen ausschließlich aus lokalen Fixtures, nicht aus echten Terminen.
+Schriftgröße zurückgestellt, temporäre Route entfernt und Such-Einstieg im
+Quelltext exakt wiederhergestellt. Nachweise: `outputs/berkat-reminders` im
+Codex-Arbeitsordner. Keine echte Erinnerung oder Nachricht angelegt/ausgelöst;
+keine Testprodukt-Prüfung, kein Push/OTA und kein Gerätebuild.
+
+**Nächster Schritt:** Den Gesamtstand der lokalen Folgen-, Live-Layout- und
+Erinnerungsverbesserungen für die nächste iPhone-Auslieferung bündeln. Der
+vorliegende iOS-Export ist keine installierbare IPA. Die echte Zustellung einer
+Termin-Benachrichtigung und Live-Gesten sind durch diese lokalen Prüfungen nicht
+abgenommen und bleiben gesonderte Gerätetests.
+
+
 ## App-Qualität · Live-Kopf und Verkäufer-Sheet · 12.09.2026
 
 **Fortsetzung nach `a567750`:** Die native Sichtprüfung hat zwei Layoutfehler

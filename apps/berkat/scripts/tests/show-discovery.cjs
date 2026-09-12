@@ -167,7 +167,7 @@ function cardModule(owner, reminder = {}) {
     'expo-image': { Image: 'Image' }, 'expo-router': { router: { push: route => actions.routes.push(route) } },
     '../lib/useSchedule': { formatSlot: () => 'Heute, 20:00', formatUntil: () => 'in 2 Std.' },
     '../lib/showDiscovery': selection, '../lib/session': { useSession: read => read({ userId: owner }) },
-    '../lib/useShowReminders': { useShowReminder: () => ({ on: false, busy: false, flip: async () => { actions.flips++; if (reminder.fail) throw Error('offline'); }, ...reminder }) },
+    '../lib/useShowReminders': { useShowReminder: () => ({ on: false, busy: false, label: 'Erinnern', error: null, needsLoad: false, flip: async () => { actions.flips++; }, ...reminder }) },
     '../theme/tokens': { ui: {}, radius: {}, space: {} },
   });
   return { module, actions };
@@ -187,8 +187,8 @@ test('reminders reuse the existing action; guests sign in, own shows hide it, an
   const guest = cardModule(null); guest.module.ReminderBell({ show }).props.onPress();
   assert.deepEqual(guest.actions.routes, ['/login']); assert.equal(guest.actions.flips, 0);
   assert.equal(cardModule('host').module.ReminderBell({ show }), null);
-  const failure = cardModule('me', { fail: true }); failure.module.ReminderBell({ show }).props.onPress(); await flush();
-  assert.equal(failure.actions.flips, 1); assert.equal(failure.actions.errors, 1); assert.deepEqual(failure.actions.profiles, []);
-  const busy = cardModule('me', { busy: true }).module.ReminderBell({ show });
+  const failure = cardModule('me', { error: 'Die Erinnerung konnte nicht geändert werden.', label: 'Erneut versuchen' }); const failed = failure.module.ReminderControl(failure.module.ReminderBell({ show }).props); failed.props.children[0].props.onPress(); await flush();
+  assert.equal(failure.actions.flips, 1); assert.equal(failed.props.children[1].props.accessibilityLiveRegion, 'polite'); assert.match(failed.props.children[1].props.children, /nicht geändert/); assert.deepEqual(failure.actions.profiles, []);
+  const pending = cardModule('me', { busy: true, label: 'Einen Moment …' }); const busy = pending.module.ReminderControl(pending.module.ReminderBell({ show }).props).props.children[0];
   assert.equal(busy.props.disabled, true); assert.equal(busy.props.accessibilityState.busy, true);
 });
