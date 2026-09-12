@@ -1,5 +1,70 @@
 # Berkat — Übergabe
 
+## Live-Raum · Build 14 · 13.09.2026
+
+**Nächsten bestätigten UX-Block umgesetzt:** Video, Kommentare, aktueller Artikel,
+Gebot und Rückwege. Der Fokus bleibt auf der App; keine Prüfung der Testprodukte.
+
+- `LiveRoomLayout` ordnet Kopf, Hinweise, Chat, Aktionsleiste und Auktion gemeinsam.
+  Der aktuelle Artikel steht vor den kommenden Artikeln. Preis und Gebot bleiben
+  unter den scrollbaren Details. Große Schrift wird neu vermessen; Kopf/Hinweise
+  und überlange Auktionsbereiche sind begrenzt scrollbar. Ein Mindestplatz für die
+  Chat-Eingabe verhindert die nativ gefundene Überlagerung mit Fehlermeldungen.
+- Native Tastaturvermeidung hält die Eingabe oberhalb der Softwaretastatur.
+  Verkäufer/Shop schließen die Tastatur beim Öffnen; Erwähnen blendet einen
+  versteckten Chat wieder ein. Der Chat hat sichtbare Schalter zum Aus-/Einblenden,
+  44-Punkt-Aktionen, lesbare Kommentarblasen und einen Verlauf der neuesten 40
+  Kommentare. Beim Lesen älterer Zeilen wird nicht automatisch ans Ende gesprungen.
+  Ausgeblendete Kommentare sind für VoiceOver verborgen; reduzierte Bewegung wird
+  bei Chat und Gebotsregler berücksichtigt.
+- `useLiveChatDraft` sperrt Doppeltipps synchron und erhält Text bei Versandfehlern.
+  Eine späte Antwort überschreibt keinen inzwischen weiterbearbeiteten Entwurf.
+  Konto-/Showwechsel erzeugen eigene Entwürfe; keine neue dauerhafte Speicherung.
+- Session- und Chatabfragen unterscheiden fehlende Daten von Netzwerkfehlern.
+  Hinweise bieten Wiederholung und Rückweg. Fehlgeschlagene Aktualisierung erhält
+  vorhandene Daten; Gebote sind bei unsicherem Session-/Auktionsstand gesperrt.
+  Späte Chat-Historie erhält gleichzeitig per Realtime eingegangene Kommentare.
+  Session-Polling und Chat-Abonnement folgen dem sichtbaren Raum.
+- `SlideToBid` bestätigt eine Ziehgeste nur für den beim Start gesehenen Artikel
+  und Betrag. Preis-/Artikelwechsel, Rotation, Abbruch und ein zwischenzeitlicher
+  Vorgang verwerfen die Geste; doppelte Freigabe löst kein zweites Gebot aus.
+- Der Mini-Player interpretiert Lesefehler nicht mehr als beendete Show.
+  Live-Zugang ist an das Konto gebunden und liest den 403-Grund aus der HTTP-Antwort.
+  Kameraauswahl berücksichtigt exakt den Gastgeber und dessen WHIP-/OBS-Identität;
+  eine beliebige fremde Kamera wird nicht als Ersatz gezeigt. Ein Rollenwechsel
+  zum Gastgeber verlangt erneut dessen ausdrückliches Starten der Kamera.
+
+**Geprüft:** TypeScript und 348 lokale Tests bestanden, davon 32 neue. Echte
+QueryClient/QueryObserver mit lokalen Antworten prüfen Lesefehler, Cache,
+Wiederholung, Abbruch und konkurrierende Chatdaten. Komponenten-Rückrufe prüfen
+Gebots-/Chatgesten und reduzierte Bewegung; kein echtes Gebot oder Testversand.
+Native Sichtprüfung mit den echten Präsentationskomponenten und lokalen Daten im
+iPhone-17-Simulator: extra-large und accessibility-medium, Softwaretastatur,
+Chat per Schalter verstecken/wiederzeigen mit erhaltenem Entwurf, lokaler
+Versandfehler, scrollbarer Hinweis bis zur Bestätigung, Verkäuferfenster →
+Erwähnung → Eingabe sowie Shop öffnen/schließen. Echte Route mit nicht existierender
+Show zeigt den fehlenden Zustand und funktioniert zurück. Schrift zurückgestellt,
+temporäre Prüfrouten entfernt. Nachweise: `outputs/berkat-live-experience`.
+
+**Geräteauslieferung:** Build 14 als lokales Release gebaut, signiert, als IPA
+archiviert und als Update auf dem iPhone 16 Pro installiert. CoreDevice bestätigt
+com.berkat.app / 1.0.0 / 14 und den erfolgreichen Start. Derselbe App-Prozess
+war 52 Sekunden später weiterhin vorhanden. Build 14 ersetzt damit Build 13
+als letzten installierten und gestarteten Stand. Hermes, 55 eingefrorene Quell-Hashes,
+neue UI-Texte, 12 Kategoriemotive, Signatur/Profil und IPA-CRC geprüft. Nachweise:
+`outputs/berkat-iphone-build-14`. Der erste Build hing beim Workspace-Lesen in
+NSFileCoordinator. Eine Kopie ausschließlich der nativen Projekt-/Workspace-
+Metadaten neben denselben Quellen baute erfolgreich; originales Xcode blieb offen.
+Die temporären Metadaten sind danach ins Nachweisverzeichnis verschoben worden.
+Lokale Expo-Updates und Sentry-Autoupload bleiben aus. Kein Git-Push, OTA,
+TestFlight oder App Store. Keine Backendmigration oder neue Leistungszahl.
+
+**Danach:** Build 14 auf dem iPhone abnehmen. Echte Videoverbindung, Wiederverbindung,
+Verkleinern/Wiederöffnen mit weiterlaufendem Video und physische Zieh-/Wischgesten
+bleiben Geräteabnahmen; Simulator-Gestenversuche sind kein Nachweis dafür. Als
+nächste UX-Blöcke folgen Verkäufer-Vorbereitung und Einstieg für neue Nutzer,
+danach eine aktuelle Gerätemessung. Echte Termin-Push-Zustellung bleibt separat offen.
+
 ## Suche und Verkäuferkontakt · Build 13 · 13.09.2026
 
 **Bestätigten nächsten UX-Schritt umgesetzt:** Suche → Artikeldetails →

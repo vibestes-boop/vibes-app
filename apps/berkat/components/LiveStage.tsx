@@ -18,6 +18,8 @@ import { useLivePlayer } from '../lib/livePlayer';
 import { useLiveAccess } from '../lib/useLiveVideo';
 import { VIDEO_QUALITY } from '../lib/videoQuality';
 
+export { useConnectionState as useStageConnectionState } from '@livekit/react-native';
+
 export { HostControls } from './HostControls';
 export { GoLiveGate } from './GoLiveGate';
 
@@ -122,7 +124,9 @@ export function LiveRoomProvider({ children }: { children: ReactNode }) {
 export function StageVideo({ hostIdentity, style }: { hostIdentity: string; style: ViewStyle }) {
   const tracks = useTracks([Track.Source.Camera]);
   const wanted =
-    tracks.find((track) => track.participant?.identity === hostIdentity) ?? tracks[0];
+    tracks.find((track) => track.participant?.identity === hostIdentity) ??
+    // WHIP/OBS uses this exact host identity in livekit-whip-ingress.
+    tracks.find((track) => track.participant?.identity === `host-${hostIdentity}`);
 
   if (!wanted) return null;
   return <VideoTrack trackRef={wanted} style={style} objectFit="cover" />;

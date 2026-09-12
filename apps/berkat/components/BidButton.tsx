@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -24,6 +25,7 @@ import { Check, ChevronsRight, PartyPopper } from 'lucide-react-native';
 import { stage, radius, space, auction as auctionConfig } from '../theme/tokens';
 import { formatEuro, nextMinBid, type Auction } from '../lib/useAuction';
 import { RollupNumber } from './RollupNumber';
+import { useReducedMotion } from '../lib/useReducedMotion';
 
 /** Griff und Innenabstand der Ziehbahn. Müssen zu `styles.knob` passen. */
 const KNOB = 40;
@@ -51,41 +53,21 @@ type Props = {
   myMaxCents?: number | null;
 };
 
-/**
- * Ziehen statt tippen — der Schutz vor dem versehentlichen Gebot.
- *
- * ⚠️ WARUM DAS KEIN SCHMUCK IST
- * Ein Gebot ist eine bindende Willenserklärung über echtes Geld. Der Knopf sitzt
- * am unteren Rand, also genau dort, wo der Daumen beim Halten des Telefons
- * ohnehin liegt — und darüber läuft ein Video, auf das man tippt, um ein Herz zu
- * schicken. Ein Bildschirm, auf dem Tippen die normale Geste ist, darf einen
- * Kauf nicht mit demselben Tippen auslösen.
- *
- * Der Knopf hat das `»`-Symbol seit dem 13.08.2026 getragen und trotzdem nur auf
- * ein Antippen gehört. Die Form versprach eine Geste, die es nicht gab. Jetzt
- * gibt es sie.
- *
- * KERN-APIs, KEIN NEUES PAKET: `PanResponder` und `Animated` kommen aus React
- * Native selbst. `react-native-gesture-handler` liegt zwar in der package.json,
- * wird aber nirgends benutzt und bräuchte einen `GestureHandlerRootView` im
- * Wurzel-Layout; Reanimated hat Berkat gar nicht. Der Kern-Weg kostet damit
- * keinen nativen Build (Abschnitt 12).
- *
- * ⚠️ BARRIEREFREIHEIT: Für VoiceOver ist eine Wischgeste feindlich — dort führt
- * `onAccessibilityTap` direkt zum Gebot. Wer den Bildschirm nicht sieht, tippt
- * ohnehin nicht versehentlich auf eine Stelle, die er nicht kennt.
- */
-function SlideToBid({
+/** A bid requires a horizontal drag. VoiceOver uses the explicit accessibility action. */
+export function SlideToBid({
+  confirmationKey,
   label,
   tone,
   onConfirm,
   busy,
 }: {
+  confirmationKey: string;
   label: string;
   tone: 'gold' | 'live';
   onConfirm: () => void;
   busy: boolean;
 }) {
+  const { fontScale } = useWindowDimensions();
   const [trackWidth, setTrackWidth] = useState(0);
   const x = useRef(new Animated.Value(0)).current;
 
@@ -96,13 +78,21 @@ function SlideToBid({
   const travelRef = useRef(0);
   const busyRef = useRef(busy);
   busyRef.current = busy;
+  const confirmRef = useRef(onConfirm);
+  confirmRef.current = onConfirm;
+  const currentKey = useRef(confirmationKey);
+  currentKey.current = confirmationKey;
+  const startedKey = useRef<string | null>(null);
+  const reducedMotion = useReducedMotion();
+  const reduceRef = useRef(reducedMotion);
+  reduceRef.current = reducedMotion;
 
   const travel = Math.max(0, trackWidth - KNOB - TRACK_PAD * 2);
   travelRef.current = travel;
 
   const reset = (animated: boolean) => {
     dragged.current = 0;
-    if (animated) {
+    if (animated && !reduceRef.current) {
       Animated.spring(x, { toValue: 0, useNativeDriver: true, friction: 7, tension: 180 }).start();
     } else {
       x.setValue(0);
@@ -113,8 +103,12 @@ function SlideToBid({
   // Gegengebot sofort zurückkommt, steht derselbe Knopf wieder da — dann muss
   // der Griff links stehen und nicht am Anschlag.
   useEffect(() => {
-    if (!busy) reset(false);
+    startedKey.current = null;
+    reset(false);
   }, [busy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A changed article/amount or rotated track invalidates the gesture already in progress.
+  useEffect(() => { startedKey.current = null; reset(false); }, [confirmationKey, trackWidth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const responder = useMemo(
     () =>
@@ -124,6 +118,7 @@ function SlideToBid({
         // dem Knopf würde die Liste darüber nicht mehr erreichen.
         onMoveShouldSetPanResponder: (_e, g) =>
           !busyRef.current && Math.abs(g.dx) > 4 && Math.abs(g.dx) > Math.abs(g.dy),
+        onPanResponderGrant: () => { startedKey.current = currentKey.current; },
         onPanResponderMove: (_e, g) => {
           const next = Math.max(0, Math.min(travelRef.current, g.dx));
           dragged.current = next;
@@ -134,23 +129,25 @@ function SlideToBid({
           // 60 % des Weges. Weniger wäre wieder versehentlich auslösbar, mehr
           // fühlt sich nach Arbeit an — und in den letzten Sekunden einer
           // Auktion zählt jede Zehntelsekunde.
-          if (t > 0 && dragged.current >= t * 0.6) {
+          const sameQuote = startedKey.current !== null && startedKey.current === currentKey.current;
+          startedKey.current = null;
+          if (!busyRef.current && sameQuote && t > 0 && dragged.current >= t * 0.6) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-            Animated.timing(x, {
+            if (reduceRef.current) reset(false);
+            else Animated.timing(x, {
               toValue: t,
               duration: 90,
               useNativeDriver: true,
             }).start(() => reset(false));
-            onConfirm();
+            confirmRef.current();
           } else {
             reset(true);
           }
         },
-        onPanResponderTerminate: () => reset(true),
+        onPanResponderTerminate: () => { startedKey.current = null; reset(true); },
       }),
-    // `onConfirm` ändert sich mit jedem Gebotsbetrag — der Responder muss den
-    // aktuellen kennen, sonst bietet ein später Zug den alten Preis.
-    [onConfirm, x],
+    // Read current actions from refs without replacing the active responder.
+    [x],
   );
 
   const ink = tone === 'gold' ? stage.goldInk : stage.liveInk;
@@ -163,12 +160,13 @@ function SlideToBid({
       onLayout={onLayout}
       style={[styles.primary, { backgroundColor: surface, opacity: busy ? 0.6 : 1 }]}
       accessibilityRole="button"
+      accessibilityState={{ disabled: busy, busy }}
       accessibilityLabel={`${label}. Zum Bieten nach rechts ziehen.`}
       onAccessibilityTap={() => {
         if (!busy) onConfirm();
       }}
     >
-      <Text style={[styles.label, styles.slideLabel, { color: ink }]}>
+      <Text key={fontScale} style={[styles.label, styles.slideLabel, { color: ink }]}>
         {label}
       </Text>
 
@@ -211,6 +209,7 @@ export function BidButton({
   onMaxBid,
   myMaxCents,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
   const scale = useRef(new Animated.Value(1)).current;
   const [wasOutbid, setWasOutbid] = useState(false);
   const wasLeadingRef = useRef(false);
@@ -278,8 +277,8 @@ export function BidButton({
             accessibilityRole="button"
             accessibilityLabel="Höchstgebot festlegen"
           >
-            <Text style={styles.secondaryLabel}>Max</Text>
-            <Text
+            <Text key={fontScale} style={styles.secondaryLabel}>Max</Text>
+            <Text key={fontScale}
               style={[styles.secondaryPrice, myMaxCents ? { color: stage.gold } : null]}
               numberOfLines={1}
             >
@@ -290,14 +289,15 @@ export function BidButton({
 
         {showBuyNow ? (
           <Pressable onPress={onBuyNow} style={styles.secondary} accessibilityRole="button">
-            <Text style={styles.secondaryLabel}>Sofort</Text>
-            <Text style={styles.secondaryPrice}>{formatEuro(auction.buy_now_cents)}</Text>
+            <Text key={fontScale} style={styles.secondaryLabel}>Sofort</Text>
+            <Text key={fontScale} style={styles.secondaryPrice}>{formatEuro(auction.buy_now_cents)}</Text>
           </Pressable>
         ) : null}
 
         <Animated.View style={[styles.grow, { transform: [{ scale }] }]}>
           {interactive ? (
             <SlideToBid
+              confirmationKey={`${auction.id}:${target}`}
               label={`${state === 'outbid' ? 'Kontern' : 'Gebot'}: ${formatEuro(target)}`}
               tone={state === 'outbid' ? 'live' : 'gold'}
               busy={Boolean(busy)}
@@ -317,7 +317,7 @@ export function BidButton({
             {state === 'won' ? (
               <View style={styles.center}>
                 <PartyPopper size={19} color={stage.successInk} />
-                <Text style={[styles.label, { color: stage.successInk, marginLeft: 8 }]}>
+                <Text key={fontScale} style={[styles.label, { color: stage.successInk, marginLeft: 8 }]}>
                   Gewonnen ·{' '}
                 </Text>
                 <RollupNumber
@@ -328,18 +328,18 @@ export function BidButton({
             ) : state === 'leading' ? (
               <View style={styles.center}>
                 <Check size={19} color={stage.lead} />
-                <Text style={[styles.label, { color: stage.lead, marginLeft: 8 }]}>
+                <Text key={fontScale} style={[styles.label, { color: stage.lead, marginLeft: 8 }]}>
                   Du führst · {formatEuro(auction.current_bid_cents)}
                 </Text>
               </View>
             ) : state === 'seller' ? (
-              <Text style={[styles.label, { color: stage.text }]}>
+              <Text key={fontScale} style={[styles.label, { color: stage.text }]}>
                 {auction.current_bid_cents == null
                   ? 'Noch kein Gebot'
                   : `Läuft · ${formatEuro(auction.current_bid_cents)}`}
               </Text>
             ) : state === 'closed' ? (
-              <Text style={[styles.label, { color: stage.textMuted }]}>
+              <Text key={fontScale} style={[styles.label, { color: stage.textMuted }]}>
                 Warte auf den nächsten Artikel
               </Text>
             ) : null /* idle, urgent und outbid rendert `SlideToBid` oben */}

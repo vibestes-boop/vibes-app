@@ -45,7 +45,8 @@ export const useLivePlayer = create<LivePlayerState>((set) => ({
   // der Gastgeber im Takt aus seiner eigenen Sendung.
   open: (session) =>
     set((state) => {
-      const same = state.session?.id === session.id;
+      // A role change must require the host's explicit camera-start action again.
+      const same = state.session?.id === session.id && state.session?.isHost === session.isHost;
       return {
         session,
         minimized: same ? state.minimized : false,

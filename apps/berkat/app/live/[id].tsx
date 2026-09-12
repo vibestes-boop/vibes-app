@@ -13,11 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActivityIndicator,
-  Animated,
   Keyboard,
-  KeyboardAvoidingView,
-  PanResponder,
-  Platform,
   Share,
   ScrollView,
   useWindowDimensions,
@@ -34,10 +30,16 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 
+import { useIsFocused } from '@react-navigation/native';
+import { LiveRoomLayout } from '../../components/LiveRoomLayout';
+import { LiveChatPanel } from '../../components/LiveChatPanel';
+import { StageFeedback } from '../../components/StageFeedback';
+import { useLiveSession } from '../../lib/useLiveSession';
+import { useLiveChatDraft } from '../../lib/useLiveChatDraft';
+import { goBack } from '../../lib/nav';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ChevronRight,
   Heart,
   Lock,
   MessageSquare,
@@ -67,7 +69,7 @@ import {
 import { useLivePlayer } from '../../lib/livePlayer';
 import { showLink } from '../../lib/links';
 import { useLiveReactions } from '../../lib/useReactions';
-import { liveKitAvailable, liveKitFailure } from '../../lib/livekit';
+import { liveKitAvailable } from '../../lib/livekit';
 import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib/useLiveVideo';
 import { stage, radius, space } from '../../theme/tokens';
 import { useCheckoutCart } from '../../lib/useCheckout';
@@ -90,7 +92,6 @@ import {
   useSettleOnZero,
 } from '../../lib/useAuction';
 import { AuctionPanel } from '../../components/AuctionPanel';
-import { Avatar } from '../../components/Avatar';
 import { LiveSellerHeader } from '../../components/LiveSellerHeader';
 import { FloatingHearts, TapHearts } from '../../components/FloatingHearts';
 import { GiveawayCard } from '../../components/GiveawayCard';
@@ -142,6 +143,7 @@ function RailIcon({ icon: Icon, color, fill }: { icon: LucideIcon; color: string
 
 type StageModule = {
   useStageReady: () => boolean;
+  useStageConnectionState: () => string;
   StageVideo: (props: { hostIdentity: string; style: ViewStyle }) => React.ReactNode;
   HostControls: (props: { topOffset?: number }) => React.ReactNode;
   GoLiveGate: (props: { onGoLive: () => void }) => React.ReactNode;
@@ -152,45 +154,15 @@ type StageModule = {
 // Modul-Konstante — der Hook-Aufruf unten bleibt damit über die Laufzeit stabil.
 const Stage = liveKitAvailable ? (require('../../components/LiveStage') as StageModule) : null;
 const useStageReady = Stage?.useStageReady ?? (() => false);
+const useStageConnectionState = Stage?.useStageConnectionState ?? (() => 'disconnected');
 const StageVideo = Stage?.StageVideo ?? null;
 const HostControls = Stage?.HostControls ?? null;
 const GoLiveGate = Stage?.GoLiveGate ?? null;
-
-type LiveSession = {
-  id: string;
-  host_id: string;
-  title: string | null;
-  viewer_count: number | null;
-  like_count: number | null;
-  thumbnail_url: string | null;
-  women_only: boolean;
-  status: string;
-  room_name: string | null;
-};
 
 /** 1240 Herzen sind „1,2k" — die genaue Zahl interessiert ab hier niemanden. */
 function formatCount(value: number): string {
   if (value < 1000) return String(value);
   return `${(value / 1000).toFixed(1).replace('.', ',').replace(',0', '')}k`;
-}
-
-function useLiveSession(sessionId: string | undefined) {
-  return useQuery({
-    queryKey: ['berkat', 'session', sessionId],
-    enabled: Boolean(sessionId),
-    refetchInterval: 15_000,
-    queryFn: async (): Promise<LiveSession | null> => {
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .select(
-          'id, host_id, title, viewer_count, like_count, thumbnail_url, women_only, status, room_name',
-        )
-        .eq('id', sessionId!)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as LiveSession | null) ?? null;
-    },
-  });
 }
 
 /** Echte Zahl statt Sternchen: erteilte Zuschläge dieses Verkäufers. */
@@ -213,15 +185,23 @@ function useSellerSoldCount(sellerId: string | undefined) {
 
 export default function LiveAuctionRoom() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const userId = useSession(s => s.userId);
+  return <LiveAuctionRoomScreen key={`${id}:${userId ?? 'guest'}`} />;
+}
+
+function LiveAuctionRoomScreen() {
+  const focused = useIsFocused();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [headerHeight, setHeaderHeight] = useState(44);
-  const { height: windowHeight, fontScale } = useWindowDimensions();
+  const { fontScale } = useWindowDimensions();
   const myUserId = useSession((s) => s.userId);
 
   const { serverNow } = useServerClock();
-  const { data: session, isLoading } = useLiveSession(id);
-  const { auctions, active, upcoming } = useLiveAuctions(id);
+  const roomQuery = useLiveSession(id, myUserId, focused);
+  const { data: session, isLoading } = roomQuery;
+  const { auctions, active, upcoming, error: auctionsError, isLoading: auctionsLoading, isFetching: auctionsFetching, refetch: retryAuctions } = useLiveAuctions(id);
   const secondsLeft = useCountdown(active?.ends_at ?? null, serverNow);
   useSettleOnZero(active, secondsLeft);
 
@@ -242,7 +222,8 @@ export default function LiveAuctionRoom() {
   const { data: vouches = [] } = useVouches(session?.host_id, myUserId);
   // Kurzfassung für den Kopf; die lange bleibt dem Sheet vorbehalten.
   const vouchShort = vouchSummaryShort(vouches);
-  const comments = useLiveChat(id);
+  const chatQuery = useLiveChat(id, myUserId, focused && session?.status === 'active');
+  const comments = chatQuery.data ?? [];
   const placeBid = usePlaceBid();
   const follow = useFollow(session?.host_id, myUserId);
   const { startAuction } = useStudioActions(id);
@@ -251,6 +232,7 @@ export default function LiveAuctionRoom() {
   const isHost = Boolean(myUserId && session?.host_id === myUserId);
   const connected = useLivePlayer((s) => s.connected);
   const stageReady = useStageReady();
+  const connectionState = useStageConnectionState();
   const access = useLiveAccess(
     session?.room_name,
     isHost,
@@ -290,7 +272,9 @@ export default function LiveAuctionRoom() {
   );
   const [duration, setDuration] = useState(30);
   const [startBusy, setStartBusy] = useState(false);
-  const [draft, setDraft] = useState('');
+  const sendComment = useCallback((text: string) => id && myUserId ? sendLiveComment(id, myUserId, text) : Promise.resolve(false), [id, myUserId]);
+  const chatDraft = useLiveChatDraft(sendComment);
+  const { draft, setDraft } = chatDraft;
   const [chatHidden, setChatHidden] = useState(false);
   const [maxOpen, setMaxOpen] = useState(false);
 
@@ -331,23 +315,6 @@ export default function LiveAuctionRoom() {
   const [sellerOpen, setSellerOpen] = useState(false);
   const [viewersOpen, setViewersOpen] = useState(false);
   const [earningsOpen, setEarningsOpen] = useState(false);
-
-  // Beim Schreiben gehört die verfügbare Höhe dem Chat. Der Artikelbereich
-  // kehrt nach dem Schließen der Tastatur zurück; Gebotslogik und Live-Verbindung
-  // laufen im Raum weiter. iOS meldet den Beginn, Android das Ende der Animation.
-  const [keyboardUp, setKeyboardUp] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => {
-      setKeyboardUp(true);
-    });
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => {
-      setKeyboardUp(false);
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   // Wer ist der Mensch da vorne? Die Zahlen holt das Sheet erst, wenn es
   // gebraucht wird — sonst zahlte jeder Zuschauer drei Abfragen für einen
@@ -394,7 +361,7 @@ export default function LiveAuctionRoom() {
 
   const submitMaxBid = useCallback(
     async (maxCents: number) => {
-      if (!active) return;
+      if (!active || auctionsError || roomQuery.isError) return;
       setBusy(true);
       const outcome = await setMaxBid(active.id, maxCents);
       setBusy(false);
@@ -410,7 +377,7 @@ export default function LiveAuctionRoom() {
         setNotice(bidErrorText(outcome.reason));
       }
     },
-    [active, setMaxBid],
+    [active, setMaxBid, auctionsError, roomQuery.isError],
   );
 
   // Zuschauer zählen — über dieselbe RPC wie Serlo, die doppelte Eintritte
@@ -423,7 +390,7 @@ export default function LiveAuctionRoom() {
   // raus, und zwar völlig lautlos. Genau so zählte die Zuschauerzahl bis zum
   // 14.08. nie, obwohl der Code richtig aussah.
   useEffect(() => {
-    if (!id || !myUserId || isHost) return;
+    if (!id || !myUserId || !session || session.status !== 'active' || isHost) return;
     void supabase.rpc('join_live_session', { p_session_id: id }).then(({ error }) => {
       if (error && __DEV__) console.warn('[Berkat] Eintritt nicht gezählt:', error.message);
     });
@@ -435,66 +402,16 @@ export default function LiveAuctionRoom() {
         });
       }
     };
-  }, [id, myUserId, isHost]);
+  }, [id, myUserId, isHost, session?.id, session?.status]);
 
-  // ── Chat nach links wegwischen ────────────────────────────────────────────
-  // Damit man das Produkt in Ruhe sehen kann. Der Zug wird erst beansprucht,
-  // wenn er deutlich waagerecht ist — sonst würde jedes Antippen des
-  // Eingabefelds als Wisch gelten.
-  const chatX = useRef(new Animated.Value(0)).current;
-  const chatHistoryRef = useRef<ScrollView>(null);
-  const slideChat = useCallback(
-    (hidden: boolean) => {
-      setChatHidden(hidden);
-      Animated.spring(chatX, {
-        toValue: hidden ? -400 : 0,
-        useNativeDriver: true,
-        friction: 9,
-        tension: 70,
-      }).start();
-    },
-    [chatX],
-  );
-
-  const chatPan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_event, gesture) =>
-        gesture.dx < -14 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
-      onPanResponderMove: (_event, gesture) => {
-        if (gesture.dx < 0) chatX.setValue(gesture.dx);
-      },
-      onPanResponderRelease: (_event, gesture) => {
-        if (gesture.dx < -70) {
-          setChatHidden(true);
-          Animated.spring(chatX, {
-            toValue: -400,
-            useNativeDriver: true,
-            friction: 9,
-            tension: 70,
-          }).start();
-        } else {
-          Animated.spring(chatX, { toValue: 0, useNativeDriver: true, friction: 9 }).start();
-        }
-      },
-    }),
-  ).current;
-
-  // Dieser Bildschirm IST die große Ansicht. Wer hier ankommt, hat die Show
-  // nicht mehr klein — egal ob er über das kleine Fenster kam (das räumt selbst
-  // auf) oder über eine Karte auf der Startseite (die tut es nicht). Ohne das
-  // lief dieselbe Show doppelt: großes Bild und kleines Fenster gleichzeitig.
-  //
-  // Bewusst nur beim Aufbauen und NICHT in `open()`: Das Verkleinern setzt die
-  // Marke und geht zurück, und solange der Bildschirm noch abgebaut wird, könnte
-  // ein Datenabruf `open()` erneut auslösen und das kleine Fenster gleich wieder
-  // wegräumen.
+  // Restore only this confirmed, visible room. A failing deep link must not change another mini-player.
   useEffect(() => {
-    useLivePlayer.getState().restore();
-  }, []);
+    if (focused && session?.id === id && session?.status === 'active') useLivePlayer.getState().restore();
+  }, [focused, id, session?.id, session?.status]);
 
   // Show im Player anmelden, damit sie das Verkleinern überlebt.
   useEffect(() => {
-    if (!session) return;
+    if (!session || session.status !== 'active') return;
     useLivePlayer.getState().open({
       id: session.id,
       title: session.title,
@@ -506,21 +423,23 @@ export default function LiveAuctionRoom() {
   }, [session, myUserId]);
 
   const minimize = useCallback(() => {
+    Keyboard.dismiss();
     useLivePlayer.getState().minimize();
-    router.back();
-  }, [router]);
+    goBack('/(tabs)/');
+  }, []);
 
   /** Endgültig raus — im Gegensatz zum Verkleinern bleibt nichts zurück. */
   const leaveRoom = useCallback(() => {
-    useLivePlayer.getState().close();
-    router.back();
-  }, [router]);
+    Keyboard.dismiss();
+    if (useLivePlayer.getState().session?.id === id) useLivePlayer.getState().close();
+    goBack('/(tabs)/');
+  }, [id]);
 
   // Endet die Show, während man zusieht, muss auch das kleine Fenster weg.
   // Sonst schwebt weiter ein „live"-Fenster über den Reitern, hinter dem nichts
   // mehr sendet — genau das war am 14.08. zu sehen.
   useEffect(() => {
-    if (session && session.status !== 'active') {
+    if (session && session.status !== 'active' && useLivePlayer.getState().session?.id === session.id) {
       useLivePlayer.getState().close();
     }
   }, [session]);
@@ -532,6 +451,7 @@ export default function LiveAuctionRoom() {
 
   const startItem = useCallback(
     async (auctionId: string) => {
+      if (auctionsError || roomQuery.isError || startBusy) return;
       setStartBusy(true);
       try {
         await startAuction(auctionId, duration);
@@ -543,10 +463,10 @@ export default function LiveAuctionRoom() {
         setStartBusy(false);
       }
     },
-    [startAuction, duration],
+    [startAuction, duration, auctionsError, roomQuery.isError, startBusy],
   );
 
-  const chatUserIds = useMemo(() => comments.slice(-5).map((c) => c.user_id), [comments]);
+  const chatUserIds = useMemo(() => comments.map((c) => c.user_id), [comments]);
   const profiles = useProfiles([
     session?.host_id,
     active?.current_bidder_id,
@@ -556,7 +476,7 @@ export default function LiveAuctionRoom() {
 
   const onBid = useCallback(
     async (amountCents: number) => {
-      if (!active) return;
+      if (!active || auctionsError || roomQuery.isError) return;
       if (!myUserId) {
         router.push('/login');
         return;
@@ -579,7 +499,7 @@ export default function LiveAuctionRoom() {
       }
       setNotice(outcome.extended ? 'Verlängert — jemand hat kurz vor Schluss geboten' : null);
     },
-    [active, myUserId, passAgeGate, placeBid, router],
+    [active, myUserId, passAgeGate, placeBid, router, auctionsError, roomQuery.isError],
   );
 
   // Ein leichter Stups, nicht die Erfolgs-Haptik: Applaus ist kein Höhepunkt,
@@ -601,20 +521,12 @@ export default function LiveAuctionRoom() {
     [myUserId, router, hearts],
   );
 
-  const sendChat = useCallback(async () => {
-    if (!id || !draft.trim()) return;
-    if (!myUserId) {
-      router.push('/login');
-      return;
-    }
-    const text = draft;
-    setDraft('');
-    const ok = await sendLiveComment(id, myUserId, text);
-    if (!ok) {
-      setDraft(text);
-      setNotice('Die Nachricht kam nicht durch. Versuch es noch einmal.');
-    }
-  }, [id, draft, myUserId, router]);
+  const chatSendDisabled = chatDraft.busy || !draft.trim() || chatQuery.isError || chatQuery.isPending || roomQuery.isError || session?.status !== 'active';
+  const sendChat = useCallback(() => {
+    if (chatSendDisabled) return;
+    if (!myUserId) { router.push('/login'); return; }
+    void chatDraft.submit();
+  }, [chatSendDisabled, myUserId, router, chatDraft.submit]);
 
   // ── Was man mit dem Verkäufer tun kann ────────────────────────────────────
   // Alle sechs Wege laufen über das Sheet; hier steht nur, wohin sie führen.
@@ -632,6 +544,7 @@ export default function LiveAuctionRoom() {
     if (!username) return;
     setSellerOpen(false);
     setViewersOpen(false);
+    setChatHidden(false);
     setDraft((current) => {
       const tag = `@${username} `;
       if (current.includes(tag.trim())) return current;
@@ -696,12 +609,14 @@ export default function LiveAuctionRoom() {
     [report, session?.host_id, requireLogin],
   );
 
-  if (isLoading) {
-    return (
-      <View style={[styles.screen, styles.center]}>
-        <ActivityIndicator color={stage.gold} />
-      </View>
-    );
+  if (isLoading || (roomQuery.isError && !session)) {
+    return <ScrollView style={styles.screen} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space.lg, paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.lg }}>
+      <StatusBar style="light" />
+      <StageFeedback title={isLoading ? 'Show wird geladen' : 'Show gerade nicht erreichbar'}
+        body={isLoading ? 'Einen Moment …' : 'Bitte versuche es erneut. Deine Verbindung kann gerade unterbrochen sein.'} loading={isLoading}
+        action={isLoading ? undefined : { label: 'Erneut laden', onPress: () => void roomQuery.refetch({ cancelRefetch: false }), busy: roomQuery.isFetching }}
+        secondary={{ label: 'Zurück', onPress: leaveRoom }} />
+    </ScrollView>;
   }
 
   // Die Show ist zu Ende — als eigener Zustand, nicht als leerer Raum.
@@ -717,7 +632,8 @@ export default function LiveAuctionRoom() {
     // ohne Ausrufezeichen nicht zu haben.
     const wonCart = cart && cart.itemCount > 0 ? cart : null;
     return (
-      <View style={[styles.screen, styles.center, { padding: space.xl }]}>
+      <ScrollView key={fontScale} style={styles.screen} contentContainerStyle={[styles.center, { flexGrow: 1, padding: space.xl, paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.xl }]}>
+        <StatusBar style="light" />
         <Text style={styles.emptyTitle}>Die Show ist zu Ende</Text>
         <Text style={styles.emptyBody}>
           {wonCart
@@ -754,29 +670,41 @@ export default function LiveAuctionRoom() {
           </>
         ) : null}
 
-        <PressFeedback style={styles.backButton} onPress={leaveRoom}>
+        <PressFeedback style={styles.backButton} onPress={leaveRoom} accessibilityRole="button">
           {/* „Später" statt „Zurück", solange etwas offen ist: Der Korb bleibt
               24 Stunden stehen, und wer jetzt nicht zahlt, hat nichts verloren.
               „Zurück" würde daneben wie Abbrechen aussehen. */}
           <Text style={styles.backButtonText}>{wonCart ? 'Später' : 'Zurück'}</Text>
         </PressFeedback>
-      </View>
+      </ScrollView>
     );
   }
 
   if (!session) {
-    return (
-      <View style={[styles.screen, styles.center, { padding: space.xl }]}>
-        <Text style={styles.emptyTitle}>Diese Show gibt es nicht mehr</Text>
-        <Text style={styles.emptyBody}>
-          Vielleicht ist sie zu Ende — schau, wer gerade sonst live ist.
-        </Text>
-        <PressFeedback style={styles.backButton} onPress={leaveRoom}>
-          <Text style={styles.backButtonText}>Zurück</Text>
-        </PressFeedback>
-      </View>
-    );
+    return <ScrollView style={styles.screen} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space.lg, paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.lg }}>
+      <StatusBar style="light" />
+      <StageFeedback title="Diese Show ist nicht verfügbar" body="Kehre zur Übersicht zurück und entdecke weitere Shows."
+        secondary={{ label: 'Zurück', onPress: leaveRoom }} />
+    </ScrollView>;
   }
+
+  const roomNotice = roomQuery.isError ? <StageFeedback title="Show konnte nicht aktualisiert werden" body="Du siehst den zuletzt geladenen Stand."
+    action={{ label: 'Erneut laden', onPress: () => void roomQuery.refetch({ cancelRefetch: false }), busy: roomQuery.isFetching }} />
+    : access.error ? <StageFeedback title="Video gerade nicht erreichbar" body={liveAccessErrorText(toLiveAccessError(access.error))}
+      action={{ label: 'Erneut verbinden', onPress: () => void access.refetch({ cancelRefetch: false }), busy: access.isFetching }} />
+    : !Stage ? <StageFeedback title="Video gerade nicht verfügbar" body="Schließe die App und öffne sie erneut."
+      secondary={{ label: 'Show verlassen', onPress: leaveRoom }} />
+    : connected && access.isPending && session.room_name ? <StageFeedback title="Video wird verbunden" loading />
+    : stageReady && (connectionState === 'connecting' || connectionState === 'reconnecting' || connectionState === 'signalReconnecting') ? <StageFeedback
+      title={connectionState === 'connecting' ? 'Video wird verbunden' : 'Verbindung wird wiederhergestellt'} loading />
+    : stageReady && connectionState === 'disconnected' ? <StageFeedback title="Videoverbindung unterbrochen" body="Verlasse die Show und öffne sie erneut."
+      secondary={{ label: 'Show verlassen', onPress: leaveRoom }} />
+    : chatQuery.isPending ? <StageFeedback title="Chat wird geladen" loading />
+    : chatQuery.isError ? <StageFeedback title="Chat gerade nicht erreichbar" body="Dein Text bleibt erhalten. Lade den Chat erneut."
+      action={{ label: 'Chat laden', onPress: () => void chatQuery.refetch({ cancelRefetch: false }), busy: chatQuery.isFetching }} />
+    : chatDraft.error ? <StageFeedback title="Kommentar nicht bestätigt" body={chatDraft.error}
+      action={{ label: 'Verstanden', onPress: chatDraft.clearError }} />
+    : notice ? <StageFeedback title={notice} action={{ label: 'Schließen', onPress: () => setNotice(null) }} /> : null;
 
   const host = profiles[session.host_id];
   const leaderId = active?.status === 'sold' ? active.winner_id : active?.current_bidder_id;
@@ -805,7 +733,7 @@ export default function LiveAuctionRoom() {
         style={FILL}
         onStartShouldSetResponder={() => true}
         onResponderRelease={(event) =>
-          sendHeart(event.nativeEvent.pageX, event.nativeEvent.pageY)
+          Keyboard.isVisible() ? Keyboard.dismiss() : sendHeart(event.nativeEvent.pageX, event.nativeEvent.pageY)
         }
       />
 
@@ -825,15 +753,16 @@ export default function LiveAuctionRoom() {
           Kopfzeile, Mitte und die Spalte selbst sollen keine Berührung
           schlucken, die nicht auf einem ihrer Knöpfe landet. Sonst wäre der
           größte Teil des Bildes tot. */}
-      <KeyboardAvoidingView
-        style={[styles.column, { paddingTop: insets.top + space.xs }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        pointerEvents="box-none"
-      >
+      <LiveRoomLayout
+        onHeaderLayout={event => setHeaderHeight(event.nativeEvent.layout.height)}
+        header={<>
         <LiveSellerHeader name={host?.username} avatarUrl={host?.avatarUrl} vouch={vouchShort} soldCount={soldCount}
           viewerCount={session.viewer_count ?? 0} isHost={isHost} follow={follow}
-          onSeller={() => setSellerOpen(true)} onViewers={() => setViewersOpen(true)} onMinimize={minimize}
-          onLayout={event => setHeaderHeight(event.nativeEvent.layout.height)} />
+          onSeller={() => { Keyboard.dismiss(); setSellerOpen(true); }} onViewers={() => { Keyboard.dismiss(); setViewersOpen(true); }} onMinimize={minimize} />
+          {roomNotice ? <View style={{ padding: space.md }}>{roomNotice}</View> : null}
+        </>}
+        banner={<>
+
 
         {session.women_only ? (
           <View style={styles.wozBadge}>
@@ -856,105 +785,11 @@ export default function LiveAuctionRoom() {
           </View>
         ) : null}
 
-        <View style={styles.middle} pointerEvents="box-none">
-          <Animated.View
-            style={[styles.chatColumn, { transform: [{ translateX: chatX }] }]}
-            {...chatPan.panHandlers}
-          >
-            <ScrollView
-              ref={chatHistoryRef}
-              onContentSizeChange={() => chatHistoryRef.current?.scrollToEnd({ animated: false })}
-              style={styles.chatHistory}
-              contentContainerStyle={{ gap: 4 }}
-              keyboardShouldPersistTaps="handled"
-              indicatorStyle="white"
-            >
-            {notice ? (
-              <PressFeedback style={styles.notice} onPress={() => setNotice(null)}>
-                <Text style={styles.noticeText}>{notice}</Text>
-              </PressFeedback>
-            ) : access.error ? (
-              <View style={styles.notice}>
-                <Text style={styles.noticeText}>
-                  {liveAccessErrorText(toLiveAccessError(access.error))}
-                </Text>
-              </View>
-            ) : !Stage ? (
-              <View style={styles.notice}>
-                <Text style={styles.noticeText}>
-                  Video-Modul nicht geladen — läuft die App aus Expo Go statt aus dem Dev-Build?
-                  {liveKitFailure ? `\n\nGrund: ${liveKitFailure}` : ''}
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Eigene Fläche NUR um die Kommentare. Die Spalte darüber bleibt
-                unangetastet, weil ein Erkenner, der einen Tipp beansprucht,
-                bevor das Eingabefeld darunter ihn bekommt, ihm den Fokus
-                nimmt — dann ginge die Tastatur nicht mehr auf. So bleibt auch
-                der Kommentar-Stapel tippbar, und genau dort liegt beim
-                Zuschauen der Daumen.
-                Wischt jemand stattdessen, übernimmt der Wisch-Erkenner der
-                Spalte die Berührung und das Loslassen fällt hier aus. */}
-            <View
-              style={styles.chatTapArea}
-              onStartShouldSetResponder={() => true}
-              onResponderRelease={(event) =>
-                sendHeart(event.nativeEvent.pageX, event.nativeEvent.pageY)
-              }
-            >
-              {/* Gesperrte werden hier ausgeblendet, nicht auf dem Server:
-                  Eine Sperre ist die Sicht EINES Zuschauers, die anderen sollen
-                  den Verlauf unverändert sehen. */}
-              {comments
-                .filter((c) => !blocked?.has(c.user_id))
-                .slice(-5)
-                .map((comment) => {
-                const author = profiles[comment.user_id];
-                return (
-                  <View key={comment.id} style={styles.chatLine}>
-                    <Avatar uri={author?.avatarUrl} name={author?.username} size={22} />
-                    <View style={styles.chatBubble}>
-                      <Text style={styles.chatName}>{author?.username ?? '…'}</Text>
-                      <Text numberOfLines={2} style={styles.chatText}>
-                        {comment.text}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            </ScrollView>
-            <View style={styles.chatInputRow}>
-              <TextInput
-                ref={chatInputRef}
-                value={draft}
-                onChangeText={setDraft}
-                placeholder="Schreibe etwas …"
-                placeholderTextColor={stage.textMuted}
-                style={styles.chatInput}
-                returnKeyType="send"
-                onSubmitEditing={() => void sendChat()}
-                maxLength={300}
-              />
-            </View>
-          </Animated.View>
-
-          {/* Holt den weggewischten Chat zurück. */}
-          {chatHidden ? (
-            <PressFeedback
-              onPress={() => slideChat(false)}
-              style={styles.chatHandle}
-              accessibilityRole="button"
-              accessibilityLabel="Kommentare einblenden"
-            >
-              <MessageSquare size={15} color={stage.text} />
-              <ChevronRight size={13} color={stage.textMuted} />
-            </PressFeedback>
-          ) : null}
-
-          <ScrollView style={styles.railScroll} contentContainerStyle={styles.rail} indicatorStyle="white" keyboardShouldPersistTaps="handled">
+        </>}
+        chat={<LiveChatPanel comments={comments.filter(comment => !blocked?.has(comment.user_id))} profiles={profiles}
+          hidden={chatHidden} onHiddenChange={setChatHidden} inputRef={chatInputRef} draft={draft} onChangeText={setDraft}
+          onSend={sendChat} sending={chatDraft.busy} sendDisabled={chatSendDisabled} />}
+        rail={<>
             <PressFeedback
               style={styles.railItem}
               // Ohne Klammer bekäme `sendHeart` das Berührungs-Ereignis als
@@ -972,7 +807,7 @@ export default function LiveAuctionRoom() {
             </PressFeedback>
             <PressFeedback
               style={styles.railItem}
-              onPress={() => setItemsOpen(true)}
+              onPress={() => { Keyboard.dismiss(); setItemsOpen(true); }}
               accessibilityRole="button"
             >
               <View>
@@ -998,7 +833,7 @@ export default function LiveAuctionRoom() {
             {isHost ? (
               <PressFeedback
                 style={styles.railItem}
-                onPress={() => setEarningsOpen(true)}
+                onPress={() => { Keyboard.dismiss(); setEarningsOpen(true); }}
                 accessibilityRole="button"
                 accessibilityLabel={
                   earnings && earnings.grossCents > 0
@@ -1014,21 +849,16 @@ export default function LiveAuctionRoom() {
                 </Text>
               </PressFeedback>
             ) : null}
-          </ScrollView>
-
-          {/* Nach der Leiste, damit die Herzen davor fliegen und nicht dahinter.
-              Berührungen lässt die Ebene durch, die Knöpfe bleiben bedienbar. */}
-          <FloatingHearts reactions={hearts.reactions} />
-        </View>
-
-        {!keyboardUp ? <ScrollView
-          style={{ flexGrow: 0, maxHeight: (windowHeight - insets.top - insets.bottom) * 0.7 }}
-          contentContainerStyle={{ paddingTop: space.sm, paddingBottom: insets.bottom || space.xs }}
-          keyboardShouldPersistTaps="handled"
-          indicatorStyle="white"
-        >
+          <PressFeedback style={styles.railItem} onPress={() => setChatHidden(hidden => !hidden)} accessibilityRole="button"
+            accessibilityLabel={chatHidden ? 'Kommentare einblenden' : 'Kommentare ausblenden'} accessibilityState={{ selected: !chatHidden }}>
+            <RailIcon icon={MessageSquare} color={stage.text} /><Text style={styles.railLabel}>Chat</Text>
+          </PressFeedback>
+        </>}
+        effects={<FloatingHearts reactions={hearts.reactions} />}
+        auction={detailsMaxHeight => <>
+          {auctionsLoading ? <StageFeedback title="Artikel werden geladen" loading /> : auctionsError ? <StageFeedback title="Artikel gerade nicht erreichbar" body="Lade die Auktion erneut, bevor du bietest." action={{ label: 'Erneut laden', onPress: () => void retryAuctions({ cancelRefetch: false }), busy: auctionsFetching }} /> : <>
           <AuctionPanel
-            detailsMaxHeight={fontScale > 1.3 ? undefined : Math.max(120, (windowHeight - insets.top - insets.bottom) * 0.52 - 240)}
+            detailsMaxHeight={detailsMaxHeight}
             auction={active}
             upcoming={upcoming}
             secondsLeft={secondsLeft}
@@ -1036,7 +866,7 @@ export default function LiveAuctionRoom() {
             leader={leader}
             shippingFromCents={shippingFrom}
             sellerTakesPayment={hostTakesPayment}
-            busy={busy}
+            busy={busy || Boolean(auctionsError) || roomQuery.isError}
             cartLabel={
               cart && cart.itemCount > 0
                 ? `${cart.itemCount} Artikel · 1 Paket · ${formatCartWindow(cart.closes_at, serverNow)}`
@@ -1049,11 +879,11 @@ export default function LiveAuctionRoom() {
                 : undefined
             }
             startBusy={startBusy}
-            onMaxBid={!isHost && active ? () => setMaxOpen(true) : undefined}
+            onMaxBid={!isHost && active && !auctionsError && !roomQuery.isError ? () => setMaxOpen(true) : undefined}
             myMaxCents={myMax ?? null}
           />
-        </ScrollView> : null}
-      </KeyboardAvoidingView>
+          </>}        </>}
+      />
 
       {/* Über allem, weil der Punkt in Bildschirmkoordinaten kommt und sonst
           an der Innenkante der Spalte hängen bliebe. */}
@@ -1075,7 +905,7 @@ export default function LiveAuctionRoom() {
         duration={duration}
         onDuration={setDuration}
         onStart={(auctionId) => void startItem(auctionId)}
-        blocked={Boolean(active) || startBusy}
+        blocked={Boolean(active) || startBusy || Boolean(auctionsError) || roomQuery.isError}
         onCreateGiveaway={
           isHost ? (title) => void runGiveaway(() => createGiveaway(title)) : undefined
         }
@@ -1184,7 +1014,6 @@ export default function LiveAuctionRoom() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stage.ink },
   center: { alignItems: 'center', justifyContent: 'center' },
-  column: { flex: 1 },
   topScrim: { position: 'absolute', left: 0, right: 0, top: 0 },
   bottomScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 340 },
 
@@ -1203,66 +1032,6 @@ const styles = StyleSheet.create({
   wozText: { fontSize: 10, fontWeight: '700', color: stage.successInk },
   giveawayWrap: { alignSelf: 'flex-end', marginTop: space.sm, marginRight: space.md },
 
-  middle: { flex: 1, minHeight: 0, flexDirection: 'row', alignItems: 'flex-end' },
-  chatColumn: { flex: 1, maxHeight: '100%', paddingLeft: space.md, paddingBottom: space.xs, gap: 4 },
-  // Trägt den Abstand der Spalte weiter: Durch die Klammer sind die Kommentare
-  // ein Kind statt fünf, und der `gap` der Spalte greift zwischen ihnen nicht mehr.
-  chatHistory: { flexGrow: 0, flexShrink: 1 },
-  chatTapArea: { gap: 4 },
-  chatLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, maxWidth: '94%' },
-  chatBubble: {
-    // ⚠️ `flexShrink: 1`, NICHT `flex: 1`.
-    //
-    // `flex: 1` streckte die Blase über die ganze Spalte, egal wie kurz der
-    // Kommentar war — fünf „Nnnn" untereinander ergaben eine Wand aus grauen
-    // Kästen über dem Video. Am 21.08.2026 am Gerät gesehen.
-    //
-    // `flexShrink: 1` bemisst sich am Inhalt und schrumpft erst, wenn der Text
-    // nicht mehr passt; dann bricht er um. Die Obergrenze liegt ohnehin bei
-    // `chatLine.maxWidth: '94%'`. Ohne JEDE Flex-Angabe würde die Blase
-    // stattdessen überlaufen statt umzubrechen.
-    //
-    // Damit kommt der Live-Raum dem Whatnot-Look nahe (Kommentare wirken auf
-    // dem Video statt in Kästen), OHNE die Kastenfläche aufzugeben — die
-    // garantiert den Kontrast über beliebigem Bildinhalt (Abschnitt 8:
-    // „lesbar auf dem einen Bild, unsichtbar auf dem nächsten").
-    flexShrink: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: radius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  chatName: { fontSize: 11, color: stage.textMuted },
-  chatText: { fontSize: 13, fontWeight: '600', color: stage.text },
-  chatInputRow: { marginTop: 2, marginRight: space.sm },
-  chatInput: {
-    minHeight: 44,
-    paddingVertical: 10,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: stage.lineStrong,
-    backgroundColor: stage.control,
-    paddingHorizontal: space.md,
-    fontSize: 13,
-    color: stage.text,
-  },
-  chatHandle: {
-    position: 'absolute',
-    left: 0,
-    bottom: space.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderTopRightRadius: radius.pill,
-    borderBottomRightRadius: radius.pill,
-    paddingLeft: 9,
-    paddingRight: 6,
-    paddingVertical: 7,
-  },
-
-  railScroll: { flexGrow: 0, flexShrink: 0, maxHeight: '100%' },
-  rail: { paddingRight: space.sm, paddingBottom: space.md, gap: 14 },
   railItem: { minWidth: 44, minHeight: 44, alignItems: 'center', gap: 2 },
   railIcon: {
     width: RAIL_ICON,
@@ -1307,18 +1076,6 @@ const styles = StyleSheet.create({
   },
   railBadgeText: { fontSize: 10, fontWeight: '700', color: stage.goldInk },
 
-  notice: {
-    backgroundColor: stage.surface,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: stage.line,
-    paddingHorizontal: space.md,
-    paddingVertical: 7,
-    marginRight: space.md,
-    marginBottom: 2,
-  },
-  noticeText: { fontSize: 12, color: stage.text },
-
   emptyTitle: { fontSize: 17, fontWeight: '700', color: stage.text },
   emptyBody: {
     fontSize: 14,
@@ -1351,6 +1108,7 @@ const styles = StyleSheet.create({
 
   backButton: {
     marginTop: space.lg,
+    minHeight: 44,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: stage.lineStrong,

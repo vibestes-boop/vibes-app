@@ -200,7 +200,7 @@ export function useLiveAuctions(sessionId: string | undefined) {
   const active = auctions.find((a) => a.status === 'running') ?? null;
   const upcoming = auctions.filter((a) => a.status === 'scheduled');
 
-  return { auctions, active, upcoming, isLoading: query.isLoading, error: query.error };
+  return { auctions, active, upcoming, isLoading: query.isLoading, isFetching: query.isFetching, error: query.error, refetch: query.refetch };
 }
 
 // ─── Live-Vorschau für die Startseite ────────────────────────────────────────

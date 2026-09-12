@@ -8,6 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import { useSession } from './session';
 
 export type LiveAccess = { token: string; url: string };
 
@@ -20,7 +21,7 @@ export function liveAccessErrorText(reason: LiveAccessError): string {
     case 'followers_only':
       return 'Diese Show ist nur für Follower — folge zuerst, dann geht es los.';
     default:
-      return 'Das Video lässt sich gerade nicht öffnen. Der Ton der Auktion läuft weiter.';
+      return 'Das Video lässt sich gerade nicht öffnen. Bitte versuche es erneut.';
   }
 }
 
@@ -29,8 +30,9 @@ export function useLiveAccess(
   isHost: boolean,
   enabled: boolean,
 ) {
+  const userId = useSession(s => s.userId);
   return useQuery({
-    queryKey: ['berkat', 'live-access', roomName, isHost],
+    queryKey: ['berkat', 'live-access', roomName, isHost, userId],
     enabled: enabled && Boolean(roomName),
     // Tokens laufen serverseitig ab; eine Stunde ist deutlich kürzer als die
     // Gültigkeit und spart trotzdem jeden Reconnect einen Funktionsaufruf.
@@ -44,8 +46,12 @@ export function useLiveAccess(
       if (error) {
         // Die Function antwortet bei 403 mit einem Grund im Body — den holen
         // wir uns, statt „Fehler" anzuzeigen.
-        const body = (error as { context?: { body?: unknown } }).context?.body;
-        const text = typeof body === 'string' ? body : '';
+        const context = (error as { context?: { clone?: () => { json: () => Promise<unknown> }; body?: unknown } }).context;
+        let body: unknown = context?.body;
+        if (typeof context?.clone === 'function') {
+          try { body = await context.clone().json(); } catch { body = null; }
+        }
+        const text = typeof body === 'string' ? body : JSON.stringify(body ?? {});
         if (text.includes('women_only')) throw new Error('women_only');
         if (text.includes('followers_only')) throw new Error('followers_only');
         throw new Error('unavailable');

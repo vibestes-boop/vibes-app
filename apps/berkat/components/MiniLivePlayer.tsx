@@ -17,6 +17,7 @@ import { X } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
 import { useLivePlayer } from '../lib/livePlayer';
+import { useSession } from '../lib/session';
 import { liveKitAvailable } from '../lib/livekit';
 import { PressFeedback } from './PressFeedback';
 import { stage, radius, space } from '../theme/tokens';
@@ -45,6 +46,7 @@ export function MiniLivePlayer() {
   const restore = useLivePlayer((s) => s.restore);
   const close = useLivePlayer((s) => s.close);
   const ready = useStageReady();
+  const userId = useSession(s => s.userId);
 
   // Merkt, wenn die Show endet, während man woanders ist.
   //
@@ -54,22 +56,24 @@ export function MiniLivePlayer() {
   // nur solange das Fenster wirklich offen ist: eine Abfrage, die sonst nie
   // läuft.
   const { data: stillLive } = useQuery({
-    queryKey: ['berkat', 'mini-alive', session?.id],
+    queryKey: ['berkat', 'mini-alive', session?.id, userId],
     enabled: Boolean(session && minimized),
-    refetchInterval: 30_000,
-    queryFn: async (): Promise<boolean> => {
-      const { data } = await supabase
+    refetchInterval: minimized ? 30_000 : false,
+    retry: 1,
+    queryFn: async ({ signal }): Promise<boolean> => {
+      const { data, error } = await supabase
         .from('live_sessions')
         .select('status')
         .eq('id', session!.id)
-        .maybeSingle();
+        .abortSignal(signal).retry(false).maybeSingle();
+      if (error) throw error;
       return (data as { status?: string } | null)?.status === 'active';
     },
   });
 
   useEffect(() => {
-    if (stillLive === false) useLivePlayer.getState().close();
-  }, [stillLive]);
+    if (stillLive === false && useLivePlayer.getState().session?.id === session?.id) useLivePlayer.getState().close();
+  }, [stillLive, session?.id]);
 
   if (!session || !minimized) return null;
 

@@ -1,11 +1,8 @@
-// Der Block am unteren Rand des Live-Raums.
-//
-// Aufbau von oben nach unten, in der Reihenfolge der Fragen, die ein Zuschauer
-// stellt: Was kommt noch? Wer führt gerade? Was ist das und was kostet es?
-// Und dann erst: der Knopf.
+// Current article first; price and bidding stay below the scrollable details.
+import { useEffect, useRef } from 'react';
 
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Package, Play } from 'lucide-react-native';
 import { stage, radius, space, auction as auctionConfig } from '../theme/tokens';
 import { formatCountdown, formatEuro, type Auction, type MiniProfile } from '../lib/useAuction';
@@ -67,53 +64,17 @@ export function AuctionPanel({
   shippingFromCents,
   sellerTakesPayment,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const details = useRef<ScrollView>(null);
+  useEffect(() => { details.current?.scrollTo({ y: 0, animated: false }); }, [auction?.id]);
   const isSold = auction?.status === 'sold';
   const urgent = secondsLeft <= auctionConfig.urgentSeconds;
 
   return (
     <View>
-      <ScrollView scrollEnabled={detailsMaxHeight !== undefined} style={{ flexGrow: 0, maxHeight: detailsMaxHeight }} keyboardShouldPersistTaps="handled" indicatorStyle="white">
-      {cartLabel ? (
-        <View style={styles.cartBar}>
-          <Package size={14} color={stage.gold} />
-          <Text style={styles.cartText}>{cartLabel}</Text>
-        </View>
-      ) : null}
-
-      {upcoming.length > 0 ? (
-        <View style={styles.nextRow}>
-          <Text style={styles.nextLabel}>Als Nächstes</Text>
-          {upcoming.slice(0, 4).map((item) => (
-            <View key={item.id} style={styles.nextTile}>
-              {item.image_url ? (
-                <Image source={{ uri: item.image_url }} style={StyleSheet.absoluteFill} />
-              ) : (
-                <Text numberOfLines={1} style={styles.nextTileText}>
-                  {item.title.slice(0, 2)}
-                </Text>
-              )}
-            </View>
-          ))}
-          {upcoming.length > 4 ? (
-            <Text style={styles.nextMore}>+{upcoming.length - 4}</Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {auction && leader ? (
-        <View style={styles.leaderRow}>
-          <Avatar uri={leader.avatarUrl} name={leader.username} size={22} ring />
-          <Text numberOfLines={1} style={styles.leaderText}>
-            <Text style={styles.leaderName}>{leader.username}</Text>
-            <Text style={styles.leaderVerb}>
-              {isSold ? ' hat den Zuschlag!' : ' hat das Höchstgebot!'}
-            </Text>
-          </Text>
-        </View>
-      ) : null}
-
+      <ScrollView ref={details} scrollEnabled={detailsMaxHeight !== undefined} style={{ flexGrow: 0, maxHeight: detailsMaxHeight }} keyboardShouldPersistTaps="handled" indicatorStyle="white">
       {auction ? (
-        <View style={styles.productCard}>
+        <View key={`productCard-${fontScale}`} style={styles.productCard}>
           <View style={styles.product}>
             <View style={styles.thumb}>
               {auction.image_url ? (
@@ -136,7 +97,7 @@ export function AuctionPanel({
 
         </View>
       ) : (
-        <View style={styles.product}>
+        <View key={`empty-${fontScale}`} style={styles.product}>
           <View style={styles.productText}>
             <Text style={styles.title}>
               {onStartNext ? 'Bereit für den nächsten' : 'Gleich geht es weiter'}
@@ -152,9 +113,49 @@ export function AuctionPanel({
         </View>
       )}
 
+      {cartLabel ? (
+        <View key={`cartBar-${fontScale}`} style={styles.cartBar}>
+          <Package size={14} color={stage.gold} />
+          <Text style={styles.cartText}>{cartLabel}</Text>
+        </View>
+      ) : null}
+
+      {upcoming.length > 0 ? (
+        <View key={`nextRow-${fontScale}`} style={styles.nextRow}>
+          <Text style={styles.nextLabel}>Als Nächstes</Text>
+          {upcoming.slice(0, 4).map((item) => (
+            <View key={item.id} style={styles.nextTile}>
+              {item.image_url ? (
+                <Image source={{ uri: item.image_url }} style={StyleSheet.absoluteFill} />
+              ) : (
+                <Text numberOfLines={1} style={styles.nextTileText}>
+                  {item.title.slice(0, 2)}
+                </Text>
+              )}
+            </View>
+          ))}
+          {upcoming.length > 4 ? (
+            <Text style={styles.nextMore}>+{upcoming.length - 4}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {auction && leader ? (
+        <View key={`leaderRow-${fontScale}`} style={styles.leaderRow}>
+          <Avatar uri={leader.avatarUrl} name={leader.username} size={22} ring />
+          <Text numberOfLines={1} style={styles.leaderText}>
+            <Text style={styles.leaderName}>{leader.username}</Text>
+            <Text style={styles.leaderVerb}>
+              {isSold ? ' hat den Zuschlag!' : ' hat das Höchstgebot!'}
+            </Text>
+          </Text>
+        </View>
+      ) : null}
+
+
       </ScrollView>
       {auction ? (
-          <View style={styles.priceBlock}>
+          <View key={`priceBlock-${fontScale}`} style={styles.priceBlock}>
             <View style={styles.priceValue}>
               <Text style={styles.priceLabel}>{isSold ? 'Zuschlag' : auction.current_bid_cents !== null ? 'Höchstgebot' : 'Startpreis'}</Text>
               <Text style={styles.price}>
@@ -176,7 +177,7 @@ export function AuctionPanel({
             )}
           </View>
       ) : null}
-      {auction ? <View style={styles.purchaseNotes}>
+      {auction ? <View key={`purchaseNotes-${fontScale}`} style={styles.purchaseNotes}>
               {/* Stand bis 15.08.2026 „Versand und Steuern kommen dazu" — beides
                   war unwahr: Es wurde weder Versand noch Steuer berechnet. Eine
                   falsche Preisangabe ist nach PAngV angreifbar, und beim ersten

@@ -6,7 +6,8 @@
 // Plattform kommt — genau der Fehler, der im Juli 2026 zwischen Serlo-Web
 // und Serlo-App auftrat.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { subscribeToTable } from './realtime';
 
@@ -19,44 +20,37 @@ export type LiveComment = {
 
 const MAX_VISIBLE = 40;
 
-export function useLiveChat(sessionId: string | undefined) {
-  const [comments, setComments] = useState<LiveComment[]>([]);
+/** Merge a delayed history response with comments already received through realtime. */
+export function mergeLiveComments(...groups: LiveComment[][]): LiveComment[] {
+  const rows = new Map<string, LiveComment>();
+  for (const group of groups) for (const row of group) rows.set(row.id, row);
+  return [...rows.values()].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)).slice(-MAX_VISIBLE);
+}
 
+export function useLiveChat(sessionId: string | undefined, userId: string | null, enabled = true) {
+  const client = useQueryClient();
+  const key = useMemo(() => ['berkat', 'live-chat', sessionId, userId], [sessionId, userId]);
+  const query = useQuery({
+    queryKey: key,
+    enabled: enabled && Boolean(sessionId),
+    retry: 1,
+    queryFn: async ({ signal }): Promise<LiveComment[]> => {
+      const { data, error } = await supabase.from('live_comments')
+        .select('id, user_id, text, created_at').eq('session_id', sessionId!)
+        .order('created_at', { ascending: false }).limit(MAX_VISIBLE).abortSignal(signal).retry(false);
+      if (error) throw error;
+      return mergeLiveComments((data ?? []) as LiveComment[], client.getQueryData<LiveComment[]>(key) ?? []);
+    },
+  });
   useEffect(() => {
-    if (!sessionId) return;
-    let cancelled = false;
-
-    supabase
-      .from('live_comments')
-      .select('id, user_id, text, created_at')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: false })
-      .limit(MAX_VISIBLE)
-      .then(({ data, error }) => {
-        if (cancelled || error || !data) return;
-        setComments((data as LiveComment[]).slice().reverse());
-      });
-
-    const unsubscribe = subscribeToTable(
+    if (!enabled || !sessionId) return;
+    return subscribeToTable(
       `berkat-chat-${sessionId}`,
       { event: 'INSERT', table: 'live_comments', filter: `session_id=eq.${sessionId}` },
-      (payload) => {
-        if (cancelled) return;
-        const row = payload.new as unknown as LiveComment;
-        setComments((prev) => {
-          if (prev.some((c) => c.id === row.id)) return prev;
-          return [...prev, row].slice(-MAX_VISIBLE);
-        });
-      },
+      payload => client.setQueryData<LiveComment[]>(key, old => mergeLiveComments(old ?? [], [payload.new as unknown as LiveComment])),
     );
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, [sessionId]);
-
-  return comments;
+  }, [enabled, sessionId, client, key]);
+  return query;
 }
 
 /**
