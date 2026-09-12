@@ -15104,4 +15104,4 @@ Direkt nach dem Versand gemeldet — dieselbe Frage, dieselben Muster:
 ohne `trackColor`. Nicht angefasst — Live-Komponenten, andere Fläche, eigene Prüfung. Wer sie
 nachzieht, nimmt dieselben zwei Zeilen wie hier.
 
-Belegt: `tsc` 0 Fehler, im Simulator beide Hälften gesehen.
+Belegt: `tsc` 0 Fehler, im Simulator beide Hälften gesehen. OTA raus: Gruppe `816a7dbb`, Commit `5b3154e`.
