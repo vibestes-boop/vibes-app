@@ -1,5 +1,43 @@
 # Berkat — Übergabe
 
+## iPhone-Auslieferung · Build 10 · 12.09.2026
+
+**Installiert und gestartet:** Der Nutzer hat das Bündeln für sein iPhone
+bestätigt. Build 10 enthält die drei lokalen Funktionsstände `a567750`
+(Folgen), `4bff442` (Live-Kopf/Verkäufer-Sheet) und `5e2afd0` (Erinnerungen).
+`app.json` trägt jetzt 1.0.0 (10). Keine weiteren Funktionsänderungen.
+
+**Gerätenachweis:** Xcode meldete „Running Berkat on iPhone“; die Konsole
+bestätigte den Start von `main` mit ausdrücklich deaktivierten Expo-Updates.
+Die Xcode-Geräteübersicht zeigt Berkat / Version 10 / com.berkat.app auf dem
+iPhone 16 Pro, iOS 26.6.1; Verbindung laut UI über Netzwerk. Installation als
+Update, keine Deinstallation. Build 10 ist damit der zuletzt nachgewiesene
+Gerätestand. Visuelle Abnahme/Performancemessung dieses Pakets noch offen.
+
+**Buildweg:** CLI-Build scheiterte vor der Kompilierung (Workspace-Erkennung,
+XPC-Verbindungsfehler); `devicectl` konnte CoreDevice nicht initialisieren.
+Das ist kein Nachweis eines getrennten iPhones. Derselbe Workspace ließ sich
+regulär in Xcode öffnen und bauen. Ignoriertes natives Projekt lokal auf
+Release Run ohne LLDB, Build 10, bestehendes Development-Team Z56MCG424R und
+SENTRY_DISABLE_AUTO_UPLOAD=true eingestellt. Die bereits lokale Einstellung
+EXUpdatesEnabled=false bleibt bestehen: dieses Paket nutzt seinen eingebetteten
+Code ohne Metro. Die versionierte Produktions-Updatekonfiguration ist unverändert.
+
+**Prüfungen:** 263 Tests und TypeScript erneut bestanden. Gesicherte App-Signatur
+mit codesign --verify --deep --strict bestätigt; Hermes-Bundle, aktuelle Folgen-/
+Erinnerungstexte, zwölf hashgleiche 3D-Motive, abwesende QA-Routen und Quell-Hashes
+geprüft. Provisionierungsfelder lesend geprüft (Gerätefreigabe, Ablauf, App-ID);
+keine separate CMS-Vertrauenskette-Prüfung. IPA-CRC und eingebetteter Bundle-Hash
+bestätigt. Nachweise/Paket: `outputs/berkat-iphone-build-10` im Codex-Arbeitsordner.
+Kein Git-Push, OTA-, TestFlight- oder App-Store-Upload.
+
+**Als Nächstes:** Auf Build 10 Folgen im Profil und die Terminglocke prüfen;
+bei großer Schrift Live-Kopf und Verkäufer-Sheet kontrollieren. Echte Zustellung
+einer Termin-Benachrichtigung und Live-Gesten bleiben gesonderte Gerätetests.
+Keine Testprodukt-/Produkt-Richtigkeitsprüfung. Die älteren „Nächster Schritt“-
+Abschnitte darunter beschreiben ihren damaligen Zwischenstand.
+
+
 ## App-Qualität · Termin-Erinnerungen · 12.09.2026
 
 **Fortsetzung nach `4bff442`:** Die Glocke auf Startseite und Verkäuferprofil
