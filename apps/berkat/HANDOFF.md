@@ -14904,5 +14904,88 @@ Fehlerklasse, aus der die zwei Funde oben stammen. Die Probe steht als **B18** i
   „Verbundene Konten", sechs Ereignisse, dann
   `supabase secrets set STRIPE_WEBHOOK_SECRET_CONNECT=whsec_…`. Danach ist der Nachtdienst ein
   Netz, das nie fängt — und genau so soll ein Netz sein.
-- Aus Abschnitt 99 unverändert offen: Versandgutschrift beim Verkäufer, Name auf dem
-  Kartenauszug, wer die Rechnung ausstellt.
+- ~~Aus Abschnitt 99 offen: Versandgutschrift, Kartenauszug, Rechnung~~ → **am 11.09.2026
+  erledigt, siehe Abschnitt 101.**
+
+---
+
+## 101. Die drei Folgen der Direktzahlung — abgeräumt (11.09.2026)
+
+Abschnitt 99 endete mit drei Komplikationen und dem Satz: *„Alle drei werden fällig, bevor der
+zweite Verkäufer dazukommt."* Phase 0 lädt genau diesen zweiten Verkäufer ein — also jetzt.
+
+Alle drei haben dieselbe Form: **Bei Direktzahlung tut Berkat etwas mit dem Geld oder dem Namen
+eines Fremden, ohne dazu befugt zu sein.** Und alle drei sind dieselbe Antwort: *im Zweifel nichts
+verschenken und nichts in fremdem Namen erzeugen.*
+
+### 1. Die Versand-Gutschrift kommt nicht mehr aus fremder Tasche
+
+`supabase/migrations/20260911100000_shipping_credit_not_at_sellers_cost.sql`
+
+`get_cart_shipping_options_for_checkout` löste eine Einladungs-Gutschrift ein und setzte danach
+**alle Zonen auf 0**. Als der Betreiber der einzige Verkäufer war, verschenkte er sein eigenes
+Geld. Bei einem verbundenen Verkäufer verschenkt dieselbe Zeile **dessen** Versand — und eine
+Erstattung wäre Geldweiterleitung, also genau die ZAG-Schranke, um die Connect herumgebaut wurde.
+
+> ⚠️ **Ein Werbegeschenk darf nur aus der eigenen Tasche kommen.**
+
+Neu: Ist der Verkäufer verbunden (`charges_enabled`), wird **keine** Gutschrift eingelöst, und eine
+bereits auf diesen Korb reservierte wird wieder **freigegeben** — sonst hinge sie für immer an einem
+Korb, auf den sie nie wirkt. Kein Verfall, keine Meldung: dasselbe stille Verhalten wie beim
+Mindestwarenwert.
+
+**Unberührt bleibt `free_from_cents`** („gratis ab X €"). Das ist das Angebot des Verkäufers aus
+seinen eigenen `berkat_shipping_rates`, nicht Berkats Geschenk.
+
+⚠️ **Nebenwirkung, die Zaur kennen muss:** Das Betreiber-Konto ist seit dem 10.09. selbst verbunden.
+Damit greift die Gutschrift **auch auf seinen eigenen Auktionen** nicht mehr. In der Sache ändert
+das nichts — es war immer sein Geld —, aber der Einladungs-Bonus wirbt derzeit für niemanden.
+Umkehrbar, sobald Provision fließt: Dann hat die Plattform eine Einnahme, aus der sie den Versand
+bezahlen kann.
+
+### 2. Der Käufer erkennt die Abbuchung wieder
+
+`payment_intent_data[statement_descriptor_suffix] = 'BERKAT'` — im Bestell- **und** im
+Trinkgeld-Zweig, beide nur bei gesetztem verbundenen Konto.
+
+Auf dem Kontoauszug stand allein der Name des Verkäufers. Rechtlich richtig und die häufigste
+Ursache unberechtigter Rückbuchungen: Der Käufer sieht einen Namen, den er nie eingetippt hat. Jetzt
+liest er „VERKAEUFER* BERKAT".
+
+⚠️ **Mehr ist nicht möglich.** Das Präfix gehört dem Händler, nicht der Plattform — bei direct
+charges lässt sich nur der Zusatz setzen. Beim Trinkgeld wiegt das schwerer als beim Kauf: Wer 20 €
+an einen Streamer gibt, hat nie einen Händlernamen gesehen.
+
+### 3. Rechnungen entstehen nicht mehr in fremdem Namen
+
+`invoice_creation` wird bei verbundenem Konto **entfernt** (`pform.delete`), nicht auf `false`
+gesetzt — der Schlüssel wäre sonst weiter im Formular.
+
+Bei direct charges stellt Stripe die Rechnung **im Namen des verbundenen Kontos** aus. Ein
+Privatverkäufer ohne Steuerangaben verschickt damit eine fehlerhafte Rechnung mit seinem Namen
+darauf, ausgelöst von dieser App — die seine Angaben weder kennt noch prüfen kann.
+
+Der Käufer bekommt weiterhin **Stripes Zahlungsbeleg**. Rechnungstellen ist Sache des Verkäufers,
+und genau das ist der Sinn von Connect Standard. Umkehrbar, sobald das Onboarding vollständige
+Steuerangaben erzwingt.
+
+### Was sich NICHT geändert hat
+
+⚠️ Alle drei Zweige hängen an `connectedAccount` bzw. `v_seller_connected`. **Ohne verbundenes Konto
+ist jede Zeile davon tot** — und Serlos Shop erreicht der Bestellzweig ohnehin nur über
+`isAuctionCart`. Serlo steht im App Store; an seinem Geldweg wurde nichts angefasst.
+
+### Belegt am 11.09.2026
+
+| Prüfung | Ergebnis |
+|---|---|
+| `deno check create-checkout-session` | ✅ sauber |
+| `supabase db push` | ✅ Migration eingespielt |
+| `supabase functions deploy` | ✅ ausgerollt |
+
+⚠️ **Was das NICHT beweist:** dass eine Kasse mit verbundenem Konto tatsächlich aufgeht. Die drei
+Änderungen greifen genau dort, wo bisher nie eine echte Zahlung lief. Ein `statement_descriptor_suffix`
+mit unerlaubtem Zeichen oder ein Formular-Rest würde Stripe erst **vor dem Käufer** abweisen.
+
+> **Das ist ab sofort Teil von B18** — und der Grund, warum B18 vor dem ersten fremden Verkäufer
+> laufen muss, nicht danach.

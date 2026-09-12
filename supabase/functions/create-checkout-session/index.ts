@@ -260,6 +260,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── ⚠️ ZWEI FOLGEN DER DIREKTZAHLUNG, DIE NUR HIER ZU BEHEBEN SIND ───────
+    //
+    // Beides steht als Komplikation 2 und 3 in Übergabe 99 und wird scharf,
+    // sobald ein ZWEITER Verkäufer dazukommt. Der Zweig hängt an
+    // `connectedAccount` — ohne verbundenes Konto bleibt alles wie bisher, und
+    // Serlos Shop sieht davon ohnehin nichts (`isAuctionCart`).
+    if (connectedAccount) {
+      // (2) Auf dem Kontoauszug steht sonst allein der Name des Verkäufers.
+      // Rechtlich richtig — und die häufigste Ursache unberechtigter
+      // Rückbuchungen, weil der Käufer den fremden Namen nicht wiedererkennt.
+      // Stripe stellt den Zusatz hinter das Präfix des verbundenen Kontos:
+      // „VERKAEUFER* BERKAT". Mehr ist nicht möglich; das Präfix gehört dem
+      // Händler, nicht der Plattform.
+      pform.set('payment_intent_data[statement_descriptor_suffix]', 'BERKAT');
+
+      // (3) Bei Direktzahlung stellt Stripe die Rechnung **im Namen des
+      // verbundenen Kontos** aus. Ein Privatverkäufer ohne Steuerangaben
+      // verschickt damit eine fehlerhafte Rechnung mit seinem Namen darauf —
+      // ausgelöst von dieser App, die seine Angaben nicht kennt und nicht
+      // prüfen kann.
+      //
+      // Deshalb aus: Rechnungstellen ist Sache des Verkäufers, und genau das
+      // ist der Sinn von Connect Standard. Der Käufer bekommt weiterhin
+      // Stripes Zahlungsbeleg — nur eben keine Rechnung, die falsch wäre.
+      //
+      // ⚠️ Umkehrbar: Sobald Verkäufer beim Onboarding vollständige
+      // Steuerangaben hinterlegen müssen, kann das hier wieder an.
+      pform.delete('invoice_creation[enabled]');
+      pform.delete('invoice_creation[invoice_data][description]');
+    }
+
     const pStripeRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
       method: 'POST',
       headers: {
@@ -376,6 +407,14 @@ Deno.serve(async (req) => {
       if (recipientStripe?.charges_enabled && recipientStripe.stripe_account_id) {
         tipAccount = recipientStripe.stripe_account_id;
       }
+    }
+
+    // Derselbe Zusatz wie beim Sammelkorb — beim Trinkgeld wiegt er sogar
+    // schwerer: Wer 20 € an einen Streamer gibt, sieht auf dem Auszug sonst
+    // einen Namen, den er nie eingetippt hat. Eine Rechnung gibt es hier
+    // ohnehin nicht, deshalb entfällt der zweite Teil.
+    if (tipAccount) {
+      tform.set('payment_intent_data[statement_descriptor_suffix]', 'BERKAT');
     }
 
     const tRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
