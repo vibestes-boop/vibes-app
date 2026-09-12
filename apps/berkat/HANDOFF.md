@@ -42,9 +42,11 @@ oder Live-Sendungen ausgelöst. Nachweise: `outputs/berkat-search-contact`.
 
 **Geräteauslieferung:** Build 13 erfolgreich als lokales Release gebaut,
 signiert, als IPA gesichert und auf dem verbundenen iPhone 16 Pro als Update
-installiert. CoreDevice bestätigt com.berkat.app / 1.0.0 / 13. Der automatische
-Start wird derzeit von der iOS-Bildschirmsperre blockiert (CoreDevice: Locked);
-Entsperren für die abschließende Startprüfung wurde angefragt. Hermes, eingefrorene Quell-Hashes, neue UI-Texte, 12 Kategoriemotive,
+installiert. CoreDevice bestätigt com.berkat.app / 1.0.0 / 13. Nach Entsperren
+vom Nutzer erfolgreich gestartet; derselbe App-Prozess war 44 Sekunden später
+weiterhin vorhanden. Die anfängliche Bildschirmsperre ist behoben. Build 13 ist
+damit der letzte bestätigte Geräte- und Startstand und ersetzt Build 12.
+Hermes, eingefrorene Quell-Hashes, neue UI-Texte, 12 Kategoriemotive,
 Signatur/Profilfelder und IPA-CRC geprüft. Nachweise:
 `outputs/berkat-iphone-build-13`. Lokale Expo-Updates und Sentry-Autoupload bleiben
 deaktiviert. Keine Backendmigration, kein Git-Push, OTA, TestFlight oder App Store.
