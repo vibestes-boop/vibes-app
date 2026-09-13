@@ -144,7 +144,7 @@ export function scheduleErrorText(message: string): string {
   if (message.includes('Not authenticated') || message.includes('not_authenticated'))
     return 'Melde dich an, dann geht es weiter.';
   if (message.includes('does not exist') || message.includes('PGRST202'))
-    return 'Die Sendeplan-Funktion fehlt noch in der Datenbank. Migration einspielen.';
+    return 'Die Terminplanung ist gerade nicht verfügbar. Bitte versuche es später erneut.';
   return 'Der Termin ließ sich nicht eintragen. Versuch es noch einmal.';
 }
 

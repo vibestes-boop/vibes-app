@@ -27,6 +27,7 @@ type Props = {
   openParent: string | null;
   onOpenParent: (slug: string | null) => void;
   label?: string;
+  hint?: string;
 };
 
 export function CategoryPicker({
@@ -35,6 +36,7 @@ export function CategoryPicker({
   openParent,
   onOpenParent,
   label = 'Kategorie',
+  hint = 'Wähle die passende Kategorie, damit Käufer deinen Artikel beim Stöbern finden.',
 }: Props) {
   const { groups } = useCategoryOptions();
   const { fontScale } = useWindowDimensions();
@@ -114,7 +116,7 @@ export function CategoryPicker({
           gefragt hat (sechste Whatnot-Analyse, 19.08.2026). */}
       {value ? null : (
         <View style={s.hintWrap}>
-          <Text key={fontScale} style={s.hint}>Wähle die passende Kategorie, damit Käufer deinen Artikel beim Stöbern finden.</Text>
+          <Text key={fontScale} style={s.hint}>{hint}</Text>
         </View>
       )}
     </>

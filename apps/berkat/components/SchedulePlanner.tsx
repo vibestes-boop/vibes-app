@@ -16,7 +16,7 @@
 // Whatnot-Screenshots). Die Hauptseite zeigt jetzt nur das Ergebnis — eine
 // antippbare „Wann?"-Zeile — und das Blatt den Entscheidungsbaum.
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -31,12 +31,15 @@ import { Image } from 'expo-image';
 import { CalendarClock, ChevronRight, ImagePlus, X } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { pickAndUpload } from '../lib/uploadImage';
-import { formatSlot, formatUntil, MAX_WEEKS, type PlannedShow } from '../lib/useSchedule';
+import { formatSlot, formatUntil, scheduleErrorText, MAX_WEEKS, type PlannedShow } from '../lib/useSchedule';
 import { PressFeedback } from './PressFeedback';
+import { FeedbackState } from './FeedbackState';
+import { useSellerDraft } from '../lib/useSellerDraft';
 import { useReducedMotion } from '../lib/useReducedMotion';
 
 /** Abendplätze. Live-Auktionen laufen, wenn die Leute zu Hause sind. */
 const TIMES = [17, 18, 19, 20, 21, 22];
+const EMPTY_DRAFT = { title: '', coverUrl: null as string | null };
 
 /**
  * „Gleich geht's los" — in Minuten.
@@ -67,12 +70,13 @@ type Props = {
   bare?: boolean;
   plans: PlannedShow[];
   busy: boolean;
+  notice?: string | null;
   onPlan: (input: {
     title: string;
     at: Date;
     weeks: number;
     coverUrl: string | null;
-  }) => void;
+  }) => Promise<void>;
   onCancel: (id: string) => void;
   /**
    * ⚠️ Ohne das ist die Zeile hier TOT.
@@ -89,13 +93,17 @@ type Props = {
   onOpen?: (id: string) => void;
 };
 
-export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, onOpen }: Props) {
+export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, onOpen, notice }: Props) {
   const reducedMotion = useReducedMotion();
   // Remeasure static labels/choices after a native font-size change without
   // remounting the scroll views, text input or local form state.
   const { fontScale } = useWindowDimensions();
-  const [title, setTitle] = useState('');
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const form = useSellerDraft(EMPTY_DRAFT);
+  const { title, coverUrl } = form.draft;
+  const setTitle = (value: string) => form.setField('title', value);
+  const setCoverUrl = (value: string | null) => form.setField('coverUrl', value);
+  const saving = busy || form.busy;
+  const uploadLock = useRef(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dayOffset, setDayOffset] = useState(0);
@@ -168,7 +176,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
   const tooSoon = target.getTime() <= Date.now() + 5 * 60_000;
   // `uploading` blockiert mit: Wer währenddessen einträgt, verlöre das Bild —
   // `coverUrl` wird erst nach dem Hochladen gesetzt.
-  const canPlan = title.trim().length > 0 && !tooSoon && !busy && !uploading;
+  const canPlan = title.trim().length > 0 && !tooSoon && !saving && !uploading;
 
   // Was die „Wann?"-Zeile zeigt: das Ergebnis der Wahl, nicht den Baum.
   const whenSummary =
@@ -203,8 +211,10 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
         <PressFeedback
           key={`photo-entry-${fontScale}`}
           style={s.photoEntry}
-          disabled={uploading}
+          disabled={uploading || saving}
           onPress={() => {
+            if (uploadLock.current || saving) return;
+            uploadLock.current = true;
             setUploading(true);
             setUploadError(null);
             // `cover` = Speicherort (`thumbnails/`), `square` = Form: Die Karte
@@ -219,7 +229,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                   error instanceof Error ? error.message : 'Das Bild kam nicht durch.',
                 ),
               )
-              .finally(() => setUploading(false));
+              .finally(() => { uploadLock.current = false; setUploading(false); });
           }}
           accessibilityRole="button"
           accessibilityLabel={coverUrl ? 'Titelbild ändern' : 'Titelbild hinzufügen'}
@@ -248,13 +258,15 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
 
         <Text key={fontScale} style={s.label}>Titel der Show</Text>
         <TextInput
+          editable={!saving}
+          allowFontScaling={false}
           accessibilityLabel="Titel der Show"
           multiline
           value={title}
           onChangeText={setTitle}
           placeholder="Parfüm-Abend ab 1 €"
           placeholderTextColor={ui.textMuted}
-          style={[s.input, s.titleInput]}
+          style={[s.input, s.titleInput, { fontSize: s.input.fontSize * fontScale }]}
           maxLength={80}
         />
       </View>
@@ -272,6 +284,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
           gewählt ist; geändert wird im Blatt darunter. */}
       <PressFeedback
         style={s.whenRow}
+        disabled={saving}
         onPress={() => setWhenOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={`Wann: ${whenSummary} — ändern`}
@@ -283,21 +296,21 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
         <ChevronRight size={18} color={ui.textMuted} />
       </PressFeedback>
 
+      {form.error || notice ? <FeedbackState title="Termin prüfen" body={form.error ?? notice ?? undefined} /> : null}
       <PressFeedback
         style={[s.primary, !canPlan && s.primaryOff]}
         disabled={!canPlan}
         onPress={() => {
-          onPlan({ title, at: buildTarget(), weeks: weekly ? MAX_WEEKS : 1, coverUrl });
-          setTitle('');
-          setCoverUrl(null);
-          setUploadError(null);
+          if (!canPlan || uploadLock.current) return;
+          void form.submit(snapshot => onPlan({ ...snapshot, at: buildTarget(), weeks: weekly ? MAX_WEEKS : 1 }),
+            error => scheduleErrorText(error instanceof Error ? error.message : String(error)));
         }}
         accessibilityRole="button"
         accessibilityLabel="Termin eintragen"
-        accessibilityState={{ disabled: !canPlan, busy: !!busy || uploading }}
+        accessibilityState={{ disabled: !canPlan, busy: saving || uploading }}
       >
         <Text key={fontScale} style={s.primaryText}>
-          {tooSoon ? 'Dieser Zeitpunkt ist schon vorbei' : 'Ankündigen'}
+          {form.busy ? 'Wird eingetragen …' : tooSoon ? 'Dieser Zeitpunkt ist schon vorbei' : 'Ankündigen'}
         </Text>
       </PressFeedback>
 
@@ -333,6 +346,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
                 </Text>
               </View>
               <PressFeedback
+                disabled={saving}
                 onPress={() => onCancel(plan.id)}
                 hitSlop={10}
                 accessibilityRole="button"
@@ -607,12 +621,12 @@ const s = StyleSheet.create({
     paddingVertical: space.md,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
-    backgroundColor: ui.gold,
+    backgroundColor: ui.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryOff: { opacity: 0.45 },
-  primaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk, textAlign: 'center' },
+  primaryText: { fontSize: 15, fontWeight: '700', color: ui.card, textAlign: 'center' },
 
   list: {
     marginTop: space.lg,

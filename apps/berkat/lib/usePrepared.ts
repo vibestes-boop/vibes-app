@@ -162,10 +162,9 @@ export function prepareErrorText(message: string): string {
   if (message.includes('forbidden')) return 'Das darf nur, wem der Termin gehört.';
   if (message.includes('not_authenticated')) return 'Melde dich an, dann geht es weiter.';
   if (message.includes('does not exist') || message.includes('PGRST202'))
-    return 'Die Vorbereiten-Funktion fehlt noch in der Datenbank. Migration einspielen.';
-  // Kein Sammel-Satz — was der Server sagt, steht hier. Begründung in
-  // `useStanding.ts`: „Das hat nicht geklappt" ist keine Fehlermeldung.
-  return message ? `Der Server sagt: ${message}` : 'Das hat nicht geklappt.';
+    return 'Die Vorbereitung ist gerade nicht verfügbar. Bitte versuche es später erneut.';
+  // A lost response may still have saved the row; ask for a state check.
+  return 'Die Änderung konnte nicht bestätigt werden. Prüfe den aktuellen Stand, bevor du es erneut versuchst.';
 }
 
 export function usePrepareActions() {

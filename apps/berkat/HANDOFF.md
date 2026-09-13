@@ -1,5 +1,61 @@
 # Berkat — Übergabe
 
+## Verkäufer-Vorbereitung · Build 15 · 13.09.2026
+
+**Fortsetzung des bestätigten UX-Plans:** Der Nutzer meldet, dass keine laufende
+Show zum Testen verfügbar ist. Die echte Live-Abnahme aus Build 14 bleibt offen;
+stattdessen ist jetzt die Verkäufer-Vorbereitung überarbeitet.
+
+- `useSellerDraft` erhält Titel, Preise, Größe und Bild bis zur bestätigten
+  Speicherung. Fehler und späte Antworten verlieren keine Eingaben; Doppeltipps
+  sind synchron gesperrt. Artikel- und Terminvorgänge liefern ein Promise an das
+  Formular zurück. Fehler erscheinen im geöffneten Blatt. Kontowechsel setzt die
+  Forminstanz zurück, die Artikelvorbereitung ist zusätzlich an den Termin gebunden.
+- Verkäuferübersicht zeigt bei Lesefehlern keine vermeintlich fehlende Show mit
+  Neuanlage. Lade-/Fehlerzustände haben Wiederholung; vorhandene Daten bleiben bei
+  Aktualisierungsfehlern sichtbar. Vor unsicherem Show-/Planungsstand werden die
+  betroffenen Aktionen gesperrt. Bildauswahl und Speichervorgänge sind entkoppelt
+  von verdeckten Hinweisen auf der Übersichtsseite.
+- Einstieg heißt Show vorbereiten, danach Zur Kameravorschau. Show-/Terminaktionen
+  nutzen die Markenfarbe. Kategorien erklären den Bezug zur Show. Die iOS-Blätter
+  passen ihre Scroll-Inhalte nativ an die Tastatur an. Große Schrift wird neu
+  vermessen; Preisfelder stehen dann in zwei Spalten.
+- `useCameraPreview` besitzt die lokale Kameraspur. Rückweg, Wiederholung und
+  sichtbarer Fehler ersetzen die Sackgasse; Live gehen wartet auf eine bereite
+  Kamera. Kamerawechsel sperrt den Start vorübergehend. Späte Kameraspuren werden
+  beim Verlassen gestoppt, doppelte Starts unterdrückt. Die Auswahl der Front-/
+  Rückkamera wird an den Live-Provider übergeben und bei neuer Show zurückgesetzt.
+
+**Geprüft:** TypeScript und 368 lokale Tests bestanden (20 neue). Lokale
+Kamera-/API-Doubles, echte QueryClient/QueryObserver und echte Formularrückrufe.
+Native Prüfung mit extra-large und accessibility-medium im iPhone-17-Simulator:
+Show-Entwurf schließen/wiederöffnen, Artikelname/Preis bei Speicherfehler erhalten,
+Fehler im Blatt, nach lokal bestätigtem Erfolg zurückgesetzt; numerisches Feld
+oberhalb der Softwaretastatur. Kamerafehler → Wiederholung → lokale Vorschau →
+Rückweg. Gefundene Schriftüberlagerungen korrigiert. Schrift zurückgestellt,
+Prüfroute vor dem Build entfernt. Nachweise: `outputs/berkat-seller-preparation`.
+
+**Gerätepaket:** Build 15 erfolgreich als lokales Release gebaut, signiert, als
+IPA gesichert und als Update auf dem iPhone 16 Pro installiert. CoreDevice
+bestätigt com.berkat.app / 1.0.0 / 15 und den erfolgreichen Start. Derselbe
+App-Prozess war 64 Sekunden später weiterhin vorhanden. Build 15 ersetzt Build 14 als letzten installierten und gestarteten Stand. Hermes, 66
+eingefrorene Quell-Hashes, neue UI-Texte, 12 Kategoriemotive, Signatur/Profil und
+IPA-CRC geprüft. Nachweise: `outputs/berkat-iphone-build-15`. Der erste Build
+scheiterte am vollen Mac-Speicher; ausschließlich ältere, erneut erzeugbare
+Berkat-Compiler-Zwischendateien bereinigt, danach erfolgreich gebaut. Wie bei
+Build 14 eine Kopie der nativen Projektmetadaten verwendet, um die vorhandene
+Workspace-Sperre zu umgehen; originales Xcode blieb offen. Temporäre Metadaten
+archiviert. Lokale Expo-Updates und Sentry-Autoupload bleiben aus.
+
+**Grenzen / danach:** Entwürfe bleiben flüchtiger Bildschirmzustand. Die bestehende
+Show-Metadaten-Erstellung erfolgt weiterhin vor der Vorschau; die Kamera sendet
+nur nach Live gehen. Echte LiveKit-Verbindung, Kameraberechtigung/-wechsel,
+Wiederverbindung, Mini-Player-Video und physische Gesten bleiben Geräteabnahmen.
+Keine Testprodukt-Prüfung, echten Termine, Uploads, Nachrichten, Gebote oder Shows
+für QA erzeugt. Keine Backendmigration oder neue Leistungszahl. Nächster UX-Block:
+Einstieg neuer Nutzer; danach aktuelle Gerätemessung. Termin-Push bleibt separat
+zu prüfen. Kein Git-Push, OTA, TestFlight oder App Store.
+
 ## Live-Raum · Build 14 · 13.09.2026
 
 **Nächsten bestätigten UX-Block umgesetzt:** Video, Kommentare, aktueller Artikel,

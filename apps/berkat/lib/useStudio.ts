@@ -36,8 +36,9 @@ export function useMyActiveShow(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['berkat', 'my-show', userId],
     enabled: enabled && Boolean(userId),
-    refetchInterval: 15_000,
-    queryFn: async (): Promise<MyShow | null> => {
+    refetchInterval: enabled ? 15_000 : false,
+    retry: 1,
+    queryFn: async ({ signal }): Promise<MyShow | null> => {
       const { data, error } = await supabase
         .from('live_sessions')
         .select('id, title, viewer_count, status, started_at, thumbnail_url')
@@ -48,7 +49,7 @@ export function useMyActiveShow(userId: string | null, enabled = true) {
         // auf eine Session zeigt, die gar nicht zu Berkat gehört.
         .eq('app', 'berkat')
         .order('started_at', { ascending: false })
-        .limit(1);
+        .limit(1).abortSignal(signal).retry(false);
       if (error) throw error;
       return ((data?.[0] as MyShow | undefined) ?? null) satisfies MyShow | null;
     },
@@ -254,7 +255,7 @@ export function studioErrorText(message: string): string {
   if (message.includes('invalid_price')) return 'Startpreis und Schritt müssen über null liegen.';
   if (message.includes('forbidden')) return 'Das darf nur der Gastgeber der Show.';
   if (message.includes('PGRST202') || message.includes('does not exist'))
-    return 'Die Auktions-Tabellen fehlen noch in der Datenbank. Migration einspielen.';
+    return 'Die Show-Vorbereitung ist gerade nicht verfügbar. Bitte versuche es später erneut.';
   return 'Hat nicht geklappt. Versuch es noch einmal.';
 }
 

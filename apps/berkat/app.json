@@ -15,7 +15,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.berkat.app",
-      "buildNumber": "14",
+      "buildNumber": "15",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

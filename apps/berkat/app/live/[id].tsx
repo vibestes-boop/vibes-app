@@ -146,7 +146,7 @@ type StageModule = {
   useStageConnectionState: () => string;
   StageVideo: (props: { hostIdentity: string; style: ViewStyle }) => React.ReactNode;
   HostControls: (props: { topOffset?: number }) => React.ReactNode;
-  GoLiveGate: (props: { onGoLive: () => void }) => React.ReactNode;
+  GoLiveGate: (props: { onGoLive: (facing: 'environment' | 'user') => void; onClose: () => void }) => React.ReactNode;
 };
 
 // Bedingt geladen: in Expo Go fehlen die nativen LiveKit-Module, und schon das
@@ -1005,7 +1005,10 @@ function LiveAuctionRoomScreen() {
       {/* Ganz zuletzt, damit die Vorschau alles überdeckt: Wer die Kamera noch
           ausrichtet, soll nicht schon die Auktion bedienen können. */}
       {GoLiveGate && isHost && !connected ? (
-        <GoLiveGate onGoLive={() => useLivePlayer.getState().goLive()} />
+        <GoLiveGate onGoLive={(facing) => useLivePlayer.getState().goLive(facing)} onClose={() => {
+          useLivePlayer.getState().close();
+          goBack('/(tabs)/sell');
+        }} />
       ) : null}
     </View>
   );

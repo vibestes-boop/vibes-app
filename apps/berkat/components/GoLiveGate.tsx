@@ -1,166 +1,73 @@
-// Kamera-Vorschau vor dem Live-Gehen.
-//
-// Der entscheidende Punkt: hier läuft die Kamera NUR lokal. Es gibt keine
-// Verbindung zum LiveKit-Server und kein Token — die Spur wird erzeugt,
-// angezeigt und beim Loslegen wieder gestoppt. Niemand sieht dich, während du
-// das Bild zurechtrückst.
-//
-// Erst der Knopf startet die echte Übertragung.
-
-import { useEffect, useRef, useState } from 'react';
-
-import { ActivityIndicator, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-
+import type { ReactNode } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView } from '@livekit/react-native';
-import { createLocalVideoTrack, type LocalVideoTrack } from 'livekit-client';
-import { Radio, SwitchCamera } from 'lucide-react-native';
-
+import { createLocalVideoTrack } from 'livekit-client';
+import { ChevronLeft, Radio, SwitchCamera } from 'lucide-react-native';
+import { useCameraPreview, type CameraFacing } from '../lib/useCameraPreview';
 import { PressFeedback } from './PressFeedback';
+import { StageFeedback } from './StageFeedback';
 import { stage, radius, space } from '../theme/tokens';
 
-const FILL: ViewStyle = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 };
+const createPreview = (facingMode: CameraFacing) => createLocalVideoTrack({ facingMode });
 
-export function GoLiveGate({ onGoLive }: { onGoLive: () => void }) {
-  const insets = useSafeAreaInsets();
-  const [track, setTrack] = useState<LocalVideoTrack | null>(null);
-  const [front, setFront] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const trackRef = useRef<LocalVideoTrack | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    createLocalVideoTrack({ facingMode: 'environment' })
-      .then((created) => {
-        if (cancelled) {
-          void created.stop();
-          return;
-        }
-        trackRef.current = created;
-        setTrack(created);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
-
-    return () => {
-      cancelled = true;
-      // Die Spur MUSS weg, bevor LiveKit die Kamera übernimmt — sonst ist das
-      // Gerät belegt und die Übertragung startet ohne Bild.
-      void trackRef.current?.stop();
-      trackRef.current = null;
-    };
-  }, []);
-
-  const switchCamera = async () => {
-    if (!trackRef.current || busy) return;
-    setBusy(true);
-    try {
-      await trackRef.current.restartTrack({ facingMode: front ? 'environment' : 'user' });
-      setFront(!front);
-    } catch {
-      // Nur eine Kamera oder gerade belegt — Vorschau bleibt, wie sie war.
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const goLive = () => {
-    void trackRef.current?.stop();
-    trackRef.current = null;
-    setTrack(null);
-    onGoLive();
-  };
-
-  return (
-    <View style={styles.wrap}>
-      {track ? (
-        <VideoView videoTrack={track} style={FILL} objectFit="cover" mirror={front} />
-      ) : (
-        <View style={[FILL, styles.placeholder]}>
-          {failed ? (
-            <Text style={styles.failedText}>
-              Die Kamera lässt sich nicht öffnen. Prüf die Freigabe in den iPhone-Einstellungen.
-            </Text>
-          ) : (
-            <ActivityIndicator color={stage.gold} />
-          )}
-        </View>
-      )}
-
-      <View style={[styles.badge, { top: insets.top + space.sm }]}>
-        <Text style={styles.badgeText}>Nur du siehst das</Text>
-      </View>
-
-      <View style={[styles.controls, { paddingBottom: insets.bottom || space.lg }]}>
-        <PressFeedback
-          onPress={switchCamera}
-          disabled={busy || !track}
-          accessibilityState={{ disabled: busy || !track, busy }}
-          style={styles.switchButton}
-          accessibilityRole="button"
-          accessibilityLabel="Kamera wechseln"
-        >
-          <SwitchCamera size={20} color={stage.text} />
-        </PressFeedback>
-
-        <PressFeedback
-          onPress={goLive}
-          style={styles.goLive}
-          accessibilityRole="button"
-          accessibilityLabel="Live gehen"
-        >
-          <Radio size={19} color={stage.goldInk} />
-          <Text style={styles.goLiveText}>Live gehen</Text>
-        </PressFeedback>
-      </View>
-    </View>
-  );
+/** Local camera only. The live provider starts publishing after the explicit action. */
+export function GoLiveGate({ onGoLive, onClose }: { onGoLive: (facing: CameraFacing) => void; onClose: () => void }) {
+  const preview = useCameraPreview(createPreview, onGoLive, onClose);
+  return <CameraPreviewView
+    video={preview.track ? <VideoView videoTrack={preview.track} style={StyleSheet.absoluteFillObject} objectFit="cover" mirror={preview.facing === 'user'} /> : null}
+    loading={preview.loading} busy={preview.busy} starting={preview.starting} error={preview.error}
+    canStart={Boolean(preview.track) && !preview.loading && !preview.busy && !preview.starting}
+    onRetry={preview.retry} onSwitch={() => void preview.switchCamera()} onStart={preview.start} onClose={preview.close} />;
 }
 
-const styles = StyleSheet.create({
-  wrap: { ...FILL, backgroundColor: stage.ink },
-  placeholder: { alignItems: 'center', justifyContent: 'center', padding: space.xl },
-  failedText: { fontSize: 14, color: stage.textMuted, textAlign: 'center', lineHeight: 20 },
-
-  badge: {
-    position: 'absolute',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  badgeText: { fontSize: 12, fontWeight: '700', color: stage.text },
-
-  controls: {
-    position: 'absolute',
-    left: space.md,
-    right: space.md,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-  },
-  switchButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: stage.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goLive: {
-    flex: 1,
-    height: 56,
-    borderRadius: radius.pill,
-    backgroundColor: stage.gold,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  goLiveText: { fontSize: 17, fontWeight: '700', color: stage.goldInk },
+export function CameraPreviewView({ video, loading, busy, starting, error, canStart, onRetry, onSwitch, onStart, onClose }: {
+  video?: ReactNode; loading: boolean; busy: boolean; starting: boolean; error: string | null; canStart: boolean;
+  onRetry: () => void; onSwitch: () => void; onStart: () => void; onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  return <View style={s.screen}>
+    {video}
+    <View key={`head-${fontScale}`} style={[s.header, { paddingTop: insets.top + space.sm }]}>
+      <PressFeedback onPress={onClose} style={s.back} accessibilityRole="button" accessibilityLabel="Zurück zur Vorbereitung">
+        <ChevronLeft size={22} color={stage.text} />
+      </PressFeedback>
+      <View style={s.identity}>
+        <Text style={s.title}>Kameravorschau</Text>
+        <Text style={s.hint}>Nur du siehst das</Text>
+      </View>
+    </View>
+    {error || loading ? <ScrollView style={s.feedback} contentContainerStyle={s.feedbackContent}>
+      <StageFeedback title={loading ? 'Kamera wird geöffnet' : 'Kamera gerade nicht verfügbar'} loading={loading}
+        body={error ?? undefined} action={error ? { label: 'Erneut versuchen', onPress: onRetry } : undefined} />
+    </ScrollView> : <View style={s.space} pointerEvents="none" />}
+    <View style={[s.controls, { paddingBottom: insets.bottom || space.lg }]}>
+      <PressFeedback onPress={onSwitch} disabled={!canStart} style={s.switchButton}
+        accessibilityRole="button" accessibilityLabel="Kamera wechseln" accessibilityState={{ disabled: !canStart, busy }}>
+        {busy ? <ActivityIndicator color={stage.text} /> : <SwitchCamera size={22} color={stage.text} />}
+      </PressFeedback>
+      <PressFeedback onPress={onStart} disabled={!canStart} style={[s.start, !canStart && s.disabled]}
+        accessibilityRole="button" accessibilityLabel="Live gehen" accessibilityState={{ disabled: !canStart, busy: starting }}>
+        {starting ? <ActivityIndicator color={stage.ink} /> : <Radio size={20} color={stage.ink} />}
+        <Text key={fontScale} style={s.startText}>{starting ? 'Wird verbunden …' : 'Live gehen'}</Text>
+      </PressFeedback>
+    </View>
+  </View>;
+}
+const s = StyleSheet.create({
+  screen: { ...StyleSheet.absoluteFillObject, backgroundColor: stage.ink },
+  header: { paddingHorizontal: space.md, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingBottom: space.md, backgroundColor: stage.control },
+  back: { width: 44, minHeight: 44, borderRadius: radius.pill, backgroundColor: stage.control, alignItems: 'center', justifyContent: 'center' },
+  identity: { flex: 1, minWidth: 0 },
+  title: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: stage.text },
+  hint: { fontSize: 12, lineHeight: 18, color: stage.textMuted },
+  feedback: { flex: 1 },
+  feedbackContent: { flexGrow: 1, justifyContent: 'center', padding: space.lg },
+  space: { flex: 1 },
+  controls: { paddingTop: space.md, paddingHorizontal: space.md, flexDirection: 'row', alignItems: 'stretch', gap: space.sm, backgroundColor: stage.control },
+  switchButton: { width: 56, minHeight: 56, borderRadius: radius.pill, backgroundColor: stage.control, alignItems: 'center', justifyContent: 'center' },
+  start: { flex: 1, minHeight: 56, borderRadius: radius.pill, backgroundColor: stage.text, paddingVertical: space.md, paddingHorizontal: space.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
+  startText: { flexShrink: 1, fontSize: 17, lineHeight: 23, fontWeight: '700', color: stage.ink, textAlign: 'center' },
+  disabled: { opacity: 0.45 },
 });

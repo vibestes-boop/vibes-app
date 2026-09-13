@@ -15,10 +15,12 @@
 // reicher als ein spontaner, und zwei Wege zur selben Sache liefen auseinander.
 // Wer sie will, ergänzt Formular und `usePrepared.prepare` gemeinsam.
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
+  useWindowDimensions,
   Modal,
   ScrollView,
   StyleSheet,
@@ -27,7 +29,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { ImagePlus, Package, Plus, X } from 'lucide-react-native';
+import { ImagePlus, Package, X } from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
 import { formatEuro } from '../lib/useAuction';
@@ -41,10 +43,15 @@ import { pickAndUpload } from '../lib/uploadImage';
 import type { PreparedAuction } from '../lib/usePrepared';
 import { radius, space, ui } from '../theme/tokens';
 import { PressFeedback } from './PressFeedback';
+import { FeedbackState } from './FeedbackState';
+import { ActionButton } from './ActionButton';
+import { useSellerDraft } from '../lib/useSellerDraft';
+import { prepareErrorText } from '../lib/usePrepared';
 import { useReducedMotion } from '../lib/useReducedMotion';
 
 /** Gespiegelt aus `prepare_live_auction` — dort wirft es `too_many_prepared`. */
 const MAX_PREPARED = 50;
+const EMPTY_DRAFT = { title: '', startPrice: '', increment: '', buyNow: '', size: '', imageUrl: null as string | null };
 
 /**
  * „2 Vorabgebote · 5 warten" — oder nichts.
@@ -75,6 +82,10 @@ type Props = {
   plan: PlannedShow | null;
   items: PreparedAuction[];
   busy: boolean;
+  loading?: boolean;
+  readError?: boolean;
+  retrying?: boolean;
+  onRetry?: () => void;
   /**
    * ⚠️ Muss HIER hinein, nicht auf den Reiter darunter.
    *
@@ -85,7 +96,7 @@ type Props = {
   notice: string | null;
   onDismissNotice: () => void;
   onClose: () => void;
-  onPrepare: (input: PrepareInput) => void;
+  onPrepare: (input: PrepareInput) => Promise<void>;
   onDiscard: (item: PreparedAuction) => void;
   /**
    * ⚠️ Absagen stand bis zum 21.08.2026 NUR im Ankündigen-Blatt, als kleines
@@ -100,29 +111,47 @@ type Props = {
   onCancelPlan: (plan: PlannedShow) => void;
 };
 
-export function PrepareSheet({
+export function PrepareSheet(props: Props) {
+  const userId = useSession(s => s.userId);
+  const draftPlan = useRef<string | null>(null);
+  if (props.plan) draftPlan.current = props.plan.id;
+  return <PrepareSheetForm key={`${userId ?? 'guest'}:${draftPlan.current ?? 'none'}`} {...props} userId={userId} />;
+}
+
+export function PrepareSheetForm({
   plan,
   items,
   busy,
+  loading = false,
+  readError = false,
+  retrying = false,
+  onRetry,
   notice,
   onDismissNotice,
   onClose,
   onPrepare,
   onDiscard,
   onCancelPlan,
-}: Props) {
+  userId,
+}: Props & { userId: string | null }) {
   const reducedMotion = useReducedMotion();
-  const [title, setTitle] = useState('');
-  const [startPrice, setStartPrice] = useState('');
-  const [increment, setIncrement] = useState('');
-  const [buyNow, setBuyNow] = useState('');
-  const [size, setSize] = useState('');
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const { fontScale } = useWindowDimensions();
+  const form = useSellerDraft(EMPTY_DRAFT);
+  const { title, startPrice, increment, buyNow, size, imageUrl } = form.draft;
+  const setTitle = (value: string) => form.setField('title', value);
+  const setStartPrice = (value: string) => form.setField('startPrice', value);
+  const setIncrement = (value: string) => form.setField('increment', value);
+  const setBuyNow = (value: string) => form.setField('buyNow', value);
+  const setSize = (value: string) => form.setField('size', value);
+  const setImageUrl = (value: string | null) => form.setField('imageUrl', value);
+  const saving = busy || form.busy;
+  const unavailable = loading || readError;
+  const uploadLock = useRef(false);
   const [uploading, setUploading] = useState(false);
   // Der zweite Weg, einen Artikel an diesen Abend zu hängen: nicht neu tippen,
   // sondern aus dem eigenen Regal holen (`20260821160000`).
   const [shelfOpen, setShelfOpen] = useState(false);
-  const myUserId = useSession((st) => st.userId);
+  const myUserId = userId;
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Das Nachfrage-Signal, zweistufig: Wer geboten hat, und wer nur wartet.
@@ -143,10 +172,11 @@ export function PrepareSheet({
   const startCents = startPrice.trim() ? euroToCents(startPrice) : 100;
   const startOk = startCents !== null && startCents >= 100;
   const full = items.length >= MAX_PREPARED;
-  const canSubmit = title.trim().length >= 2 && startOk && !busy && !uploading && !full;
+  const canSubmit = title.trim().length >= 2 && startOk && !saving && !uploading && !full && !unavailable;
 
   const addImage = () => {
-    if (uploading) return;
+    if (uploadLock.current || saving || unavailable) return;
+    uploadLock.current = true;
     setUploading(true);
     setUploadError(null);
     void pickAndUpload('article', 'portrait')
@@ -156,30 +186,21 @@ export function PrepareSheet({
       .catch((error: unknown) =>
         setUploadError(error instanceof Error ? error.message : 'Das Bild kam nicht durch.'),
       )
-      .finally(() => setUploading(false));
+      .finally(() => { uploadLock.current = false; setUploading(false); });
   };
 
   const submit = () => {
-    onPrepare({
-      title,
-      startCents: startCents!,
-      // Der Mindestschritt hat serverseitig eine Untergrenze von 1 € und
-      // dieselbe Vorgabe; leer lassen soll deshalb nicht scheitern, sondern das
-      // Übliche bedeuten.
-      incrementCents: increment.trim() ? (euroToCents(increment) ?? 100) : 100,
-      buyNowCents: buyNow.trim() ? euroToCents(buyNow) : null,
-      imageUrl,
-      // Dieselbe Schreibregel wie im Regal-Formular — sonst hätte die
-      // Filtergruppe später „M" und „m" als zwei Größen.
-      size: tidySize(size),
-    });
-    setTitle('');
-    setStartPrice('');
-    setIncrement('');
-    setBuyNow('');
-    setSize('');
-    setImageUrl(null);
-    setUploadError(null);
+    if (!canSubmit || !plan || uploadLock.current) return;
+    void form.submit(async snapshot => {
+      await onPrepare({
+        title: snapshot.title,
+        startCents: snapshot.startPrice.trim() ? euroToCents(snapshot.startPrice)! : 100,
+        incrementCents: snapshot.increment.trim() ? (euroToCents(snapshot.increment) ?? 100) : 100,
+        buyNowCents: snapshot.buyNow.trim() ? euroToCents(snapshot.buyNow) : null,
+        imageUrl: snapshot.imageUrl,
+        size: tidySize(snapshot.size),
+      });
+    }, error => prepareErrorText(error instanceof Error ? error.message : String(error)));
   };
 
   /**
@@ -208,11 +229,11 @@ export function PrepareSheet({
       onRequestClose={onClose}
     >
       <View style={s.sheet}>
-        <View style={s.head}>
+        <View key={`head-${fontScale}`} style={s.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={s.headTitle}>Artikel vorbereiten</Text>
+            <Text key={`copy-0-${fontScale}`} style={s.headTitle}>Artikel vorbereiten</Text>
             {plan ? (
-              <Text style={s.headSub}>
+              <Text key={`copy-1-${fontScale}`} style={s.headSub}>
                 {plan.title} · {formatSlot(plan.scheduled_at)}
               </Text>
             ) : null}
@@ -226,25 +247,29 @@ export function PrepareSheet({
               erscheint. Der ehrliche Ausgang heißt deshalb „Fertig".
               Am Gerät gemeldet, 21.08.2026. */}
           <PressFeedback style={s.doneButton} hitSlop={10} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fertig">
-            <Text style={s.done}>Fertig</Text>
+            <Text key={`copy-2-${fontScale}`} style={s.done}>Fertig</Text>
           </PressFeedback>
         </View>
 
         <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
           keyboardShouldPersistTaps="handled"
         >
           {notice ? (
             <PressFeedback style={s.notice} onPress={onDismissNotice}>
-              <Text style={s.noticeText}>{notice}</Text>
+              <Text key={`copy-3-${fontScale}`} style={s.noticeText}>{notice}</Text>
             </PressFeedback>
           ) : null}
 
           {/* ── Was schon bereitliegt. Steht ÜBER dem Formular: Wer das Blatt
               zum zweiten Mal öffnet, will zuerst sehen, was er hat. ───────── */}
+          {unavailable ? <FeedbackState title={readError ? 'Vorbereitung gerade nicht erreichbar' : 'Vorbereitete Artikel werden geladen'} loading={loading}
+            body={readError ? 'Dein Entwurf bleibt erhalten. Lade den aktuellen Stand erneut.' : undefined}
+            action={readError && onRetry ? { label: 'Erneut laden', onPress: onRetry, busy: retrying } : undefined} /> : null}
           {items.length > 0 ? (
             <View style={s.card}>
-              <Text style={s.cardTitle}>
+              <Text key={fontScale} style={s.cardTitle}>
                 {items.length === 1 ? '1 Artikel bereit' : `${items.length} Artikel bereit`}
               </Text>
               {items.map((item) => (
@@ -260,10 +285,10 @@ export function PrepareSheet({
                     ) : null}
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={s.itemTitle}>
+                    <Text key={`copy-4-${fontScale}`} numberOfLines={1} style={s.itemTitle}>
                       {item.title}
                     </Text>
-                    <Text numberOfLines={1} style={s.itemMeta}>
+                    <Text key={`copy-5-${fontScale}`} numberOfLines={1} style={s.itemMeta}>
                       {[
                         `ab ${formatEuro(item.start_price_cents)}`,
                         item.size ? `Gr. ${item.size}` : null,
@@ -281,15 +306,16 @@ export function PrepareSheet({
                         Gebote zuerst: Sie sind das stärkere Signal — wer bietet,
                         hat sich schon festgelegt, wer wartet, schaut nur zu. */}
                     {demandLabel(prebids?.get(item.id), watchers?.get(item.id)) ? (
-                      <Text style={s.itemDemand}>
+                      <Text key={`copy-6-${fontScale}`} style={s.itemDemand}>
                         {demandLabel(prebids?.get(item.id), watchers?.get(item.id))}
                       </Text>
                     ) : null}
                   </View>
                   <PressFeedback
+                    style={s.removeButton}
                     hitSlop={8}
                     onPress={() => confirmDiscard(item)}
-                    disabled={busy}
+                    disabled={saving || unavailable}
                     accessibilityRole="button"
                     accessibilityLabel={`${item.title} verwerfen`}
                   >
@@ -299,20 +325,20 @@ export function PrepareSheet({
               ))}
               {/* Die eigentliche Auskunft dieses Blattes — sie sagt, wozu das
                   Ganze gut ist, und steht deshalb bei der Ware, nicht im Kopf. */}
-              <Text style={s.claimNote}>
+              <Text key={`copy-7-${fontScale}`} style={s.claimNote}>
                 Beim Start dieser Show liegen sie automatisch in deiner Warteschlange.
               </Text>
             </View>
-          ) : (
+          ) : !unavailable ? (
             <View style={s.empty}>
               <Package size={26} color={ui.lineStrong} />
-              <Text style={s.emptyTitle}>Deine Artikel für die Show</Text>
-              <Text style={s.emptyBody}>
+              <Text key={`copy-8-${fontScale}`} style={s.emptyTitle}>Deine Artikel für die Show</Text>
+              <Text key={`copy-9-${fontScale}`} style={s.emptyBody}>
                 Wähle Artikel aus deinem Regal oder bereite unten einen neuen Artikel vor.
                 Deine Zuschauer können vorab sehen, was kommt.
               </Text>
             </View>
-          )}
+          ) : null}
 
           {/* ── Aus dem Regal holen. Steht ÜBER dem Formular, weil es der
               billigere Weg ist: Wer den Artikel schon einmal eingestellt hat,
@@ -320,14 +346,15 @@ export function PrepareSheet({
               gibt, ist das Formular darunter dran. ────────────────────────── */}
           <PressFeedback
             style={s.shelfButton}
+            disabled={saving || unavailable}
             onPress={() => setShelfOpen(true)}
             accessibilityRole="button"
             accessibilityLabel="Artikel aus dem Regal holen"
           >
             <Package size={17} color={ui.text} />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={s.shelfButtonText}>Aus dem Regal holen</Text>
-              <Text style={s.shelfButtonHint}>
+              <Text key={`copy-10-${fontScale}`} style={s.shelfButtonText}>Aus dem Regal holen</Text>
+              <Text key={`copy-11-${fontScale}`} style={s.shelfButtonHint}>
                 Was du schon anbietest — startet in der Show bei 1 €
               </Text>
             </View>
@@ -337,13 +364,13 @@ export function PrepareSheet({
               Studio: Bild links, Titel rechts, darunter die Preise in einer
               Zeile. Wer beides kennt, findet sich sofort zurecht. ─────────── */}
           <View style={s.card}>
-            <Text style={s.cardTitle}>Artikel hinzufügen</Text>
+            <Text key={`copy-12-${fontScale}`} style={s.cardTitle}>Artikel hinzufügen</Text>
 
             <View style={s.titleRow}>
               <PressFeedback
                 style={s.picker}
                 onPress={addImage}
-                disabled={uploading}
+                disabled={uploading || saving || unavailable}
                 accessibilityRole="button"
                 accessibilityLabel={imageUrl ? 'Bild wechseln' : 'Bild wählen'}
               >
@@ -374,83 +401,91 @@ export function PrepareSheet({
               </PressFeedback>
 
               <TextInput
+                editable={!saving}
+                allowFontScaling={false}
+                accessibilityLabel="Artikelname"
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Seidenschal, handbestickt"
                 placeholderTextColor={ui.textMuted}
-                style={[s.input, s.titleInput]}
+                style={[s.input, s.titleInput, { fontSize: s.input.fontSize * fontScale }]}
                 maxLength={140}
                 multiline
               />
             </View>
 
-            <View style={s.priceRow}>
-              <View style={s.priceField}>
-                <Text style={s.fieldLabel}>Startpreis</Text>
+            <View style={[s.priceRow, fontScale > 1.3 && s.priceRowLarge]}>
+              <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
+                <Text key={`copy-13-${fontScale}`} style={s.fieldLabel}>Startpreis</Text>
                 <TextInput
-                  value={startPrice}
+                editable={!saving}
+                allowFontScaling={false}
+                  accessibilityLabel="Startpreis in Euro"
+                value={startPrice}
                   onChangeText={setStartPrice}
                   keyboardType="decimal-pad"
                   placeholder="1"
                   placeholderTextColor={ui.textMuted}
-                  style={s.input}
+                  style={[s.input, { fontSize: s.input.fontSize * fontScale }]}
                 />
               </View>
-              <View style={s.priceField}>
-                <Text style={s.fieldLabel}>Schritt</Text>
+              <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
+                <Text key={`copy-14-${fontScale}`} style={s.fieldLabel}>Schritt</Text>
                 <TextInput
-                  value={increment}
+                editable={!saving}
+                allowFontScaling={false}
+                  accessibilityLabel="Gebotsschritt in Euro"
+                value={increment}
                   onChangeText={setIncrement}
                   keyboardType="decimal-pad"
                   placeholder="1"
                   placeholderTextColor={ui.textMuted}
-                  style={s.input}
+                  style={[s.input, { fontSize: s.input.fontSize * fontScale }]}
                 />
               </View>
-              <View style={s.priceField}>
-                <Text style={s.fieldLabel}>Sofort</Text>
+              <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
+                <Text key={`copy-15-${fontScale}`} style={s.fieldLabel}>Sofort</Text>
                 <TextInput
-                  value={buyNow}
+                editable={!saving}
+                allowFontScaling={false}
+                  accessibilityLabel="Sofortkaufpreis in Euro"
+                value={buyNow}
                   onChangeText={setBuyNow}
                   keyboardType="decimal-pad"
                   placeholder="—"
                   placeholderTextColor={ui.textMuted}
-                  style={s.input}
+                  style={[s.input, { fontSize: s.input.fontSize * fontScale }]}
                 />
               </View>
-              <View style={s.priceField}>
-                <Text style={s.fieldLabel}>Größe</Text>
+              <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
+                <Text key={`copy-16-${fontScale}`} style={s.fieldLabel}>Größe</Text>
                 <TextInput
-                  value={size}
+                editable={!saving}
+                allowFontScaling={false}
+                  accessibilityLabel="Größe"
+                value={size}
                   onChangeText={setSize}
                   placeholder="—"
                   placeholderTextColor={ui.textMuted}
-                  style={s.input}
+                  style={[s.input, { fontSize: s.input.fontSize * fontScale }]}
                   maxLength={24}
                 />
               </View>
             </View>
 
             {startPrice.trim() && !startOk ? (
-              <Text style={s.warn}>Der Startpreis muss mindestens 1 € sein.</Text>
+              <Text key={`copy-17-${fontScale}`} style={s.warn}>Der Startpreis muss mindestens 1 € sein.</Text>
             ) : null}
-            {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
+            {uploadError ? <Text key={`copy-18-${fontScale}`} style={s.warn}>{uploadError}</Text> : null}
             {full ? (
-              <Text style={s.warn}>
+              <Text key={`copy-19-${fontScale}`} style={s.warn}>
                 Fünfzig Artikel sind das Maximum für einen Abend — das reicht für jede Show. 🙂
               </Text>
             ) : null}
 
-            <PressFeedback
-              style={[s.primary, !canSubmit && s.primaryOff]}
-              disabled={!canSubmit}
-              onPress={submit}
-              accessibilityRole="button"
-              accessibilityLabel="Artikel vorbereiten"
-            >
-              <Plus size={17} color={ui.goldInk} />
-              <Text style={s.primaryText}>Vorbereiten</Text>
-            </PressFeedback>
+            {form.error ? <FeedbackState title="Speichern nicht bestätigt" body={form.error} /> : null}
+            <ActionButton label={form.busy ? 'Wird gespeichert …' : 'Artikel vorbereiten'} onPress={submit}
+              busy={form.busy} disabled={!canSubmit} style={{ marginTop: space.lg }} />
           </View>
 
           {/* ── Den Abend absagen. Ganz unten und als Textzeile, nicht als rote
@@ -460,6 +495,7 @@ export function PrepareSheet({
           {plan ? (
             <PressFeedback
               style={s.cancelPlan}
+              disabled={saving || unavailable}
               onPress={() => {
                 // ⚠️ `Alert.alert`, NICHT `Alert.prompt` — das gibt es nur auf
                 // iOS (CLAUDE.md, Regel 5).
@@ -483,7 +519,7 @@ export function PrepareSheet({
               accessibilityRole="button"
               accessibilityLabel={`${plan.title} absagen`}
             >
-              <Text style={s.cancelPlanText}>Diesen Termin absagen</Text>
+              <Text key={`copy-20-${fontScale}`} style={s.cancelPlanText}>Diesen Termin absagen</Text>
             </PressFeedback>
           ) : null}
         </ScrollView>
@@ -619,9 +655,9 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 3,
     right: 3,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: ui.brand,
     alignItems: 'center',
     justifyContent: 'center',
@@ -629,20 +665,11 @@ const s = StyleSheet.create({
 
   priceRow: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   priceField: { flex: 1, minWidth: 0 },
+  priceRowLarge: { flexWrap: 'wrap' },
+  priceFieldLarge: { flexBasis: '45%', flexGrow: 1 },
+  removeButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   fieldLabel: { fontSize: 11, color: ui.textMuted, marginBottom: 4 },
 
   warn: { fontSize: 12, color: ui.live, marginTop: space.sm },
 
-  primary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: space.lg,
-    height: 48,
-    borderRadius: radius.pill,
-    backgroundColor: ui.gold,
-  },
-  primaryOff: { opacity: 0.45 },
-  primaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
 });

@@ -26,6 +26,7 @@ function fixture(file) {
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial;
       return [slots[i], value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; }]; },
     useMemo(fn) { return fn(); }, useCallback(fn) { return fn; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; },
   };
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : ['2026-09-08T12:00:00'])); } static now() { return new Clock().getTime(); } }
   const deps = {
@@ -35,10 +36,17 @@ function fixture(file) {
     './PressFeedback': { PressFeedback: 'Button' }, '../lib/useReducedMotion': { useReducedMotion: () => reduced },
     '../theme/tokens': { ui: {}, radius: {}, space: { xs: 4, sm: 8, md: 12, lg: 20, xl: 32 } },
     'expo-image': { Image: 'Image' }, 'lucide-react-native': {},
-    '../lib/useSchedule': { MAX_WEEKS: 4, formatSlot: value => value, formatUntil: value => value },
+    '../lib/useSchedule': { MAX_WEEKS: 4, formatSlot: value => value, formatUntil: value => value, scheduleErrorText: value => value },
+    './FeedbackState': { FeedbackState: 'Feedback' },
     '../lib/uploadImage': { pickAndUpload: () => new Promise(resolve => { finishUpload = resolve; }) },
     '../lib/useCategories': { useCategoryOptions: () => ({ groups: [{ slug: 'mode', name: 'Mode', children: [{ slug: 'kleider', name: 'Kleider' }] }] }) },
   };
+  const hook = ts.transpileModule(fs.readFileSync(path.join(root, 'lib/useSellerDraft.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const hookContext = vm.createContext({ exports: {}, require: name => { assert.equal(name, 'react'); return react; } });
+  vm.runInContext(hook, hookContext);
+  deps['../lib/useSellerDraft'] = hookContext.exports;
   const code = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;

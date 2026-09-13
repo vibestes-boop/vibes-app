@@ -67,7 +67,6 @@ import {
   formatUntil,
   linkShowToPlan,
   matchingPlan,
-  scheduleErrorText,
   useMyPlannedShows,
   usePlanShow,
 } from '../../lib/useSchedule';
@@ -90,11 +89,20 @@ import { useSellerShows } from '../../lib/useSellerShows';
 import { useSellerListings } from '../../lib/useListings';
 import { ui, radius, space } from '../../theme/tokens';
 import { PressFeedback } from '../../components/PressFeedback';
+import { ActionButton } from '../../components/ActionButton';
+import { FeedbackState } from '../../components/FeedbackState';
+import { keyboardKit } from '../../lib/keyboardKit';
 import { useReducedMotion } from '../../lib/useReducedMotion';
 
 const DURATIONS = [20, 30, 60];
+const KeyboardBody = keyboardKit?.KeyboardAvoidingView ?? KeyboardAvoidingView;
 
 export default function SellScreen() {
+  const userId = useSession(s => s.userId);
+  return <SellScreenContent key={userId ?? 'guest'} />;
+}
+
+function SellScreenContent() {
   const reducedMotion = useReducedMotion();
   const { fontScale } = useWindowDimensions();
   const isFocused = useIsFocused();
@@ -106,7 +114,8 @@ export default function SellScreen() {
   const myProfile = useSession((s) => s.profile);
 
   const { serverNow } = useServerClock();
-  const { data: show, isLoading } = useMyActiveShow(myUserId, isFocused);
+  const showQuery = useMyActiveShow(myUserId, isFocused);
+  const { data: show, isLoading } = showQuery;
   const createShow = useCreateShow(myUserId);
   const endShow = useEndShow(myUserId);
   const setCover = useSetShowCover(myUserId);
@@ -125,6 +134,15 @@ export default function SellScreen() {
   /** Die zwei Blätter hinter den Einstiegs-Kacheln. */
   const [showSheet, setShowSheet] = useState(false);
   const [planSheet, setPlanSheet] = useState(false);
+  const [planNotice, setPlanNotice] = useState<string | null>(null);
+  const [showNotice, setShowNotice] = useState<string | null>(null);
+  const planVisible = useRef(planSheet);
+  planVisible.current = planSheet;
+  const showVisible = useRef(showSheet);
+  showVisible.current = showSheet;
+  const createLock = useRef(false);
+  const [creating, setCreating] = useState(false);
+  useEffect(() => () => { planVisible.current = false; showVisible.current = false; }, []);
   /**
    * ⚠️ Zwei `pageSheet`-Blätter im selben Takt zu wechseln geht auf iOS schief.
    *
@@ -155,7 +173,8 @@ export default function SellScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const formY = useRef(0);
 
-  const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
+  const plansQuery = useMyPlannedShows(myUserId);
+  const { data: plannedShows = [] } = plansQuery;
   const { plan: planShow, cancel: cancelPlan } = usePlanShow(myUserId);
 
   // ── Vorbereitete Artikel ──────────────────────────────────────────────────
@@ -164,7 +183,8 @@ export default function SellScreen() {
   // denselben Zwischenspeicher, es gibt also keine zwei Wahrheiten darüber,
   // was bereitliegt.
   const planIds = useMemo(() => plannedShows.map((p) => p.id), [plannedShows]);
-  const { byPlan: preparedByPlan } = usePreparedByPlan(planIds);
+  const preparedQuery = usePreparedByPlan(planIds);
+  const { byPlan: preparedByPlan } = preparedQuery;
   // Vorbereitetes, dessen Termin abgesagt wurde. Ohne diese Liste liegt es in
   // der Datenbank und ist über die App weder sicht- noch löschbar — am
   // 19.08.2026 sind so zwei echte Zeilen entstanden.
@@ -261,10 +281,14 @@ export default function SellScreen() {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [articleUrl, setArticleUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState<ImageKind | null>(null);
+  const uploadLock = useRef(false);
 
   /** Bild wählen und hochladen. Abbrechen ist kein Fehler, nur ein Nein. */
   const chooseImage = async (kind: ImageKind, apply: (url: string) => void) => {
+    if (uploadLock.current) return;
+    uploadLock.current = true;
     setUploading(kind);
+    if (showSheet) setShowNotice(null);
     try {
       // Beide Sorten von hier werden quadratisch gezeichnet: das Show-Cover auf
       // der Startseite und im Kategorien-Reiter, der Artikel in der
@@ -272,8 +296,10 @@ export default function SellScreen() {
       const url = await pickAndUpload(kind, 'portrait');
       if (url) apply(url);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Das Bild kam nicht durch.');
+      const message = error instanceof Error ? error.message : 'Das Bild kam nicht durch.';
+      if (showSheet) setShowNotice(message); else setNotice(message);
     } finally {
+      uploadLock.current = false;
       setUploading(null);
     }
   };
@@ -327,7 +353,7 @@ export default function SellScreen() {
   }, [editingStillQueued]);
 
   const submitItem = () => {
-    if (!show) return;
+    if (!show || showQuery.isError) return;
     const startCents = euroToCents(startPrice);
     const stepCents = euroToCents(increment);
     const buyNowCents = buyNow.trim() ? euroToCents(buyNow) : null;
@@ -376,16 +402,16 @@ export default function SellScreen() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={[styles.screen, styles.center]}>
-        <ActivityIndicator color={ui.brand} />
-      </View>
-    );
+  if (isLoading || (showQuery.isError && !show)) {
+    return <ScrollView style={styles.screen} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space.lg }}>
+      <FeedbackState title={isLoading ? 'Deine Show wird geladen' : 'Deine Show ist gerade nicht erreichbar'}
+        body={isLoading ? undefined : 'Lade den aktuellen Stand erneut, bevor du eine neue Show vorbereitest.'} loading={isLoading}
+        action={isLoading ? undefined : { label: 'Erneut laden', onPress: () => void showQuery.refetch({ cancelRefetch: false }), busy: showQuery.isFetching }} />
+    </ScrollView>;
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardBody
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
@@ -398,6 +424,8 @@ export default function SellScreen() {
         contentContainerStyle={{ padding: space.md, paddingBottom: insets.bottom + space.xl }}
         keyboardShouldPersistTaps="handled"
       >
+        {showQuery.isError ? <FeedbackState title="Show konnte nicht aktualisiert werden" body="Du siehst den zuletzt geladenen Stand."
+          action={{ label: 'Erneut laden', onPress: () => void showQuery.refetch({ cancelRefetch: false }), busy: showQuery.isFetching }} /> : null}
         {notice ? (
           <PressFeedback style={styles.notice} onPress={() => setNotice(null)}>
             <Text style={styles.noticeText}>{notice}</Text>
@@ -459,16 +487,16 @@ export default function SellScreen() {
           <View style={styles.doorRow}>
             <PressFeedback
               style={({ pressed }) => [styles.door, styles.doorPrimary, pressed && styles.doorPressed]}
-              onPress={() => setShowSheet(true)}
+              onPress={() => { setShowNotice(null); setShowSheet(true); }}
               accessibilityRole="button"
-              accessibilityLabel="Show starten"
+              accessibilityLabel="Show vorbereiten"
             >
-              <Radio size={20} color={ui.goldInk} />
-              <Text style={styles.doorTextPrimary}>Show starten</Text>
+              <Radio size={20} color={ui.card} />
+              <Text style={styles.doorTextPrimary}>Show vorbereiten</Text>
             </PressFeedback>
             <PressFeedback
               style={({ pressed }) => [styles.door, pressed && styles.doorPressed]}
-              onPress={() => setPlanSheet(true)}
+              onPress={() => { setPlanNotice(null); setPlanSheet(true); }}
               accessibilityRole="button"
               accessibilityLabel="Termin ankündigen"
             >
@@ -477,6 +505,8 @@ export default function SellScreen() {
             </PressFeedback>
           </View>
 
+          {plansQuery.isPending || plansQuery.isError ? <FeedbackState title={plansQuery.isError ? 'Deine Termine sind gerade nicht erreichbar' : 'Deine Termine werden geladen'}
+            loading={plansQuery.isPending} action={plansQuery.isError ? { label: 'Erneut laden', onPress: () => void plansQuery.refetch({ cancelRefetch: false }), busy: plansQuery.isFetching } : undefined} /> : null}
           {/* Die angekündigten Termine — auf der Übersicht, nicht im Formular.
               Mit der Zahl der Menschen, die eine Erinnerung bekommen: Whatnot
               zeigt an derselben Stelle ein Lesezeichen mit Zähler, und das ist
@@ -612,7 +642,7 @@ export default function SellScreen() {
           >
             <View style={styles.sheet}>
               <View style={styles.sheetHead}>
-                <Text key={fontScale} style={styles.sheetTitle}>Show starten</Text>
+                <Text key={fontScale} style={styles.sheetTitle}>Show vorbereiten</Text>
                 <PressFeedback
                   style={styles.sheetClose}
                   hitSlop={10}
@@ -624,15 +654,19 @@ export default function SellScreen() {
                 </PressFeedback>
               </View>
               <ScrollView
+                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                 contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
                 keyboardShouldPersistTaps="handled"
               >
           <View style={styles.card}>
+          {plansQuery.isPending || plansQuery.isError ? <FeedbackState title={plansQuery.isError ? 'Deine Termine sind gerade nicht erreichbar' : 'Deine Termine werden geladen'}
+            loading={plansQuery.isPending} action={plansQuery.isError ? { label: 'Erneut laden', onPress: () => void plansQuery.refetch({ cancelRefetch: false }), busy: plansQuery.isFetching } : undefined} /> : null}
             <Text key={`show-intro-${fontScale}`} style={styles.cardBody}>
-              Gib ihr einen Namen, den man im Feed erkennt — zum Beispiel „Parfüm ab 1 €".
+              Richte Titel, Cover und Kategorie ein. Danach prüfst du dein Kamerabild.
             </Text>
             <TextInput
               accessibilityLabel="Titel der Show"
+              editable={!creating}
               value={showTitle}
               onChangeText={setShowTitle}
               placeholder="Parfüm ab 1 €"
@@ -648,7 +682,7 @@ export default function SellScreen() {
             <PressFeedback
               style={styles.coverPicker}
               onPress={() => void chooseImage('cover', setCoverUrl)}
-              disabled={uploading !== null}
+              disabled={uploading !== null || creating}
               accessibilityRole="button"
               accessibilityLabel="Cover auswählen"
             >
@@ -676,19 +710,21 @@ export default function SellScreen() {
                 der eine Folge nennt. */}
             <CategoryPicker
               value={showCategory}
-              onChange={setShowCategory}
+              hint="Mit einer Kategorie können Zuschauer deine Show leichter entdecken."
+              onChange={value => { if (!createLock.current) setShowCategory(value); }}
               openParent={showCategoryParent}
               onOpenParent={setShowCategoryParent}
             />
 
-            <PressFeedback
-              style={[styles.primaryButton, createShow.isPending && styles.buttonBusy]}
-              disabled={createShow.isPending || uploading !== null}
-              // Wer „Show starten" drückt, will senden — nicht auf einen zweiten
-              // Knopf schauen. Im Raum wartet die Kamera-Vorschau, erst danach
-              // geht wirklich etwas nach draußen.
-              onPress={() =>
-                void run(async () => {
+            {showNotice ? <FeedbackState title="Show prüfen" body={showNotice} /> : null}
+            <ActionButton label="Zur Kameravorschau" busy={creating}
+              disabled={uploading !== null || showQuery.isError || plansQuery.isError || plansQuery.isPending}
+              onPress={() => {
+                if (createLock.current || uploadLock.current || showQuery.isError || plansQuery.isError || plansQuery.isPending) return;
+                createLock.current = true;
+                setCreating(true);
+                setShowNotice(null);
+                void (async () => {
                   const sessionId = await createShow.mutateAsync({
                     title: showTitle,
                     thumbnailUrl: coverUrl,
@@ -730,14 +766,13 @@ export default function SellScreen() {
                   setShowTitle('');
                   setCoverUrl(null);
                   setShowCategory(null);
+                  const shouldOpen = showVisible.current;
                   setShowSheet(false);
-                  router.push(`/live/${sessionId}`);
-                })
-              }
-            >
-              <Radio size={17} color={ui.goldInk} />
-              <Text key={fontScale} style={styles.primaryButtonText}>Show starten</Text>
-            </PressFeedback>
+                  if (shouldOpen) router.push(`/live/${sessionId}`);
+                })().catch((error: unknown) => {
+                  setShowNotice(studioErrorText(error instanceof Error ? error.message : String(error)));
+                }).finally(() => { createLock.current = false; setCreating(false); });
+              }} />
           </View>
               </ScrollView>
             </View>
@@ -774,15 +809,19 @@ export default function SellScreen() {
                 </PressFeedback>
               </View>
               <ScrollView
+                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                 contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
                 keyboardShouldPersistTaps="handled"
               >
+          {plansQuery.isPending || plansQuery.isError ? <FeedbackState title={plansQuery.isError ? 'Deine Termine sind gerade nicht erreichbar' : 'Deine Termine werden geladen'}
+            loading={plansQuery.isPending} action={plansQuery.isError ? { label: 'Erneut laden', onPress: () => void plansQuery.refetch({ cancelRefetch: false }), busy: plansQuery.isFetching } : undefined} /> : null}
           <SchedulePlanner
             bare
+            notice={planNotice}
             plans={plannedShows}
-            busy={planShow.isPending || cancelPlan.isPending}
+            busy={planShow.isPending || cancelPlan.isPending || plansQuery.isPending || plansQuery.isError}
             onPlan={(input) =>
-              void planShow
+              planShow
                 .mutateAsync(input)
                 .then(({ created, total, firstId }) => {
                   const done =
@@ -806,22 +845,18 @@ export default function SellScreen() {
                   // Der Hinweis wandert MIT ins Blatt. Auf dem Reiter darunter
                   // stünde er hinter einem `pageSheet` und wäre unsichtbar
                   // (dieselbe Begründung wie bei `prepareNotice`).
+                  if (!planVisible.current) return;
                   setPrepareNotice(done);
                   setPlanSheet(false);
                   if (Platform.OS === 'ios') setPendingPrepare(firstId);
                   else setPrepareFor(firstId);
                 })
-                .catch((error: unknown) =>
-                  setNotice(
-                    scheduleErrorText(error instanceof Error ? error.message : String(error)),
-                  ),
-                )
             }
             onCancel={(planId) =>
               void cancelPlan
                 .mutateAsync(planId)
-                .then(() => setNotice('Termin abgesagt.'))
-                .catch(() => setNotice('Der Termin ließ sich nicht absagen.'))
+                .then(() => setPlanNotice('Termin abgesagt.'))
+                .catch(() => setPlanNotice('Der Termin ließ sich nicht absagen. Bitte versuche es erneut.'))
             }
             // Dieselbe Liste steht auf der Übersicht und hier. Dort öffnet ein
             // Tipp das Vorbereiten-Blatt — hier tat er bis zum 21.08.2026
@@ -843,6 +878,10 @@ export default function SellScreen() {
               `StandingComposer` im Regal. ─────────────────────────────────── */}
           <PrepareSheet
             plan={preparePlan}
+            loading={preparedQuery.isPending}
+            readError={preparedQuery.isError}
+            retrying={preparedQuery.isFetching}
+            onRetry={() => void preparedQuery.refetch({ cancelRefetch: false })}
             items={preparePlan ? (preparedByPlan.get(preparePlan.id) ?? []) : []}
             busy={prepare.isPending || discard.isPending}
             notice={prepareNotice}
@@ -853,19 +892,10 @@ export default function SellScreen() {
               // geöffnet wird — an einem Abend, mit dem er nichts zu tun hat.
               setPrepareNotice(null);
             }}
-            onPrepare={(input) =>
-              void prepare
-                .mutateAsync({ planId: preparePlan!.id, ...input })
-                // Kein Erfolgs-Hinweis: Der Artikel erscheint eine Zeile
-                // darüber in der Liste. Das ist die unmittelbarere Antwort als
-                // ein Satz, der sie verdeckt.
-                .then(() => setPrepareNotice(null))
-                .catch((error: unknown) =>
-                  setPrepareNotice(
-                    prepareErrorText(error instanceof Error ? error.message : String(error)),
-                  ),
-                )
-            }
+            onPrepare={async input => {
+              if (!preparePlan || preparedQuery.isError || preparedQuery.isPending) throw new Error('prepared_unavailable');
+              await prepare.mutateAsync({ planId: preparePlan.id, ...input });
+            }}
             onDiscard={(item) =>
               void discard
                 .mutateAsync(item.id)
@@ -932,6 +962,7 @@ export default function SellScreen() {
                 </PressFeedback>
                 <PressFeedback
                   style={styles.dangerButton}
+                  disabled={endShow.isPending || showQuery.isError}
                   onPress={() =>
                     void run(async () => {
                       await endShow.mutateAsync(show.id);
@@ -1010,7 +1041,7 @@ export default function SellScreen() {
                   </PressFeedback>
                   <PressFeedback
                     style={[styles.startButton, Boolean(active) && styles.startButtonDisabled]}
-                    disabled={Boolean(active)}
+                    disabled={Boolean(active) || showQuery.isError}
                     onPress={() => void run(() => startAuction(item.id, duration))}
                   >
                     <Text style={styles.startButtonText}>Starten</Text>
@@ -1266,7 +1297,7 @@ export default function SellScreen() {
 
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardBody>
   );
 }
 
@@ -1527,10 +1558,10 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingHorizontal: space.sm,
   },
-  doorPrimary: { backgroundColor: ui.gold, borderColor: ui.gold },
+  doorPrimary: { backgroundColor: ui.brand, borderColor: ui.brand },
   doorPressed: { opacity: 0.8 },
   doorText: { fontSize: 14, fontWeight: '700', color: ui.text, textAlign: 'center' },
-  doorTextPrimary: { fontSize: 14, fontWeight: '700', color: ui.goldInk, textAlign: 'center' },
+  doorTextPrimary: { fontSize: 14, fontWeight: '700', color: ui.card, textAlign: 'center' },
 
   planRow: {
     flexDirection: 'row',

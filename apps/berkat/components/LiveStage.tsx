@@ -38,6 +38,7 @@ export function useStageReady(): boolean {
 export function LiveRoomProvider({ children }: { children: ReactNode }) {
   const session = useLivePlayer((s) => s.session);
   const connected = useLivePlayer((s) => s.connected);
+  const cameraFacing = useLivePlayer((s) => s.cameraFacing);
   const access = useLiveAccess(
     session?.roomName,
     session?.isHost ?? false,
@@ -82,7 +83,7 @@ export function LiveRoomProvider({ children }: { children: ReactNode }) {
       token={active ? access.data?.token : undefined}
       connect={active}
       audio={publishes}
-      video={publishes}
+      video={publishes ? { facingMode: cameraFacing } : false}
       options={{
         // `adaptiveStream` drosselt je Zuschauer nach Fenstergröße und pausiert
         // Unsichtbares; `dynacast` stellt Qualitätsstufen ein, die niemand
