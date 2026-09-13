@@ -5,17 +5,15 @@ import type { LiveComment } from '../lib/useLiveChat';
 import type { MiniProfile } from '../lib/useAuction';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import { radius, space, stage } from '../theme/tokens';
-import { Avatar } from './Avatar';
+import { StageSheet } from './StageSheet';
 import { PressFeedback } from './PressFeedback';
 
 type Props = {
   comments: LiveComment[]; profiles: Record<string, MiniProfile>;
-  hidden: boolean; onHiddenChange: (hidden: boolean) => void;
-  inputRef: RefObject<TextInput | null>; draft: string; onChangeText: (text: string) => void;
-  onSend: () => void; sending: boolean; sendDisabled: boolean;
+  hidden: boolean; onHiddenChange: (hidden: boolean) => void; compact?: boolean;
 };
 
-export function LiveChatPanel({ comments, profiles, hidden, onHiddenChange, inputRef, draft, onChangeText, onSend, sending, sendDisabled }: Props) {
+export function LiveChatPanel({ comments, profiles, hidden, onHiddenChange, compact = false }: Props) {
   const { width, fontScale } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const x = useRef(new Animated.Value(0)).current;
@@ -44,51 +42,64 @@ export function LiveChatPanel({ comments, profiles, hidden, onHiddenChange, inpu
   }), [hidden, moveTo, onHiddenChange, reducedMotion, x]);
   const scrollToLatest = () => { if (atBottom.current) history.current?.scrollToEnd({ animated: false }); };
   return <View style={s.wrap} pointerEvents="box-none">
-    <Animated.View style={[s.column, { transform: [{ translateX: x }] }]} {...pan.panHandlers}
+    <Animated.View style={[s.column, hidden && { height: 0 }, { transform: [{ translateX: x }] }]} {...pan.panHandlers}
       pointerEvents={hidden ? 'none' : 'auto'} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>
       <ScrollView ref={history} style={s.history} contentContainerStyle={s.comments}
         keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" indicatorStyle="white"
         onContentSizeChange={scrollToLatest} onLayout={scrollToLatest}
         onScroll={({ nativeEvent: e }) => { atBottom.current = e.contentSize.height - e.contentOffset.y - e.layoutMeasurement.height < 40; }} scrollEventThrottle={100}>
-        {comments.map(comment => {
-          const author = profiles[comment.user_id];
-          return <View key={`${comment.id}:${fontScale}`} style={s.line}>
-            <Avatar uri={author?.avatarUrl} name={author?.username} size={22} />
-            <View style={s.bubble}>
-              <Text style={s.name}>{author?.username ?? 'Zuschauer'}</Text>
-              <Text style={s.text}>{comment.text}</Text>
-            </View>
-          </View>;
-        })}
+        {comments.slice(-(compact || fontScale > 1.4 ? 1 : 2)).map(comment => <View key={`${comment.id}:${fontScale}`} style={s.line}>
+          <Text numberOfLines={compact && fontScale > 1.4 ? 1 : 2} style={s.text}><Text style={s.name}>{profiles[comment.user_id]?.username ?? 'Zuschauer'}  </Text>{comment.text}</Text>
+        </View>)}
       </ScrollView>
-      <View style={s.inputRow}>
-        <TextInput ref={inputRef} value={draft} onChangeText={onChangeText} placeholder="Schreibe etwas …"
-          accessibilityLabel="Live-Kommentar" placeholderTextColor={stage.textMuted} style={s.input}
-          returnKeyType="send" onSubmitEditing={() => { if (!sendDisabled) onSend(); }} maxLength={300} />
-        <PressFeedback onPress={onSend} disabled={sendDisabled} style={[s.send, sendDisabled && s.disabled]}
-          accessibilityRole="button" accessibilityLabel={sending ? 'Kommentar wird gesendet' : 'Kommentar senden'}
-          accessibilityState={{ disabled: sendDisabled, busy: sending }}>
-          {sending ? <ActivityIndicator color={stage.ink} /> : <SendHorizontal size={18} color={stage.ink} />}
-        </PressFeedback>
-      </View>
-    </Animated.View>
+      </Animated.View>
     {hidden ? <PressFeedback onPress={() => onHiddenChange(false)} style={s.reveal} accessibilityRole="button" accessibilityLabel="Kommentare einblenden">
       <MessageSquare size={18} color={stage.text} /><ChevronRight size={15} color={stage.textMuted} />
     </PressFeedback> : null}
   </View>;
 }
+/** This instance survives keyboard, font and auction changes, preserving selection and draft. */
+export function LiveComposer({ inputRef, draft, onChangeText, onSend, sending, sendDisabled }: {
+  inputRef: RefObject<TextInput | null>; draft: string; onChangeText: (text: string) => void;
+  onSend: () => void; sending: boolean; sendDisabled: boolean;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const submit = () => { if (!sendDisabled && !sending) onSend(); };
+  return <View style={s.inputRow} testID="live-composer">
+    <TextInput ref={inputRef} value={draft} onChangeText={onChangeText} placeholder="Schreibe etwas …"
+      accessibilityLabel="Live-Kommentar" placeholderTextColor={stage.textMuted}
+      style={[s.input, { fontSize: 14 * fontScale }]} allowFontScaling={false}
+      returnKeyType="send" submitBehavior="submit" onSubmitEditing={submit} maxLength={300} />
+    <PressFeedback onPress={submit} disabled={sendDisabled || sending} style={[s.send, !sendDisabled && s.sendReady]}
+      accessibilityRole="button" accessibilityLabel={sending ? 'Kommentar wird gesendet' : 'Kommentar senden'}
+      accessibilityState={{ disabled: sendDisabled || sending, busy: sending }}>
+      {sending ? <ActivityIndicator color={stage.text} /> : <SendHorizontal size={19} color={sendDisabled ? stage.textMuted : stage.ink} />}
+    </PressFeedback>
+  </View>;
+}
+
+export function LiveChatHistory({ visible, onClose, comments, profiles }: {
+  visible: boolean; onClose: () => void; comments: LiveComment[]; profiles: Record<string, MiniProfile>;
+}) {
+  const { fontScale } = useWindowDimensions();
+  return <StageSheet visible={visible} onClose={onClose} title="Chatverlauf">
+    {comments.length ? comments.map(comment => <Text key={`${comment.id}:${fontScale}`} style={s.historyText}>
+      <Text style={s.name}>{profiles[comment.user_id]?.username ?? 'Zuschauer'}  </Text>{comment.text}
+    </Text>) : <Text key={fontScale} style={s.historyText}>Hier erscheinen die Kommentare dieser Show.</Text>}
+  </StageSheet>;
+}
 const s = StyleSheet.create({
-  wrap: { flex: 1, maxHeight: '100%', minHeight: 44, paddingLeft: space.md, paddingBottom: space.xs },
-  column: { maxHeight: '100%', gap: space.sm },
+  wrap: { maxHeight: '100%', minHeight: 0, paddingHorizontal: space.md, paddingBottom: space.xs },
+  column: { maxHeight: '100%' },
   history: { flexGrow: 0, flexShrink: 1, minHeight: 0 },
   comments: { gap: space.xs, paddingBottom: space.xs },
-  line: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, maxWidth: '96%' },
-  bubble: { flexShrink: 1, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: radius.sm, paddingHorizontal: space.sm, paddingVertical: space.xs },
-  name: { fontSize: 11, lineHeight: 16, color: stage.textMuted },
-  text: { fontSize: 13, lineHeight: 19, fontWeight: '600', color: stage.text },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginRight: space.sm },
-  input: { flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 10, paddingHorizontal: space.md, borderRadius: radius.pill, borderWidth: 1, borderColor: stage.lineStrong, backgroundColor: stage.control, fontSize: 13, color: stage.text },
-  send: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: stage.text, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.45 },
-  reveal: { position: 'absolute', left: 0, bottom: space.sm, minWidth: 52, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: stage.control, borderTopRightRadius: radius.pill, borderBottomRightRadius: radius.pill },
+  line: { alignSelf: 'flex-start', maxWidth: '100%', backgroundColor: stage.scrim, borderRadius: radius.sm, paddingHorizontal: 7, paddingVertical: 3 },
+  name: { fontWeight: '700', color: stage.text },
+  text: { fontSize: 13, lineHeight: 19, color: stage.text },
+  historyText: { fontSize: 15, lineHeight: 23, color: stage.text, paddingVertical: space.sm },
+  inputRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: space.md, borderRadius: radius.pill, borderWidth: 1, borderColor: stage.lineStrong, backgroundColor: stage.control, paddingRight: 3 },
+  input: { flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 10, paddingHorizontal: space.md, color: stage.text },
+  send: { width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  sendReady: { backgroundColor: stage.text },
+  reveal: { minWidth: 52, minHeight: 44, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: stage.control, borderRadius: radius.pill },
 });

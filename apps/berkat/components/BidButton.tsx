@@ -166,7 +166,7 @@ export function SlideToBid({
         if (!busy) onConfirm();
       }}
     >
-      <Text key={fontScale} style={[styles.label, styles.slideLabel, { color: ink }]}>
+      <Text key={`copy-0-${fontScale}`} style={[styles.label, styles.slideLabel, { color: ink }]}>
         {label}
       </Text>
 
@@ -262,8 +262,6 @@ export function BidButton({
     Boolean(onBuyNow) &&
     (state === 'idle' || state === 'urgent' || state === 'outbid');
 
-  const barPercent = Math.max(0, Math.min(100, (secondsLeft / 30) * 100));
-  const barVisible = state !== 'won' && state !== 'closed';
 
   return (
     <View>
@@ -277,8 +275,8 @@ export function BidButton({
             accessibilityRole="button"
             accessibilityLabel="Höchstgebot festlegen"
           >
-            <Text key={fontScale} style={styles.secondaryLabel}>Max</Text>
-            <Text key={fontScale}
+            <Text key={`copy-1-${fontScale}`} style={styles.secondaryLabel}>Max</Text>
+            <Text key={`copy-2-${fontScale}`}
               style={[styles.secondaryPrice, myMaxCents ? { color: stage.gold } : null]}
               numberOfLines={1}
             >
@@ -289,8 +287,8 @@ export function BidButton({
 
         {showBuyNow ? (
           <Pressable onPress={onBuyNow} style={styles.secondary} accessibilityRole="button">
-            <Text key={fontScale} style={styles.secondaryLabel}>Sofort</Text>
-            <Text key={fontScale} style={styles.secondaryPrice}>{formatEuro(auction.buy_now_cents)}</Text>
+            <Text key={`copy-3-${fontScale}`} style={styles.secondaryLabel}>Sofort</Text>
+            <Text key={`copy-4-${fontScale}`} style={styles.secondaryPrice}>{formatEuro(auction.buy_now_cents)}</Text>
           </Pressable>
         ) : null}
 
@@ -317,7 +315,7 @@ export function BidButton({
             {state === 'won' ? (
               <View style={styles.center}>
                 <PartyPopper size={19} color={stage.successInk} />
-                <Text key={fontScale} style={[styles.label, { color: stage.successInk, marginLeft: 8 }]}>
+                <Text key={`copy-5-${fontScale}`} style={[styles.label, { color: stage.successInk, marginLeft: 8 }]}>
                   Gewonnen ·{' '}
                 </Text>
                 <RollupNumber
@@ -328,18 +326,18 @@ export function BidButton({
             ) : state === 'leading' ? (
               <View style={styles.center}>
                 <Check size={19} color={stage.lead} />
-                <Text key={fontScale} style={[styles.label, { color: stage.lead, marginLeft: 8 }]}>
+                <Text key={`copy-6-${fontScale}`} style={[styles.label, { color: stage.lead, marginLeft: 8 }]}>
                   Du führst · {formatEuro(auction.current_bid_cents)}
                 </Text>
               </View>
             ) : state === 'seller' ? (
-              <Text key={fontScale} style={[styles.label, { color: stage.text }]}>
+              <Text key={`copy-7-${fontScale}`} style={[styles.label, { color: stage.text }]}>
                 {auction.current_bid_cents == null
                   ? 'Noch kein Gebot'
                   : `Läuft · ${formatEuro(auction.current_bid_cents)}`}
               </Text>
             ) : state === 'closed' ? (
-              <Text key={fontScale} style={[styles.label, { color: stage.textMuted }]}>
+              <Text key={`copy-8-${fontScale}`} style={[styles.label, { color: stage.textMuted }]}>
                 Warte auf den nächsten Artikel
               </Text>
             ) : null /* idle, urgent und outbid rendert `SlideToBid` oben */}
@@ -348,20 +346,7 @@ export function BidButton({
         </Animated.View>
       </View>
 
-      <View style={styles.barTrack}>
-        {barVisible ? (
-          <View
-            style={[
-              styles.barFill,
-              {
-                width: `${barPercent}%`,
-                backgroundColor:
-                  secondsLeft <= auctionConfig.urgentSeconds ? stage.live : stage.gold,
-              },
-            ]}
-          />
-        ) : null}
-      </View>
+
     </View>
   );
 }
@@ -412,14 +397,7 @@ const styles = StyleSheet.create({
   secondaryLabel: { fontSize: 11, color: stage.textMuted },
   secondaryPrice: { fontSize: 14, fontWeight: '700', color: stage.text },
 
-  barTrack: {
-    height: 3,
-    marginHorizontal: space.md,
-    borderRadius: 2,
-    backgroundColor: 'rgba(245,241,232,0.10)',
-    overflow: 'hidden',
-  },
-  barFill: { height: 3, borderRadius: 2 },
+
 });
 
 const stateStyles = StyleSheet.create({

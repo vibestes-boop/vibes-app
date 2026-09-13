@@ -1,9 +1,7 @@
 // Der Live-Auktions-Raum.
 //
-// Aufbau wie bei Whatnot: das Video füllt den Bildschirm, alles andere schwebt
-// darüber, zwei Verläufe halten Kopf und Fuß lesbar. Die Maße sind bewusst
-// klein gehalten — je weniger Fläche die Bedienung frisst, desto mehr Produkt
-// sieht man.
+// Header and compact auction dock frame the video. The composer owns the bottom
+// edge; comments, camera tools and secondary actions cannot displace it.
 //
 // Das Video selbst wird hier NICHT verbunden: die Verbindung hängt im
 // Wurzel-Layout (components/LiveStage) und überlebt deshalb das Verkleinern.
@@ -32,7 +30,8 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useIsFocused } from '@react-navigation/native';
 import { LiveRoomLayout } from '../../components/LiveRoomLayout';
-import { LiveChatPanel } from '../../components/LiveChatPanel';
+import { LiveChatPanel, LiveComposer, LiveChatHistory } from '../../components/LiveChatPanel';
+import { StageSheet } from '../../components/StageSheet';
 import { StageFeedback } from '../../components/StageFeedback';
 import { useLiveSession } from '../../lib/useLiveSession';
 import { useLiveChatDraft } from '../../lib/useLiveChatDraft';
@@ -43,6 +42,7 @@ import {
   Heart,
   Lock,
   MessageSquare,
+  MoreHorizontal,
   Package,
   Share2,
   ShoppingBag,
@@ -145,7 +145,7 @@ type StageModule = {
   useStageReady: () => boolean;
   useStageConnectionState: () => string;
   StageVideo: (props: { hostIdentity: string; style: ViewStyle }) => React.ReactNode;
-  HostControls: (props: { topOffset?: number }) => React.ReactNode;
+  HostControls: (props: Record<string, never>) => React.ReactNode;
   GoLiveGate: (props: { onGoLive: (facing: 'environment' | 'user') => void; onClose: () => void }) => React.ReactNode;
 };
 
@@ -242,6 +242,11 @@ function LiveAuctionRoomScreen() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [itemsOpen, setItemsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const afterMoreClose = useRef<(() => void) | null>(null);
+  const moreAction = (action: () => void) => { afterMoreClose.current = action; setMoreOpen(false); };
+  const finishMoreClose = () => { const action = afterMoreClose.current; afterMoreClose.current = null; action?.(); };
   const [paying, setPaying] = useState(false);
 
   // Bezahlen am Ende der Show — dort, wo der Käufer gerade steht.
@@ -742,13 +747,6 @@ function LiveAuctionRoomScreen() {
         style={[styles.topScrim, { height: insets.top + Math.max(84, headerHeight + space.md) }]}
         pointerEvents="none"
       />
-      <LinearGradient
-        colors={['rgba(11,21,18,0)', 'rgba(11,21,18,0.7)', 'rgba(11,21,18,0.96)']}
-        locations={[0, 0.45, 1]}
-        style={styles.bottomScrim}
-        pointerEvents="none"
-      />
-
       {/* `box-none` von hier abwärts durch alle reinen Anordnungs-Ebenen:
           Kopfzeile, Mitte und die Spalte selbst sollen keine Berührung
           schlucken, die nicht auf einem ihrer Knöpfe landet. Sonst wäre der
@@ -759,6 +757,7 @@ function LiveAuctionRoomScreen() {
         <LiveSellerHeader name={host?.username} avatarUrl={host?.avatarUrl} vouch={vouchShort} soldCount={soldCount}
           viewerCount={session.viewer_count ?? 0} isHost={isHost} follow={follow}
           onSeller={() => { Keyboard.dismiss(); setSellerOpen(true); }} onViewers={() => { Keyboard.dismiss(); setViewersOpen(true); }} onMinimize={minimize} />
+          {isHost && HostControls && stageReady ? <HostControls /> : null}
           {roomNotice ? <View style={{ padding: space.md }}>{roomNotice}</View> : null}
         </>}
         banner={<>
@@ -786,8 +785,9 @@ function LiveAuctionRoomScreen() {
         ) : null}
 
         </>}
-        chat={<LiveChatPanel comments={comments.filter(comment => !blocked?.has(comment.user_id))} profiles={profiles}
-          hidden={chatHidden} onHiddenChange={setChatHidden} inputRef={chatInputRef} draft={draft} onChangeText={setDraft}
+        chat={compact => <LiveChatPanel comments={comments.filter(comment => !blocked?.has(comment.user_id))} profiles={profiles}
+          hidden={chatHidden} onHiddenChange={setChatHidden} compact={compact} />}
+        composer={<LiveComposer inputRef={chatInputRef} draft={draft} onChangeText={setDraft}
           onSend={sendChat} sending={chatDraft.busy} sendDisabled={chatSendDisabled} />}
         rail={<>
             <PressFeedback
@@ -799,11 +799,7 @@ function LiveAuctionRoomScreen() {
               accessibilityLabel="Herz senden"
             >
               <RailIcon icon={Heart} color={stage.live} fill={stage.live} />
-              <Text style={styles.railLabel}>{formatCount(hearts.likes)}</Text>
-            </PressFeedback>
-            <PressFeedback style={styles.railItem} onPress={shareShow} accessibilityRole="button">
-              <RailIcon icon={Share2} color={stage.text} />
-              <Text style={styles.railLabel}>Teilen</Text>
+              <Text key={`rail-label-${fontScale}`} style={styles.railLabel}>{formatCount(hearts.likes)}</Text>
             </PressFeedback>
             <PressFeedback
               style={styles.railItem}
@@ -814,51 +810,24 @@ function LiveAuctionRoomScreen() {
                 <RailIcon icon={ShoppingBag} color={stage.text} />
                 {auctions.length > 0 ? (
                   <View style={styles.railBadge}>
-                    <Text style={styles.railBadgeText}>{auctions.length}</Text>
+                    <Text key={`rail-count-${fontScale}`} style={styles.railBadgeText}>{auctions.length}</Text>
                   </View>
                 ) : null}
               </View>
-              <Text style={styles.railLabel}>Shop</Text>
+              <Text key={`rail-label-${fontScale}`} style={styles.railLabel}>Shop</Text>
             </PressFeedback>
 
-            {/* Nur der Gastgeber, und nur seine eigene Sendung.
-                ⚠️ Die BESCHRIFTUNG ist die Zahl — dasselbe Muster wie beim
-                Herz-Knopf darüber, der seine Anzahl trägt. Das ist der Punkt
-                dieser Zeile: Der Verkäufer sieht seinen Umsatz, OHNE etwas zu
-                öffnen. Whatnot verlangt dafür, das Blatt aufzuziehen.
-                Solange nichts verkauft ist, steht dort „Umsatz" statt „0 €" —
-                eine Null zu Beginn einer Sendung ist keine Auskunft, sondern
-                eine Entmutigung (dieselbe Regel wie bei den Kategorie-Zählern,
-                Abschnitt 29). */}
-            {isHost ? (
-              <PressFeedback
-                style={styles.railItem}
-                onPress={() => { Keyboard.dismiss(); setEarningsOpen(true); }}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  earnings && earnings.grossCents > 0
-                    ? `Dieser Abend: ${formatEuro(earnings.grossCents)} aus ${earnings.soldCount} Zuschlägen`
-                    : 'Dieser Abend — noch nichts verkauft'
-                }
-              >
-                <RailIcon icon={TrendingUp} color={stage.lead} />
-                <Text style={[styles.railLabel, { color: stage.lead }]} numberOfLines={1}>
-                  {earnings && earnings.grossCents > 0
-                    ? formatEuro(earnings.grossCents)
-                    : 'Umsatz'}
-                </Text>
-              </PressFeedback>
-            ) : null}
-          <PressFeedback style={styles.railItem} onPress={() => setChatHidden(hidden => !hidden)} accessibilityRole="button"
-            accessibilityLabel={chatHidden ? 'Kommentare einblenden' : 'Kommentare ausblenden'} accessibilityState={{ selected: !chatHidden }}>
-            <RailIcon icon={MessageSquare} color={stage.text} /><Text style={styles.railLabel}>Chat</Text>
-          </PressFeedback>
+            <PressFeedback style={styles.railItem} onPress={() => { Keyboard.dismiss(); setMoreOpen(true); }} accessibilityRole="button" accessibilityLabel="Weitere Show-Aktionen">
+              <RailIcon icon={MoreHorizontal} color={stage.text} /><Text key={`rail-label-${fontScale}`} style={styles.railLabel}>Mehr</Text>
+            </PressFeedback>
         </>}
         effects={<FloatingHearts reactions={hearts.reactions} />}
-        auction={detailsMaxHeight => <>
+        auction={compact => <>
           {auctionsLoading ? <StageFeedback title="Artikel werden geladen" loading /> : auctionsError ? <StageFeedback title="Artikel gerade nicht erreichbar" body="Lade die Auktion erneut, bevor du bietest." action={{ label: 'Erneut laden', onPress: () => void retryAuctions({ cancelRefetch: false }), busy: auctionsFetching }} /> : <>
           <AuctionPanel
-            detailsMaxHeight={detailsMaxHeight}
+            compact={compact}
+            isHost={isHost}
+            onOpenItems={() => { Keyboard.dismiss(); setItemsOpen(true); }}
             auction={active}
             upcoming={upcoming}
             secondsLeft={secondsLeft}
@@ -878,7 +847,7 @@ function LiveAuctionRoomScreen() {
                 ? () => void startItem(upcoming[0].id)
                 : undefined
             }
-            startBusy={startBusy}
+            startBusy={startBusy || Boolean(auctionsError) || roomQuery.isError}
             onMaxBid={!isHost && active && !auctionsError && !roomQuery.isError ? () => setMaxOpen(true) : undefined}
             myMaxCents={myMax ?? null}
           />
@@ -889,13 +858,22 @@ function LiveAuctionRoomScreen() {
           an der Innenkante der Spalte hängen bliebe. */}
       <TapHearts reactions={hearts.reactions} />
 
-      {/* Außerhalb der Spalte, damit die absolute Position sich am Bildschirm
-          orientiert und nicht am Innenabstand der Spalte.
-          `stageReady` ist Pflicht, nicht Kosmetik: die Hooks darin brauchen den
-          LiveKit-Raum-Kontext, und den gibt es erst nach dem Verbinden. Ohne
-          diese Bedingung wirft die Komponente, sobald der Gastgeber den Raum
-          vor dem „Live gehen" öffnet. */}
-      {isHost && HostControls && stageReady ? <HostControls topOffset={headerHeight + space.md} /> : null}
+      <StageSheet visible={moreOpen} title="Show-Aktionen" onClose={() => setMoreOpen(false)} onDismiss={finishMoreClose}>
+        <PressFeedback style={styles.moreItem} onPress={() => moreAction(shareShow)} accessibilityRole="button">
+          <Share2 size={22} color={stage.text} /><Text key={`share-${fontScale}`} style={styles.moreLabel}>Show teilen</Text>
+        </PressFeedback>
+        {isHost ? <PressFeedback style={styles.moreItem} onPress={() => moreAction(() => setEarningsOpen(true))} accessibilityRole="button">
+          <TrendingUp size={22} color={stage.text} /><Text key={`earnings-${fontScale}`} style={styles.moreLabel}>Umsatz & Zuschläge</Text>
+        </PressFeedback> : null}
+        <PressFeedback style={styles.moreItem} onPress={() => moreAction(() => setHistoryOpen(true))} accessibilityRole="button">
+          <MessageSquare size={22} color={stage.text} /><Text key={`history-${fontScale}`} style={styles.moreLabel}>Chatverlauf öffnen</Text>
+        </PressFeedback>
+        <PressFeedback style={styles.moreItem} onPress={() => moreAction(() => setChatHidden(hidden => !hidden))} accessibilityRole="button" accessibilityState={{ selected: !chatHidden }}>
+          <Text key={`visibility-${fontScale}`} style={styles.moreLabel}>{chatHidden ? 'Kommentare einblenden' : 'Kommentare ausblenden'}</Text>
+        </PressFeedback>
+      </StageSheet>
+      <LiveChatHistory visible={historyOpen} onClose={() => setHistoryOpen(false)}
+        comments={comments.filter(comment => !blocked?.has(comment.user_id))} profiles={profiles} />
 
       <ShowItemsSheet
         visible={itemsOpen}
@@ -1018,7 +996,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: stage.ink },
   center: { alignItems: 'center', justifyContent: 'center' },
   topScrim: { position: 'absolute', left: 0, right: 0, top: 0 },
-  bottomScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 340 },
+  moreItem: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: stage.line },
+  moreLabel: { flex: 1, fontSize: 16, lineHeight: 23, color: stage.text },
 
   wozBadge: {
     flexDirection: 'row',

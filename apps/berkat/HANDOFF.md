@@ -1,5 +1,46 @@
 # Berkat — Übergabe
 
+## Live-Raum neu angeordnet · Build 16 · 13.09.2026
+
+Der echte iPhone-Host-Test aus Build 15 zeigte ein zu hohes Auktionslayout,
+überlagernde Kamera-Steuerung und ein vom Chatverlauf abhängiges Eingabefeld.
+Der Nutzer priorisiert deren vollständige Behebung vor dem nächsten UX-Block.
+
+- Eigenständig unten verankerte Eingabe; beim Schreiben bleiben Artikel, Preis
+  und Restzeit sichtbar. Kamera-/Mikrofonleiste liegt im gemeinsamen Kopfbereich.
+- Kleine öffnende Artikelzeile statt Produkt-/Vorschau-/Preis-/Statusstapel.
+  Host ohne Käuferhinweise und passive Gebots-Großschaltfläche. Zuschauer mit
+  sichtbaren Verkaufsangaben; bei großer Schrift separater Gebotsdialog.
+- Kurze Kommentare, vollständiger geladener Verlauf im Blatt, drei Nebenaktionen
+  statt fünf. Umsatz/Teilen/Kommentaroptionen unter Mehr. Flexible Abdunklung.
+- Kamerawechsel nach Frontkamera-Vorschau korrigiert. Serialisierte Medienbefehle,
+  sichtbare Fehler/Wiederholung, Schutz gegen späte Antworten nach Raumwechsel.
+  Falscher 30-Sekunden-Balken und nicht angebotene Sofortkaufankündigung entfernt.
+
+**Geprüft:** TypeScript und 390 lokale Tests, 22 davon neu. Vollständige Host- und
+Zuschaueranordnung im iPhone-17-Simulator mit extra-large/accessibility-medium.
+Eingabeabstand zur Tastatur 4 pt bei 0/1/5 Kommentaren; Host-Artikelzeile bei
+extra-large 64 pt. Große Schrift erhält einen vollständig lesbaren Gebotsdialog.
+Prüfroute archiviert und aus der App entfernt. Details, Grenzen und Nachweise:
+[Live-UX-Abnahme](docs/live-room-ux-2026-09-13.md), `outputs/berkat-live-rebuild`.
+
+**Gerätepaket:** Build 16 lokal als Release gebaut, signiert, als IPA gesichert
+und auf dem iPhone 16 Pro installiert und gestartet. CoreDevice bestätigt
+com.berkat.app / 1.0.0 / 16. Bei der Nachprüfung lief die App unter einer anderen
+Prozessnummer (12149 statt 12144); Ursache nicht festgestellt, im erreichbaren
+Crash-Verzeichnis kein neuer Berkat-Bericht. Der neue Prozess war 80 Sekunden
+später weiterhin vorhanden. Hermes, 70 Quell-Hashes, UI-Texte,
+12 Kategorie-Assets,
+Signatur/Profil und IPA-CRC geprüft; QA-Route fehlt im Bundle. Native Projektkopien
+archiviert. Lokale Expo-Updates und Sentry-Upload blieben deaktiviert. Build 16
+ersetzt Build 15 als letzten installierten Stand. Nachweise:
+`outputs/berkat-iphone-build-16`. Keine Veröffentlichung.
+
+**Offen:** Echte laufende Übertragung auf dem iPhone, insbesondere erste
+Kamera-Umschaltung nach Frontkamera-Einstieg, Ton, Senden und Scrollgesten in langen
+Blättern. Die lokale Prüfroute sendet weder Video noch echte Kommentare/Gebote.
+Die bisherigen Screenshots gelten nicht als Abnahme der neuen Live-Übertragung.
+
 ## Verkäufer-Vorbereitung · Build 15 · 13.09.2026
 
 **Fortsetzung des bestätigten UX-Plans:** Der Nutzer meldet, dass keine laufende

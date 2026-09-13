@@ -1,138 +1,80 @@
-// Kamerasteuerung für den Gastgeber.
-//
-// Vorher startete die Kamera stillschweigend, sobald der Gastgeber den Raum
-// öffnete — man konnte weder sehen, ob man sendet, noch die Kamera wechseln
-// oder das Mikro stumm schalten. Für jemanden, der gleich vor Publikum steht,
-// ist "ich weiß nicht, ob ich gerade live bin" der schlechteste Zustand.
-//
-// Läuft nur INNERHALB von LiveKitRoom, weil die Hooks den Raum-Kontext
-// brauchen.
-
-import { useCallback, useState } from 'react';
-
-import { useWindowDimensions, StyleSheet, Text, View } from 'react-native';
-
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { ActivityIndicator, Keyboard, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useConnectionState, useLocalParticipant } from '@livekit/react-native';
 import { ConnectionState, type LocalVideoTrack } from 'livekit-client';
 import { Mic, MicOff, SwitchCamera, Video, VideoOff } from 'lucide-react-native';
-
+import { useLivePlayer } from '../lib/livePlayer';
+import { useHostMediaControls } from '../lib/useHostMediaControls';
 import { PressFeedback } from './PressFeedback';
+import { StageSheet } from './StageSheet';
 import { stage, radius, space } from '../theme/tokens';
 
-export function HostControls({ topOffset = 56 }: { topOffset?: number }) {
-  const { fontScale } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+export function HostControls() {
   const connection = useConnectionState();
-  const { localParticipant, isCameraEnabled, isMicrophoneEnabled, cameraTrack } =
-    useLocalParticipant();
-  const [front, setFront] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const toggleCamera = useCallback(() => {
-    void localParticipant?.setCameraEnabled(!isCameraEnabled);
-  }, [localParticipant, isCameraEnabled]);
-
-  const toggleMic = useCallback(() => {
-    void localParticipant?.setMicrophoneEnabled(!isMicrophoneEnabled);
-  }, [localParticipant, isMicrophoneEnabled]);
-
-  const switchCamera = useCallback(async () => {
-    const track = cameraTrack?.track as LocalVideoTrack | undefined;
-    if (!track || busy) return;
-    setBusy(true);
-    try {
-      const next = front ? 'environment' : 'user';
-      await track.restartTrack({ facingMode: next });
-      setFront(!front);
-    } catch {
-      // Kamerawechsel kann fehlschlagen (Gerät belegt, nur eine Kamera).
-      // Kein Grund für eine Fehlermeldung — der alte Zustand bleibt einfach.
-    } finally {
-      setBusy(false);
-    }
-  }, [cameraTrack, front, busy]);
-
-  const status =
-    connection === ConnectionState.Connected
-      ? isCameraEnabled
-        ? { text: 'Du sendest', dot: stage.lead }
-        : { text: 'Kamera aus', dot: stage.live }
-      : connection === ConnectionState.Connecting ||
-          connection === ConnectionState.Reconnecting
-        ? { text: 'Verbinden …', dot: stage.textMuted }
-        : { text: 'Nicht verbunden', dot: stage.live };
-
-  return (
-    <View style={[styles.wrap, { top: insets.top + topOffset }]} pointerEvents="box-none">
-      <View style={styles.statusPill}>
-        <View style={[styles.dot, { backgroundColor: status.dot }]} />
-        <Text key={`copy-0-${fontScale}`} style={styles.statusText}>{status.text}</Text>
-      </View>
-
-      <View style={styles.row}>
-        <PressFeedback
-          onPress={toggleCamera}
-          style={[styles.button, !isCameraEnabled && styles.buttonOff]}
-          accessibilityRole="button"
-          accessibilityLabel={isCameraEnabled ? 'Kamera ausschalten' : 'Kamera einschalten'}
-        >
-          {isCameraEnabled ? (
-            <Video size={20} color={stage.text} />
-          ) : (
-            <VideoOff size={20} color={stage.liveInk} />
-          )}
-        </PressFeedback>
-
-        <PressFeedback
-          onPress={toggleMic}
-          style={[styles.button, !isMicrophoneEnabled && styles.buttonOff]}
-          accessibilityRole="button"
-          accessibilityLabel={isMicrophoneEnabled ? 'Mikrofon stumm' : 'Mikrofon an'}
-        >
-          {isMicrophoneEnabled ? (
-            <Mic size={20} color={stage.text} />
-          ) : (
-            <MicOff size={20} color={stage.liveInk} />
-          )}
-        </PressFeedback>
-
-        <PressFeedback
-          onPress={switchCamera}
-          style={[styles.button, (busy || !cameraTrack?.track) && { opacity: 0.5 }]}
-          disabled={busy || !cameraTrack?.track}
-          accessibilityState={{ disabled: busy || !cameraTrack?.track, busy }}
-          accessibilityRole="button"
-          accessibilityLabel="Kamera wechseln"
-        >
-          <SwitchCamera size={20} color={stage.text} />
-        </PressFeedback>
-      </View>
-    </View>
-  );
+  const { localParticipant, isCameraEnabled, isMicrophoneEnabled, cameraTrack } = useLocalParticipant();
+  const initialFacing = useLivePlayer(s => s.cameraFacing);
+  const media = useHostMediaControls({ participant: localParticipant, track: cameraTrack?.track as LocalVideoTrack | undefined,
+    connected: connection === ConnectionState.Connected, cameraEnabled: isCameraEnabled, micEnabled: isMicrophoneEnabled, initialFacing });
+  return <HostControlsView connection={connection} cameraEnabled={isCameraEnabled} micEnabled={isMicrophoneEnabled}
+    hasCamera={Boolean(cameraTrack?.track)} {...media} />;
 }
 
-const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: space.md, gap: 6, alignItems: 'flex-start' },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: stage.control,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
+/** The real controls and native QA use the same complete layout. */
+export function HostControlsView({ connection, cameraEnabled, micEnabled, hasCamera, pending, error, toggleCamera, toggleMic, switchCamera, retry }: {
+  connection: string; cameraEnabled: boolean; micEnabled: boolean; hasCamera: boolean;
+  pending: 'camera' | 'mic' | 'switch' | null; error: string | null;
+  toggleCamera: () => unknown; toggleMic: () => unknown; switchCamera: () => unknown; retry: () => unknown;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const connected = connection === 'connected';
+  const disabled = !connected || Boolean(pending);
+  const status = connected ? cameraEnabled ? 'Du sendest' : 'Kamera aus'
+    : ['connecting', 'reconnecting', 'signalReconnecting'].includes(connection) ? 'Verbinden …' : 'Nicht verbunden';
+  return <View style={s.wrap} testID="host-controls">
+    <View style={s.row}>
+      <View style={s.status}>
+        <View style={[s.dot, { backgroundColor: connected && cameraEnabled ? stage.lead : stage.live }]} />
+        <Text key={`status-${fontScale}`} style={s.statusText}>{status}</Text>
+      </View>
+      <PressFeedback onPress={() => void toggleMic()} disabled={disabled} style={s.button} accessibilityRole="button"
+        accessibilityLabel={micEnabled ? 'Mikrofon stumm' : 'Mikrofon an'} accessibilityState={{ disabled, busy: pending === 'mic' }}>
+        {pending === 'mic' ? <ActivityIndicator color={stage.text} /> : micEnabled ? <Mic size={18} color={stage.text} /> : <MicOff size={18} color={stage.live} />}
+      </PressFeedback>
+      <PressFeedback onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} style={s.button} accessibilityRole="button" accessibilityLabel="Kamera-Werkzeuge öffnen">
+        {cameraEnabled ? <Video size={19} color={stage.text} /> : <VideoOff size={19} color={stage.live} />}
+      </PressFeedback>
+    </View>
+    {error ? <PressFeedback onPress={() => void retry()} disabled={disabled} style={s.error} accessibilityRole="button" accessibilityLabel={`${error} Wiederholen`}>
+      <Text key={`error-${fontScale}`} style={s.errorText} accessibilityLiveRegion="polite">{error}</Text>
+    </PressFeedback> : null}
+    <StageSheet visible={toolsOpen} title="Kamera & Mikrofon" onClose={() => setToolsOpen(false)}>
+      {[
+        { label: cameraEnabled ? 'Kamera ausschalten' : 'Kamera einschalten', action: toggleCamera, Icon: cameraEnabled ? Video : VideoOff, kind: 'camera' },
+        { label: micEnabled ? 'Mikrofon stummschalten' : 'Mikrofon einschalten', action: toggleMic, Icon: micEnabled ? Mic : MicOff, kind: 'mic' },
+        { label: 'Kamera wechseln', action: switchCamera, Icon: SwitchCamera, kind: 'switch' },
+      ].map(({ label, action, Icon, kind }) => <PressFeedback key={`${kind}-${fontScale}`} onPress={() => void action()}
+        disabled={disabled || kind === 'switch' && (!hasCamera || !cameraEnabled)} style={s.tool} accessibilityRole="button"
+        accessibilityState={{ disabled: disabled || kind === 'switch' && (!hasCamera || !cameraEnabled), busy: pending === kind }}>
+        {pending === kind ? <ActivityIndicator color={stage.text} /> : <Icon size={21} color={stage.text} />}
+        <Text style={s.toolText}>{label}</Text>
+      </PressFeedback>)}
+      {!connected ? <Text key={`connection-${fontScale}`} style={s.errorText}>Die Steuerung ist wieder verfügbar, sobald die Show verbunden ist.</Text> : null}
+      {error ? <PressFeedback onPress={() => void retry()} disabled={disabled} style={s.tool} accessibilityRole="button">
+        <Text key={`retry-${fontScale}`} style={s.errorText}>{error} Wiederholen</Text>
+      </PressFeedback> : null}
+    </StageSheet>
+  </View>;
+}
+const s = StyleSheet.create({
+  wrap: { paddingHorizontal: space.md, paddingTop: space.xs },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, backgroundColor: stage.control, borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 6 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 12, fontWeight: '700', color: stage.text },
-  row: { flexDirection: 'row', gap: 6 },
-  button: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
-    backgroundColor: stage.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonOff: { backgroundColor: stage.live },
+  statusText: { flexShrink: 1, fontSize: 11, lineHeight: 16, fontWeight: '600', color: stage.text },
+  button: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: stage.control },
+  error: { borderRadius: radius.sm, backgroundColor: stage.control, padding: space.sm, minHeight: 44, justifyContent: 'center' },
+  errorText: { flexShrink: 1, fontSize: 13, lineHeight: 19, color: stage.text },
+  tool: { minHeight: 52, paddingVertical: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: stage.line },
+  toolText: { flex: 1, fontSize: 16, lineHeight: 23, color: stage.text },
 });

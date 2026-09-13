@@ -1,350 +1,133 @@
-// Current article first; price and bidding stay below the scrollable details.
-import { useEffect, useRef } from 'react';
-
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Package, Play } from 'lucide-react-native';
+import { ChevronRight, Package, Play } from 'lucide-react-native';
 import { stage, radius, space, auction as auctionConfig } from '../theme/tokens';
 import { formatCountdown, formatEuro, type Auction, type MiniProfile } from '../lib/useAuction';
 import { shippingHint } from '../lib/useShipping';
 import { sellerKindNote } from '../lib/useBerkatSeller';
-import { Avatar } from './Avatar';
 import { BidButton } from './BidButton';
+import { PressFeedback } from './PressFeedback';
+import { StageSheet } from './StageSheet';
 
 type Props = {
-  auction: Auction | null;
-  detailsMaxHeight?: number;
-  upcoming: Auction[];
-  secondsLeft: number;
-  myUserId: string | null;
-  leader: MiniProfile | null;
-  busy?: boolean;
-  cartLabel?: string | null;
-  onBid: (amountCents: number) => void;
-  onBuyNow?: () => void;
-  /**
-   * Nur für den Gastgeber: den nächsten Artikel starten, ohne den Raum zu
-   * verlassen. Ohne das müsste er den Stream beenden, um weiterzuverkaufen.
-   */
-  onStartNext?: () => void;
-  startBusy?: boolean;
-  onMaxBid?: () => void;
-  myMaxCents?: number | null;
-  /**
-   * Günstigster Versandsatz des Verkäufers in Cent, `null` wenn keiner
-   * hinterlegt ist. Steht hier nichts, wird auch nichts behauptet.
-   */
-  shippingFromCents?: number | null;
-  /**
-   * Nimmt dieser Verkäufer Geld über Berkat an (`checkout_enabled`)?
-   *
-   * ⚠️ Kein Riegel — der steht serverseitig an der Kasse (`20260823120000`).
-   * Hier steht die Auskunft VOR dem Gebot. Ohne sie erführe der Käufer erst
-   * nach dem Zuschlag, dass er nicht bezahlen kann; die Übergabe nennt das
-   * „korrekt, aber tödlich".
-   */
-  sellerTakesPayment?: boolean;
+  auction: Auction | null; upcoming: Auction[]; secondsLeft: number;
+  myUserId: string | null; leader: MiniProfile | null; isHost?: boolean; compact?: boolean;
+  busy?: boolean; cartLabel?: string | null; onBid: (amountCents: number) => void;
+  onBuyNow?: () => void; onStartNext?: () => void; startBusy?: boolean;
+  onMaxBid?: () => void; myMaxCents?: number | null; onOpenItems?: () => void;
+  shippingFromCents?: number | null; sellerTakesPayment?: boolean;
 };
 
-export function AuctionPanel({
-  auction,
-  detailsMaxHeight,
-  upcoming,
-  secondsLeft,
-  myUserId,
-  leader,
-  busy,
-  cartLabel,
-  onBid,
-  onBuyNow,
-  onStartNext,
-  startBusy,
-  onMaxBid,
-  myMaxCents,
-  shippingFromCents,
-  sellerTakesPayment,
-}: Props) {
+/** One article row on stage; full image and additional information open deliberately. */
+export function AuctionPanel({ auction, upcoming, secondsLeft, myUserId, leader, isHost: hostRole = false,
+  compact = false, busy, cartLabel, onBid, onBuyNow, onStartNext, startBusy, onMaxBid, myMaxCents,
+  onOpenItems, shippingFromCents, sellerTakesPayment }: Props) {
   const { fontScale } = useWindowDimensions();
-  const details = useRef<ScrollView>(null);
-  useEffect(() => { details.current?.scrollTo({ y: 0, animated: false }); }, [auction?.id]);
-  const isSold = auction?.status === 'sold';
-  const urgent = secondsLeft <= auctionConfig.urgentSeconds;
+  const [sheet, setSheet] = useState<'details' | 'bid' | null>(null);
+  const afterBidClose = useRef<(() => void) | null>(null);
+  const largeType = fontScale > 1.4;
+  useEffect(() => { setSheet(null); afterBidClose.current = null; }, [auction?.id]);
+  const isHost = hostRole || Boolean(myUserId && auction?.seller_id === myUserId);
+  const sold = auction?.status === 'sold';
+  const running = auction?.status === 'running';
+  const priceLabel = sold ? 'Zuschlag' : auction?.current_bid_cents != null ? 'Höchstgebot' : 'Startpreis';
+  const time = sold ? 'Verkauft' : running ? secondsLeft > 0 ? formatCountdown(secondsLeft) : 'Zuschlag …'
+    : auction?.status === 'unsold' ? 'Ohne Gebot' : 'Bereit';
+  const price = formatEuro(auction?.current_bid_cents ?? auction?.start_price_cents ?? 0);
+  const bids = auction?.bid_count ?? 0;
+  const bidder = sold ? leader?.username ? `Zuschlag an ${leader.username}` : 'Zuschlag bestätigt'
+    : bids ? `${bids} ${bids === 1 ? 'Gebot' : 'Gebote'}${leader?.username ? ` · ${leader.username} führt` : ''}` : 'Noch kein Gebot';
+  // These remain in the viewer's bidding path, including at large font sizes.
+  const purchaseNotes = auction ? <View key={`notes-${fontScale}`} style={s.notes}>
+    <Text style={s.note}>{shippingHint(shippingFromCents) ?? 'Alle Zuschläge kommen in ein Paket'}</Text>
+    {sellerKindNote(auction.seller_kind) ? <Text style={s.note}>{sellerKindNote(auction.seller_kind)}</Text> : null}
+    {sellerTakesPayment === false ? <Text style={s.note}>Bezahlt wird direkt beim Verkäufer — schreib ihm nach dem Zuschlag</Text> : null}
+  </View> : null;
 
-  return (
-    <View>
-      <ScrollView ref={details} scrollEnabled={detailsMaxHeight !== undefined} style={{ flexGrow: 0, maxHeight: detailsMaxHeight }} keyboardShouldPersistTaps="handled" indicatorStyle="white">
-      {auction ? (
-        <View key={`productCard-${fontScale}`} style={styles.productCard}>
-          <View style={styles.product}>
-            <View style={styles.thumb}>
-              {auction.image_url ? (
-                <Image source={{ uri: auction.image_url }} style={StyleSheet.absoluteFill} contentFit="contain" />
-              ) : <Package size={26} color={stage.textMuted} />}
-            </View>
-
-            <View style={styles.productText}>
-              <Text numberOfLines={2} style={styles.title}>
-                {auction.title}
-              </Text>
-              <Text numberOfLines={2} style={styles.description}>
-                {auction.buy_now_cents
-                  ? `Auktion oder Sofortkauf für ${formatEuro(auction.buy_now_cents)}`
-                  : `Startet bei ${formatEuro(auction.start_price_cents)}, Schritt ${formatEuro(auction.min_increment_cents)}`}
-              </Text>
-
-            </View>
-          </View>
-
+  return <View testID={isHost ? 'host-auction' : 'viewer-auction'}>
+    {auction ? <PressFeedback onPress={() => { Keyboard.dismiss(); setSheet('details'); }} style={s.product}
+      accessibilityRole="button" accessibilityLabel={`${auction.title}. ${priceLabel} ${price}. ${time}. Artikeldetails öffnen`}>
+      {!compact ? <View style={s.thumb}>{auction.image_url
+        ? <Image source={{ uri: auction.image_url }} style={StyleSheet.absoluteFill} contentFit="contain" />
+        : <Package size={22} color={stage.textMuted} />}</View> : null}
+      <View key={`summary-${fontScale}`} style={s.copy}>
+        <Text numberOfLines={compact || fontScale <= 1.4 ? 1 : 2} style={s.title}>{auction.title}</Text>
+        <View style={s.priceLine}>
+          <Text style={s.price}>{price}</Text>
+          <Text style={s.status}>{isHost && running ? `${bids} ${bids === 1 ? 'Gebot' : 'Gebote'}` : priceLabel}</Text>
         </View>
-      ) : (
-        <View key={`empty-${fontScale}`} style={styles.product}>
-          <View style={styles.productText}>
-            <Text style={styles.title}>
-              {onStartNext ? 'Bereit für den nächsten' : 'Gleich geht es weiter'}
-            </Text>
-            <Text style={styles.description}>
-              {upcoming.length > 0
-                ? `${upcoming.length} Artikel warten`
-                : onStartNext
-                  ? 'Leg im Reiter „Verkaufen" noch etwas auf'
-                  : 'Der Verkäufer legt gleich den nächsten Artikel auf'}
-            </Text>
-          </View>
-        </View>
-      )}
+      </View>
+      <Text key={`time-${fontScale}`} style={[s.time, running && secondsLeft > 0 && secondsLeft <= auctionConfig.urgentSeconds && s.urgent]}>{time}</Text>
+      <ChevronRight size={15} color={stage.textMuted} />
+    </PressFeedback> : !compact ? <View key={`idle-${fontScale}`} style={s.empty}>
+      <View style={s.copy}>
+        <Text style={s.title}>{isHost ? 'Deine Bühne ist frei' : 'Gleich geht es weiter'}</Text>
+        <Text style={s.status}>{isHost ? upcoming.length ? `${upcoming.length} Artikel vorbereitet` : 'Öffne den Shop, um Artikel bereitzulegen.' : 'Der nächste Artikel folgt.'}</Text>
+      </View>
+      {isHost && onStartNext && upcoming.length ? <PressFeedback onPress={onStartNext} disabled={startBusy || busy} style={s.start}
+        accessibilityRole="button" accessibilityLabel="Nächsten Artikel starten" accessibilityState={{ disabled: Boolean(startBusy || busy), busy: Boolean(startBusy) }}>
+        <Play size={18} color={stage.goldInk} /><Text style={s.startText}>{startBusy ? 'Startet …' : 'Starten'}</Text>
+      </PressFeedback> : onOpenItems && isHost ? <PressFeedback onPress={onOpenItems} style={s.openShop} accessibilityRole="button" accessibilityLabel="Artikel öffnen">
+        <Package size={21} color={stage.text} />
+      </PressFeedback> : null}
+    </View> : null}
+    {!isHost && !compact && auction ? largeType ? <PressFeedback style={s.prepareBid}
+      onPress={() => setSheet('bid')} accessibilityRole="button" accessibilityLabel="Gebot und Verkaufsdetails öffnen">
+      <Text key={`prepare-${fontScale}`} style={s.prepareText}>Gebot & Details</Text><ChevronRight size={20} color={stage.goldInk} />
+    </PressFeedback> : <>
+      {purchaseNotes}
+      <BidButton auction={auction} secondsLeft={secondsLeft} myUserId={myUserId} busy={busy}
+        onBid={onBid} onBuyNow={onBuyNow} onMaxBid={onMaxBid} myMaxCents={myMaxCents} />
+    </> : null}
+    <StageSheet visible={sheet !== null && Boolean(auction)} title={sheet === 'bid' ? 'Dein Gebot' : 'Aktueller Artikel'} onClose={() => setSheet(null)}
+      onDismiss={() => { const action = afterBidClose.current; afterBidClose.current = null; action?.(); }}>
+      {auction && sheet === 'bid' ? <>
+        <Text key={`bid-title-${fontScale}`} style={s.detailTitle}>{auction.title}</Text>
+        <Text key={`bid-price-${fontScale}`} style={s.detailPrice}>{priceLabel}: {price} · {time}</Text>
+        {purchaseNotes}
+        <BidButton auction={auction} secondsLeft={secondsLeft} myUserId={myUserId} busy={busy} onBid={onBid} onBuyNow={onBuyNow}
+          onMaxBid={onMaxBid ? () => { afterBidClose.current = onMaxBid; setSheet(null); } : undefined} myMaxCents={myMaxCents} />
+      </> : null}
+      {auction && sheet === 'details' ? <View key={`detail-${auction.id}-${fontScale}`} style={s.details}>
+        <View style={s.largeImage}>{auction.image_url
+          ? <Image source={{ uri: auction.image_url }} style={StyleSheet.absoluteFill} contentFit="contain" />
+          : <Package size={48} color={stage.textMuted} />}</View>
+        <Text style={s.detailTitle}>{auction.title}</Text>
+        <Text style={s.detailPrice}>{priceLabel}: {price} · {time}</Text>
+        <Text style={s.detailText}>{bidder}</Text>
+        <Text style={s.detailText}>Gebotsschritt: {formatEuro(auction.min_increment_cents)}</Text>
+        {onBuyNow && auction.buy_now_cents ? <Text style={s.detailText}>Sofortkauf: {formatEuro(auction.buy_now_cents)}</Text> : null}
+        {purchaseNotes}
+        {cartLabel && !isHost ? <Text style={s.detailText}>{cartLabel}</Text> : null}
 
-      {cartLabel ? (
-        <View key={`cartBar-${fontScale}`} style={styles.cartBar}>
-          <Package size={14} color={stage.gold} />
-          <Text style={styles.cartText}>{cartLabel}</Text>
-        </View>
-      ) : null}
-
-      {upcoming.length > 0 ? (
-        <View key={`nextRow-${fontScale}`} style={styles.nextRow}>
-          <Text style={styles.nextLabel}>Als Nächstes</Text>
-          {upcoming.slice(0, 4).map((item) => (
-            <View key={item.id} style={styles.nextTile}>
-              {item.image_url ? (
-                <Image source={{ uri: item.image_url }} style={StyleSheet.absoluteFill} />
-              ) : (
-                <Text numberOfLines={1} style={styles.nextTileText}>
-                  {item.title.slice(0, 2)}
-                </Text>
-              )}
-            </View>
-          ))}
-          {upcoming.length > 4 ? (
-            <Text style={styles.nextMore}>+{upcoming.length - 4}</Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {auction && leader ? (
-        <View key={`leaderRow-${fontScale}`} style={styles.leaderRow}>
-          <Avatar uri={leader.avatarUrl} name={leader.username} size={22} ring />
-          <Text numberOfLines={1} style={styles.leaderText}>
-            <Text style={styles.leaderName}>{leader.username}</Text>
-            <Text style={styles.leaderVerb}>
-              {isSold ? ' hat den Zuschlag!' : ' hat das Höchstgebot!'}
-            </Text>
-          </Text>
-        </View>
-      ) : null}
-
-
-      </ScrollView>
-      {auction ? (
-          <View key={`priceBlock-${fontScale}`} style={styles.priceBlock}>
-            <View style={styles.priceValue}>
-              <Text style={styles.priceLabel}>{isSold ? 'Zuschlag' : auction.current_bid_cents !== null ? 'Höchstgebot' : 'Startpreis'}</Text>
-              <Text style={styles.price}>
-                {formatEuro(auction.current_bid_cents ?? auction.start_price_cents)}
-              </Text>
-            </View>
-            {isSold ? (
-              <Text style={[styles.countdown, { color: stage.live }]}>Verkauft</Text>
-            ) : secondsLeft <= 0 ? (
-              // Zwischen "Zeit um" und dem Zuschlag liegt ein Server-Aufruf.
-              // Eine stehende 00:00 sieht nach Absturz aus, das hier nicht.
-              <Text style={[styles.countdown, { color: stage.textMuted }]}>Zuschlag …</Text>
-            ) : (
-              <Text
-                style={[styles.countdown, { color: urgent ? stage.live : stage.textMuted }]}
-              >
-                {formatCountdown(secondsLeft)}
-              </Text>
-            )}
-          </View>
-      ) : null}
-      {auction ? <View key={`purchaseNotes-${fontScale}`} style={styles.purchaseNotes}>
-              {/* Stand bis 15.08.2026 „Versand und Steuern kommen dazu" — beides
-                  war unwahr: Es wurde weder Versand noch Steuer berechnet. Eine
-                  falsche Preisangabe ist nach PAngV angreifbar, und beim ersten
-                  fremden Verkäufer wäre es ein Streit. Jetzt steht hier der echte
-                  Satz, oder gar nichts. */}
-              <Text style={styles.shipping}>
-                {shippingHint(shippingFromCents) ?? 'Alle Zuschläge kommen in ein Paket'}
-              </Text>
-              {/* Die Anbieterkennzeichnung — auch auf der Bühne.
-                  Art. 246d § 1 EGBGB verlangt sie vor JEDER Vertragserklärung,
-                  und hier fallen zwei: der Sofortkauf über `BidButton` und der
-                  Zuschlag am Ende der Uhr. Bis zum 17.08.2026 stand sie nur am
-                  Regal-Angebot, also ausgerechnet nicht auf dem Hauptverkaufsweg.
-
-                  Steht direkt über dem Gebots-Knopf und nicht in einem Sheet:
-                  „vor der Erklärung" heißt im Blickfeld, nicht einen Tipp
-                  entfernt. Ist nichts erklärt (`null`), steht hier nichts —
-                  lieber eine Lücke als eine erfundene Angabe. */}
-              {sellerKindNote(auction.seller_kind) ? (
-                <Text style={styles.kind}>{sellerKindNote(auction.seller_kind)}</Text>
-              ) : null}
-              {/* ⚠️ Nur wenn ausdrücklich `false` — `undefined` heisst „wird
-                  noch geladen", und ein Satz, der eine Zehntelsekunde später
-                  verschwindet, ist auf einem Geldweg schlimmer als eine kurze
-                  Lücke (dieselbe Regel wie beim Kauf/Kontakt-Knopf auf der
-                  Artikelseite, Übergabe 22). */}
-              {sellerTakesPayment === false ? (
-                <Text style={styles.noCheckout}>
-                  Bezahlt wird direkt beim Verkäufer — schreib ihm nach dem Zuschlag
-                </Text>
-              ) : null}
       </View> : null}
-      {/* Der Gastgeber braucht genau einen Knopf, wenn nichts läuft. Vorher
-          stand hier nur Text — und die Show war zu Ende, weil Starten nur im
-          Studio ging und der Weg dorthin den Stream beendet hätte. */}
-      {onStartNext && !auction && upcoming.length > 0 ? (
-        <View style={styles.startWrap}>
-          <Pressable
-            onPress={onStartNext}
-            disabled={startBusy}
-            style={[styles.startNext, startBusy && styles.startNextBusy]}
-            accessibilityRole="button"
-            accessibilityLabel="Nächsten Artikel starten"
-          >
-            <Play size={19} color={stage.goldInk} />
-            <Text style={styles.startNextText}>Nächsten Artikel starten</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      <BidButton
-        auction={auction}
-        secondsLeft={secondsLeft}
-        myUserId={myUserId}
-        busy={busy}
-        onBid={onBid}
-        onBuyNow={onBuyNow}
-        onMaxBid={onMaxBid}
-        myMaxCents={myMaxCents}
-      />
-    </View>
-  );
+    </StageSheet>
+  </View>;
 }
-
-const styles = StyleSheet.create({
-  cartBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    marginHorizontal: space.md,
-    marginBottom: space.sm,
-    backgroundColor: stage.surface,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  cartText: { flexShrink: 1, fontSize: 12, fontWeight: '600', color: stage.gold },
-
-  nextRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: space.md,
-    marginBottom: space.sm,
-  },
-  nextLabel: { fontSize: 11, color: stage.textMuted, marginRight: 2 },
-  nextTile: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
-    backgroundColor: stage.surface,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nextTileText: { fontSize: 11, fontWeight: '600', color: stage.text },
-  nextMore: { fontSize: 11, color: stage.textMuted, marginLeft: 2 },
-
-  leaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: space.md,
-    marginBottom: space.sm,
-  },
-  leaderText: { flex: 1, fontSize: 12 },
-  leaderName: { color: stage.text, fontWeight: '700' },
-  leaderVerb: { color: stage.gold, fontWeight: '700' },
-
-  purchaseNotes: { paddingHorizontal: space.md, paddingBottom: space.sm },
-  productCard: {
-    marginHorizontal: space.md,
-    marginBottom: space.md,
-    paddingTop: space.md,
-    borderRadius: 20,
-    backgroundColor: stage.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: stage.line,
-  },
-  product: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingHorizontal: space.md,
-    paddingBottom: space.md,
-  },
-  thumb: {
-    width: 72,
-    height: 88,
-    alignSelf: 'flex-start',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-    backgroundColor: stage.surface,
-    overflow: 'hidden',
-  },
-  productText: { flex: 1, minWidth: 0 },
-  title: { fontSize: 17, lineHeight: 22, fontWeight: '700', color: stage.text },
-  description: { fontSize: 12, lineHeight: 17, color: stage.textMuted, marginTop: 1 },
-  shipping: { fontSize: 12, lineHeight: 17, color: stage.textMuted, marginTop: 4 },
-  // Kein Rot: Rot ist auf der Bühne die laufende Uhr. Das hier ist eine
-  // Auskunft, keine Frist — dieselbe Trennung wie bei der Bürgen-Zeile.
-  noCheckout: { fontSize: 12, lineHeight: 17, color: stage.textMuted, marginTop: 2, fontWeight: '600' },
-  /* Etwas heller als der Versandhinweis: Der ist ein Preisdetail, dies eine
-     Rechtsfolge. Trotzdem ruhig — auf der Bühne trägt Gold den Kauf, und eine
-     Pflichtangabe ist keine Werbung. */
-  kind: { fontSize: 11, lineHeight: 16, fontWeight: '600', color: stage.textMuted, marginTop: 1 },
-  startWrap: { paddingHorizontal: space.md, paddingBottom: space.md },
-  startNext: {
-    minHeight: 52,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.pill,
-    backgroundColor: stage.gold,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  startNextBusy: { opacity: 0.6 },
-  startNextText: { flexShrink: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: stage.goldInk },
-
-  priceBlock: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, marginHorizontal: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: stage.line, padding: space.md },
-  priceValue: { flexShrink: 1 },
-  priceLabel: { fontSize: 11, color: stage.textMuted, marginBottom: 2 },
-  price: { fontSize: 22, fontWeight: '700', color: stage.text },
-  countdown: { fontVariant: ['tabular-nums'], fontSize: 15, fontWeight: '700', marginTop: 1 },
+const s = StyleSheet.create({
+  product: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginHorizontal: space.md, padding: space.sm,
+    backgroundColor: stage.control, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: stage.line },
+  thumb: { width: 44, height: 44, borderRadius: radius.sm, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: stage.surfaceHigh },
+  copy: { flex: 1, minWidth: 0, gap: 2 },
+  title: { fontSize: 14, lineHeight: 19, fontWeight: '600', color: stage.text },
+  priceLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6 },
+  price: { fontSize: 16, lineHeight: 21, fontWeight: '700', color: stage.text },
+  status: { fontSize: 11, lineHeight: 16, color: stage.textMuted, flexShrink: 1 },
+  time: { flexShrink: 1, maxWidth: '30%', fontSize: 13, lineHeight: 18, fontWeight: '700', fontVariant: ['tabular-nums'], color: stage.text },
+  urgent: { color: stage.live },
+  notes: { paddingHorizontal: space.md, paddingTop: 4, paddingBottom: 6, gap: 1 },
+  note: { fontSize: 11, lineHeight: 15, color: stage.text },
+  empty: { marginHorizontal: space.md, padding: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: stage.control, borderRadius: radius.md },
+  start: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', minHeight: 44, maxWidth: '45%', paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.pill, backgroundColor: stage.gold },
+  startText: { flexShrink: 1, fontSize: 13, lineHeight: 19, fontWeight: '700', color: stage.goldInk },
+  openShop: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  prepareBid: { marginHorizontal: space.md, marginTop: space.sm, marginBottom: space.xs, minHeight: 48, paddingHorizontal: space.md, paddingVertical: space.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, borderRadius: radius.pill, backgroundColor: stage.gold },
+  prepareText: { flexShrink: 1, fontSize: 15, lineHeight: 21, fontWeight: '700', color: stage.goldInk },
+  details: { gap: space.sm },
+  largeImage: { height: 260, backgroundColor: stage.surfaceHigh, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  detailTitle: { fontSize: 21, lineHeight: 28, color: stage.text, fontWeight: '700' },
+  detailPrice: { fontSize: 18, lineHeight: 26, color: stage.text, fontWeight: '700' },
+  detailText: { flexShrink: 1, fontSize: 14, lineHeight: 21, color: stage.text },
+  allItems: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: stage.line, paddingVertical: space.sm },
 });

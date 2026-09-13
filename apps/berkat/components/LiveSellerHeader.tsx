@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
-import { ChevronDown, Package, ShieldCheck } from 'lucide-react-native';
+import { ChevronDown, Eye, Package, ShieldCheck } from 'lucide-react-native';
 import type { useFollow } from '../lib/useFollow';
 import { radius, space, stage } from '../theme/tokens';
 import { Avatar } from './Avatar';
@@ -26,6 +26,7 @@ export function LiveSellerHeader({ name, avatarUrl, vouch, soldCount, viewerCoun
   const { width, fontScale } = useWindowDimensions();
   const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
   const expanded = Math.min(width, measuredWidth ?? width) < 375 || fontScale > 1.4 || Boolean(follow.error) || follow.busy;
+  const splitActions = expanded && !isHost;
   const controls = <>
     {follow.canFollow ? <PressFeedback onPress={() => void follow.toggle()} disabled={follow.busy}
       style={[s.follow, expanded && s.followExpanded, follow.isFollowing && s.followActive]}
@@ -35,9 +36,9 @@ export function LiveSellerHeader({ name, avatarUrl, vouch, soldCount, viewerCoun
     </PressFeedback> : null}
     {isHost ? <PressFeedback style={s.viewers} onPress={onViewers} accessibilityRole="button"
       accessibilityLabel={`${viewerCount} schauen zu — Liste öffnen`}>
-      <View style={s.dot} /><Text style={s.viewerText}>{viewerCount}</Text>
+      <Eye size={14} color={stage.text} /><Text style={s.viewerText}>{viewerCount}</Text>
     </PressFeedback> : <View style={s.viewers} accessible accessibilityLabel={`${viewerCount} schauen zu`}>
-      <View style={s.dot} /><Text style={s.viewerText}>{viewerCount}</Text>
+      <Eye size={14} color={stage.text} /><Text style={s.viewerText}>{viewerCount}</Text>
     </View>}
   </>;
   return <View key={fontScale} style={s.wrap} pointerEvents="box-none" onLayout={event => {
@@ -58,12 +59,12 @@ export function LiveSellerHeader({ name, avatarUrl, vouch, soldCount, viewerCoun
           </View>
         </View>
       </PressFeedback>
-      {!expanded ? controls : null}
+      {!splitActions ? controls : null}
       <PressFeedback onPress={onMinimize} style={s.close} accessibilityRole="button" accessibilityLabel="Show verkleinern">
         <ChevronDown size={18} color={stage.text} />
       </PressFeedback>
     </View>
-    {expanded ? <View style={s.actions} pointerEvents="box-none">{controls}</View> : null}
+    {splitActions ? <View style={s.actions} pointerEvents="box-none">{controls}</View> : null}
     {follow.error ? <Text style={s.error} accessibilityLiveRegion="polite">{follow.error}</Text> : null}
   </View>;
 }
@@ -83,9 +84,9 @@ const s = StyleSheet.create({
   followActive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: stage.lineStrong },
   followText: { fontSize: 12, lineHeight: 18, textAlign: 'center', fontWeight: '700', color: stage.ink },
   followTextActive: { color: stage.text },
-  viewers: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.pill, backgroundColor: stage.live },
+  viewers: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.pill, backgroundColor: stage.control },
   dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: stage.liveInk },
-  viewerText: { fontSize: 12, lineHeight: 18, fontWeight: '700', color: stage.liveInk },
-  close: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: stage.surface },
+  viewerText: { fontSize: 12, lineHeight: 18, fontWeight: '700', color: stage.text },
+  close: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: stage.control },
   error: { fontSize: 13, lineHeight: 19, color: stage.text, backgroundColor: stage.surface, padding: space.sm, borderRadius: radius.md },
 });
