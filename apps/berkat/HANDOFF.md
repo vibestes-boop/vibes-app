@@ -2,6 +2,12 @@
 
 ## Live-Raum neu angeordnet · Build 16 · 13.09.2026
 
+**Gesicherter Quellstand des installierten Pakets:**
+`f0ed5fcd8ec98718ff81f7b9adb2c27c8429a75a` auf Branch `berkat`.
+Nach dem Commit wurden alle 70 eingefrorenen Quell-Hashes erneut gegen diesen
+Commit geprüft. Die folgenden Angaben beschreiben den abgeschlossenen
+Build-16-Durchgang; eine spätere echte Live-Abnahme wurde noch nicht gemeldet.
+
 Der echte iPhone-Host-Test aus Build 15 zeigte ein zu hohes Auktionslayout,
 überlagernde Kamera-Steuerung und ein vom Chatverlauf abhängiges Eingabefeld.
 Der Nutzer priorisiert deren vollständige Behebung vor dem nächsten UX-Block.
@@ -29,8 +35,7 @@ und auf dem iPhone 16 Pro installiert und gestartet. CoreDevice bestätigt
 com.berkat.app / 1.0.0 / 16. Bei der Nachprüfung lief die App unter einer anderen
 Prozessnummer (12149 statt 12144); Ursache nicht festgestellt, im erreichbaren
 Crash-Verzeichnis kein neuer Berkat-Bericht. Der neue Prozess war 80 Sekunden
-später weiterhin vorhanden. Hermes, 70 Quell-Hashes, UI-Texte,
-12 Kategorie-Assets,
+später weiterhin vorhanden. Hermes, 70 Quell-Hashes, UI-Texte, 12 Kategorie-Assets,
 Signatur/Profil und IPA-CRC geprüft; QA-Route fehlt im Bundle. Native Projektkopien
 archiviert. Lokale Expo-Updates und Sentry-Upload blieben deaktiviert. Build 16
 ersetzt Build 15 als letzten installierten Stand. Nachweise:
@@ -40,6 +45,23 @@ ersetzt Build 15 als letzten installierten Stand. Nachweise:
 Kamera-Umschaltung nach Frontkamera-Einstieg, Ton, Senden und Scrollgesten in langen
 Blättern. Die lokale Prüfroute sendet weder Video noch echte Kommentare/Gebote.
 Die bisherigen Screenshots gelten nicht als Abnahme der neuen Live-Übertragung.
+
+**Nächster Arbeitsbeginn:**
+
+1. Build 16 in einer echten Show als Host prüfen: Einstieg mit Frontkamera,
+   erster Kamerawechsel, Mikrofon an/aus, Kommentar senden und Tastatur schließen.
+2. Zuschaueransicht, lange Artikel-/Chatblätter und große Schrift auf dem iPhone
+   prüfen. Simulator-Scrollversuche lieferten keinen verlässlichen Positionswechsel;
+   die echte Scrollgeste ist deshalb noch nicht abgenommen.
+3. Ergebnisse und mögliche neue Screenshots dokumentieren, verbleibende Live-Fehler
+   beheben und erst danach den nächsten allgemeinen UX-Block fortsetzen.
+
+**Lokale Nachweise finden:** Die in dieser Übergabe genannten `outputs/`-Pfade
+liegen unter `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/`, nicht im App-Ordner.
+Das Gerätepaket liegt in `outputs/berkat-iphone-build-16/Berkat-1.0.0-16.ipa`.
+`source-manifest.json`, `bundle-verification.json`, `device-verification.json`
+und `SHA256SUMS` liegen daneben; native Prüfbilder und Testlogs unter
+`outputs/berkat-live-rebuild`. Es wurde nichts gepusht oder veröffentlicht.
 
 ## Verkäufer-Vorbereitung · Build 15 · 13.09.2026
 
