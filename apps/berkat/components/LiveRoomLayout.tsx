@@ -32,7 +32,13 @@ export function LiveRoomLayout({ header, banner, chat, composer, rail, effects, 
       {header}{banner}
     </ScrollView>
     <View style={s.middle} pointerEvents="box-none">
-      <View style={[s.chat, { maxHeight: Math.min(typing ? 78 : fontScale > 1.4 ? 112 : 124, available * 0.22) }]} pointerEvents="box-none">
+      {/* ⚠️ Bis zum 14.09.2026 stand hier ein Deckel von 124 pt (78 beim Tippen) —
+          zusammen mit dem Zwei-Beiträge-Schnitt im Panel sah der Host in einer
+          laufenden Show genau zwei Kommentare. Whatnot und TikTok Live geben
+          dem Chat rund ein Drittel der Höhe und lassen ihn scrollen. Der Dock
+          darunter (Artikel + Eingabe) ist `flexShrink: 0` und wird von dieser
+          Spalte nie verdrängt — sie füllt nur, was übrig ist, bis zur Kappe. */}
+      <View style={[s.chat, { maxHeight: Math.max(fontScale > 1.4 ? 160 : 140, available * (typing ? 0.24 : 0.36)) }]} pointerEvents="box-none">
         {chat(typing)}
       </View>
       {!typing ? <View style={s.rail} pointerEvents="box-none">{rail}</View> : null}

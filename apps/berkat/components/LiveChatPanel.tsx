@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { ActivityIndicator, Animated, Keyboard, PanResponder, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight, MessageSquare, SendHorizontal } from 'lucide-react-native';
 import type { LiveComment } from '../lib/useLiveChat';
 import type { MiniProfile } from '../lib/useAuction';
@@ -19,6 +20,11 @@ export function LiveChatPanel({ comments, profiles, hidden, onHiddenChange, comp
   const x = useRef(new Animated.Value(0)).current;
   const history = useRef<ScrollView>(null);
   const atBottom = useRef(true);
+  // Überläuft der Verlauf seine Spalte? Nur dann gibt es oben den weichen
+  // Rand — bei zwei Beiträgen wäre er ein dunkler Fleck über dem Video.
+  const [overflows, setOverflows] = useState(false);
+  const layoutH = useRef(0); const contentH = useRef(0);
+  const measure = () => setOverflows(contentH.current > layoutH.current + 4);
   const moveTo = useCallback((hide: boolean) => {
     x.stopAnimation();
     const toValue = hide ? -(width + space.lg) : 0;
@@ -46,12 +52,20 @@ export function LiveChatPanel({ comments, profiles, hidden, onHiddenChange, comp
       pointerEvents={hidden ? 'none' : 'auto'} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>
       <ScrollView ref={history} style={s.history} contentContainerStyle={s.comments}
         keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" indicatorStyle="white"
-        onContentSizeChange={scrollToLatest} onLayout={scrollToLatest}
+        onContentSizeChange={(_w, h) => { contentH.current = h; measure(); scrollToLatest(); }}
+        onLayout={e => { layoutH.current = e.nativeEvent.layout.height; measure(); scrollToLatest(); }}
         onScroll={({ nativeEvent: e }) => { atBottom.current = e.contentSize.height - e.contentOffset.y - e.layoutMeasurement.height < 40; }} scrollEventThrottle={100}>
-        {comments.slice(-(compact || fontScale > 1.4 ? 1 : 2)).map(comment => <View key={`${comment.id}:${fontScale}`} style={s.line}>
-          <Text numberOfLines={compact && fontScale > 1.4 ? 1 : 2} style={s.text}><Text style={s.name}>{profiles[comment.user_id]?.username ?? 'Zuschauer'}  </Text>{comment.text}</Text>
+        {/* ⚠️ Hier stand `comments.slice(-2)` — der Host sah in einer laufenden
+            Show genau zwei Beiträge (Build 16, 14.09.2026 am Gerät gemeldet).
+            Jetzt alle geladenen (der Hook hält bis zu 40): Neue kommen unten an,
+            alte wandern nach oben aus dem Bild — wie bei Whatnot. Wer hochscrollt,
+            bleibt dort; `atBottom` hält den Sprung nach unten zurück. Der volle
+            Text bleibt im Verlaufs-Blatt. */}
+        {comments.map(comment => <View key={`${comment.id}:${fontScale}`} style={s.line}>
+          <Text numberOfLines={compact ? (fontScale > 1.4 ? 1 : 2) : 3} style={s.text}><Text style={s.name}>{profiles[comment.user_id]?.username ?? 'Zuschauer'}  </Text>{comment.text}</Text>
         </View>)}
       </ScrollView>
+      {overflows ? <LinearGradient colors={['rgba(21,12,24,0.75)', 'rgba(21,12,24,0)']} style={s.fade} pointerEvents="none" /> : null}
       </Animated.View>
     {hidden ? <PressFeedback onPress={() => onHiddenChange(false)} style={s.reveal} accessibilityRole="button" accessibilityLabel="Kommentare einblenden">
       <MessageSquare size={18} color={stage.text} /><ChevronRight size={15} color={stage.textMuted} />
@@ -92,6 +106,7 @@ const s = StyleSheet.create({
   wrap: { maxHeight: '100%', minHeight: 0, paddingHorizontal: space.md, paddingBottom: space.xs },
   column: { maxHeight: '100%' },
   history: { flexGrow: 0, flexShrink: 1, minHeight: 0 },
+  fade: { position: 'absolute', top: 0, left: 0, right: 0, height: 28, borderRadius: radius.sm },
   comments: { gap: space.xs, paddingBottom: space.xs },
   line: { alignSelf: 'flex-start', maxWidth: '100%', backgroundColor: stage.scrim, borderRadius: radius.sm, paddingHorizontal: 7, paddingVertical: 3 },
   name: { fontWeight: '700', color: stage.text },

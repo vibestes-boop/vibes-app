@@ -15654,3 +15654,57 @@ Harmlos und richtig.
 `node_modules`, `.next` und `out` selbst aus; `git add -A` würde 208 Quelldateien aufnehmen, keine
 Pakete. Ob das je ins Repo soll, ist Zaurs Entscheidung — deshalb hier nur der Hinweis, kein
 Eintrag in der Wurzel-`.gitignore`. ⚠️ Bis dahin für Berkat-Commits `git add <pfad>` statt `-A`.
+
+---
+
+## 106. Live-Chat: zwei Deckel gehoben, Verlauf scrollt wie bei Whatnot (14.09.2026)
+
+Aus der ersten echten Show mit Build 16, vom Host gemeldet: *„ich sehe nur zwei Kommentare
+insgesamt bei live — die Kommentare sollten wie bei Whatnot sein."*
+
+### Warum es genau zwei waren
+
+Zwei Deckel lagen übereinander, und jeder für sich sah nach Absicht aus:
+
+| Wo | Deckel | Wirkung |
+|---|---|---|
+| `LiveRoomLayout.tsx` | Chat-Spalte `maxHeight` **124 pt** (78 beim Tippen, 112 bei großer Schrift) | Platz für etwa zwei Zeilen |
+| `LiveChatPanel.tsx` | `comments.slice(-2)` (bei Tastatur/großer Schrift `-1`) | zeigt ohnehin nur die letzten zwei |
+
+Codex hatte das im Build-16-Umbau bewusst so gesetzt („zwei kompakte Beiträge, voller Verlauf im
+Blatt"), um Artikel, Preis und Restzeit beim Tippen sichtbar zu halten. Das Ziel war richtig, das
+Mittel zu hart: Ein Live-Chat, der nur zwei Zeilen zeigt, wirkt leer — genau dann, wenn eine Show
+lebendig ist.
+
+### Was jetzt gilt
+
+- **Spalte:** `available × 0,36` (beim Tippen 0,24), mindestens 140 pt (160 bei großer Schrift) —
+  rund ein Drittel der Höhe, wie Whatnot und TikTok Live.
+- **Panel:** alle geladenen Beiträge (der Hook hält bis zu 40). Neue kommen unten an, alte wandern
+  nach oben aus dem Bild. Wer hochscrollt, bleibt dort (`atBottom` hält den Sprung zurück) — das
+  gab es schon, es war nur durch den Schnitt wirkungslos.
+- **Weicher Rand oben**, aber **nur bei Überlauf**: Ein `LinearGradient` über den obersten 28 pt,
+  gesteuert von `overflows` (Inhaltshöhe > Spaltenhöhe). Bei zwei Beiträgen bliebe er sonst ein
+  dunkler Fleck über dem Video.
+- `numberOfLines`: 3 normal, 2 beim Tippen, 1 bei Tastatur + großer Schrift. Der volle Text bleibt
+  im Verlaufs-Blatt.
+
+⚠️ **Warum der Dock nicht verdrängt wird:** `middle` ist `flex: 1, minHeight: 0`, der Dock
+(Artikel + Eingabe) `flexShrink: 0`. Die Chat-Spalte füllt nur, was übrig ist, bis zur Kappe. Codex'
+Sorge — der Chat drückt beim Tippen den Preis aus dem Bild — kann so nicht eintreten.
+
+### Testgerüst, nicht Bauteil
+
+Zwei Gesten-Tests in `scripts/tests/live-experience.cjs` fielen: Das Gerüst baut React nur mit
+`useRef/useMemo/useCallback/useEffect` nach, und das Panel braucht jetzt `useState`. Ergänzt als
+Stub ohne Re-Render — die Gesten hängen nicht daran. **390 von 390 grün.**
+
+> Ein Test, der an einem fehlenden Hook scheitert, prüft das Gerüst, nicht das Verhalten. Erst
+> lesen, warum er fällt — dann entscheiden, ob Bauteil oder Gerüst falsch ist.
+
+### ⚠️ Kommt nicht per OTA auf Zaurs iPhone
+
+Build 16 hat Updates aus (Abschnitt 105). Diese Änderung sieht Zaur erst mit **Build 17** — lokal
+gebaut wie 10–16. Im Simulator lief keine Show; die Sicht-Prüfung („scrollt, hält unten, weicher
+Rand erscheint erst bei Überlauf") steht damit für die nächste echte Sendung aus. Belegt sind
+`tsc` 0 und die Suite.

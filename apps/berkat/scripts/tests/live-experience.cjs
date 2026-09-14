@@ -185,7 +185,8 @@ function chatGestureFixture({ hidden = false, reduced = false } = {}) {
   const changes = [], effects = [];
   const jsx = (type, props) => ({ type, props });
   const { LiveChatPanel } = load('components/LiveChatPanel.tsx', {
-    react: { useRef: value => ({ current: value }), useMemo: fn => fn(), useCallback: fn => fn, useEffect: fn => effects.push(fn) },
+    // `useState` kam am 14.09.2026 dazu: Das Panel merkt sich, ob der Verlauf seine Spalte überläuft (weicher Rand oben). Für die Gesten-Tests reicht ein Stub ohne Re-Render.
+    react: { useState: initial => [initial, () => {}], useRef: value => ({ current: value }), useMemo: fn => fn(), useCallback: fn => fn, useEffect: fn => effects.push(fn) },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'react-native': { StyleSheet: { create: x => x }, useWindowDimensions: () => ({ width: 390, fontScale: 1 }), Keyboard: { dismiss() {} },
       PanResponder: { create: value => { responder = value; return { panHandlers: value }; } },
