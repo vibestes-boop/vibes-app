@@ -15598,3 +15598,59 @@ ohne `trackColor`. Nicht angefasst — Live-Komponenten, andere Fläche, eigene 
 nachzieht, nimmt dieselben zwei Zeilen wie hier.
 
 Belegt: `tsc` 0 Fehler, im Simulator beide Hälften gesehen. OTA raus: Gruppe `816a7dbb`, Commit `5b3154e`.
+
+---
+
+## 105. Zwei Welten, ein Update — TestFlight auf Build-16-Stand gezogen (14.09.2026)
+
+### Der Befund
+
+Seit Build 10 (12.09.) läuft die App auf Zaurs iPhone aus **lokalen** Builds mit
+`EXUpdatesEnabled=false`. Gleichzeitig steht in TestFlight weiterhin **Build 9** (09.09.), und der hat
+Updates **an**. Zwei Welten:
+
+| | Zaurs iPhone | TestFlight (Kollegen) |
+|---|---|---|
+| Build | 16, lokal | 9, EAS |
+| Updates | aus | an, Zweig `production` |
+| Stand vor heute | Build 16 (13.09.) | letztes OTA vom 11.09. — **fünf Builds zurück** |
+
+Wer heute Kollegen einlädt, lässt sie Code von vor dem Live-Raum-Umbau testen.
+
+### Die Reparatur — und warum sie ohne neuen Build ging
+
+`package.json` ist seit Build 9 **unverändert**; die einzige Änderung an `app.json` ist
+`buildNumber` 9 → 16. Das berührt weder den JS-Code noch die Runtime (`appVersion` = 1.0.0). Also:
+ein OTA von `HEAD` reicht. **Gruppe `fe92f10e`, Commit `0ac5614a`.** TestFlight-Geräte holen es
+beim übernächsten Start.
+
+⚠️ **Der Riegel hat zuerst angehalten** — `git diff --quiet 4f29002..HEAD -- app.json` schlug an.
+Richtig so: Erst nach dem Blick in den Diff war klar, dass es nur die Build-Nummer ist. Wer den
+Riegel wegen „ist doch nur app.json" überspringt, verschickt irgendwann ein OTA, das ein natives
+Plugin voraussetzt, das Build 9 nicht hat — und der Absturz kommt beim Kollegen, nicht bei dir.
+
+### Zwei Fallen für die Zukunft
+
+**1. „OTA raus" wirkt auf Build 16 nicht.** Updates sind dort aus. Jede Änderung, die Zaur auf
+seinem iPhone sehen soll, braucht einen neuen lokalen Build. Die Abschnitte 103/104 (Versand,
+Benachrichtigungen) sind trotzdem drin — sie stecken im Commit, aus dem Build 16 gebaut wurde.
+
+**2. Vor dem Wiedereinschalten von Updates: erst ein OTA vom aktuellen Commit.** Solange ein
+lokaler Build mit Updates *aus* läuft, ist das egal. Schaltet jemand sie in einem späteren lokalen
+Build wieder *ein*, muss auf dem Zweig `production` ein Update liegen, das **mindestens so neu ist
+wie das eingebettete Bündel** — sonst hängt die Frage, welches JS läuft, an der Auswahllogik von
+`expo-updates` statt an einer Entscheidung. Reihenfolge: Commit → `eas update` → Build.
+
+### Geldweg nach 13 Codex-Commits
+
+Geprüft, weil das die Frage ist, die man nach fremder Arbeit zuerst stellt: **unberührt.** Die
+einzige Änderung im Kassen-Umfeld sind drei zusätzliche Query-Keys in `payBrowser.ts`
+(`my-order`, `purchase-status`, `unassigned-wins`), die nach der Kasse mit nachgeladen werden.
+Harmlos und richtig.
+
+### Nicht angefasst
+
+`apps/heritage-preview/` — ein Serlo-Konzept (Next.js, lokal), untracked. Es schließt
+`node_modules`, `.next` und `out` selbst aus; `git add -A` würde 208 Quelldateien aufnehmen, keine
+Pakete. Ob das je ins Repo soll, ist Zaurs Entscheidung — deshalb hier nur der Hinweis, kein
+Eintrag in der Wurzel-`.gitignore`. ⚠️ Bis dahin für Berkat-Commits `git add <pfad>` statt `-A`.
