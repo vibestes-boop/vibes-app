@@ -20,6 +20,7 @@ import {
   TextInput,
   View,
   type ViewStyle,
+  Platform,
 } from 'react-native';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -449,11 +450,6 @@ function LiveAuctionRoomScreen() {
     }
   }, [session]);
 
-  const shareShow = useCallback(() => {
-    if (!id) return;
-    void Share.share({ message: `Schau dir das an: ${showLink(id)}` });
-  }, [id]);
-
   const startItem = useCallback(
     async (auctionId: string) => {
       if (auctionsError || roomQuery.isError || startBusy) return;
@@ -537,6 +533,27 @@ function LiveAuctionRoomScreen() {
   // Alle sechs Wege laufen über das Sheet; hier steht nur, wohin sie führen.
 
   const hostName = profiles[session?.host_id ?? '']?.username;
+
+  // ⚠️ Als LINK teilen, nicht als Text mit Link darin (14.09.2026, aus der
+  // ersten echten Show gemeldet). iOS zeigt für Text ein nacktes „A"; für
+  // einen Link holt es Titel und Bild von der Seite (`og:image` auf
+  // `live.html`) und zeigt eine Karte — wie bei Whatnot. Deshalb steht die
+  // Adresse auf iOS in `url`, und die Nachricht enthält sie NICHT noch einmal,
+  // sonst stünde sie in iMessage doppelt. Android kennt nur `message`; dort
+  // gehört der Link in den Text.
+  //
+  // Steht bewusst HINTER `hostName`: Der Block lag vorher weiter oben, wo es
+  // weder `profiles` noch `hostName` gab — deshalb hieß es „Schau dir das an"
+  // statt „zaur ist gerade live".
+  const shareShow = useCallback(() => {
+    if (!id) return;
+    const link = showLink(id);
+    const who = hostName ? `${hostName} ist gerade live bei Berkat` : 'Gerade live bei Berkat';
+    void Share.share(
+      Platform.OS === 'ios' ? { url: link, message: who } : { message: `${who}: ${link}` },
+      { subject: 'Live bei Berkat', dialogTitle: 'Show teilen' },
+    );
+  }, [id, hostName]);
 
   /**
    * `@name ` ins Chat-Feld schreiben und das offene Blatt schließen.

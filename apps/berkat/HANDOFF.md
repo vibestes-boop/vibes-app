@@ -15708,3 +15708,49 @@ Build 16 hat Updates aus (Abschnitt 105). Diese Änderung sieht Zaur erst mit **
 gebaut wie 10–16. Im Simulator lief keine Show; die Sicht-Prüfung („scrollt, hält unten, weicher
 Rand erscheint erst bei Überlauf") steht damit für die nächste echte Sendung aus. Belegt sind
 `tsc` 0 und die Suite.
+
+---
+
+## 107. Teilen: aus einem Notizzettel wurde eine Karte (14.09.2026)
+
+Aus derselben Show wie Abschnitt 106, vom Host gemeldet: *„beim Live teilen ist iPhone-Fenster —
+so sollte es nicht sein."* Das Bild zeigte das iOS-Teilen-Blatt mit einem nackten „A" und dem
+Schnipsel „Schau dir das an: https://berkat-live.pag…".
+
+### Zwei Ursachen, eine je Seite
+
+| Wo | Ursache | Folge |
+|---|---|---|
+| App (`live/[id].tsx`) | `Share.share({ message: 'Schau dir das an: <link>' })` — ein **Text**, der einen Link enthält | iOS behandelt es als Text: „A"-Symbol, keine Vorschau |
+| Web (`live.html`) | `og:title`/`og:description` vorhanden, **kein `og:image`** | Selbst als Link geteilt gäbe es keine Karte, und WhatsApp zeigte nur eine Textzeile |
+
+### Was jetzt gilt
+
+**App:** Auf iOS wird die Adresse als `url` übergeben und die Nachricht enthält sie **nicht** noch
+einmal (sonst stünde sie in iMessage doppelt). iOS holt sich dann Titel und Bild von der Seite und
+zeigt eine Karte — wie Whatnot. Android kennt nur `message`; dort steht der Link im Text. Der Satz
+heißt jetzt „**zaur ist gerade live bei Berkat**" statt „Schau dir das an".
+
+⚠️ Der Block musste **hinter `hostName`** wandern: Er lag vorher weiter oben, wo es weder `profiles`
+noch `hostName` gab — deshalb konnte der alte Text den Namen gar nicht nennen. Ein `useCallback`,
+dessen Abhängigkeiten eine später deklarierte `const` nennen, wirft beim Rendern (TDZ).
+
+**Web:** `og-live.png` (1200 × 630, Pflaume, Ähre in Gold, „JETZT LIVE") plus `og:image`, `og:url`,
+`og:site_name`, `twitter:card`. Gerendert mit demselben Chrome-Headless-Weg wie das Team-Deck
+(Abschnitt 100 ff.). Ausgeliefert und nachgemessen: `image/png`, 30 KB, auf der festen und der
+öffentlichen Adresse. ⚠️ Direkt nach `wrangler pages deploy` lieferte die öffentliche Adresse für
+das Bild noch `text/html` (200) — die Umschaltung braucht ein paar Sekunden, und Pages beantwortet
+unbekannte Pfade mit der Startseite statt mit 404. **Nach einem Deploy immer die Bytes prüfen
+(`file`), nicht nur den Statuscode.**
+
+### Bewusst noch nicht gebaut: eine Vorschau je Show
+
+Die Karte ist für jede Show gleich („Live bei Berkat"). Whatnot zeigt Verkäufername, Artikel und
+Cover. Das braucht eine **dynamische Antwort je `?id=`** — `live.html` ist statisch. Der Weg wäre
+eine Cloudflare Pages Function (`functions/live.js`), die die Show aus Supabase liest und die
+Meta-Zeilen füllt. Dafür muss es einen **öffentlich lesbaren** Pfad auf aktive Shows geben (anon-
+RPC oder Edge Function ohne JWT). Das ist eine Entscheidung über öffentliche Daten, nicht nur ein
+Bau — deshalb hier festgehalten und nicht nebenbei geöffnet.
+
+Belegt: `tsc` 0, 390 von 390 Tests. Der App-Teil kommt auf Zaurs iPhone erst mit Build 17
+(Abschnitt 105); der Web-Teil ist live.
