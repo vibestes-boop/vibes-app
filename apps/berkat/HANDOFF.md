@@ -15753,4 +15753,5 @@ RPC oder Edge Function ohne JWT). Das ist eine Entscheidung über öffentliche D
 Bau — deshalb hier festgehalten und nicht nebenbei geöffnet.
 
 Belegt: `tsc` 0, 390 von 390 Tests. Der App-Teil kommt auf Zaurs iPhone erst mit Build 17
-(Abschnitt 105); der Web-Teil ist live.
+(Abschnitt 105); der Web-Teil ist live. TestFlight (Build 9, Updates an) bekommt Chat und Teilen per
+OTA: Gruppe `4dda6abd`, Commit `e03d8c7b`.
