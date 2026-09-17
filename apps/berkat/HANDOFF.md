@@ -15755,3 +15755,50 @@ Bau — deshalb hier festgehalten und nicht nebenbei geöffnet.
 Belegt: `tsc` 0, 390 von 390 Tests. Der App-Teil kommt auf Zaurs iPhone erst mit Build 17
 (Abschnitt 105); der Web-Teil ist live. TestFlight (Build 9, Updates an) bekommt Chat und Teilen per
 OTA: Gruppe `4dda6abd`, Commit `e03d8c7b`.
+
+---
+
+## 108. Teilen: Berkats eigenes Blatt statt des iOS-Fensters (17.09.2026)
+
+Nach dem Vorschaubild (107) der nächste Satz vom Host: *„wenn man Teilen drückt, kommt ein
+iPhone-Fenster von unten hoch."* Das WhatsApp-Bild stimmte inzwischen — Karte mit Ähre, „JETZT
+LIVE", Titel, Beschreibung. Aber das Blatt davor war das System.
+
+### Was jetzt gilt
+
+`components/LiveShareSheet.tsx`, im Stil von „Show-Aktionen": vier runde Ziele in einer Reihe,
+darüber der Satz und der Link.
+
+| Ziel | Weg | Warum so |
+|---|---|---|
+| WhatsApp | `https://wa.me/?text=…` | Universal Link: öffnet die App, sonst das Web — kein Schema, kein `LSApplicationQueriesSchemes` |
+| Telegram | `https://t.me/share/url?url=…&text=…` | dito |
+| Nachricht | `sms:&body=…` (iOS) / `sms:?body=…` (Android) | |
+| Mehr | System-Blatt, iOS mit `url` | Karte statt „A" — das aus 107 bleibt dahinter erhalten |
+
+Geht ein Ziel nicht auf (App fehlt), fällt es auf das System-Blatt zurück statt still nichts zu tun.
+
+**Reihenfolge: erst schließen, dann öffnen.** Das Blatt merkt sich das Ziel, schließt sich, und
+`StageSheet.onDismiss` führt es nach dem abgeschlossenen Schließen aus — dieselbe Bauweise wie
+`moreAction`/`finishMoreClose` in `live/[id].tsx`. Sonst läge WhatsApp über unserem Modal, und
+beim Zurückkommen stünde das Blatt noch da.
+
+### ⚠️ Kein „Link kopieren" — mit Absicht
+
+React Native hat keine Zwischenablage mehr im Kern; `expo-clipboard` wäre ein natives Modul. Ein
+OTA, das es importiert, **stürzt auf jedem Build ohne das Modul beim Laden ab** — und Zaurs iPhone
+ist seit dem 17.09. wieder auf TestFlight Build 9 mit Updates an (Abschnitt 105, umgekehrt). Der
+OTA-Weg ist gerade der einzige, der ihn erreicht. Kopieren bleibt im „Mehr" (das System-Blatt hat
+es) und kommt mit dem nächsten nativen Build.
+
+> ⚠️ Solange die App per OTA versorgt wird, ist jedes neue native Modul eine Bombe mit Zeitzünder:
+> Der Import kompiliert, `tsc` ist grün, der Test läuft im Simulator — und auf dem Gerät ohne das
+> Modul lädt das Bündel nicht mehr. **Vor jedem `eas update` `package.json` gegen den installierten
+> Build vergleichen** (wie in 105 gemacht).
+
+`Share` und `Platform` sind aus `live/[id].tsx` verschwunden — sie leben jetzt im Blatt. `shareShow`
+öffnet nur noch das Blatt; Text und Link gehen als Props hinein.
+
+Belegt: `tsc` 0, 390 von 390. Nicht belegt: das Blatt am Gerät — im Simulator lief keine Show. Die
+Probe ist Zaurs nächste Sendung: „Mehr" → „Show teilen" → **Berkat-Blatt** mit vier Kreisen, WhatsApp
+tippen → WhatsApp öffnet sich mit Satz und Link, und beim Zurückkommen ist das Blatt zu.

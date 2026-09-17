@@ -12,7 +12,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
-  Share,
   ScrollView,
   useWindowDimensions,
   StyleSheet,
@@ -20,7 +19,6 @@ import {
   TextInput,
   View,
   type ViewStyle,
-  Platform,
 } from 'react-native';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -33,6 +31,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { LiveRoomLayout } from '../../components/LiveRoomLayout';
 import { LiveChatPanel, LiveComposer, LiveChatHistory } from '../../components/LiveChatPanel';
 import { StageSheet } from '../../components/StageSheet';
+import { LiveShareSheet } from '../../components/LiveShareSheet';
 import { StageFeedback } from '../../components/StageFeedback';
 import { useLiveSession } from '../../lib/useLiveSession';
 import { useLiveChatDraft } from '../../lib/useLiveChatDraft';
@@ -244,6 +243,7 @@ function LiveAuctionRoomScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [itemsOpen, setItemsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const afterMoreClose = useRef<(() => void) | null>(null);
   const moreAction = (action: () => void) => { afterMoreClose.current = action; setMoreOpen(false); };
@@ -545,15 +545,13 @@ function LiveAuctionRoomScreen() {
   // Steht bewusst HINTER `hostName`: Der Block lag vorher weiter oben, wo es
   // weder `profiles` noch `hostName` gab — deshalb hieß es „Schau dir das an"
   // statt „zaur ist gerade live".
-  const shareShow = useCallback(() => {
-    if (!id) return;
-    const link = showLink(id);
-    const who = hostName ? `${hostName} ist gerade live bei Berkat` : 'Gerade live bei Berkat';
-    void Share.share(
-      Platform.OS === 'ios' ? { url: link, message: who } : { message: `${who}: ${link}` },
-      { subject: 'Live bei Berkat', dialogTitle: 'Show teilen' },
-    );
-  }, [id, hostName]);
+  //
+  // Seit dem 17.09.2026 öffnet „Teilen" zuerst Berkats eigenes Blatt
+  // (`LiveShareSheet`): WhatsApp, Telegram, Nachricht, Mehr. Das System-Blatt
+  // ist nur noch das „Mehr" dahinter — der Host hatte das iOS-Fenster als
+  // fremd empfunden, und Whatnot macht es genauso.
+  const shareShow = useCallback(() => { if (id) setShareOpen(true); }, [id]);
+  const shareText = hostName ? `${hostName} ist gerade live bei Berkat` : 'Gerade live bei Berkat';
 
   /**
    * `@name ` ins Chat-Feld schreiben und das offene Blatt schließen.
@@ -891,6 +889,7 @@ function LiveAuctionRoomScreen() {
       </StageSheet>
       <LiveChatHistory visible={historyOpen} onClose={() => setHistoryOpen(false)}
         comments={comments.filter(comment => !blocked?.has(comment.user_id))} profiles={profiles} />
+      {id ? <LiveShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} link={showLink(id)} text={shareText} /> : null}
 
       <ShowItemsSheet
         visible={itemsOpen}
