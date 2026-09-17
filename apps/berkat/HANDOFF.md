@@ -15801,4 +15801,4 @@ es) und kommt mit dem nächsten nativen Build.
 
 Belegt: `tsc` 0, 390 von 390. Nicht belegt: das Blatt am Gerät — im Simulator lief keine Show. Die
 Probe ist Zaurs nächste Sendung: „Mehr" → „Show teilen" → **Berkat-Blatt** mit vier Kreisen, WhatsApp
-tippen → WhatsApp öffnet sich mit Satz und Link, und beim Zurückkommen ist das Blatt zu.
+tippen → WhatsApp öffnet sich mit Satz und Link, und beim Zurückkommen ist das Blatt zu. Per OTA raus: Gruppe `42f92388`.
