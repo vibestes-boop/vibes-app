@@ -42,8 +42,10 @@ Artefakte: `outputs/berkat-ux-release-2026-09-19` unter
 **Gerätetest:** Die App wurde auf dem tatsächlichen iPhone geöffnet und zweimal
 erfolgreich neu gestartet. Der Nutzer bestätigt anschließend ausdrücklich:
 „Ja, 01a0bb49 ist sichtbar“. Damit ist der laufende OTA-Stand auf dem iPhone
-bestätigt. Die Darstellung tatsächlicher Meldungen mit dem angemeldeten Konto
-wurde separat angefragt und steht noch aus.
+bestätigt. Auf die separate Frage nach vollständigen, verständlichen Texten und
+Vorschaubild/Avatar/Ereignissymbol in den Meldungen bestätigt der Nutzer:
+„Ja, Darstellung passt“. Die Darstellung mit dem angemeldeten iPhone-Konto ist
+damit abgenommen; einzelne Zielaktionen sind durch diese Antwort nicht bestätigt.
 
 **Leistungsmessung:** Instruments „App Launch“ verweigert die Messung des
 TestFlight-Pakets wegen fehlendem `get-task-allow`. Die erzeugte Trace-Datei ist
@@ -53,11 +55,11 @@ konnte die zuvor gestartete Prozess-ID nicht mehr finden und ergab ebenfalls
 keine Messung; daraus lässt sich keine Absturzursache ableiten. Das installierte
 TestFlight-Paket wurde nicht durch einen Entwicklungsbuild ersetzt.
 
-**Nächster Schritt:** Am iPhone tatsächliche Meldungen prüfen: verfügbare Bilder,
-vollständige Texte und passende Zielaktion. Für die detaillierte Instruments-
-Startzeitmessung einen separaten, lokal signierten und profilierbaren Release-Build
-vorbereiten; danach Startseite und Meldungen unter demselben Testablauf messen.
-Echte Termin-Push-Zustellung bleibt separat offen.
+**Nächster Schritt:** Für die detaillierte Instruments-Startzeitmessung einen
+separaten, lokal signierten und profilierbaren Release-Build vorbereiten; danach
+Startseite und Meldungen unter demselben Testablauf messen. Einzelne Meldungs-
+Zielaktionen mit echten Einträgen und echte Termin-Push-Zustellung bleiben
+separat offen; die Darstellung muss nicht erneut pauschal abgefragt werden.
 
 ## Meldungen · 19.09.2026
 
@@ -94,9 +96,11 @@ und accessibility-medium; Artikelaktion, explizite Gelesen-Aktion, Bildfehler,
 Lade- und Fehleransicht samt Wiederholen geprüft. Danach reguläre Gastseite
 bestätigt und ursprüngliche Schriftgröße wiederhergestellt. Keine echten
 Meldungen verändert, keine Nachrichten gesendet, keine Transaktionen ausgelöst.
-Die tatsächliche Anreicherung historischer Meldungen eines angemeldeten Kontos
-wurde in dieser Runde nicht live gegen das Backend geprüft; ihre Zuordnungs-
-und Fehlerfälle sind automatisiert geprüft.
+Die Zuordnungs- und Fehlerfälle der Anreicherung historischer Meldungen sind
+automatisiert geprüft. Nach der OTA-Auslieferung bestätigt der Nutzer die
+Darstellung im angemeldeten iPhone-Konto mit „Ja, Darstellung passt“.
+Eine technische Einzelprüfung der Datenzuordnung und Zielaktionen mit echten
+Einträgen folgt daraus nicht.
 
 **Nachweise:** `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-notifications`.
 `notifications-normal.png` zeigt die neue Liste mit lokalen Beispieldaten,
@@ -158,10 +162,10 @@ abschließend wiederhergestellte Startseite mit regulären Daten.
 TestFlight Build 9 kompatibel und veröffentlicht. Keine neuen nativen
 Abhängigkeiten und keine Änderung an app.json in diesem UX-Block.
 
-**Nächster Schritt:** Darstellung tatsächlicher Meldungen auf dem iPhone
-bestätigen, dann die noch offene Gerätemessung unter den oben beschriebenen
-Voraussetzungen aufnehmen. Die bereits gemeldete Live-Abnahme wird nicht erneut
-pauschal angefordert; echte Termin-Push-Zustellung bleibt separat offen.
+**Nächster Schritt:** Die noch offene Gerätemessung unter den oben beschriebenen
+Voraussetzungen aufnehmen. Die bereits gemeldete Live-Abnahme und bestätigte
+Meldungsdarstellung werden nicht erneut pauschal angefordert;
+echte Termin-Push-Zustellung bleibt separat offen.
 
 ## Einstieg neuer Nutzer · 19.09.2026
 
@@ -211,8 +215,8 @@ für TestFlight Build 9 veröffentlicht. Keine Änderung an nativen Abhängigkei
 oder app.json in diesem UX-Block. Die Abschnitte zu lokalem Build 16 sind
 historisch und beschreiben nicht das aktuell installierte native Paket.
 
-**Nächster Schritt:** Gerätebestätigung und Leistungsmessung gemäß aktuellem
-Anschlusspunkt. Echte Termin-Push-Zustellung bleibt separat offen.
+**Nächster Schritt:** Leistungsmessung gemäß aktuellem Anschlusspunkt.
+Echte Termin-Push-Zustellung bleibt separat offen.
 Keine Prüfung der Testprodukte.
 
 ## Live-Raum neu angeordnet · Build 16 · 13.09.2026
