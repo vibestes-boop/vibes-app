@@ -4,7 +4,7 @@
 
 **Freigegeben:** Auf den Plan „gemeinsam committen/pushen, OTA ausliefern,
 iPhone prüfen und Leistung messen“ antwortete der Nutzer mit „leg los“.
-Die folgenden drei UX-Blöcke werden gemeinsam ausgeliefert.
+Die folgenden drei UX-Blöcke sind gemeinsam ausgeliefert.
 
 **Kompatibilität bestätigt:** `@zaurhat/berkat`, Projekt
 `fb4e0381-264d-4cfd-8c3c-691987346915`, aktiver Kanal/Zweig `production`,
@@ -21,22 +21,50 @@ deshalb ausdrücklich das Produktionsprofil. Zwei ältere Verkäufer-Formulartes
 hingen von der Tageszeit ab und scheiterten nach dem letzten Abendtermin. Ihre
 Uhr ist jetzt auf Mittag fixiert; Produktionslogik unverändert.
 
-**Stand vor Veröffentlichung:** Quellstand wird als ein Feature-Commit gesichert,
-anschließend gepusht und das geprüfte Bündel ausschließlich für iOS veröffentlicht.
-OTA-Kennung und Ergebnis werden nach erfolgreicher Auslieferung hier ergänzt.
+**Veröffentlicht:** Feature-Commit `588500906ca893a97d4e185315fc7a0434314e8e`
+(`58850090`) ist nach `origin/berkat` gepusht. Ausschließlich iOS, `production`,
+Runtime `1.0.0`; veröffentlicht am 19.09.2026 um 22:08 Uhr Berlin.
+
+- OTA-Gruppe: `4e454c54-7169-4a85-968b-8fb0d5b03bb4`.
+- iOS-Update: `01a0bb49-36dc-7db9-8341-b6091a6d7b9d`.
+- Im Konto-Fuß erwartete Kennung: **`01a0bb49`**. Die Anzeige verwendet die
+  Update-ID, nicht die Gruppen-ID. Der angezeigte Build-Wert kann aus den
+  OTA-Metadaten stammen; das nativ installierte Paket wurde separat als Build 9 geprüft.
+- EAS-Abfrage und öffentlicher Update-Endpunkt bestätigen genau dieses Update.
+  Der tatsächlich heruntergeladene Hermes-Code ist bytegleich mit dem geprüften
+  Export: 11.223.064 Bytes, SHA-256
+  `a85151aeb75e4c33035cfa129c9fe84b0484a7c4e853d34182544b36dd9b5ed0`.
+  228 Quell-/Konfigurations-/Assetdateien sind per Hash an den Feature-Commit gebunden.
+
 Artefakte: `outputs/berkat-ux-release-2026-09-19` unter
 `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/`.
 
-**Gerätetest:** iPhone ist über das Netzwerk erreichbar; USB/entsperrt wurde
-für den anschließenden Durchlauf angefragt. Ein neuer OTA-Stand und neue
-Leistungswerte sind auf dem iPhone noch nicht bestätigt.
+**Gerätetest:** Die App wurde auf dem tatsächlichen iPhone geöffnet und zweimal
+erfolgreich neu gestartet. Der Nutzer bestätigt anschließend ausdrücklich:
+„Ja, 01a0bb49 ist sichtbar“. Damit ist der laufende OTA-Stand auf dem iPhone
+bestätigt. Die Darstellung tatsächlicher Meldungen mit dem angemeldeten Konto
+wurde separat angefragt und steht noch aus.
+
+**Leistungsmessung:** Instruments „App Launch“ verweigert die Messung des
+TestFlight-Pakets wegen fehlendem `get-task-allow`. Die erzeugte Trace-Datei ist
+kein gültiger Startzeitnachweis. Es gibt aus dieser Runde keine neuen belastbaren
+Startzeit-, Scroll- oder Speicherwerte. Ein zusätzlicher Activity-Monitor-Versuch
+konnte die zuvor gestartete Prozess-ID nicht mehr finden und ergab ebenfalls
+keine Messung; daraus lässt sich keine Absturzursache ableiten. Das installierte
+TestFlight-Paket wurde nicht durch einen Entwicklungsbuild ersetzt.
+
+**Nächster Schritt:** Am iPhone tatsächliche Meldungen prüfen: verfügbare Bilder,
+vollständige Texte und passende Zielaktion. Für die detaillierte Instruments-
+Startzeitmessung einen separaten, lokal signierten und profilierbaren Release-Build
+vorbereiten; danach Startseite und Meldungen unter demselben Testablauf messen.
+Echte Termin-Push-Zustellung bleibt separat offen.
 
 ## Meldungen · 19.09.2026
 
 **Auftrag:** Die Meldungsseite wirkte unfertig, ohne Thumbnails und erklärende
 Texte. Der bestehende Posteingang wurde im Stil der überarbeiteten App neu aufgebaut.
 
-**Jetzt umgesetzt, lokal:**
+**Umgesetzt und am 19.09.2026 per OTA veröffentlicht:**
 
 - Ruhige Liste mit Gruppen Heute/Gestern/Früher, Vorschaubild oder Absenderavatar,
   Ereignis, Artikel-/Absendername, vollständigem Text und beschrifteter Zielaktion.
@@ -76,12 +104,10 @@ und Fehlerfälle sind automatisiert geprüft.
 archivierte Prüfansicht, Test-/TypeScript-/Exportlogs und README liegen daneben.
 Die temporäre Route `qa-notifications` ist aus der App entfernt.
 
-**Auslieferung:** Alle drei lokalen UX-Blöcke (Gast-/Interessen-Einstieg,
-Startseite/Live-Karten, Meldungen) sind noch nicht committed, gepusht oder per OTA
-veröffentlicht. Letzter dokumentierter iPhone-Stand bleibt TestFlight Build 9 /
-OTA-Gruppe `42f92388` vom 17.09. (§108). Nächster Schritt ist die gemeinsame
-Auslieferung nach Prüfung der nativen Kompatibilität; danach Meldungen mit dem
-angemeldeten iPhone-Konto prüfen und die geplante Gerätemessung aufnehmen.
+**Auslieferung:** Gemeinsam mit Gast-/Interessen-Einstieg und Startseite/Live-Karten
+in Commit `58850090`, gepusht und als iOS-Update `01a0bb49` veröffentlicht.
+Native Kompatibilität mit TestFlight Build 9 bestätigt; vollständige Kennungen und
+noch offene Geräteprüfung stehen im aktuellen Anschlusspunkt ganz oben.
 
 ## Startseite und Live-Karten · 19.09.2026
 
@@ -89,7 +115,7 @@ angemeldeten iPhone-Konto prüfen und die geplante Gerätemessung aufnehmen.
 der Startseite freigegeben. Schwerpunkt: Bildwirkung, Platzverteilung und
 Informationshierarchie. Keine Prüfung der inhaltlichen Richtigkeit von Testprodukten.
 
-**Jetzt umgesetzt, lokal:**
+**Umgesetzt und am 19.09.2026 per OTA veröffentlicht:**
 
 - Eine einzelne Live-Show erhält eine kompakte Karte über die volle Breite.
   Die Angebote folgen direkt darunter im vorhandenen zweispaltigen Raster.
@@ -105,7 +131,7 @@ Informationshierarchie. Keine Prüfung der inhaltlichen Richtigkeit von Testprod
   Verkäufername und „Show ansehen“ erhalten eine klare Hierarchie. Die vorhandenen
   Kategorie-Assets sowie separate Tippflächen für Show und Kategorie bleiben erhalten.
 - Der zuvor geprüfte Gast-/Interessen-Einstieg aus dem folgenden Abschnitt ist
-  weiterhin Bestandteil dieses lokalen Änderungsstands.
+  weiterhin Bestandteil dieses gemeinsam veröffentlichten Änderungsstands.
 
 **Geprüft:** TypeScript ohne Fehler, **405 lokale Tests**, `git diff --check` und
 vollständiger iOS-Hermes-Export erfolgreich. Sechs neue Tests prüfen u. a. die
@@ -128,16 +154,14 @@ archivierte lokale Prüfansicht sowie TypeScript-/Test-/Exportlogs.
 `home-single.png` zeigt die lokale Beispielshow, `home-no-live.png` die
 abschließend wiederhergestellte Startseite mit regulären Daten.
 
-**Auslieferung:** Dieser und der vorherige UX-Block sind noch nicht committed,
-gepusht oder per OTA veröffentlicht. Keine neuen nativen Abhängigkeiten und keine
-Änderung an app.json. Letzter hier dokumentierter iPhone-Auslieferungsstand:
-TestFlight Build 9 mit OTA-Gruppe `42f92388` vom 17.09. (§108).
+**Auslieferung:** Commit `58850090`, gepusht; iOS-Update `01a0bb49` ist mit
+TestFlight Build 9 kompatibel und veröffentlicht. Keine neuen nativen
+Abhängigkeiten und keine Änderung an app.json in diesem UX-Block.
 
-**Nächster Schritt:** Den gemeinsam geprüften UX-Stand ausliefern; vor OTA die
-native Konfiguration/Abhängigkeiten gegen TestFlight Build 9 prüfen. Anschließend
-die aktuelle Gerätemessung (Startzeit, Scrollen, Speicher) aufnehmen. Die bereits
-gemeldete Live-Abnahme wird nicht erneut pauschal angefordert; echte Termin-Push-
-Zustellung bleibt separat offen.
+**Nächster Schritt:** Darstellung tatsächlicher Meldungen auf dem iPhone
+bestätigen, dann die noch offene Gerätemessung unter den oben beschriebenen
+Voraussetzungen aufnehmen. Die bereits gemeldete Live-Abnahme wird nicht erneut
+pauschal angefordert; echte Termin-Push-Zustellung bleibt separat offen.
 
 ## Einstieg neuer Nutzer · 19.09.2026
 
@@ -147,7 +171,7 @@ Es wurden keine einzelnen Kamera-/Teilen-/Tonprüfungen oder neuen Leistungswert
 mitgeteilt. Die ältere pauschale Warteaufgabe „erst echte Live-Abnahme“ wird nicht
 erneut gestellt. Historische Einzelprüfungen sind keine zusätzlichen Testzusagen.
 
-**Jetzt umgesetzt, lokal:**
+**Umgesetzt und am 19.09.2026 per OTA veröffentlicht:**
 
 - Gast-Startseite: ein klarer „Anmelden“-Einstieg. Nach geklärter Sitzung erscheinen
   für angemeldete Nutzer weiterhin Merkliste, Nachrichten und Meldungen; während
@@ -182,16 +206,14 @@ und native Screenshots. Xcode verwendet hier inzwischen
 `/Applications/Xcode.app/Contents/Applications/DeviceHub.app` als Simulator-UI;
 der frühere Simulator.app-Pfad existiert nicht mehr.
 
-**Auslieferung:** Diese Runde ist noch nicht committed, gepusht oder per OTA
-veröffentlicht. Keine Änderung an nativen Abhängigkeiten oder app.json. Letzter
-hier dokumentierter iPhone-Auslieferungsstand ist TestFlight Build 9 mit
-OTA-Gruppe `42f92388` vom 17.09. (§108); die Abschnitte zu lokalem Build 16 sind
-historisch und beschreiben nicht die aktuelle OTA-Fähigkeit des iPhones.
+**Auslieferung:** Commit `58850090`, gepusht; kompatibles iOS-Update `01a0bb49`
+für TestFlight Build 9 veröffentlicht. Keine Änderung an nativen Abhängigkeiten
+oder app.json in diesem UX-Block. Die Abschnitte zu lokalem Build 16 sind
+historisch und beschreiben nicht das aktuell installierte native Paket.
 
-**Nächster Schritt:** Den geprüften UX-Stand ausliefern; bei OTA vorher weiterhin
-native Konfiguration/Abhängigkeiten gegen TestFlight Build 9 prüfen. Danach die
-geplante aktuelle Gerätemessung (Startzeit, Scrollen, Speicher) aufnehmen.
-Echte Termin-Push-Zustellung bleibt separat offen. Keine Prüfung der Testprodukte.
+**Nächster Schritt:** Gerätebestätigung und Leistungsmessung gemäß aktuellem
+Anschlusspunkt. Echte Termin-Push-Zustellung bleibt separat offen.
+Keine Prüfung der Testprodukte.
 
 ## Live-Raum neu angeordnet · Build 16 · 13.09.2026
 
