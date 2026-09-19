@@ -28,9 +28,11 @@ type Props = {
   preview: ShowPreview;
   /** Sekunden bis zum Zuschlag. Nur im Zustand `running` gesetzt, sonst null. */
   secondsLeft: number | null;
+  /** Home cards keep auction information below their cover, in normal flow. */
+  inline?: boolean;
 };
 
-export function LivePreview({ preview, secondsLeft }: Props) {
+export function LivePreview({ preview, secondsLeft, inline = false }: Props) {
   const { fontScale } = useWindowDimensions();
   const reduced = useReducedMotion();
   const opacity = useRef(new Animated.Value(1)).current;
@@ -64,27 +66,28 @@ export function LivePreview({ preview, secondsLeft }: Props) {
       pointerEvents="none"
       style={[
         s.root,
+        inline && s.inline,
         {
           opacity: reduced ? 1 : opacity,
         },
       ]}
     >
-      <Text key={`copy-0-${fontScale}`} numberOfLines={1} style={[s.label, hasImage && s.textInset]}>
+      <Text key={`copy-0-${fontScale}`} numberOfLines={inline ? 2 : 1} style={[s.label, hasImage && s.textInset]}>
         {label}
       </Text>
       {/* Der Artikelname bekommt die volle Breite. Das Bild hängt so weit über
           die Oberkante, dass es nur die kurze Zeile darüber berührt — sonst
           bliebe vom Namen auf einer halbbreiten Karte kaum etwas übrig. */}
-      <Text key={`copy-1-${fontScale}`} numberOfLines={1} style={s.title}>
+      <Text key={`copy-1-${fontScale}`} numberOfLines={inline ? 2 : 1} style={[s.title, inline && hasImage && s.textInset]}>
         {shown.title}
       </Text>
 
-      <View style={s.bottomRow}>
+      <View style={[s.bottomRow, inline && s.inlineBottom]}>
         <StateText status={shown.status} secondsLeft={secondsLeft} />
         {shown.status === 'running' && !reduced ? (
           // Schlüssel je Artikel: Ohne ihn zählt der neue Artikel vom Preis des
           // alten herunter, sobald das Widget umschaltet.
-          <RollupNumber key={shown.id} cents={shown.priceCents} style={s.price} />
+          <RollupNumber key={`${shown.id}:${fontScale}`} cents={shown.priceCents} style={s.price} />
         ) : (
           <Text key={`copy-2-${fontScale}`} style={s.price}>{formatEuro(shown.priceCents)}</Text>
         )}
@@ -105,7 +108,7 @@ export function LivePreview({ preview, secondsLeft }: Props) {
       <Text key={`copy-3-${fontScale}`} style={s.shipping}>Alles in einem Paket</Text>
 
       {shown.imageUrl ? (
-        <View style={s.thumb}>
+        <View style={[s.thumb, inline && s.inlineThumb]}>
           <Image
             source={{ uri: shown.imageUrl }}
             style={StyleSheet.absoluteFill}
@@ -154,6 +157,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 7,
   },
+  inline: { position: 'relative', left: 0, right: 0, bottom: 0, borderRadius: 0,
+    borderWidth: 0, borderTopWidth: StyleSheet.hairlineWidth, padding: space.md, backgroundColor: ui.card },
+  inlineThumb: { top: space.sm, right: space.sm },
+  inlineBottom: { flexWrap: 'wrap', alignItems: 'center' },
   /** Platz für das Artikelbild, das rechts über die Oberkante hinausragt. */
   textInset: { marginRight: 42 },
 
@@ -168,7 +175,7 @@ const s = StyleSheet.create({
   state: { flex: 1, fontSize: 12, fontWeight: '700' },
   urgent: { color: ui.overlayUrgent },
   calm: { color: ui.overlayMuted },
-  price: { fontSize: 13, fontWeight: '700', color: ui.text },
+  price: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: ui.text, maxWidth: '100%' },
 
   // Gedämpft wie die Zustandszeile: Es ist eine Zusicherung, kein Preis. Und
   // `overlayMuted`, weil auch diese Zeile auf einem fremden Foto liegt — die

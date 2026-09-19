@@ -230,8 +230,9 @@ test('slow preference read cannot overwrite a successful save', async () => {
   } finally { stop(); client.clear(); }
 });
 
-function editorFixture() {
-  let cursor = 0, fontScale = 1, focusedCleanup, writes = [], backs = 0, complete;
+function editorFixture({ canGoBack = true, useFollowing = true } = {}) {
+  let cursor = 0, fontScale = 1, focus, focusedCleanup, writes = [], backs = 0;
+  const pending = [], replacements = [];
   const slots = [], jsx = (type, props, key) => ({ type, props, key });
   const find = (v, type) => !v ? [] : Array.isArray(v) ? v.flatMap(n => find(n, type))
     : [...(v.type === type ? [v] : []), ...find(v.props?.children, type)];
@@ -242,18 +243,21 @@ function editorFixture() {
     useRef: value => { const i = cursor++; return slots[i] ??= { current: value }; },
     useState: value => { const i = cursor++; if (!(i in slots)) slots[i] = value; return [slots[i], next => { slots[i] = next; }]; },
   };
-  const save = { isPending: false, isError: false, reset() {}, mutateAsync: variables => {
+  const save = { isPending: false, isError: false, reset() { save.isError = false; }, mutateAsync: variables => {
     writes.push(plain(variables)); save.isPending = true;
-    return new Promise(resolve => { complete = () => { save.isPending = false; resolve(); }; });
+    return new Promise((resolve, reject) => { pending.push({ resolve, reject }); });
   } };
+  const nav = load('lib/nav.ts', { 'expo-router': { router: {
+    canGoBack: () => canGoBack, back: () => backs++, replace: target => replacements.push(target),
+  } } });
   const lib = load('app/interests.tsx', {
     react, 'react/jsx-runtime': { jsx, jsxs: jsx },
     'react-native': { View: 'View', Text: 'Text', Pressable: 'Tap', ScrollView: 'Scroll', Switch: 'Switch',
       ActivityIndicator: 'Spinner', StyleSheet: { create: value => value }, useWindowDimensions: () => ({ fontScale }) },
-    'expo-router': { useRouter: () => ({ back: () => backs++ }), useFocusEffect: fn => { if (!focusedCleanup) focusedCleanup = fn(); } },
+    'expo-router': { useFocusEffect: fn => { if (!focus) { focus = fn; focusedCleanup = fn(); } } },
     'expo-image': { Image: 'Image' }, 'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 59, bottom: 34 }) },
-    '../lib/session': { useSession }, '../lib/discovery': logic,
-    '../lib/useDiscoveryPreferences': { useDiscoveryPreferences: () => ({ data: logic.DEFAULT_DISCOVERY }), useSaveDiscoveryPreferences: () => save },
+    '../lib/session': { useSession }, '../lib/discovery': logic, '../lib/nav': nav,
+    '../lib/useDiscoveryPreferences': { useDiscoveryPreferences: () => ({ data: { categorySlugs: [], useFollowing } }), useSaveDiscoveryPreferences: () => save },
     '../lib/useCategories': { useCategoryOptions: () => ({ groups: [{ slug: 'mode', name: 'Mode' }, { slug: 'beauty', name: 'Beauty' }] }) },
     '../theme/categoryArt': { categoryArt: () => ({ photo: 'photo' }) }, '../theme/tokens': { ui: {}, radius: {}, space: {} },
   });
@@ -262,8 +266,15 @@ function editorFixture() {
     render() { cursor = 0; const screen = lib.default(); tree = screen.type(screen.props); return tree; },
     tap(label) { const node = find(tree, 'Tap').find(n => n.props.accessibilityLabel === label || find(n, 'Text').some(t => t.props.children === label)); assert.ok(node, label); node.props.onPress(); },
     checked: label => find(tree, 'Tap').find(n => n.props.accessibilityLabel === label)?.props.accessibilityState.checked,
+    hasError: () => find(tree, 'Text').some(n => typeof n.props.children === 'string' && n.props.children.includes('konnte nicht gespeichert')),
+    following: () => find(tree, 'Switch')[0]?.props.value,
+    setFollowing: value => find(tree, 'Switch')[0].props.onValueChange(value),
+    setOwner: value => { session.userId = value; },
     setFont: value => { fontScale = value; }, writes: () => writes, backs: () => backs,
-    complete: () => complete(), blur: () => focusedCleanup(),
+    replacements: () => replacements,
+    complete: () => { save.isPending = false; pending.shift().resolve(); },
+    fail: () => { save.isPending = false; save.isError = true; pending.shift().reject(new Error('storage locked')); },
+    blur: () => focusedCleanup(), focus: () => { focusedCleanup = focus(); },
   };
 }
 
@@ -281,6 +292,59 @@ test('finishing a save after back or loss of focus never pops another screen', a
     editor.complete(); await flush();
     assert.equal(editor.backs(), leave === 'back' ? 1 : 0);
   }
+});
+
+test('interest saves synchronously block duplicate taps and edits before pending is rendered', async () => {
+  const editor = editorFixture(); editor.render(); editor.tap('Mode'); editor.render();
+  editor.tap('Auswahl speichern'); editor.tap('Auswahl speichern');
+  editor.tap('Beauty'); editor.setFollowing(false); editor.tap('Themen zurücksetzen');
+  editor.render();
+  assert.equal(editor.writes().length, 1);
+  assert.equal(editor.checked('Mode'), true); assert.equal(editor.checked('Beauty'), false);
+  assert.equal(editor.following(), true);
+  editor.complete(); await flush(); assert.equal(editor.backs(), 1);
+});
+
+test('a save finishing after blur and refocus neither navigates nor leaks an old failure', async () => {
+  for (const result of ['complete', 'fail']) {
+    const editor = editorFixture(); editor.render(); editor.tap('Mode'); editor.render(); editor.tap('Auswahl speichern');
+    editor.blur(); editor.focus(); editor[result](); await flush(); editor.render();
+    assert.equal(editor.backs(), 0); assert.equal(editor.hasError(), false); assert.equal(editor.checked('Mode'), true);
+    editor.tap('Auswahl speichern'); assert.equal(editor.writes().length, 2);
+    editor.complete(); await flush(); assert.equal(editor.backs(), 1);
+  }
+});
+
+test('failed interest save keeps the selection and supports a fresh retry', async () => {
+  const editor = editorFixture(); editor.render(); editor.tap('Beauty'); editor.render(); editor.tap('Auswahl speichern');
+  editor.fail(); await flush(); editor.render();
+  assert.equal(editor.hasError(), true); assert.equal(editor.checked('Beauty'), true); assert.equal(editor.backs(), 0);
+  editor.tap('Auswahl speichern'); editor.render(); assert.equal(editor.hasError(), false);
+  assert.deepEqual(editor.writes()[1], editor.writes()[0]); editor.complete(); await flush();
+  assert.equal(editor.backs(), 1);
+});
+
+test('cold interest entry returns home after cancel or a successful save', async () => {
+  for (const action of ['Zurück', 'Auswahl speichern']) {
+    const editor = editorFixture({ canGoBack: false }); editor.render(); editor.tap(action);
+    if (action === 'Auswahl speichern') { editor.complete(); await flush(); }
+    assert.equal(editor.backs(), 0); assert.deepEqual(editor.replacements(), ['/(tabs)/']);
+  }
+});
+
+test('resetting topics preserves an explicit followed-seller opt-out', async () => {
+  const editor = editorFixture({ useFollowing: false }); editor.render(); editor.tap('Mode'); editor.render();
+  editor.tap('Themen zurücksetzen'); editor.render();
+  assert.equal(editor.checked('Mode'), false); assert.equal(editor.following(), false);
+  editor.tap('Auswahl speichern'); assert.deepEqual(editor.writes(), [{ owner: 'me', preferences: { categorySlugs: [], useFollowing: false } }]);
+  editor.complete(); await flush();
+});
+
+test('interest events and completions from the previous account never navigate the current account', async () => {
+  const stale = editorFixture(); stale.render(); stale.setOwner('other'); stale.tap('Auswahl speichern');
+  assert.deepEqual(stale.writes(), []);
+  const pending = editorFixture(); pending.render(); pending.tap('Auswahl speichern'); pending.setOwner('other');
+  pending.complete(); await flush(); assert.equal(pending.backs(), 0);
 });
 
 test('shelf changes, show moves and seller changes invalidate discovery without discarding its preview', () => {

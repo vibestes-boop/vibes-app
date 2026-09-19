@@ -14,16 +14,22 @@
 // Stand. Ein eigener Realtime-Kanal je Nutzer kostet dauerhaft Verbindungen für
 // etwas, das ein Abruf beim Öffnen genauso löst.
 
-import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from './supabase';
+import { loadNotificationContext } from './notificationContext';
 
-/** Die drei Ereignisse, die Berkat an den Käufer schickt. */
+/** Käufer-, Verkäufer- und Gesprächsereignisse im Berkat-Posteingang. */
 export type BerkatNotificationType =
   | 'auction_won'
   | 'order_payment_reminder'
   | 'order_shipped'
+  | 'order_paid'
+  | 'new_order'
+  | 'order_review'
+  | 'scheduled_live_reminder'
+  | 'live'
+  | 'dm'
   /**
    * Der vorgemerkte Artikel wird JETZT aufgerufen (seit `20260819160000`).
    *
@@ -103,6 +109,8 @@ export function notificationTarget(
     type: string | null | undefined;
     sessionId?: string | null;
     senderId?: string | null;
+    auctionId?: string | null;
+    liveStatus?: string | null;
     /** Nur bei `saved_search_hit`: das gesuchte Wort, aus `product_name`. */
     query?: string | null;
   },
@@ -119,6 +127,7 @@ export function notificationTarget(
     // bei einer Zwanzig-Sekunden-Auktion nicht gibt.
     case 'auction_up':
     case 'live':
+      if (n.liveStatus === 'ended') return n.senderId ? `/seller/${n.senderId}` : '/(tabs)/';
       return n.sessionId ? `/live/${n.sessionId}` : '/(tabs)/';
     // Zur Erinnerung an einen Termin gibt es noch keine Show — der einzige
     // sinnvolle Ort ist der Verkäufer, der ihn angekündigt hat.
@@ -149,6 +158,8 @@ export function notificationTarget(
     case 'dm':
       return n.senderId ? `/messages/${n.senderId}` : '/messages';
     case 'auction_won':
+      if (from === 'list' && n.auctionId) return `/listing/${n.auctionId}`;
+      return from === 'push' ? '/notifications' : '/purchases';
     case 'order_payment_reminder':
     case 'order_shipped':
       return from === 'push' ? '/notifications' : '/purchases';
@@ -176,7 +187,16 @@ export type BerkatNotification = {
    * angekündigt hat. Wurde bis zum 16.08.2026 beim Umbau weggeworfen.
    */
   sender_id: string | null;
+  sender_avatar: string | null;
+  image_url: string | null;
+  subject_title: string | null;
+  auction_id: string | null;
+  live_status: string | null;
 };
+
+export type NotificationRecord = Omit<BerkatNotification,
+  'sender_name' | 'sender_avatar' | 'image_url' | 'subject_title' | 'auction_id' | 'live_status'>;
+export type NotificationFeed = { items: BerkatNotification[]; partial: boolean };
 
 export function useBerkatNotifications(userId: string | null) {
   return useQuery({
@@ -184,44 +204,22 @@ export function useBerkatNotifications(userId: string | null) {
     enabled: Boolean(userId),
     staleTime: 15_000,
     refetchOnWindowFocus: true,
-    queryFn: async (): Promise<BerkatNotification[]> => {
+    queryFn: async ({ signal }): Promise<NotificationFeed> => {
+      if (!userId) return { items: [], partial: false };
       const { data, error } = await supabase
         .from('notifications')
         .select('id, type, comment_text, product_name, session_id, read, created_at, sender_id')
         .eq('recipient_id', userId!)
         .eq('app', 'berkat')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(50).abortSignal(signal);
 
       if (error) {
         if (__DEV__) console.warn('[Berkat] Benachrichtigungen laden:', error.message);
         throw error;
       }
 
-      const rows = (data ?? []) as Omit<BerkatNotification, 'sender_name'>[];
-      if (rows.length === 0) return [];
-
-      // Absender-Namen separat holen, NICHT als eingebettete Beziehung:
-      // `sender:profiles(username)` quittiert Supabase mit PGRST200, weil
-      // notifications.sender_id auf auth.users zeigt und nicht auf profiles.
-      // Die Abfrage liefert dann still eine leere Liste — die Meldungen wären
-      // spurlos weg, ohne Fehler in der Oberfläche.
-      const senderIds = [...new Set(rows.map((r) => r.sender_id).filter(Boolean))] as string[];
-      const names = new Map<string, string>();
-      if (senderIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .in('id', senderIds);
-        for (const p of (profiles ?? []) as { id: string; username: string | null }[]) {
-          if (p.username) names.set(p.id, p.username);
-        }
-      }
-
-      return rows.map((row) => ({
-        ...row,
-        sender_name: row.sender_id ? names.get(row.sender_id) ?? null : null,
-      }));
+      return loadNotificationContext((data ?? []) as NotificationRecord[], userId, signal);
     },
   });
 }
@@ -257,25 +255,31 @@ export function useUnreadCount(userId: string | null, enabled = true) {
   });
 }
 
-/**
- * Alles als gelesen markieren. Wird beim Öffnen der Liste aufgerufen — wer sie
- * ansieht, hat sie gesehen.
- */
-export function useMarkAllRead(userId: string | null) {
+/** Only explicit opens / the visible batch are read; opening the screen is not a read receipt. */
+export function useMarkNotificationsRead(userId: string | null) {
   const qc = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (!userId) return;
+  return useMutation({
+    retry: false,
+    networkMode: 'always',
+    mutationFn: async (ids: string[]) => {
+      if (!userId || ids.length === 0) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user.id !== userId) throw new Error('session_changed');
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
         .eq('recipient_id', userId)
         .eq('app', 'berkat')
+        .in('id', [...new Set(ids)].slice(0, 50))
         .eq('read', false);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, ids) => {
+      const updatedIds = new Set([...new Set(ids)].slice(0, 50));
+      qc.setQueryData<NotificationFeed>(['berkat', 'notifications', userId], (feed) => feed ? {
+        ...feed, items: feed.items.map(item => updatedIds.has(item.id) ? { ...item, read: true } : item),
+      } : feed);
       qc.invalidateQueries({ queryKey: ['berkat', 'notifications', userId] });
       qc.invalidateQueries({ queryKey: ['berkat', 'notifications-unread', userId] });
     },
@@ -283,9 +287,4 @@ export function useMarkAllRead(userId: string | null) {
       if (__DEV__) console.warn('[Berkat] Als gelesen markieren:', (err as Error)?.message ?? err);
     },
   });
-
-  // Stabile Identität, damit ein Fokus-Effekt sie in seine Abhängigkeiten
-  // nehmen kann, ohne bei jedem Render neu zu feuern.
-  const { mutate } = mutation;
-  return useCallback(() => mutate(), [mutate]);
 }

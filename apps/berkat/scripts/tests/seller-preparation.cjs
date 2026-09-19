@@ -6,9 +6,9 @@ const root = path.resolve(__dirname, '../..');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const plain = value => JSON.parse(JSON.stringify(value));
 const deferred = () => { let resolve, reject; const promise = new Promise((ok, fail) => { resolve = ok; reject = fail; }); return { promise, resolve, reject }; };
-function load(file, mocks = {}) {
+function load(file, mocks = {}, clock = Date) {
   const code = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  const context = vm.createContext({ exports: {}, Error, Date, require: name => mocks[name] ?? {} });
+  const context = vm.createContext({ exports: {}, Error, Date: clock, require: name => mocks[name] ?? {} });
   vm.runInContext(code, context); return context.exports;
 }
 // Event/state/effect harness. All mutations and camera tracks below are local doubles;
@@ -42,10 +42,16 @@ for (const success of [true, false]) test(`a late ${success ? 'success' : 'failu
 const jsx = (type, props, key) => ({ type, props, key });
 const find = (node, type) => !node ? [] : Array.isArray(node) ? node.flatMap(n => find(n, type)) : [...(node.type === type ? [node] : []), ...find(node.props?.children, type)];
 function formFixture(kind) {
+  // These cases test async saving. Keep today's default slot in the future,
+  // independently of the test runner's current time or timezone.
+  class FormClock extends Date {
+    constructor(...args) { super(...(args.length ? args : [2026, 8, 19, 12, 0, 0, 0])); }
+    static now() { return new Date(2026, 8, 19, 12).getTime(); }
+  }
   const h = hooks(), pending = deferred(), upload = deferred(); let calls = 0, uploads = 0, retry = 0;
   const rn = new Proxy({ useWindowDimensions: () => ({ fontScale: 1.8 }), StyleSheet: { create: x => x }, Platform: { OS: 'ios' } }, { get: (obj, key) => obj[key] ?? key });
   const hooksModule = load('lib/useSellerDraft.ts', { react: h.react });
-  const studio = load('lib/useStudio.ts');
+  const studio = load('lib/useStudio.ts', {}, FormClock);
   const props = { plan: { id: 'plan', title: 'Abend', scheduled_at: '2026-09-15T18:00:00Z' }, plans: [], items: [], busy: false, notice: null, userId: 'seller', onClose() {}, onCancel() {},
     onRetry() { retry++; }, onPlan() { calls++; return pending.promise; }, onPrepare() { calls++; return pending.promise; } };
   const component = load(`components/${kind}.tsx`, { react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': rn,
@@ -53,7 +59,7 @@ function formFixture(kind) {
     '../lib/useSchedule': { formatSlot: x => x, MAX_WEEKS: 4, scheduleErrorText: () => 'Nicht bestätigt' }, '../lib/usePrepared': { prepareErrorText: () => 'Nicht bestätigt' },
     '../lib/useListings': { tidySize: x => x || null }, '../lib/usePrebid': { usePrebidCounts: () => ({}) }, '../lib/useReminders': { useReminderCounts: () => ({}) },
     '../lib/uploadImage': { pickAndUpload: () => { uploads++; return upload.promise; } }, './PressFeedback': { PressFeedback: 'Button' }, './ActionButton': { ActionButton: 'Action' }, './FeedbackState': { FeedbackState: 'Feedback' }, '../theme/tokens': { ui: {}, radius: {}, space: {} },
-  })[kind === 'PrepareSheet' ? 'PrepareSheetForm' : kind];
+  }, FormClock)[kind === 'PrepareSheet' ? 'PrepareSheetForm' : kind];
   const render = changes => { Object.assign(props, changes); return h.render(() => component(props)); };
   const submit = tree => kind === 'PrepareSheet' ? find(tree, 'Action')[0] : find(tree, 'Button').find(n => n.props.accessibilityLabel === 'Termin eintragen');
   return { render, submit, pending, upload, calls: () => calls, uploads: () => uploads, retries: () => retry };

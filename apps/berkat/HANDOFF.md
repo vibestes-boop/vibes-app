@@ -1,5 +1,198 @@
 # Berkat — Übergabe
 
+## Aktueller Anschlusspunkt · Gemeinsame iOS-Auslieferung · 19.09.2026
+
+**Freigegeben:** Auf den Plan „gemeinsam committen/pushen, OTA ausliefern,
+iPhone prüfen und Leistung messen“ antwortete der Nutzer mit „leg los“.
+Die folgenden drei UX-Blöcke werden gemeinsam ausgeliefert.
+
+**Kompatibilität bestätigt:** `@zaurhat/berkat`, Projekt
+`fb4e0381-264d-4cfd-8c3c-691987346915`, aktiver Kanal/Zweig `production`,
+Runtime `1.0.0`. EAS-Build `1198aa88-e360-4e78-bfd5-1720f179da58` ist Build 9,
+Quellcommit `97bc89404aa2068476e7a2317ef67047c50c5ea8`. Paketdatei, Lockdatei,
+Metro, Babel und EAS-Konfiguration sind bytegleich; app.json unterscheidet sich
+nur bei ios.buildNumber (9 → 16). CoreDevice bestätigt auf dem tatsächlichen
+iPhone `com.berkat.app`, Version 1.0.0 / Build 9. Kein neuer nativer Build nötig.
+
+**Releaseprüfung:** TypeScript und 417 Tests; iOS-Export mit geleertem Cache und
+den öffentlichen Umgebungswerten aus `eas.json → build.production.env`.
+Die lokale Sentry-Variable wich davon ab; das auszuliefernde Bündel verwendet
+deshalb ausdrücklich das Produktionsprofil. Zwei ältere Verkäufer-Formulartests
+hingen von der Tageszeit ab und scheiterten nach dem letzten Abendtermin. Ihre
+Uhr ist jetzt auf Mittag fixiert; Produktionslogik unverändert.
+
+**Stand vor Veröffentlichung:** Quellstand wird als ein Feature-Commit gesichert,
+anschließend gepusht und das geprüfte Bündel ausschließlich für iOS veröffentlicht.
+OTA-Kennung und Ergebnis werden nach erfolgreicher Auslieferung hier ergänzt.
+Artefakte: `outputs/berkat-ux-release-2026-09-19` unter
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/`.
+
+**Gerätetest:** iPhone ist über das Netzwerk erreichbar; USB/entsperrt wurde
+für den anschließenden Durchlauf angefragt. Ein neuer OTA-Stand und neue
+Leistungswerte sind auf dem iPhone noch nicht bestätigt.
+
+## Meldungen · 19.09.2026
+
+**Auftrag:** Die Meldungsseite wirkte unfertig, ohne Thumbnails und erklärende
+Texte. Der bestehende Posteingang wurde im Stil der überarbeiteten App neu aufgebaut.
+
+**Jetzt umgesetzt, lokal:**
+
+- Ruhige Liste mit Gruppen Heute/Gestern/Früher, Vorschaubild oder Absenderavatar,
+  Ereignis, Artikel-/Absendername, vollständigem Text und beschrifteter Zielaktion.
+  Fehlender Meldungstext erhält einen passenden Satz je Ereignis. Preise und
+  Sendungsnummern bleiben erhalten; doppelte führende Artikelnamen entfallen.
+- Bilder und Absenderdetails werden gebündelt unter bestehenden RLS-Regeln
+  geladen. Bei Bildfehlern folgen Avatar, Initialen oder Ereignissymbol.
+  Keine neue Datenbankspalte, Migration oder native Abhängigkeit.
+- Alte Zuschlagsmeldungen haben keine Artikel-ID. Eine Zuordnung erfolgt nur bei
+  genau einem Treffer für Gewinner, Verkäufer, Show, Titel und identischem
+  Transaktionszeitpunkt (`settled_at` = `notifications.created_at`; beide Trigger
+  verwenden `now()`). Bei fehlender/mehrdeutiger Zuordnung bleibt es bei Meine Käufe.
+  Sicher zugeordnete Zuschläge öffnen direkt den gewonnenen Artikel.
+- Showmeldungen nutzen verfügbare Titelbilder. Als beendet geladene Shows führen
+  zum Verkäufer. Ältere Bestellmeldungen ohne Artikelbezug nutzen den Absender;
+  es werden keine Produktbilder nur anhand eines Namens geraten.
+- Öffnen der Liste markiert nicht mehr pauschal alles als gelesen. Einzeltipp
+  markiert die betreffende Meldung; das Häkchen markiert nur die angezeigten
+  ungelesenen Einträge. Fehler erhalten den Status, Kontowechsel wird geprüft.
+- Eigene Lade-, Gast-, Leer- und Fehleransichten; fehlende Zusatzdaten verstecken
+  keine Meldungen und bieten Wiederholen. Bestehende Push-Ziele bleiben erhalten.
+
+**Geprüft:** TypeScript, **417 lokale Tests** (zwölf neue Fälle),
+`git diff --check` und vollständiger iOS-Hermes-Export erfolgreich.
+Native Darstellung im Gast-Prüfsimulator mit lokalen Beispieldaten, extra-large
+und accessibility-medium; Artikelaktion, explizite Gelesen-Aktion, Bildfehler,
+Lade- und Fehleransicht samt Wiederholen geprüft. Danach reguläre Gastseite
+bestätigt und ursprüngliche Schriftgröße wiederhergestellt. Keine echten
+Meldungen verändert, keine Nachrichten gesendet, keine Transaktionen ausgelöst.
+Die tatsächliche Anreicherung historischer Meldungen eines angemeldeten Kontos
+wurde in dieser Runde nicht live gegen das Backend geprüft; ihre Zuordnungs-
+und Fehlerfälle sind automatisiert geprüft.
+
+**Nachweise:** `/Users/zaurhatuev/Documents/Codex/2026-09-06/li/outputs/berkat-notifications`.
+`notifications-normal.png` zeigt die neue Liste mit lokalen Beispieldaten,
+`notifications-guest.png` die reguläre Gastseite. Weitere Screenshots,
+archivierte Prüfansicht, Test-/TypeScript-/Exportlogs und README liegen daneben.
+Die temporäre Route `qa-notifications` ist aus der App entfernt.
+
+**Auslieferung:** Alle drei lokalen UX-Blöcke (Gast-/Interessen-Einstieg,
+Startseite/Live-Karten, Meldungen) sind noch nicht committed, gepusht oder per OTA
+veröffentlicht. Letzter dokumentierter iPhone-Stand bleibt TestFlight Build 9 /
+OTA-Gruppe `42f92388` vom 17.09. (§108). Nächster Schritt ist die gemeinsame
+Auslieferung nach Prüfung der nativen Kompatibilität; danach Meldungen mit dem
+angemeldeten iPhone-Konto prüfen und die geplante Gerätemessung aufnehmen.
+
+## Startseite und Live-Karten · 19.09.2026
+
+**Auftrag:** Nach der UI-Kritik hat der Nutzer mit „leg los“ die Überarbeitung
+der Startseite freigegeben. Schwerpunkt: Bildwirkung, Platzverteilung und
+Informationshierarchie. Keine Prüfung der inhaltlichen Richtigkeit von Testprodukten.
+
+**Jetzt umgesetzt, lokal:**
+
+- Eine einzelne Live-Show erhält eine kompakte Karte über die volle Breite.
+  Die Angebote folgen direkt darunter im vorhandenen zweispaltigen Raster.
+  Mehrere Shows bleiben im Show-Raster; Angebote erscheinen danach genau einmal.
+- `components/HomeLiveCard.tsx` bündelt die Darstellung. Fehlende oder gescheiterte
+  Vorschaubilder zeigen eine gestaltete Markenfläche mit Verkäuferavatar bzw.
+  Berkat-Zeichen. Geladene Bilder ersetzen deren Dekoration. Keine erfundenen
+  Zuschauerzahlen; Frauen-Only-Kennzeichnung und Kategorie-Zugang bleiben erhalten.
+- Auktionsvorschauen stehen unter dem Show-Bild im normalen Layoutfluss.
+  Laufend, verkauft und geplant bleiben erkennbar. Beim nativen Schriftwechsel
+  entdecktes Abschneiden des animierten Preises wurde behoben.
+- Suche, Markenkopf und Kategorie-Leiste beanspruchen weniger Höhe. Titel,
+  Verkäufername und „Show ansehen“ erhalten eine klare Hierarchie. Die vorhandenen
+  Kategorie-Assets sowie separate Tippflächen für Show und Kategorie bleiben erhalten.
+- Der zuvor geprüfte Gast-/Interessen-Einstieg aus dem folgenden Abschnitt ist
+  weiterhin Bestandteil dieses lokalen Änderungsstands.
+
+**Geprüft:** TypeScript ohne Fehler, **405 lokale Tests**, `git diff --check` und
+vollständiger iOS-Hermes-Export erfolgreich. Sechs neue Tests prüfen u. a. die
+Übergänge 0 → 1 → mehrere → 1 → 0 Shows, erhaltene Angebote, Navigation,
+Bildfehler und sichtbare Zugangsbeschränkungen.
+
+Native Prüfung im „Berkat Guest QA“-Simulator mit extra-large und
+accessibility-medium: einzelne/mehrere Karten, fehlendes/geladenes/fehlerhaftes
+Vorschaubild sowie laufende/verkaufte/geplante Auktion. Die vollständige Startseite
+wurde zusätzlich mit einer **ausschließlich lokalen Beispielshow** geprüft.
+Prüfroute und lokale Datenüberschreibung sind entfernt; reguläre Gast-Startseite
+und ursprüngliche Schriftgröße wurden anschließend erneut bestätigt.
+Keine Show gestartet, kein Gebot abgegeben, keine Nachricht versendet.
+Die Scrollversuche dieser Runde lieferten keinen verlässlichen Positionswechsel;
+sie gelten nicht als neuer Gesten- oder Leistungsnachweis.
+
+**Nachweise:** `outputs/berkat-home-composition` unter
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/`: README, Screenshots,
+archivierte lokale Prüfansicht sowie TypeScript-/Test-/Exportlogs.
+`home-single.png` zeigt die lokale Beispielshow, `home-no-live.png` die
+abschließend wiederhergestellte Startseite mit regulären Daten.
+
+**Auslieferung:** Dieser und der vorherige UX-Block sind noch nicht committed,
+gepusht oder per OTA veröffentlicht. Keine neuen nativen Abhängigkeiten und keine
+Änderung an app.json. Letzter hier dokumentierter iPhone-Auslieferungsstand:
+TestFlight Build 9 mit OTA-Gruppe `42f92388` vom 17.09. (§108).
+
+**Nächster Schritt:** Den gemeinsam geprüften UX-Stand ausliefern; vor OTA die
+native Konfiguration/Abhängigkeiten gegen TestFlight Build 9 prüfen. Anschließend
+die aktuelle Gerätemessung (Startzeit, Scrollen, Speicher) aufnehmen. Die bereits
+gemeldete Live-Abnahme wird nicht erneut pauschal angefordert; echte Termin-Push-
+Zustellung bleibt separat offen.
+
+## Einstieg neuer Nutzer · 19.09.2026
+
+**Nutzer-Rückmeldung:** „leg los . live getesttet“. Der echte Live-Test wurde damit
+als durchgeführt gemeldet; der nächste allgemeine UX-Block ist freigegeben.
+Es wurden keine einzelnen Kamera-/Teilen-/Tonprüfungen oder neuen Leistungswerte
+mitgeteilt. Die ältere pauschale Warteaufgabe „erst echte Live-Abnahme“ wird nicht
+erneut gestellt. Historische Einzelprüfungen sind keine zusätzlichen Testzusagen.
+
+**Jetzt umgesetzt, lokal:**
+
+- Gast-Startseite: ein klarer „Anmelden“-Einstieg. Nach geklärter Sitzung erscheinen
+  für angemeldete Nutzer weiterhin Merkliste, Nachrichten und Meldungen; während
+  des Auth-Checks blitzt keine falsche Anmeldeaufforderung auf. Stöbern, Suche und
+  Interessen sind ohne Konto erreichbar.
+- Interessen sind mit Text und Regler-Symbol beschriftet. Der Einstieg steht einmal
+  am ersten Inhaltsabschnitt, nicht zusätzlich nochmals unter laufenden Shows.
+  Der Marktplatz bleibt über den Footer erreichbar, auch wenn die separate
+  Zählabfrage keine größere Zahl liefert; dann heißt der Link „Zum Marktplatz“.
+- Fehler beim Laden der Kategorien verwenden den vorhandenen Wiederholen-Hinweis,
+  statt die Leiste still auf zwei Einträge zu reduzieren. Ein vollständig leerer
+  allgemeiner Feed führt zur Interessenauswahl statt neue Käufer zum Senden einer
+  eigenen Show aufzufordern.
+- Interessenauswahl: sichere Rückkehr auch beim direkten Öffnen ohne Verlauf;
+  synchrone Speichersperre gegen Doppeltipps und gleichzeitige Änderungen;
+  keine verspätete Navigation oder Fehlermeldung nach Verlassen/Wiederöffnen.
+  Fehler erhalten den Entwurf. „Themen zurücksetzen“ verändert die Einstellung
+  zu gefolgten Verkäufern nicht. Gast und Konten bleiben getrennt gespeichert.
+
+**Geprüft:** TypeScript ohne Fehler, 399 lokale Tests (neun neue Fälle),
+`git diff --check` und lokaler iOS-Hermes-Export. Native Gastprüfung im vorhandenen
+„Berkat Guest QA“-Simulator: Startseite → Interessen → Auswahl/Abbruch → unverändert
+wiederöffnen; Auswahl speichern → passender Feed; freiwillige Anmeldung → ohne
+Anmeldung zurück. Schriftwechsel extra-large → accessibility-medium erhält den
+Entwurf; Rückscrollen bis zur vollständigen Überschrift per nativer Ziehgeste
+bestätigt. Ursprüngliche Schriftgröße und leere Gast-Auswahl wiederhergestellt.
+Keine echten Konten angelegt, Nachrichten, Gebote oder Shows gestartet.
+
+**Nachweise:** `outputs/berkat-new-user-entry` unter
+`/Users/zaurhatuev/Documents/Codex/2026-09-06/li/`. Dort README, Test-/Exportlogs
+und native Screenshots. Xcode verwendet hier inzwischen
+`/Applications/Xcode.app/Contents/Applications/DeviceHub.app` als Simulator-UI;
+der frühere Simulator.app-Pfad existiert nicht mehr.
+
+**Auslieferung:** Diese Runde ist noch nicht committed, gepusht oder per OTA
+veröffentlicht. Keine Änderung an nativen Abhängigkeiten oder app.json. Letzter
+hier dokumentierter iPhone-Auslieferungsstand ist TestFlight Build 9 mit
+OTA-Gruppe `42f92388` vom 17.09. (§108); die Abschnitte zu lokalem Build 16 sind
+historisch und beschreiben nicht die aktuelle OTA-Fähigkeit des iPhones.
+
+**Nächster Schritt:** Den geprüften UX-Stand ausliefern; bei OTA vorher weiterhin
+native Konfiguration/Abhängigkeiten gegen TestFlight Build 9 prüfen. Danach die
+geplante aktuelle Gerätemessung (Startzeit, Scrollen, Speicher) aufnehmen.
+Echte Termin-Push-Zustellung bleibt separat offen. Keine Prüfung der Testprodukte.
+
 ## Live-Raum neu angeordnet · Build 16 · 13.09.2026
 
 **Gesicherter Quellstand des installierten Pakets:**

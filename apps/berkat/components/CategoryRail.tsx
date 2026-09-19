@@ -36,8 +36,8 @@ import { ui, radius, space } from '../theme/tokens';
 import { PressFeedback } from './PressFeedback';
 import { useReducedMotion } from '../lib/useReducedMotion';
 
-export const RAIL_TALL = 108;
-export const RAIL_SHORT = 52;
+export const RAIL_TALL = 92;
+export const RAIL_SHORT = 48;
 
 // Leiste und Listenpolster müssen dieselben Maße verwenden.
 export function categoryRailMetrics(fontScale: number) {
@@ -45,7 +45,7 @@ export function categoryRailMetrics(fontScale: number) {
   return {
     tall: RAIL_TALL + Math.ceil(32 * (scale - 1)),
     short: RAIL_SHORT + Math.ceil(18 * (scale - 1)),
-    tileWidth: Math.ceil(84 * scale),
+    tileWidth: Math.ceil(80 * scale),
     pillHeight: 44 + Math.ceil(18 * (scale - 1)),
   };
 }
@@ -216,10 +216,10 @@ const styles = StyleSheet.create({
   row: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'flex-start' },
   rowShort: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'center', height: RAIL_SHORT },
 
-  tile: { width: 84, alignItems: 'center', gap: 4 },
+  tile: { width: 80, alignItems: 'center', gap: 4 },
   tileArt: {
-    width: 76,
-    height: 64,
+    width: 64,
+    height: 52,
     borderRadius: radius.md,
     borderWidth: 2,
     borderColor: 'transparent',

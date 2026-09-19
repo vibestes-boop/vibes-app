@@ -6,22 +6,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, StyleSheet, Text, View, useWindowDimensions, type FlatList } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Image } from 'expo-image';
 import { useIsFocused, useScrollToTop } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowUpRight, Bell, Heart, Lock, MessageSquare, Search, ShoppingBag, SlidersHorizontal } from 'lucide-react-native';
+import { ArrowUpRight, Search, ShoppingBag, SlidersHorizontal } from 'lucide-react-native';
 import { type LiveShow } from '../../lib/useLiveShows';
 import { useLiveDiscovery, useUpcomingDiscovery } from '../../lib/useShowDiscovery';
 import { showReasonText } from '../../lib/showDiscovery';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
-import { Avatar } from '../../components/Avatar';
 import { CategoryRail, categoryRailMetrics, type RailItem } from '../../components/CategoryRail';
+import { HomeAccountActions } from '../../components/HomeAccountActions';
 import { HomeSkeleton } from '../../components/HomeSkeleton';
 import { StoryRail } from '../../components/StoryRail';
 import { useBerkatStories, useCreateStory } from '../../lib/useStories';
-import { LivePreview } from '../../components/LivePreview';
+import { HomeLiveCard } from '../../components/HomeLiveCard';
 import { UpcomingStrip } from '../../components/UpcomingStrip';
 import { useCategories, useCategoryOptions } from '../../lib/useCategories';
 import {
@@ -34,7 +33,7 @@ import { useDiscoveryPreferences } from '../../lib/useDiscoveryPreferences';
 import { useDiscoveryListings } from '../../lib/useDiscoveryListings';
 import { ListingCard } from '../../components/ListingCard';
 import { useSavedCounts, useSavedIds, useToggleSaved } from '../../lib/useSaved';
-import { ui, radius, ratio, space } from '../../theme/tokens';
+import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
@@ -192,7 +191,7 @@ export default function HomeScreen() {
   // nicht auf, weil dort immer die Konstante `'shopping'` stand.
   // Die Zähler für die Entdeckungs-Leiste. Derselbe Abruf, den der
   // Kategorien-Reiter ohnehin macht — React Query gibt beiden dieselbe Antwort.
-  const { data: counted = [], isLoading: categoriesLoading, refetch: refetchCategories } = useCategories(isFocused);
+  const { data: counted = [], isLoading: categoriesLoading, isError: categoriesError, refetch: refetchCategories } = useCategories(isFocused);
   // Nur die Zahl, keine Zeile (`head: true`) — sie beantwortet im Leerzustand
   // die Frage „gibt es hier überhaupt etwas zu tun?".
   const { data: shopCount = 0, refetch: refetchShopCount } = useShopCount();
@@ -305,6 +304,9 @@ export default function HomeScreen() {
   const browsing = isFocused;
   /** Niemand sendet — nur noch für die Überschrift und den Leerzustand. */
   const idle = visible.length === 0;
+  const singleShow = visible.length === 1 ? visible[0] : null;
+  // A single show belongs in a full-width header; offers still use the grid.
+  const shelfInGrid = idle || Boolean(singleShow);
   const wholeShelfQuery = useDiscoveryListings(userId, interestSlugs, selection.useFollowing,
     browsing && filter === ALL && preferencesReady);
   const categoryShelfQuery = useCategoryListings(filterSlugs, browsing);
@@ -314,7 +316,7 @@ export default function HomeScreen() {
   const shelfLoading = browsing && (shelfQuery.isLoading || (filter === ALL && !preferencesReady));
   const discoveryWarning = filter === ALL && (wholeShelfQuery.partial || preferences.isError ||
     (selection.categorySlugs.length > 0 && categoryOptions.isError));
-  const homeError = showsError || (browsing && (shelfQuery.isError || discoveryWarning ||
+  const homeError = categoriesError || showsError || (browsing && (shelfQuery.isError || discoveryWarning ||
     (filter === ALL && (upcomingDiscovery.isError || upcomingDiscovery.partial))));
   const reasons = Object.values(wholeShelfQuery.reasons);
   const hasInterests = reasons.some((reason) => reason === 'interest' || reason === 'both');
@@ -379,12 +381,12 @@ export default function HomeScreen() {
   // Ein leerer Platzhalter besetzt die zweite Spalte und hält die Karte halb.
   // Bei null Shows entsteht keiner, sonst stünde die Leer-Ansicht nie da.
   const gridData = useMemo((): GridItem[] => {
-    if (idle) {
+    if (shelfInGrid) {
       const items: GridItem[] = shelf.map((listing) => ({ shelf: listing }));
       return items.length % 2 === 1 ? [...items, { id: SPACER_ID, spacer: true }] : items;
     }
     return visible.length % 2 === 1 ? [...visible, { id: SPACER_ID, spacer: true }] : visible;
-  }, [idle, shelf, visible]);
+  }, [shelfInGrid, shelf, visible]);
 
   /**
    * Eine Regal-Karte — an ZWEI Stellen gebraucht, deshalb einmal geschrieben.
@@ -424,10 +426,22 @@ export default function HomeScreen() {
     [savedIds, saveCounts, shelfProfiles, toggleSaved, userId],
   );
 
+  const showCard = (show: LiveShow, featured = false) => {
+    const preview = previews[show.id];
+    const secondsLeft = preview?.status === 'running' && preview.endsAt
+      ? Math.max(0, (new Date(preview.endsAt).getTime() - serverNow()) / 1000) : null;
+    const reason = liveDiscovery.reasons[show.id];
+    return <HomeLiveCard key={show.id} show={show} host={profiles[show.host_id]} featured={featured}
+      categoryName={show.category ? categoryNames.get(show.category) ?? show.category : undefined}
+      reason={reason ? showReasonText(reason) : undefined} preview={preview} secondsLeft={secondsLeft}
+      onOpen={() => router.push(`/live/${show.id}`)}
+      onCategory={() => { if (show.category) selectCategory(show.category); }} />;
+  };
+
   const selectionButton = filter === ALL ? <PressFeedback onPress={() => router.push('/interests')}
-    style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Auswahl anpassen"
+    style={styles.interestsButton} accessibilityRole="button" accessibilityLabel="Interessen wählen"
     accessibilityHint="Wähle deine Interessen und ob gefolgte Verkäufer bevorzugt werden.">
-    <SlidersHorizontal size={19} color={ui.brand} />
+    <SlidersHorizontal size={17} color={ui.brand} /><Text style={styles.sectionLinkText}>Interessen</Text>
   </PressFeedback> : null;
   const shelfHeading = (
     <View style={styles.shelfHead}>
@@ -436,14 +450,14 @@ export default function HomeScreen() {
           <Text accessibilityRole="header" style={[styles.shelfTitle, { flex: 1 }]}>
             {filter === ALL ? discoveryTitle : categoryNames.get(filter) ?? 'Entdecken'}
           </Text>
-          {selectionButton}
+          {idle ? selectionButton : null}
         </View>
-        <PressFeedback onPress={() => router.push(filter === ALL ? '/shop' : `/category/${filter}`)}
+        {!idle || filter !== ALL ? <PressFeedback onPress={() => router.push(filter === ALL ? '/shop' : `/category/${filter}`)}
           accessibilityRole="button"
           accessibilityLabel={filter === ALL ? 'Alle Angebote ansehen' : 'Alle Angebote dieser Kategorie ansehen'}
           style={styles.sectionLink}>
           <Text style={styles.sectionLinkText}>Alle ansehen</Text><ArrowUpRight size={16} color={ui.brand} />
-        </PressFeedback>
+        </PressFeedback> : null}
       </View>
       {filter === ALL && discoveryCaption ? <Text style={styles.discoveryCaption}>{discoveryCaption}</Text> : null}
     </View>
@@ -453,48 +467,14 @@ export default function HomeScreen() {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View key={fontScale} style={styles.header}>
         <View style={styles.wordmark} accessible accessibilityRole="text" accessibilityLabel="Berkat">
-          <BerkatMark size={26} color={ui.brand} />
-          <Text style={styles.brandName}>berkat</Text>
+          <BerkatMark size={23} color={ui.brand} />
+          <Text allowFontScaling={false} style={styles.brandName}>berkat</Text>
         </View>
 
-        <View style={styles.headerActions}>
-          <PressFeedback onPress={() => router.push('/saved')}
-            style={styles.iconButton} accessibilityRole="button"
-            accessibilityLabel="Merkliste öffnen">
-            <Heart size={21} color={ui.text} />
-          </PressFeedback>
-          <PressFeedback
-            onPress={() => router.push('/messages')}
-            style={[styles.iconButton]}
-            accessibilityRole="button"
-            accessibilityLabel={
-              unreadMessages > 0 ? `Nachrichten, ${unreadMessages} ungelesen` : 'Nachrichten'
-            }
-          >
-            <MessageSquare size={21} color={ui.text} />
-            {unreadMessages > 0 ? (
-              <View style={styles.badge}>
-                <Text allowFontScaling={false} style={styles.badgeText}>
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
-                </Text>
-              </View>
-            ) : null}
-          </PressFeedback>
-
-          <PressFeedback
-            onPress={() => router.push('/notifications')}
-            style={[styles.iconButton]}
-            accessibilityRole="button"
-            accessibilityLabel={unread > 0 ? `Meldungen, ${unread} neue` : 'Meldungen'}
-          >
-            <Bell size={21} color={ui.text} />
-            {unread > 0 ? (
-              <View style={styles.badge}>
-                <Text allowFontScaling={false} style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
-              </View>
-            ) : null}
-          </PressFeedback>
-        </View>
+        <HomeAccountActions loading={sessionLoading} signedIn={Boolean(userId)}
+          unread={unread} unreadMessages={unreadMessages}
+          onLogin={() => router.push('/login')} onSaved={() => router.push('/saved')}
+          onMessages={() => router.push('/messages')} onNotifications={() => router.push('/notifications')} />
       </View>
 
       <View key={`search-${fontScale}`} style={styles.searchArea}>
@@ -579,13 +559,14 @@ export default function HomeScreen() {
                 />
               ) : null}
 
-              {idle ? shelfHeading : null}
               {!idle ? (
                 <View style={[styles.shelfHead, styles.sectionRow]}>
                   <Text accessibilityRole="header" style={styles.shelfTitle}>Jetzt live</Text>
                   {selectionButton}
                 </View>
               ) : null}
+              {singleShow ? showCard(singleShow, true) : null}
+              {shelfInGrid && (idle || shelf.length > 0 || shelfLoading) ? shelfHeading : null}
             </View>
         }
         ListEmptyComponent={
@@ -595,7 +576,7 @@ export default function HomeScreen() {
                 <ActivityIndicator color={ui.brand} />
               </View>
             )
-          ) : homeError ? null : (
+          ) : homeError || singleShow ? null : (
             <View style={styles.empty}>
               <BerkatMark size={40} color={ui.sunken} />
               <Text style={styles.emptyTitle}>
@@ -608,8 +589,15 @@ export default function HomeScreen() {
                       ? 'Der nächste Termin steht schon oben. Im Verkäuferprofil findest du mehr dazu.'
                       : shopCount > 0
                         ? 'Im Marktplatz kannst du auch ohne Live-Show stöbern.'
-                        : 'Schau später wieder rein oder starte unter „Verkaufen“ deine eigene Show.'}
+                        : 'Neue Angebote und Shows erscheinen hier. Wähle inzwischen die Themen, die dich interessieren.'}
               </Text>
+
+              {filter === ALL && shopCount === 0 && upcoming.length === 0 ? (
+                <PressFeedback onPress={() => router.push('/interests')} accessibilityRole="button"
+                  style={styles.emptyCta}>
+                  <Text style={styles.emptyCtaText}>Interessen wählen</Text>
+                </PressFeedback>
+              ) : null}
 
               {filter !== ALL ? (
                 <PressFeedback onPress={() => setFilter(ALL)} accessibilityRole="button"
@@ -640,9 +628,8 @@ export default function HomeScreen() {
             </View>
           )
         }
-        // Der Weg weiter — nur wenn es mehr gibt als die gezeigten acht. Steht
-        // ohnehin alles da, wäre der Knopf eine Lüge über die Menge und ein
-        // Tipp, der nichts Neues zeigt.
+        // Der Marktplatz bleibt auch erreichbar, wenn die separate Zählabfrage
+        // ausfällt. Ohne größere bekannte Zahl verspricht der Link keine Menge.
         //
         // ⚠️ Das Ziel hängt am Filter. Bei „Beauty & Duft" ins ganze Regal zu
         // schicken hieße, die eben getroffene Wahl wegzuwerfen — und die Zahl
@@ -663,14 +650,14 @@ export default function HomeScreen() {
                   ⚠️ Die Überschrift steht NUR im Sende-Fall. Ohne Show trägt
                   sie schon der Kopf („Direkt kaufen") — zweimal derselbe Satz auf einem Bildschirm wäre
                   Lärm. */}
-              {!idle && (shelf.length > 0 || shelfLoading) ? shelfHeading : null}
+              {!shelfInGrid && (shelf.length > 0 || shelfLoading) ? shelfHeading : null}
 
               {/* Ein eigenes, umbrechendes Raster statt weiterer Zeilen in der
                   Liste: Ein Abschnittskopf mitten in einem `numColumns={2}`-
                   Raster geht nur mit Tricks, die später niemand mehr versteht.
                   Bei höchstens acht Karten (`SHELF_PREVIEW`) kostet das nichts
                   — die lange Liste bleibt oben und damit virtualisiert. */}
-              {!idle && shelf.length > 0 ? (
+              {!shelfInGrid && shelf.length > 0 ? (
                 <View style={styles.footerGrid}>
                   {shelf.map((listing) => (
                     <View key={`foot:${listing.id}`} style={styles.footerCell}>
@@ -702,15 +689,15 @@ export default function HomeScreen() {
                 </Text>
               </PressFeedback>
             ) : null
-          ) : shelf.length > 0 && shopCount > shelf.length ? (
+          ) : shelf.length > 0 ? (
             <PressFeedback
               style={[styles.shelfMore]}
               onPress={() => router.push('/shop')}
               accessibilityRole="button"
-              accessibilityLabel={`Alle ${shopCount} Angebote ansehen`}
+              accessibilityLabel={shopCount > shelf.length ? `Alle ${shopCount} Angebote ansehen` : 'Zum Marktplatz'}
             >
               <ShoppingBag size={16} color={ui.text} />
-              <Text style={styles.emptyCtaText}>Alle {shopCount} Angebote ansehen</Text>
+              <Text style={styles.emptyCtaText}>{shopCount > shelf.length ? `Alle ${shopCount} Angebote ansehen` : 'Zum Marktplatz'}</Text>
             </PressFeedback>
               ) : null}
               {filter === ALL && (storyGroups.length > 0 || userId) ? (
@@ -742,88 +729,7 @@ export default function HomeScreen() {
           // `ListingCard` überhaupt gibt.
           if ('shelf' in item) return shelfCard(item.shelf);
 
-          const host = profiles[item.host_id];
-          const preview = previews[item.id];
-          const secondsLeft =
-            preview?.status === 'running' && preview.endsAt
-              ? Math.max(0, (new Date(preview.endsAt).getTime() - serverNow()) / 1000)
-              : null;
-          return (
-            <View style={styles.card}>
-            <PressFeedback kind="card"
-              onPress={() => router.push(`/live/${item.id}`)}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.title ?? 'Live-Show'}${liveDiscovery.reasons[item.id] ? `, ${showReasonText(liveDiscovery.reasons[item.id])}` : ''}`}
-            >
-              <View style={styles.sellerRow}>
-                <Avatar uri={host?.avatarUrl} name={host?.username} size={24} />
-                <Text numberOfLines={1} style={styles.sellerName}>
-                  {host?.username ?? '…'}
-                </Text>
-              </View>
-
-              <View style={styles.thumb}>
-                {item.thumbnail_url ? (
-                  <Image
-                    source={{ uri: item.thumbnail_url }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    transition={140}
-                  />
-                ) : null}
-                {/* Beide Merkzeichen stehen oben in einer Reihe. Das
-                    Frauen-Only-Zeichen saß früher unten links — da liegt jetzt
-                    die Vorschau. Die Reihe bricht um, statt sich zu überlappen. */}
-                <View style={styles.pillRow}>
-                  <View style={styles.livePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.livePillText}>Live · {item.viewer_count ?? 0}</Text>
-                  </View>
-                  {item.women_only ? (
-                    <View style={styles.wozBadge}>
-                      <Lock size={11} color={ui.successInk} />
-                      <Text style={styles.wozText}>Frauen-Only</Text>
-                    </View>
-                  ) : null}
-                </View>
-
-                {preview ? <LivePreview preview={preview} secondsLeft={secondsLeft} /> : null}
-              </View>
-
-              <Text numberOfLines={2} style={styles.cardTitle}>
-                {item.title ?? 'Ohne Titel'}
-              </Text>
-              {liveDiscovery.reasons[item.id] ? <Text style={styles.discoveryCaption}>{showReasonText(liveDiscovery.reasons[item.id])}</Text> : null}
-            </PressFeedback>
-
-            {/* ⚠️ AUSSERHALB des Karten-Knopfes, nicht darin.
-                Whatnot macht die Kategorie zu einem Link (blau, anklickbar) —
-                bei uns stand dort grauer Text, also eine Tür, die nirgends
-                hinführt (zwölfte Analyse).
-
-                Ein zweiter Knopf IM ersten wäre der bequeme Weg und derselbe
-                Fehler wie in der Verkäufer-Karte des Shops (Abschnitt 25,
-                „button-in-button"): Wer die Kategorie trifft, meint sie — wer
-                daneben trifft, meint die Show. Zwei getrennte Flächen sagen das
-                eindeutig, ein verschachtelter Knopf überlässt es dem Zufall.
-
-                Ein Tipp FILTERT hier, statt woanders hinzuspringen: Der Rest
-                der Startseite ist schon die passende Liste, sie muss nur
-                enger werden. */}
-            {item.category ? (
-              <PressFeedback
-                onPress={() => selectCategory(item.category!)}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel={`Nur ${categoryNames.get(item.category) ?? item.category} zeigen`}
-              >
-                <Text style={styles.cardCategory}>
-                  {categoryNames.get(item.category) ?? item.category}
-                </Text>
-              </PressFeedback>
-            ) : null}
-            </View>
-          );
+          return showCard(item);
         }}
       />
 
@@ -858,34 +764,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg, paddingTop: space.xs,
   },
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  brandName: { fontSize: 24, fontWeight: '700', letterSpacing: -0.8, color: ui.brand },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  iconButton: { width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  badge: {
-    position: 'absolute',
-    top: 3,
-    right: 2,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 4,
-    borderRadius: radius.pill,
-    backgroundColor: ui.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { fontSize: 10, fontWeight: '800', color: ui.goldInk },
+  brandName: { fontSize: 23, fontWeight: '700', letterSpacing: -0.7, color: ui.brand },
+  interestsButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.sm },
 
-  searchArea: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.md },
+  searchArea: { paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: space.sm },
   searchWrap: {
     flexDirection: 'row', alignItems: 'center', gap: space.sm,
-    paddingHorizontal: space.lg, minHeight: 46,
+    paddingHorizontal: space.md, minHeight: 44,
     borderRadius: radius.pill, backgroundColor: ui.card,
     borderWidth: 1, borderColor: ui.line,
   },
-  searchPlaceholder: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20, color: ui.textMuted, paddingVertical: 10 },
+  searchPlaceholder: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20, color: ui.textMuted, paddingVertical: 8 },
   community: { marginTop: space.xl },
   sectionRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: space.md },
-  discoveryHeading: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 180, gap: space.xs },
+  discoveryHeading: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', flex: 1, minWidth: 220, columnGap: space.xs },
   discoveryCaption: { fontSize: 12, lineHeight: 18, color: ui.textMuted, marginBottom: space.sm },
   sectionLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.xs },
   sectionLinkText: { color: ui.brand, fontSize: 13, fontWeight: '600' },
@@ -905,55 +797,9 @@ const styles = StyleSheet.create({
   // Über der Liste, nicht darin — siehe die Begründung am Aufrufort.
   railWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
 
-  card: { flex: 1, marginBottom: space.lg },
   spacer: { flex: 1 },
-  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  sellerName: { flex: 1, fontSize: 13, fontWeight: '600', color: ui.text },
-  thumb: {
-    aspectRatio: ratio.card,
-    borderRadius: radius.md,
-    backgroundColor: ui.sunken,
-    overflow: 'hidden',
-  },
-  pillRow: {
-    position: 'absolute',
-    top: space.sm,
-    left: space.sm,
-    right: space.sm,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    gap: 5,
-  },
-  livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: ui.live,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: ui.liveInk },
-  livePillText: { fontSize: 11, fontWeight: '700', color: ui.liveInk },
-  wozBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: ui.success,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  wozText: { fontSize: 11, fontWeight: '700', color: ui.successInk },
-  cardTitle: { marginTop: space.sm, fontSize: 14, fontWeight: '700', color: ui.text },
-  // ⚠️ Markengrün statt Grau, seit sie anklickbar ist. Grauer Text heißt in
-  // Berkat „Auskunft", und eine Auskunft tippt niemand an. Nicht Blau wie bei
-  // Whatnot: Berkat hat keine blaue Verweis-Farbe, und eine neue einzuführen
-  // hieße, sie überall einzuführen (zwölfte Analyse, offener Punkt).
-  cardCategory: { marginTop: 2, fontSize: 12, fontWeight: '600', color: ui.brand },
 
-  empty: { alignItems: 'center', paddingTop: 88, gap: space.sm },
+  empty: { alignItems: 'center', paddingTop: 40, gap: space.sm },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: ui.text },
   emptyBody: {
     fontSize: 14,
@@ -982,7 +828,7 @@ const styles = StyleSheet.create({
      erklärt eine Fläche, die schon gefüllt ist — sie ist nicht selbst die
      Nachricht. */
   shelfHead: { paddingTop: space.xs, paddingBottom: space.sm, gap: 2 },
-  shelfTitle: { flexGrow: 1, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, color: ui.text },
+  shelfTitle: { flexGrow: 1, fontSize: 20, lineHeight: 26, fontWeight: '600', letterSpacing: -0.3, color: ui.text },
   shelfBody: { fontSize: 13, color: ui.textMuted, lineHeight: 18 },
   /* Wie `emptyCta`, nur zentriert unter dem Raster statt in einer leeren
      Fläche — dieselbe Kontur, weil es dieselbe Einladung ist. */

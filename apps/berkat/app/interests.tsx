@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { ArrowLeft, Check, UsersRound } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEFAULT_DISCOVERY, type DiscoveryPreferences } from '../lib/discovery';
 import { useSession } from '../lib/session';
+import { goBack } from '../lib/nav';
 import { useCategoryOptions } from '../lib/useCategories';
 import { useDiscoveryPreferences, useSaveDiscoveryPreferences } from '../lib/useDiscoveryPreferences';
 import { categoryArt } from '../theme/categoryArt';
@@ -19,29 +20,50 @@ export default function InterestsScreen() {
 }
 
 function InterestEditor({ userId, sessionLoading }: { userId: string | null; sessionLoading: boolean }) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const preferences = useDiscoveryPreferences(userId, !sessionLoading);
   const categories = useCategoryOptions();
   const save = useSaveDiscoveryPreferences(userId);
   const [draft, setDraft] = useState<DiscoveryPreferences | null>(null);
-  const mounted = useRef(true);
-  useFocusEffect(useCallback(() => { mounted.current = true; return () => { mounted.current = false; }; }, []));
+  const [saveError, setSaveError] = useState(false);
+  const active = useRef(true);
+  const visit = useRef(0);
+  const saving = useRef(false);
+  useFocusEffect(useCallback(() => {
+    active.current = true;
+    visit.current++;
+    setSaveError(false);
+    return () => { active.current = false; visit.current++; };
+  }, []));
   const selection = draft ?? preferences.data;
   const ready = !sessionLoading && Boolean(selection);
-  const change = (next: DiscoveryPreferences) => { save.reset(); setDraft(next); };
+  const close = () => { active.current = false; visit.current++; goBack(); };
+  const change = (next: DiscoveryPreferences) => {
+    if (saving.current || !active.current) return;
+    save.reset(); setSaveError(false); setDraft(next);
+  };
   const persist = async (next: DiscoveryPreferences) => {
+    // Two taps can arrive before the pending state has been rendered.
+    const owner = useSession.getState();
+    if (saving.current || !active.current || owner.loading || owner.userId !== userId) return;
+    saving.current = true;
+    const startedVisit = visit.current;
+    const currentVisit = () => active.current && visit.current === startedVisit;
+    setSaveError(false);
     try {
       await save.mutateAsync({ owner: userId, preferences: next });
       const current = useSession.getState();
-      if (mounted.current && !current.loading && current.userId === userId) router.back();
-    } catch { /* The editor keeps the draft and displays the mutation error. */ }
+      if (currentVisit() && !current.loading && current.userId === userId) close();
+    } catch {
+      // A late result belongs to the visit that started it, even after refocus.
+      if (currentVisit()) setSaveError(true);
+    } finally { saving.current = false; }
   };
 
   return <View style={[s.screen, { paddingTop: insets.top }]}>
     <View key={`header:${fontScale}`} style={s.header}>
-      <Pressable onPress={() => { mounted.current = false; router.back(); }} accessibilityRole="button" accessibilityLabel="Zurück"
+      <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Zurück"
         style={({ pressed }) => [s.back, pressed && s.pressed]}><ArrowLeft size={23} color={ui.brand} /></Pressable>
       <Text style={s.title} accessibilityRole="header">Deine Interessen</Text>
     </View>
@@ -102,15 +124,15 @@ function InterestEditor({ userId, sessionLoading }: { userId: string | null; ses
           <View style={s.resetRow}>
             <Text style={s.summary}>{selection.categorySlugs.length === 1 ? '1 Thema gewählt'
               : selection.categorySlugs.length ? `${selection.categorySlugs.length} Themen gewählt` : 'Alle Themen offen'}</Text>
-            <Pressable onPress={() => change({ ...DEFAULT_DISCOVERY, categorySlugs: [] })} disabled={save.isPending}
-              accessibilityRole="button" style={s.textButton}><Text style={s.link}>Zurücksetzen</Text></Pressable>
+            <Pressable onPress={() => change({ ...selection, categorySlugs: [] })} disabled={save.isPending}
+              accessibilityRole="button" style={s.textButton}><Text style={s.link}>Themen zurücksetzen</Text></Pressable>
           </View>
           <Text style={s.privacy}>{userId ? 'Für dieses Konto auf diesem Gerät gespeichert.' : 'Auf diesem Gerät gespeichert. Du brauchst dafür kein Konto.'}</Text>
         </> : null}
       </View>
     </ScrollView>
     <View key={`footer:${fontScale}`} style={[s.footer, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
-      {save.isError ? <Text style={s.error} accessibilityLiveRegion="polite">Deine Auswahl konnte nicht gespeichert werden. Bitte versuche es noch einmal.</Text> : null}
+      {saveError ? <Text style={s.error} accessibilityLiveRegion="polite">Deine Auswahl konnte nicht gespeichert werden. Bitte versuche es noch einmal.</Text> : null}
       <Pressable onPress={() => { if (selection) void persist(selection); }} disabled={!ready || save.isPending}
         accessibilityRole="button" accessibilityState={{ disabled: !ready || save.isPending, busy: save.isPending }}
         style={({ pressed }) => [s.primary, (!ready || save.isPending) && s.disabled, pressed && s.pressed]}>
