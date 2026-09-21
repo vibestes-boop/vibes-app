@@ -17080,3 +17080,19 @@ geworden.
   PostgREST schickt `imatch` (`~*`), das kein Btree bedienen kann. Bei 28
   Angeboten belanglos; wenn es zählt, braucht es eine generierte Spalte oder
   eine RPC. **Nicht vergessen, aber auch nicht jetzt.**
+
+### Ausgeliefert
+
+Commit `1b59039c`, nach `origin/berkat` gepusht. OTA am 21.09.2026, Kanal
+`production`, Runtime `1.0.0`, iOS und Android.
+
+- Update-Gruppe: `b1a81f63-c2be-4a15-8fa4-c5d0ca6aab4a`
+- iOS-Update: `01a0c5d3-e388-7e19-8591-2e4404e8c1d4`
+- **Im Konto-Fuss erwartete Kennung: `01a0c5d3`** (die Anzeige nimmt die
+  Update-ID, nicht die Gruppen-ID).
+
+Vorflug-Probe nach der Warnung aus Abschnitt 108 bestanden: `package.json` ist
+in diesem Commit **unberuehrt**, also kein neues natives Modul. Das ist die
+Bedingung, unter der ein OTA auf einem aelteren nativen Build ueberhaupt laden
+darf. Der Stern hinter dem Commit in der EAS-Ausgabe kommt vom unverfolgten
+`apps/heritage-preview/`, nicht von dieser Arbeit.
