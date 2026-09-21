@@ -17,11 +17,8 @@
 // nicht sendet — also 94 % der Zeit (HANDOFF 17).
 
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -30,19 +27,15 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Plus } from 'lucide-react-native';
 
 import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { standingErrorText, useStandingActions } from '../lib/useStanding';
 import { useSellerListings } from '../lib/useListings';
 import { useMyListingViews } from '../lib/useListingViews';
+import { useSavedCounts } from '../lib/useSaved';
 import { LeftoverShelf } from '../components/LeftoverShelf';
-import { shelfBridgeErrorText, useShelfBridge } from '../lib/useShelfBridge';
-import { useMyPlannedShows } from '../lib/useSchedule';
-import { StandingComposer } from '../components/StandingComposer';
-import { useSetShippingTier } from '../lib/useShippingTier';
-import { useBerkatSeller, useDeclareSellerKind } from '../lib/useBerkatSeller';
 import { StandingShelf } from '../components/StandingShelf';
 import { radius, space, ui } from '../theme/tokens';
 
@@ -53,20 +46,16 @@ export default function ShelfScreen() {
 
   const { data: standing = [], refetch } = useSellerListings(myUserId ?? undefined);
   const actions = useStandingActions(myUserId ?? undefined, myUserId);
-  const { data: seller } = useBerkatSeller(myUserId);
-  // Für „Wohin damit?" im Formular — die eigenen angekündigten Abende.
-  const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
   // ⚠️ Erst NACH `standing` — die Kennungen kommen aus der Liste. Die Abfrage
   // hält sich zurück, solange keine da sind (`enabled` im Hook).
   const { data: viewCounts } = useMyListingViews(standing.map((l) => l.id));
+  // Dieselbe Abfrage wie auf der Startseite und im Marktplatz — derselbe
+  // Zwischenspeicher, dieselben Schluessel.
+  const { data: saveCounts } = useSavedCounts(standing.map((l) => l.id));
   const seenTotal = [...(viewCounts?.values() ?? [])].reduce((a, b) => a + b, 0);
-  const bridge = useShelfBridge();
-  const setTier = useSetShippingTier();
-  const declareKind = useDeclareSellerKind(myUserId);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pulling, setPulling] = useState(false);
-  const [composerOpen, setComposerOpen] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,10 +73,7 @@ export default function ShelfScreen() {
   }, [refetch]);
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.screen, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable hitSlop={10} onPress={() => goBack('/(tabs)/sell')} style={styles.back}>
           <ChevronLeft size={24} color={ui.text} />
@@ -112,88 +98,22 @@ export default function ShelfScreen() {
           </Pressable>
         ) : null}
 
+        {/* ⚠️ EIN KNOPF, DER FUEHRT — KEIN AUFKLAPPER (21.09.2026).
+            Hier sass derselbe Knopf, der das Formular auf- und zuklappte: Im
+            geoeffneten Zustand hiess der groesste Knopf des Bildschirms
+            „Formular einklappen", und das Regal rutschte unter zehn
+            Eingabefelder. Das Formular hat seit heute einen eigenen Ort
+            (`/listing/new`). */}
         <Pressable
           accessibilityRole="button"
-          accessibilityState={{ expanded: composerOpen }}
-          onPress={() => { Keyboard.dismiss(); setComposerOpen((open) => !open); }}
-          style={styles.createToggle}
+          accessibilityLabel="Neuen Artikel einstellen"
+          onPress={() => router.push('/listing/new')}
+          style={styles.create}
         >
-          <Text style={styles.createToggleText}>{composerOpen ? 'Formular einklappen' : '+ Neuen Artikel einstellen'}</Text>
+          <Plus size={18} color={ui.card} />
+          <Text style={styles.createText}>Neuen Artikel einstellen</Text>
         </Pressable>
-        <View style={!composerOpen ? { display: 'none' } : undefined} accessibilityElementsHidden={!composerOpen} importantForAccessibility={composerOpen ? 'auto' : 'no-hide-descendants'}>
-        <StandingComposer
-          busy={actions.create.isPending}
-          canWomenOnly={Boolean(myProfile?.women_only_verified)}
-          sellerKind={seller?.kind ?? null}
-          onDeclareKind={(kind) =>
-            void declareKind
-              .mutateAsync({ kind })
-              .then(() =>
-                setNotice(
-                  kind === 'business'
-                    ? 'Als gewerblich eingetragen. Trag deine Anbieterangaben im Konto nach — sie stehen an jedem Angebot.'
-                    : 'Als Privatperson eingetragen.',
-                ),
-              )
-              .catch(() => setNotice('Das ließ sich gerade nicht speichern.'))
-          }
-          plans={plannedShows}
-          onSubmit={(input) =>
-            void actions.create
-              .mutateAsync(input)
-              .then(async (id) => {
-                // ⚠️ ZWEI Rufe, und der zweite darf scheitern.
-                //
-                // `create_standing_listing` kennt keinen Termin — der Umzug ist
-                // seit `20260821160000` eine eigene Funktion. Sie hier
-                // hinterherzuschicken ist die kleinere Änderung, als die
-                // Anlege-RPC um einen Parameter zu erweitern: Das wäre eine
-                // Signatur-Änderung an einer Funktion, die schon in TestFlight
-                // gerufen wird, und zwei Überladungen machen PostgREST
-                // mehrdeutig (HTTP 300).
-                //
-                // Scheitert der Umzug, liegt der Artikel im Regal statt am
-                // Termin — das ist der harmlose Ausgang, und der Verkäufer
-                // erfährt ihn. Verloren geht nichts.
-                // ⚠️ DRITTER Ruf, aus demselben Grund wie der zweite: Die
-                // Versandstufe ist kein Parameter von `create_standing_listing`
-                // (Signatur-Änderung unter einer laufenden App). Scheitert er,
-                // liegt der Artikel mit NULL im Regal und wird als grosses
-                // Paket abgerechnet — im Zweifel teurer für den Käufer statt
-                // draufzahlen für den Verkäufer.
-                if (input.shippingTier != null) {
-                  try {
-                    await setTier.mutateAsync({
-                      auctionId: id,
-                      tier: input.shippingTier as 1 | 2 | 3 | 4,
-                    });
-                  } catch {
-                    /* Der Artikel steht; die Stufe lässt sich nachtragen. */
-                  }
-                }
 
-                if (!input.planId) {
-                  setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉');
-                  return;
-                }
-                try {
-                  await bridge.toShow.mutateAsync({ id, planId: input.planId });
-                  setNotice('Für den Abend vorgemerkt — startet dort bei 1 €. 🎉');
-                } catch (e: unknown) {
-                  setNotice(
-                    `Angelegt, aber der Termin ließ sich nicht zuordnen: ${shelfBridgeErrorText(
-                      e instanceof Error ? e.message : String(e),
-                    )} Der Artikel liegt jetzt im Regal.`,
-                  );
-                }
-              })
-              .catch((e: unknown) =>
-                setNotice(standingErrorText(e instanceof Error ? e.message : String(e))),
-              )
-          }
-        />
-
-        </View>
         {/* Die kompakte Liste: Hier wird verwaltet, nicht gestöbert. Ein Tipp
             auf eine Zeile öffnet den Artikel so, wie ein Fremder ihn sieht —
             das ist die einzige Vorschau, die es gibt. Zurückziehen bleibt am
@@ -202,6 +122,17 @@ export default function ShelfScreen() {
           listings={standing}
           isOwner
           viewCounts={viewCounts}
+          saveCounts={saveCounts}
+          /* ⚠️ Der Satz steht IN der Karte, nicht darunter. Bis zum
+             21.09.2026 lagen zwei graue Fussnoten uebereinander: „Diese
+             Artikel bleiben kaufbar" (in der Karte) und dieser hier
+             (darunter). Er ersetzt den anderen, solange er gilt — sobald die
+             erste Zahl da ist, kommt der alte zurueck. */
+          hint={
+            standing.length > 0 && seenTotal === 0
+              ? 'Noch hat niemand hingesehen. Sobald jemand hinschaut, steht es hier an der Zeile — am schnellsten geht es über eine Sendung.'
+              : undefined
+          }
           busyId={busyId}
           onCancel={(item) => {
             setBusyId(item.id);
@@ -216,21 +147,6 @@ export default function ShelfScreen() {
           emptyText="Noch nichts drin. Über „Neuen Artikel einstellen“ legst du dein erstes Angebot an — auch zwischen deinen Shows kaufbar."
         />
 
-        {/* ⚠️ EIN Satz statt einer Null an jedem Artikel.
-            „0 Mal angesehen“ fünfmal untereinander liest sich wie ein Urteil
-            über den Verkäufer; als ein Satz ist es eine Auskunft über den
-            Verkehr — und die stimmt in der frühen Phase auch. Warm und
-            handlungsleitend statt kalt (Design-Gesetz 2): Der Satz nennt das,
-            was wirklich hilft, nämlich Sendungen.
-            Erscheint nur, wenn etwas im Regal liegt UND noch niemand
-            hingesehen hat. Sobald die erste Zahl da ist, verschwindet er. */}
-        {standing.length > 0 && seenTotal === 0 ? (
-          <Text style={styles.seenNone}>
-            Deine Artikel wurden noch nicht angesehen. Sobald jemand hinschaut, steht es hier an
-            der Zeile — und am schnellsten geht es über eine Sendung.
-          </Text>
-        ) : null}
-
         {/* ── Was aus Sendungen übrig ist ────────────────────────────────────
             Steht UNTER dem Regal, nicht darüber: Das Regal ist der Bestand,
             das hier ist die Nachlese. Rendert sich selbst weg, wenn nichts
@@ -241,14 +157,16 @@ export default function ShelfScreen() {
           onNotice={setNotice}
         />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  seenNone: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: space.sm, marginBottom: space.md },
-  createToggle: { minHeight: 52, padding: space.md, marginBottom: space.md, borderRadius: radius.pill, backgroundColor: ui.brand, justifyContent: 'center', alignItems: 'center' },
-  createToggleText: { fontSize: 15, fontWeight: '700', color: ui.card, textAlign: 'center' },
+  /* Das „+" ist ein Zeichen, kein Schriftzeichen: Als Plus-Buchstabe im Text
+     („+ Neuen Artikel einstellen") sass es auf der Grundlinie und las sich wie
+     ein Tippfehler. */
+  create: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, padding: space.md, marginBottom: space.md, borderRadius: radius.pill, backgroundColor: ui.brand },
+  createText: { fontSize: 15, fontWeight: '700', color: ui.card },
   screen: { flex: 1, backgroundColor: ui.bg },
   header: {
     flexDirection: 'row',

@@ -21,8 +21,8 @@
 // abgeschrieben und bereits auseinandergelaufen.
 
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ShoppingBag } from 'lucide-react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { MoreHorizontal, ShoppingBag } from 'lucide-react-native';
 
 import { ui, radius, space } from '../theme/tokens';
 import type { Listing } from '../lib/useListings';
@@ -34,8 +34,26 @@ type Props = {
   isOwner: boolean;
   /** Aufrufe je Angebot — nur im eigenen Regal gesetzt. */
   viewCounts?: Map<string, number>;
+  /**
+   * Merkungen je Angebot — ebenfalls nur im eigenen Regal.
+   *
+   * ⚠️ Das staerkere der beiden Signale. Ein Aufruf heisst „draufgetippt",
+   * eine Merkung „will ich haben, nur noch nicht jetzt". Der Verkaeufer sah
+   * sie bis zum 21.09.2026 nirgends — dabei ist genau sie der Grund, den Preis
+   * zu senken statt den Artikel zurueckzuziehen.
+   */
+  saveCounts?: Map<string, number>;
   busyId: string | null;
   onCancel: (listing: Listing) => void;
+  /**
+   * Ersetzt den Schlusssatz unter der Liste.
+   *
+   * ⚠️ Damit dort nicht ZWEI graue Saetze untereinander stehen: Der
+   * Regal-Bildschirm trug seinen „noch nicht angesehen"-Hinweis bis zum
+   * 21.09.2026 ausserhalb der Karte, direkt unter diesem hier. Zwei Fussnoten
+   * derselben Farbe an derselben Stelle liest niemand.
+   */
+  hint?: string | null;
   /**
    * Was bei einem leeren Regal stehen soll. Ohne diesen Text bleibt die
    * Komponente unsichtbar.
@@ -85,6 +103,8 @@ export function StandingShelf({
   listings,
   isOwner,
   viewCounts,
+  saveCounts,
+  hint,
   busyId,
   onCancel,
   emptyText,
@@ -147,6 +167,7 @@ export function StandingShelf({
             layout="row"
             mine={isOwner}
             viewCount={viewCounts?.get(item.id)}
+            saveCount={saveCounts?.get(item.id)}
             saved={Boolean(savedIds?.has(item.id))}
             onPress={() => open(item)}
             onToggleSaved={
@@ -154,23 +175,45 @@ export function StandingShelf({
                 ? () => onToggleSaved(item.id, Boolean(savedIds?.has(item.id)))
                 : undefined
             }
-            // Der Knopf sitzt NEBEN der Fläche, die zum Artikel führt. Im
-            // eigenen Regal ist Zurückziehen der häufige Handgriff — ihn erst
-            // eine Seite tiefer anzubieten hieße, fünf Artikel fünfmal zu
-            // öffnen.
+            /* ⚠️ HIER STAND SECHSMAL „ZURUECKZIEHEN" (bis 21.09.2026).
+               Ein breiter, umrandeter Knopf an jeder Zeile — die
+               zerstoererischste Handlung des Bildschirms als sein
+               auffaelligstes Element, untereinander wiederholt. Und
+               BEARBEITEN gab es hier gar nicht: Fuer eine Preissenkung
+               brauchte es vier Tipps (Zeile → Artikelseite → Bearbeiten →
+               Feld).
+
+               Jetzt ein stilles „⋯" mit beidem dahinter. Zurueckziehen
+               bekommt damit seine Rueckfrage — dieselbe Linie wie bei
+               „Artikel verwerfen?" in `PrepareSheet`: Was weg ist, ist weg,
+               also fragt man einmal. */
             trailing={
               isOwner ? (
                 <Pressable
-                  style={s.ghost}
+                  style={s.more}
+                  hitSlop={6}
                   disabled={busyId === item.id}
-                  onPress={() => onCancel(item)}
+                  onPress={() =>
+                    Alert.alert(item.title, undefined, [
+                      {
+                        text: 'Bearbeiten',
+                        onPress: () => router.push(`/listing/${item.id}?edit=1`),
+                      },
+                      {
+                        text: 'Zurückziehen',
+                        style: 'destructive',
+                        onPress: () => onCancel(item),
+                      },
+                      { text: 'Abbrechen', style: 'cancel' },
+                    ])
+                  }
                   accessibilityRole="button"
-                  accessibilityLabel={`${item.title} zurückziehen`}
+                  accessibilityLabel={`${item.title}: bearbeiten oder zurückziehen`}
                 >
                   {busyId === item.id ? (
                     <ActivityIndicator color={ui.textMuted} />
                   ) : (
-                    <Text style={s.ghostText}>Zurückziehen</Text>
+                    <MoreHorizontal size={20} color={ui.textMuted} />
                   )}
                 </Pressable>
               ) : undefined
@@ -182,9 +225,10 @@ export function StandingShelf({
       {/* Derselbe Satz wie im Live-Raum, und er stimmt aus demselben Grund:
           Ein Kauf hier landet im gleichen Paket wie ein Zuschlag heute Abend. */}
       <Text style={s.hint}>
-        {isOwner
-          ? 'Diese Artikel bleiben kaufbar, auch wenn du nicht sendest.'
-          : 'Kommt in dasselbe Paket wie deine Zuschläge — du zahlst nur einmal Versand.'}
+        {hint ??
+          (isOwner
+            ? 'Diese Artikel bleiben kaufbar, auch wenn du nicht sendest.'
+            : 'Kommt in dasselbe Paket wie deine Zuschläge — du zahlst nur einmal Versand.')}
       </Text>
     </View>
   );
@@ -207,17 +251,7 @@ const s = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginTop: space.xs },
   cell: { width: '48%' },
 
-  ghost: {
-    minWidth: 84,
-    height: 38,
-    paddingHorizontal: space.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: ui.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ghostText: { fontSize: 12, fontWeight: '600', color: ui.textMuted },
+  more: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
   hint: { fontSize: 11, color: ui.textMuted, marginTop: space.xs, lineHeight: 16 },
   empty: { fontSize: 13, color: ui.textMuted, lineHeight: 19 },

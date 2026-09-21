@@ -28,7 +28,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { ImagePlus, ShoppingBag, X } from 'lucide-react-native';
+import { ImagePlus, Plus, X } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { euroToCents } from '../lib/useStudio';
 import { pickAndUpload } from '../lib/uploadImage';
@@ -225,20 +225,16 @@ export function StandingComposer({
   const cover = imageUrls[0] ?? null;
 
   return (
-    <View style={s.card}>
-      {mode === 'create' ? (
-        <>
-          <View style={s.head}>
-            <ShoppingBag size={18} color={ui.text} />
-            <Text style={s.title}>Dauerhaft anbieten</Text>
-          </View>
-          <Text style={s.body}>
-            Fotos und Artikeldetails ergänzen, Preis festlegen und dein Angebot ins Regal stellen.
-          </Text>
-        </>
-      ) : null}
-
+    /* ⚠️ VIER KARTEN STATT EINER (21.09.2026).
+       Zaur: „das Formular ist vibecodet". Er hatte recht, und der Grund war
+       nicht ein einzelner Fehler: Alles stand in EINER Karte, und alles hatte
+       dasselbe Gewicht — jede Beschriftung 12 pt grau, jedes Feld ein graues
+       Kästchen, dazwischen Fließtext. Zehn Bildschirme ohne Gliederung.
+       Jetzt trägt jeder Abschnitt eine Überschrift ÜBER seiner Fläche —
+       dasselbe Muster wie Konto, Versand und Benachrichtigungen. */
+    <View style={s.form}>
       <Text style={s.sectionTitle}>Fotos</Text>
+      <View style={s.card}>
       <Pressable
         style={s.photoEntry}
         disabled={uploading || imageUrls.length >= MAX_IMAGES}
@@ -306,32 +302,36 @@ export function StandingComposer({
           ) : null}
         </ScrollView>
       ) : null}
-      {imageUrls.length > 1 ? (
-        <Text style={s.photoHint}>
-          {imageUrls.length} von {MAX_IMAGES} Fotos — das erste ist das Titelbild.
-        </Text>
-      ) : null}
-
+      {/* ⚠️ EIN Hinweis, nicht drei. Unter dem Foto-Feld standen bis zum
+          21.09.2026 drei graue Absätze untereinander (Anzahl, Aufnahmetipp,
+          Pflichtangabe). Drei Hinweise derselben Farbe an derselben Stelle
+          liest niemand — der erste wird zum Rauschen für den zweiten. */}
       <Text style={s.photoHint}>
-        Zeige den ganzen Artikel bei Tageslicht vor ruhigem Hintergrund. Weitere Fotos
-        zeigen Details und Gebrauchsspuren.
+        {imageUrls.length > 1
+          ? `${imageUrls.length} von ${MAX_IMAGES} Fotos — das erste ist das Titelbild.`
+          : needsMedia && imageUrls.length === 0 && !uploading
+            ? 'Mindestens ein Foto ist Pflicht. Zeig den ganzen Artikel bei Tageslicht vor ruhigem Hintergrund.'
+            : 'Zeig den ganzen Artikel bei Tageslicht vor ruhigem Hintergrund. Weitere Fotos zeigen Details und Gebrauchsspuren.'}
       </Text>
-      {needsMedia && imageUrls.length === 0 && !uploading ? (
-        <Text style={s.photoHint}>Zum Einstellen brauchst du mindestens ein Foto.</Text>
-      ) : null}
       {uploadError ? <Text style={s.warn}>{uploadError}</Text> : null}
+      </View>
 
-      <Text style={s.sectionTitle}>Artikel & Preis</Text>
+      <Text style={s.sectionTitle}>Artikel</Text>
+      <View style={s.card}>
       <Text style={s.label}>Titel</Text>
+      {/* ⚠️ EINZEILIG. Bis zum 21.09.2026 stand hier `multiline` mit 64 pt
+          Mindesthöhe — ein Titelfeld, das aussah wie ein Textfeld für einen
+          Absatz. Wer drei Zeilen Platz sieht, schreibt drei Zeilen; auf der
+          Karte werden davon zwei gezeigt. */}
       <TextInput
         value={title}
         onChangeText={setTitle}
         placeholder="Zum Beispiel: Silberring, handgemacht"
         placeholderTextColor={ui.textMuted}
         accessibilityLabel="Artikeltitel"
-        style={[s.input, s.titleInput]}
+        style={[s.input, s.fieldInput, { marginTop: space.xs }]}
         maxLength={140}
-        multiline
+        returnKeyType="next"
       />
       <View style={s.row}>
         <View style={s.field}>
@@ -341,18 +341,15 @@ export function StandingComposer({
             keyboardType="decimal-pad" style={[s.input, s.fieldInput]} />
         </View>
         <View style={s.field}>
-          <Text style={s.fieldLabel}>Größe</Text>
+          {/* „freiwillig" gehört an die Beschriftung, nicht in einen Satz
+              darunter: Preis und Größe standen gleich groß nebeneinander, als
+              wären beide Pflicht. Der Preis ist es, die Größe nie. */}
+          <Text style={s.fieldLabel}>Größe (freiwillig)</Text>
           <TextInput value={size} onChangeText={setSize} placeholder="Zum Beispiel M"
             placeholderTextColor={ui.textMuted} accessibilityLabel="Größe"
             style={[s.input, s.fieldInput]} maxLength={MAX_SIZE_LEN} />
         </View>
       </View>
-      {canWomenOnly ? (
-        <View style={s.offerRow}>
-          <Text style={[s.offerLabel, { flex: 1 }]}>Frauen-Only</Text>
-          <Switch value={womenOnly} onValueChange={setWomenOnly} accessibilityLabel="Frauen-Only" />
-        </View>
-      ) : null}
 
       {price.trim() && !priceOk ? (
         <Text style={s.warn}>Über 1 € — darunter lohnt sich der Versand für niemanden.</Text>
@@ -361,7 +358,12 @@ export function StandingComposer({
       {/* Ein Tipp, und rechtlich der Träger: Beim Privatverkauf ist der
           angegebene Zustand das, woran der Verkäufer sich messen lassen muss. */}
       <Text style={s.label}>Zustand</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipRow}>
+      {/* ⚠️ UMBRECHEND, nicht waagerecht scrollend (21.09.2026).
+          Im Simulator lief „Gut" halb aus dem Bild und dahinter lag ein
+          fünfter Zustand, von dem nichts zu sehen war — ohne Pfeil, ohne
+          Schatten, ohne Bildlaufleiste. Eine Auswahl, deren Möglichkeiten man
+          nicht sieht, ist keine Auswahl. Fünf Pillen passen in zwei Zeilen. */}
+      <View style={s.chipRow}>
         {CONDITIONS.map((c) => {
           const on = condition === c.slug;
           return (
@@ -376,7 +378,7 @@ export function StandingComposer({
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       {/* Der Maßstab zur gewählten Kachel. Ohne ihn heißt „Sehr gut" für jeden
           Verkäufer etwas anderes — und gemessen wird er beim Privatverkauf
@@ -387,26 +389,40 @@ export function StandingComposer({
         </Text>
       ) : null}
 
-      {/* Nur PLZ und Ort, keine Straße: Für „ist das in meiner Nähe" reicht das,
-          und eine genaue Adresse in einem öffentlich lesbaren Angebot wäre
-          nicht zu rechtfertigen. */}
-      <View style={s.row}>
+      {descOpen ? (
         <TextInput
-          value={postalCode}
-          onChangeText={(t) => setPostalCode(t.replace(/[^0-9]/g, '').slice(0, 5))}
-          placeholder="PLZ"
+          value={description}
+          onChangeText={setDescription}
+          // „Größe" stand hier bis zum 19.08.2026 mit drin — und schickte damit
+          // genau dorthin, wo sie nicht hingehört: in Fließtext, unfilterbar.
+          // Seit es das Feld oben gibt, nennt der Platzhalter sie nicht mehr.
+          placeholder="Was sollte man wissen? Marke, Mängel, Material …"
           placeholderTextColor={ui.textMuted}
-          keyboardType="number-pad"
-          style={[s.input, { width: 96, marginTop: 0 }]}
+          style={[s.input, { minHeight: 90 }]}
+          maxLength={2000}
+          multiline
         />
-        <TextInput
-          value={city}
-          onChangeText={setCity}
-          placeholder="Ort (freiwillig)"
-          placeholderTextColor={ui.textMuted}
-          style={[s.input, { flex: 1, marginTop: 0 }]}
-          maxLength={80}
-        />
+      ) : (
+        <Pressable onPress={() => setDescOpen(true)} style={s.descOpener}>
+          <Plus size={16} color={ui.brand} />
+          <Text style={s.descOpenerText}>Beschreibung hinzufügen</Text>
+        </Pressable>
+      )}
+
+      {/* ⚠️ Seit dem 21.08.2026 beim ANLEGEN Pflicht.
+          Der Satz darunter stand schon immer hier und war schon immer richtig:
+          Die Kategorie ist der einzige Weg in den Kategorien-Reiter. Ohne sie
+          liegt der Artikel nur auf dem eigenen Profil — und wer den Verkäufer
+          noch nicht kennt, findet ihn dort nie. Etwas, das über
+          Auffindbarkeit entscheidet, freiwillig zu lassen, war die falsche
+          Abwägung; Whatnot hat es aus demselben Grund als Pflichtfeld
+          (zehnte Analyse). */}
+      <CategoryPicker
+        value={category}
+        onChange={setCategory}
+        openParent={openParent}
+        onOpenParent={setOpenParent}
+      />
       </View>
 
       {/* ── Für welchen Abend? — Whatnots „Reserve for Live" ────────────────
@@ -418,8 +434,9 @@ export function StandingComposer({
           zuordnet, soll rund um die Uhr kaufbar sein — das ist der Normalfall
           und der einzige, der ohne Zutun Geld bringt. */}
       {mode === 'create' && plans && plans.length > 0 ? (
-        <View style={s.planBlock}>
-          <Text style={s.label}>Wohin damit?</Text>
+        <>
+        <Text style={s.sectionTitle}>Wohin damit?</Text>
+        <View style={s.card}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.planRow}>
             <Pressable
               onPress={() => setPlanId(null)}
@@ -455,56 +472,8 @@ export function StandingComposer({
               : 'Wird an dem Abend versteigert — Start bei 1 €, dein Preis wird der Sofortkauf. Bis dahin ist er nicht im Regal.'}
           </Text>
         </View>
+        </>
       ) : null}
-
-      {/* Preisvorschläge. Steht bei den anderen Preis-Entscheidungen, nicht
-          bei den Rechtsangaben — es ist eine Verkaufs-, keine Rechtsfrage. */}
-      <View style={s.offerRow}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.offerLabel}>Preisvorschläge zulassen</Text>
-          <Text style={s.offerHint}>
-            {acceptsOffers
-              ? 'Käufer können dir einen Preis vorschlagen. Du kannst annehmen, kontern oder ablehnen.'
-              : 'Es gilt nur dein Festpreis.'}
-          </Text>
-        </View>
-        <Switch value={acceptsOffers} onValueChange={setAcceptsOffers} />
-      </View>
-
-      {descOpen ? (
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          // „Größe" stand hier bis zum 19.08.2026 mit drin — und schickte damit
-          // genau dorthin, wo sie nicht hingehört: in Fließtext, unfilterbar.
-          // Seit es das Feld oben gibt, nennt der Platzhalter sie nicht mehr.
-          placeholder="Was sollte man wissen? Marke, Mängel, Material …"
-          placeholderTextColor={ui.textMuted}
-          style={[s.input, { minHeight: 90 }]}
-          maxLength={2000}
-          multiline
-        />
-      ) : (
-        <Pressable onPress={() => setDescOpen(true)} style={s.descOpener}>
-          <Text style={s.descOpenerText}>+ Beschreibung hinzufügen</Text>
-        </Pressable>
-      )}
-
-      {/* ⚠️ Seit dem 21.08.2026 beim ANLEGEN Pflicht.
-          Der Satz darunter stand schon immer hier und war schon immer richtig:
-          Die Kategorie ist der einzige Weg in den Kategorien-Reiter. Ohne sie
-          liegt der Artikel nur auf dem eigenen Profil — und wer den Verkäufer
-          noch nicht kennt, findet ihn dort nie. Etwas, das über
-          Auffindbarkeit entscheidet, freiwillig zu lassen, war die falsche
-          Abwägung; Whatnot hat es aus demselben Grund als Pflichtfeld
-          (zehnte Analyse). */}
-      <CategoryPicker
-        value={category}
-        onChange={setCategory}
-        openParent={openParent}
-        onOpenParent={setOpenParent}
-      />
-
 
       {/* Die Rechtsangabe steht direkt über dem Knopf, weil sie zur Handlung
           gehört — nicht in einer Einstellung, die niemand findet. Kein Riegel:
@@ -514,6 +483,7 @@ export function StandingComposer({
           Nur beim ANLEGEN: Der Anbietertyp gehört zum Verkäufer, nicht zum
           Artikel — beim Bearbeiten wäre er hier eine zweite Wahrheit. */}
       <Text style={s.sectionTitle}>Verkauf & Versand</Text>
+      <View style={s.card}>
       {mode === 'create' ? (
         <>
           <Text style={s.label}>Du verkaufst als</Text>
@@ -583,8 +553,87 @@ export function StandingComposer({
         </Text>
       ) : null}
 
+      {/* ⚠️ PLZ und Ort stehen SEIT DEM 21.09.2026 HIER und nicht mehr unter
+          „Artikel & Preis". Ein Ort ist keine Eigenschaft des Artikels,
+          sondern die Antwort auf „von wo kommt das". Dort oben sah er aus wie
+          ein Pflichtfeld neben dem Preis.
+          Nur PLZ und Ort, keine Straße: Für „ist das in meiner Nähe" reicht
+          das, und eine genaue Adresse in einem öffentlich lesbaren Angebot
+          wäre nicht zu rechtfertigen. */}
+      <Text style={s.label}>Von wo verschickst du?</Text>
+      <View style={[s.row, { marginTop: space.xs }]}>
+        <TextInput
+          value={postalCode}
+          onChangeText={(t) => setPostalCode(t.replace(/[^0-9]/g, '').slice(0, 5))}
+          placeholder="PLZ"
+          placeholderTextColor={ui.textMuted}
+          accessibilityLabel="Postleitzahl"
+          keyboardType="number-pad"
+          style={[s.input, s.fieldInput, { width: 104 }]}
+        />
+        <TextInput
+          value={city}
+          onChangeText={setCity}
+          placeholder="Ort (freiwillig)"
+          placeholderTextColor={ui.textMuted}
+          accessibilityLabel="Ort"
+          style={[s.input, s.fieldInput, { flex: 1 }]}
+          maxLength={80}
+        />
+      </View>
+
+      {/* Preisvorschläge und Frauen-Only: beides Entscheidungen über den
+          VERKAUF, nicht über den Artikel. Sie standen bis zum 21.09.2026
+          zwischen Preis und Beschreibung und unterbrachen dort die Eingabe. */}
+      <View style={s.offerRow}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.offerLabel}>Preisvorschläge zulassen</Text>
+          <Text style={s.offerHint}>
+            {acceptsOffers
+              ? 'Käufer können dir einen Preis vorschlagen. Du kannst annehmen, kontern oder ablehnen.'
+              : 'Es gilt nur dein Festpreis.'}
+          </Text>
+        </View>
+        {/* ⚠️ In Berkats Farbe, nicht im iOS-Grün. Der Schalter kam vorher in
+            #34C759 und war damit das Lauteste im ganzen Formular — für die
+            zweitunwichtigste Entscheidung darin. */}
+        <Switch
+          value={acceptsOffers}
+          onValueChange={setAcceptsOffers}
+          trackColor={{ true: ui.brand, false: ui.lineStrong }}
+          ios_backgroundColor={ui.sunken}
+        />
+      </View>
+
+      {canWomenOnly ? (
+        <View style={s.offerRow}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.offerLabel}>Frauen-Only</Text>
+            <Text style={s.offerHint}>Nur geprüfte Frauen sehen dieses Angebot.</Text>
+          </View>
+          <Switch
+            value={womenOnly}
+            onValueChange={setWomenOnly}
+            accessibilityLabel="Frauen-Only"
+            trackColor={{ true: ui.brand, false: ui.lineStrong }}
+            ios_backgroundColor={ui.sunken}
+          />
+        </View>
+      ) : null}
+      </View>
+
+      {/* ⚠️ EINE LISTE, KEIN FLIESSTEXT.
+          Hier stand „Noch ergänzen: Titel mit mindestens 2 Zeichen · Preis
+          über 1 € · mindestens ein Foto · Kategorie." — in derselben grauen
+          11-pt-Schrift wie die Foto-Tipps darüber. Der einzige Satz, der
+          erklärt, warum der Knopf nicht geht, sah aus wie ein Hinweis. */}
       {missingFields.length > 0 ? (
-        <Text style={s.photoHint}>Noch ergänzen: {missingFields.join(' · ')}.</Text>
+        <View style={s.missing}>
+          <Text style={s.missingHead}>Das fehlt noch:</Text>
+          {missingFields.map((field) => (
+            <Text key={String(field)} style={s.missingItem}>•  {field}</Text>
+          ))}
+        </View>
       ) : null}
       <Pressable
         style={[s.primary, !canSubmit && s.primaryOff]}
@@ -634,14 +683,18 @@ export function StandingComposer({
         accessibilityLabel={submitLabel ?? 'Artikel dauerhaft anbieten'}
         accessibilityState={{ disabled: !canSubmit, busy: !!busy || uploading }}
       >
-        <Text style={s.primaryText}>{submitLabel ?? 'Ins Regal legen'}</Text>
+        <Text style={[s.primaryText, !canSubmit && s.primaryTextOff]}>{submitLabel ?? 'Ins Regal legen'}</Text>
       </Pressable>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  sectionTitle: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: ui.text, marginTop: space.xl, marginBottom: space.sm },
+  /* Die Ueberschrift steht UEBER der Flaeche, nicht darin — dasselbe Muster
+     wie Konto, Versand und Benachrichtigungen. Sie traegt damit den Abschnitt
+     statt in ihm zu schwimmen. */
+  form: { gap: space.sm },
+  sectionTitle: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: ui.textMuted, marginTop: space.lg, marginLeft: space.xs, textTransform: 'uppercase', letterSpacing: 0.6 },
   photoEntry: { flexDirection: 'row', alignItems: 'center', gap: space.md, borderWidth: 1, borderStyle: 'dashed', borderColor: ui.lineStrong, borderRadius: radius.lg, padding: space.md },
   photoEntryTitle: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.brand },
   photoEntryHint: { fontSize: 12, lineHeight: 18, color: ui.textMuted, marginTop: 4 },
@@ -668,13 +721,9 @@ const s = StyleSheet.create({
     backgroundColor: ui.card,
     borderRadius: radius.lg,
     padding: space.lg,
-    marginTop: space.md,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: ui.line,
   },
-  head: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  title: { fontSize: 16, fontWeight: '700', color: ui.text },
-  body: { fontSize: 13, color: ui.textMuted, marginTop: space.xs, lineHeight: 19 },
 
   input: {
     marginTop: space.md,
@@ -685,8 +734,6 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: ui.text,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'stretch', gap: space.sm },
-  titleInput: { minHeight: 64, marginTop: space.xs, textAlignVertical: 'top' },
   picker: { width: 72, height: 80, borderRadius: radius.md, backgroundColor: ui.sunken, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 
   imageRow: { marginTop: space.sm },
@@ -742,8 +789,6 @@ const s = StyleSheet.create({
   offerLabel: { fontSize: 14, fontWeight: '600', color: ui.text },
   offerHint: { fontSize: 11, color: ui.textMuted, marginTop: 2, lineHeight: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.md },
-  switchWrap: { alignItems: 'center', gap: 2 },
-  switchLabel: { fontSize: 11, color: ui.textMuted },
 
   warn: { fontSize: 12, color: ui.live, marginTop: space.sm },
 
@@ -754,7 +799,6 @@ const s = StyleSheet.create({
   // und die Wahl soll auf einen Blick sichtbar sein statt hinter einem Tipp.
   // Dieselbe Bauart wie die Zustands-Chips darüber — zwei Auswahl-Sprachen in
   // einem Formular wären eine zu viel.
-  planBlock: { marginTop: space.xs },
   planRow: { gap: space.sm, paddingRight: space.md, paddingVertical: space.sm },
   planChip: {
     maxWidth: 190,
@@ -770,19 +814,20 @@ const s = StyleSheet.create({
   planChipText: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
   planChipTextOn: { color: ui.brand },
   planHint: { fontSize: 11, color: ui.textMuted, lineHeight: 16 },
-  chipRow: { marginTop: space.sm },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
   chip: {
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
     paddingVertical: space.sm,
     paddingHorizontal: space.md,
-    marginRight: space.sm,
   },
   chipOn: { backgroundColor: ui.brand },
   chipText: { fontSize: 13, fontWeight: '600', color: ui.text },
   chipTextOn: { color: ui.bg },
 
-  descOpener: { marginTop: space.md, paddingVertical: space.sm },
+  /* Das „+" ist ein Zeichen, kein Schriftzeichen. Als Plus-Buchstabe vor dem
+     Text sass es auf der Grundlinie und sah aus wie ein Tippfehler. */
+  descOpener: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.md, minHeight: 44 },
   descOpenerText: { fontSize: 14, fontWeight: '600', color: ui.brand },
 
   kindRow: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
@@ -799,14 +844,22 @@ const s = StyleSheet.create({
   kindLabelOn: { color: ui.text },
   kindNote: { fontSize: 11, color: ui.textMuted, marginTop: space.sm, lineHeight: 16 },
 
+  missing: { marginTop: space.lg, gap: 2 },
+  missingHead: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: ui.text },
+  missingItem: { fontSize: 13, lineHeight: 20, color: ui.textMuted },
+
   primary: {
-    marginTop: space.lg,
+    marginTop: space.md,
     height: 48,
     borderRadius: radius.pill,
     backgroundColor: ui.gold,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryOff: { opacity: 0.45 },
+  /* ⚠️ Kein blasses Gold. `opacity: 0.45` auf Bernstein ergab ein mattes
+     Orange, das aussah wie ein kaputter Knopf statt wie ein gesperrter.
+     Ein gesperrter Knopf soll ruhig sein, nicht krank. */
+  primaryOff: { backgroundColor: ui.sunken },
   primaryText: { fontSize: 15, fontWeight: '700', color: ui.goldInk },
+  primaryTextOff: { color: ui.textMuted },
 });

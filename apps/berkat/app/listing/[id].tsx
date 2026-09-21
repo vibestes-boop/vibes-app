@@ -178,7 +178,11 @@ function listedWhen(iso: string): string {
 
 export default function ListingScreen() {
   const reducedMotion = useReducedMotion();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // ⚠️ `?edit=1` seit dem 21.09.2026: Aus dem eigenen Regal fuehrt „Bearbeiten"
+  // direkt ins Formular. Vorher waren es vier Tipps bis zur Preisaenderung
+  // (Zeile → Artikelseite → Bearbeiten → Feld) — und genau die Preisaenderung
+  // ist der haeufigste Handgriff am eigenen Angebot.
+  const { id, edit } = useLocalSearchParams<{ id: string; edit?: string }>();
   const insets = useSafeAreaInsets();
   const myUserId = useSession((s) => s.userId);
   const sessionLoading = useSession((s) => s.loading);
@@ -203,7 +207,7 @@ export default function ListingScreen() {
   const setTier = useSetShippingTier();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(edit === '1');
   /** Die Rechtsfolge unter der Anbieterkennzeichnung — zu, bis jemand fragt. */
   const [legalOpen, setLegalOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);

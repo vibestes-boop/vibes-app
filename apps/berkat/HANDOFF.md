@@ -16306,3 +16306,98 @@ und Raster.
 Der Bestand liegt bei sechzehn Kandidaten je Quelle (`CANDIDATES`). Bei einem gewachsenen
 Marktplatz ist die Reihe damit weiterhin nur ein Ausschnitt; der Weg ins ganze Regal bleibt der
 Knopf unter dem Raster.
+
+---
+
+## 113. „Dein Regal" und das Einstell-Formular entrümpelt (21.09.2026)
+
+Zaur: *„unter ‚verkaufen' unter ‚deine Artikel' ist es zu vibecodet, das UI versteht man nicht,
+verbessere es und das ‚+Neuen Artikel einstellen' Formular ist auch vibecodet, beides müssen besser
+gemacht werden ohne wichtiges weg zu lassen."*
+
+Beide Bildschirme hatten dieselbe Krankheit: **alles hat dasselbe Gewicht, und das Wichtigste steht
+am falschen Platz.**
+
+### Dein Regal
+
+| Vorher | Jetzt |
+|---|---|
+| „Zurückziehen" als breiter Knopf an **jeder** Zeile, sechsmal untereinander | ein stilles „⋯" mit Blatt dahinter |
+| **Bearbeiten gab es hier nicht** — vier Tipps bis zur Preisänderung | „Bearbeiten" im Blatt, direkt ins Formular (`?edit=1`) |
+| „Privatverkauf" an jeder Zeile | weg (siehe unten) |
+| keine Auskunft, wie ein Artikel läuft | „1× gemerkt" neben den Aufrufen |
+| zwei graue Fußnoten übereinander | eine, in der Karte |
+
+⚠️ **Die Anbieterkennzeichnung gehört dem KÄUFER.** Art. 246d § 1 EGBGB sagt ihm, ob er ein
+Widerrufsrecht hat. Im eigenen Regal stand sie sechsmal untereinander und sagte dem Verkäufer
+etwas, das er selbst eingetragen hat. Sie fällt deshalb **nur bei `mine`** weg — auf jeder Fläche,
+die ein Fremder sieht, bleibt sie unverändert.
+
+⚠️ **Gemerkt ist das stärkere Signal.** Ein Aufruf heißt „draufgetippt", eine Merkung heißt „will
+ich haben, nur noch nicht jetzt". Genau sie ist der Grund, den Preis zu senken statt den Artikel
+zurückzuziehen — und der Verkäufer sah sie bis heute nirgends. `useSavedCounts` lag schon da, es
+rief sie nur niemand.
+
+### Das Formular: eigener Bildschirm
+
+Es lag **im** Regal-Bildschirm hinter einem Auf-/Zuklapper. Drei Folgen:
+
+1. Der größte Knopf des Bildschirms hieß im geöffneten Zustand **„Formular einklappen"** — die
+   Handlung, die am wenigsten jemand will, in der Gestalt der wichtigsten. Der echte
+   Abschicken-Knopf lag acht Bildschirme tiefer.
+2. Das Regal rutschte **unter** das Formular. Wer nachsehen wollte, was drin liegt, scrollte an
+   zehn Eingabefeldern vorbei.
+3. Keine Überschrift — man füllte ein Formular aus, das nirgends sagte, was es anlegt.
+
+Jetzt `app/listing/new.tsx`. Der Bildschirm springt nach dem Erfolg **nicht** zurück: `StandingComposer`
+behält Termin, PLZ und Ort, damit man abends fünf Sachen hintereinander einstellen kann. Die
+Bestätigung steht oben, „Fertig" im Kopf.
+
+### Das Formular: innen
+
+**Vier Karten statt einer.** Fotos · Artikel · (Wohin damit?) · Verkauf & Versand, jede mit ihrer
+Überschrift **über** der Fläche — dasselbe Muster wie Konto, Versand und Benachrichtigungen.
+
+⚠️ **Zwei von sechs Zuständen waren unsichtbar.** „In Ordnung" und „Defekt" lagen komplett
+außerhalb des Bildes, in einer waagerechten Wischreihe ohne Pfeil, ohne Schatten, ohne
+Bildlaufleiste. Jetzt umbrechend.
+
+⚠️ **Die gewählte Kategorie war unsichtbar.** Von zwölf Oberkategorien waren **drei** zu sehen; bei
+einem Artikel in „Uhren" stand die eigene Wahl rechts außerhalb des Bildes. Ein Pflichtfeld, dessen
+Wert man nicht sehen kann, ist kein Feld, sondern eine Wette. `CategoryPicker` bricht jetzt um —
+zwölf Pillen sind vier Zeilen, und die Unterkategorien (bis elf) ebenso.
+
+Weiter:
+- **Titel einzeilig.** Er war `multiline` mit 64 pt Mindesthöhe — wer drei Zeilen Platz sieht,
+  schreibt drei Zeilen; die Karte zeigt zwei.
+- **„Größe (freiwillig)"** — stand gleich groß neben dem Preis, als wären beide Pflicht.
+- **PLZ und Ort** von „Artikel & Preis" nach „Verkauf & Versand". Ein Ort ist keine Eigenschaft des
+  Artikels, sondern die Antwort auf „von wo kommt das".
+- **Schalter in Markenfarbe.** Sie kamen im iOS-Grün `#34C759` und waren damit das Lauteste im
+  ganzen Formular — für die zweitunwichtigste Entscheidung darin.
+- **Ein Foto-Hinweis statt drei.** Drei graue Absätze derselben Größe an derselben Stelle liest
+  niemand; der erste wird zum Rauschen für den zweiten.
+- **„Das fehlt noch:" als Liste**, nicht als Fließtext mit Mittelpunkten. Der einzige Satz, der
+  erklärt, warum der Knopf nicht geht, sah aus wie ein Hinweis.
+- **Gesperrter Knopf ruhig statt krank.** `opacity: 0.45` auf Bernstein ergab ein mattes Orange —
+  das sah aus wie ein kaputter Knopf, nicht wie ein gesperrter.
+
+⚠️ **Gold ist jetzt genau EIN Element im Formular.** `tierOn` trug bereits die Begründung — *„Gold
+trägt in Berkat den Kaufweg, und eine Versandart ist keine Kaufhandlung"* — aber die
+Kategorie-Pille war damals vergessen worden. Gewählte Kategorie und „Ins Regal legen" standen in
+derselben Signalfarbe: einmal eine Auswahl, einmal eine Handlung.
+
+### Nichts weggelassen
+
+Zaurs Bedingung war *„ohne wichtiges weg zu lassen"*. Geprüft: Fotos (8), Titel, Preis, Größe,
+Zustand samt Maßstab-Satz, Beschreibung, Kategorie, Anbietertyp samt Rechtshinweis, Versandart samt
+Vorgabe-Warnung, PLZ/Ort, Preisvorschläge, Frauen-Only, „Wohin damit?" — alle vierzehn Felder
+stehen weiterhin. Verschwunden sind ausschließlich **Wiederholungen**: der Aufklapp-Knopf, zwei
+Foto-Hinweise, die doppelte Fußnote und die sechsfache Anbieterangabe im eigenen Regal.
+
+### Geprüft
+
+`tsc` 0, **425 von 425**, iPhone-17-Simulator: Regal (alles auf einem Bildschirm statt zwei),
+„⋯"-Blatt mit rotem „Zurückziehen", „Bearbeiten" öffnet das Formular direkt, neuer
+Einstell-Bildschirm, alle sechs Zustände, alle zwölf Kategorien, alle sechs Unterkategorien von
+Islamica.

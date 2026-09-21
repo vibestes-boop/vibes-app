@@ -179,12 +179,27 @@ export function ListingCard({
                 den Käufer. Eine „0" braucht auch der Verkäufer nicht an jedem
                 Artikel; sie steht als EIN Satz unter der Liste, wenn sie für
                 alle gilt. */}
-            {mine && viewCount != null && viewCount > 0 ? (
+            {mine && ((viewCount ?? 0) > 0 || (saveCount ?? 0) > 0) ? (
               <View style={s.viewRow}>
-                <Eye size={12} color={ui.textMuted} />
-                <Text style={s.viewText}>
-                  {viewCount === 1 ? '1 Mal angesehen' : `${viewCount} Mal angesehen`}
-                </Text>
+                {(viewCount ?? 0) > 0 ? (
+                  <>
+                    <Eye size={12} color={ui.textMuted} />
+                    <Text style={s.viewText}>
+                      {viewCount === 1 ? '1 Mal angesehen' : `${viewCount} Mal angesehen`}
+                    </Text>
+                  </>
+                ) : null}
+                {/* ⚠️ Gemerkt ist das staerkere Signal (21.09.2026). Ein Aufruf
+                    heisst „draufgetippt"; eine Merkung heisst „will ich haben,
+                    nur noch nicht jetzt". Der Verkaeufer sah sie bisher
+                    nirgends — dabei ist genau sie der Grund, den Preis zu
+                    senken statt den Artikel zurueckzuziehen. */}
+                {(saveCount ?? 0) > 0 ? (
+                  <>
+                    <Heart size={12} color={ui.textMuted} />
+                    <Text style={s.viewText}>{saveCount}× gemerkt</Text>
+                  </>
+                ) : null}
               </View>
             ) : null}
             {show ? (
@@ -210,7 +225,13 @@ export function ListingCard({
                 das Etikett allein und braucht seinen eigenen Abstand. Es an die
                 Meta-Zeile zu hängen wäre falsch: Die ist einzeilig gekürzt, und
                 ausgerechnet die Rechtsangabe würde als Erstes abgeschnitten. */}
-            {kind ? <Text style={[s.kind, s.kindAlone]}>{kind}</Text> : null}
+            {/* ⚠️ NICHT am eigenen Artikel (21.09.2026).
+                Die Anbieterkennzeichnung nach Art. 246d § 1 EGBGB schuetzt den
+                KAEUFER — sie sagt ihm, ob er ein Widerrufsrecht hat. Im
+                eigenen Regal stand sie sechsmal untereinander und sagte dem
+                Verkaeufer etwas, das er selbst eingetragen hat. Auf jeder
+                Flaeche, die ein Fremder sieht, bleibt sie. */}
+            {kind && !mine ? <Text style={[s.kind, s.kindAlone]}>{kind}</Text> : null}
             {mine && layout === 'search' ? <Text style={s.searchOwn}>Deins</Text> : null}
           </View>
         </PressFeedback>
@@ -486,7 +507,7 @@ const s = StyleSheet.create({
     marginTop: space.sm,
   },
   price: { fontSize: 17, lineHeight: 23, fontWeight: '700', color: ui.text, marginTop: 4 },
-  viewRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  viewRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 4, rowGap: 2, marginTop: 3 },
   viewText: { fontSize: 12, lineHeight: 17, color: ui.textMuted },
 
   // ── Zeile ────────────────────────────────────────────────────────────────

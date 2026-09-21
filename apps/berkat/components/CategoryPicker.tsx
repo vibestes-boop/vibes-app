@@ -14,7 +14,7 @@
 // unterste Ebene würde nur dazu führen, dass alle die erste Unterkategorie
 // nehmen.
 
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useCategoryOptions } from '../lib/useCategories';
 import { ui, radius, space } from '../theme/tokens';
 import { PressFeedback } from './PressFeedback';
@@ -48,12 +48,18 @@ export function CategoryPicker({
     <>
       <Text key={`label-${fontScale}`} style={s.label}>{label}</Text>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.row}
-        keyboardShouldPersistTaps="handled"
-      >
+      {/* ⚠️ UMBRECHEND SEIT DEM 21.09.2026 — vorher eine waagerechte Wischreihe.
+          Zaur: „das UI versteht man nicht". Am Gerät nachgesehen war es
+          schlimmer als unuebersichtlich: Von zwoelf Oberkategorien waren DREI
+          zu sehen, und bei einem Artikel in „Uhren" stand die GEWAEHLTE
+          Kategorie ausserhalb des Bildes. Ein Pflichtfeld, dessen Wert man
+          nicht sehen kann, ist kein Feld, sondern eine Wette.
+
+          Kein Pfeil wie in der Kategorie-Leiste auf der Startseite: Dort
+          gehoert die Reihe zum Stoebern und darf lang sein. Hier ist es eine
+          einmalige Entscheidung beim Einstellen — da will man alles sehen und
+          einmal tippen. Zwoelf Pillen sind vier Zeilen. */}
+      <View style={s.row}>
         {groups.map((group) => {
           // Aktiv ist die Oberkategorie auch dann, wenn eines ihrer Kinder
           // gewählt ist — sonst sähe die obere Reihe leer aus, obwohl unten
@@ -82,15 +88,10 @@ export function CategoryPicker({
             </PressFeedback>
           );
         })}
-      </ScrollView>
+      </View>
 
       {open && open.children.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[s.row, s.rowChildren]}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={[s.row, s.rowChildren]}>
           {open.children.map((child) => {
             const active = value === child.slug;
             return (
@@ -108,7 +109,7 @@ export function CategoryPicker({
               </PressFeedback>
             );
           })}
-        </ScrollView>
+        </View>
       ) : null}
 
       {/* Ein Satz, nicht drei Zeilen. Er nennt die FOLGE („findet dich
@@ -125,7 +126,7 @@ export function CategoryPicker({
 
 const s = StyleSheet.create({
   label: { fontSize: 11, color: ui.textMuted, marginTop: space.md, marginBottom: space.sm },
-  row: { gap: space.sm, paddingRight: space.md },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   rowChildren: { paddingTop: space.sm },
 
   pill: {
@@ -136,9 +137,16 @@ const s = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: ui.sunken,
   },
-  pillOn: { backgroundColor: ui.gold },
+  /* ⚠️ Markenfarbe, nicht Gold (21.09.2026).
+     Dieselbe Begruendung, die in `StandingComposer` schon an `tierOn` steht:
+     „Gold traegt in Berkat den Kaufweg, und eine Versandart ist keine
+     Kaufhandlung." Fuer die Kategorie gilt sie genauso — sie wurde damals nur
+     vergessen. Im Formular standen dadurch die gewaehlte Kategorie und der
+     Knopf „Ins Regal legen" in derselben Signalfarbe: einmal eine Auswahl,
+     einmal eine Handlung. Jetzt ist Gold im Formular genau EIN Element. */
+  pillOn: { backgroundColor: ui.brand },
   pillText: { fontSize: 13, fontWeight: '600', color: ui.text },
-  pillTextOn: { color: ui.goldInk },
+  pillTextOn: { color: ui.bg },
 
   // Die zweite Reihe ist als Kontur gezeichnet, nicht als Fläche — damit auf
   // einen Blick klar bleibt, welche Reihe die übergeordnete ist.
