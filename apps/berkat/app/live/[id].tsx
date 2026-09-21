@@ -31,7 +31,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { LiveRoomLayout } from '../../components/LiveRoomLayout';
 import { LiveChatPanel, LiveComposer, LiveChatHistory } from '../../components/LiveChatPanel';
 import { StageSheet } from '../../components/StageSheet';
-import { LiveShareSheet } from '../../components/LiveShareSheet';
+import { ShareSheet } from '../../components/ShareSheet';
 import { StageFeedback } from '../../components/StageFeedback';
 import { useLiveSession } from '../../lib/useLiveSession';
 import { useLiveChatDraft } from '../../lib/useLiveChatDraft';
@@ -547,7 +547,7 @@ function LiveAuctionRoomScreen() {
   // statt „zaur ist gerade live".
   //
   // Seit dem 17.09.2026 öffnet „Teilen" zuerst Berkats eigenes Blatt
-  // (`LiveShareSheet`): WhatsApp, Telegram, Nachricht, Mehr. Das System-Blatt
+  // (`ShareSheet`): WhatsApp, Telegram, Nachricht, Mehr. Das System-Blatt
   // ist nur noch das „Mehr" dahinter — der Host hatte das iOS-Fenster als
   // fremd empfunden, und Whatnot macht es genauso.
   const shareShow = useCallback(() => { if (id) setShareOpen(true); }, [id]);
@@ -889,7 +889,8 @@ function LiveAuctionRoomScreen() {
       </StageSheet>
       <LiveChatHistory visible={historyOpen} onClose={() => setHistoryOpen(false)}
         comments={comments.filter(comment => !blocked?.has(comment.user_id))} profiles={profiles} />
-      {id ? <LiveShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} link={showLink(id)} text={shareText} /> : null}
+      {id ? <ShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} link={showLink(id)} text={shareText}
+        surface="stage" title="Show teilen" subject="Live bei Berkat" /> : null}
 
       <ShowItemsSheet
         visible={itemsOpen}

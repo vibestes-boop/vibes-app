@@ -30,9 +30,18 @@ import { space, ui } from '../theme/tokens';
 export function ShelfRail({
   items,
   renderCard,
+  title = 'Zuletzt eingestellt',
 }: {
   items: Listing[];
   renderCard: (listing: Listing) => ReactNode;
+  /**
+   * ⚠️ Die Reihe ist eine FLAECHE, kein Inhalt — sie sagt nicht selbst, was
+   * sie zeigt. Seit dem 21.09.2026 traegt sie auch „Mehr von <Verkaeufer>" auf
+   * der Artikelseite; dort stand vorher ein Raster mit voller Kartengroesse,
+   * das den halben Bildschirm fuellte fuer etwas, das man im Vorbeigehen
+   * ansieht.
+   */
+  title?: string;
 }) {
   const { width, fontScale } = useWindowDimensions();
 
@@ -66,7 +75,7 @@ export function ShelfRail({
           „Zuletzt eingestellt" benennt die Sortierung und bleibt bei jedem
           Bestand wahr. Nebenbei unterscheidet es sich von „Neu entdecken"
           direkt darunter; zweimal „neu" auf einem Bildschirm wäre Lärm. */}
-      <Text accessibilityRole="header" style={s.heading}>Zuletzt eingestellt</Text>
+      <Text accessibilityRole="header" style={s.heading}>{title}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

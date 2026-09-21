@@ -16401,3 +16401,115 @@ Foto-Hinweise, die doppelte Fußnote und die sechsfache Anbieterangabe im eigene
 „⋯"-Blatt mit rotem „Zurückziehen", „Bearbeiten" öffnet das Formular direkt, neuer
 Einstell-Bildschirm, alle sechs Zustände, alle zwölf Kategorien, alle sechs Unterkategorien von
 Islamica.
+
+---
+
+## 114. Die Artikelseite gegen Kleinanzeigen gehalten — fünf echte Lücken (21.09.2026)
+
+Zaur hat vier Bildschirmfotos einer Kleinanzeigen-Anzeige geschickt: *„sieh dir an wie die anzeige
+detailsseite aussieht, fehlt uns etwas?"*
+
+⚠️ **Diesmal zuerst der eigene Stand.** Abschnitt 109 endete mit der Lehre, dass eine
+Konkurrenz-Analyse ohne Gegenprüfung Arbeit erzeugt, die es schon gibt. Also erst Code und Gerät,
+dann der Vergleich.
+
+### Was schon da war — und an zwei Stellen besser ist
+
+Galerie mit Zähler, Herz, Teilen · Titel · Preis · Zustand/Größe/Ort · „vor 5 Wochen eingestellt" ·
+Beschreibung · Verkäuferkarte · „Mehr von diesem Verkäufer" · „Angebot melden" · feste Leiste.
+
+Besser als Kleinanzeigen: Wir nennen den **echten** Versandsatz dieses Artikels statt „ab 0,99 €",
+und wir schreiben „Privatverkauf · **kein Widerrufsrecht**" — Kleinanzeigen nennt nur „Privater
+Anbieter" und verschweigt die Rechtsfolge.
+
+### Bewusst nicht übernommen
+
+**Aufrufe für jeden.** Kleinanzeigen zeigt „👁 15" an jeder Anzeige. Die Begründung steht seit dem
+21.09. in `ListingCard`: Bei 32 Mio. Nutzern ist die Zahl ein Vertrauenssignal, bei Berkats Verkehr
+wäre dieselbe Zahl eine **Warnung an den Käufer**. Nur der Verkäufer sieht sie, in seinem Regal.
+**Werbung** ebenfalls nicht — zwei Anzeigenplätze auf der Seite sind keine Lücke.
+
+### 1. Kein Wort darüber, wie bezahlt wird — die größte Lücke
+
+Berkat sagte dem Käufer **vor** dem Kauf nichts über Zahlung und nichts darüber, was passiert, wenn
+nichts ankommt. Stripe, Bestellstatus und Streitfall-Verfahren gibt es alle — er erfuhr davon erst
+danach.
+
+Neuer Block über der Verkäuferkarte, zwei Zeilen: Zahlung über Stripe (Berkat sieht keine
+Kartendaten) und der Weg, wenn etwas schiefgeht.
+
+⚠️ **DAS WORT „KÄUFERSCHUTZ" FEHLT MIT ABSICHT.** `STRATEGIE-VERKAEUFER-UND-GELD.md` Abschnitt 8
+hält **Fassung A** fest: kein Versprechen über die gesetzliche Pflicht hinaus, solange Zaur
+Verkäufer und Betreiber zugleich ist — eine Zusage wäre dann keine Garantie gegen einen Dritten,
+sondern seine eigene. `useDispute.ts` sagt dasselbe aus der anderen Richtung: Der Weg verspricht
+einen **Vorgang**, kein Geld. Wer hier „Geld zurück" hinschreibt, ändert eine Rechtsfrage und nicht
+einen Text.
+
+Zwei Riegel, beide im Simulator gefunden: **`!mine`** — „Berkat sieht DEINE Kartendaten nie" stand
+sonst auf dem eigenen Angebot. Und **`canCheckout`** — ohne Kasse führt der Weg über „Nachricht",
+jede Zeile über Zahlung wäre dort eine Lüge.
+
+⚠️ **Eine dritte Zeile musste wieder weg.** Sie sagte „kommt in dasselbe Paket, du zahlst nur einmal
+Versand" — dieser Satz steht bereits unter der Verkäuferkarte, dort sogar mit dem echten Betrag. Im
+Simulator standen beide auf EINEM Bildschirm. Zweimal dieselbe Auskunft ist genau das, was heute
+aus Regal und Formular entfernt wurde.
+
+### 2. Teilen hatte alle drei Fehler, die bei Live längst behoben waren
+
+Am 17.09. hatte Zaur am Live-Teilen beanstandet, dass ein iPhone-Fenster hochkommt. Der Live-Raum
+bekam daraufhin ein eigenes Blatt, `url` statt `message` und ein Vorschaubild. **Die Artikelseite
+bekam nichts davon:**
+
+| | vorher | jetzt |
+|---|---|---|
+| Blatt | iOS-System-Fenster | Berkats eigenes, hell |
+| Link | `Share.share({ message })` → graues „A" | `url` + `message` getrennt |
+| Vorschaubild | keines | `og-listing.png`, 1200×630 |
+
+`LiveShareSheet` heißt jetzt **`ShareSheet`** und trägt eine `surface`-Eigenschaft: `stage` für die
+dunkle Bühne des Live-Raums, `page` für die helle Fläche der übrigen App. Eine zweite Abschrift
+wäre der Fehler, für den es `ListingCard` gibt — die vier Ziele und ihre Fallen (Universal Links,
+`sms:`-Schema je Plattform, Reihenfolge Schließen-dann-Öffnen) stehen weiterhin **einmal** da.
+
+⚠️ `listing.html` hat jetzt `og:image`, `og:url`, `og:site_name`, `og:locale` und `twitter:card`.
+**Nach dem Ausrollen mit echten Bytes nachmessen** — am 14.09. kam `og-live.png` direkt nach dem
+Deploy als `text/html` mit Status 200 zurück, weil Cloudflare Pages Unbekanntes mit der Startseite
+beantwortet.
+
+### 3. „seit Aug. 2026" beim Verkäufer
+
+Bei einem neuen Verkäufer stand in der Zeile ausschließlich „Noch keine Bewertung" — ehrlich, und
+das Einzige, was dort stand. Kleinanzeigen zeigt „Aktiv seit 27.11.18" an derselben Stelle.
+
+⚠️ Aus **`berkat_sellers.created_at`**, nicht aus `profiles`: `profiles` hat eine eingefrorene
+Spaltenliste (CLAUDE.md Regel 11), ein `created_at` von dort wäre für `anon`/`authenticated`
+unsichtbar und der Filter schlüge mit `42501` fehl. Der Tabellenkommentar von `berkat_sellers`
+nennt genau diesen Grund für ihre Existenz. Semantisch ist es außerdem das bessere Datum: nicht
+„hat ein Konto seit", sondern „verkauft hier seit".
+
+⚠️ **Nur als Rückfall**, wenn es keine Bewertung gibt. Bei einem Verkäufer mit Sternen, Zuschlägen
+und Versandtempo schob es die Zeile im Simulator in einen zweiten Umbruch, ohne etwas hinzuzufügen.
+
+### 4. Angebots-Nummer
+
+Fehlte ganz. Berkats Kennungen sind UUIDs — sechsunddreißig Zeichen, die niemand vorliest. Die
+ersten acht Hex-Stellen (`Angebot FED5701B`) stehen jetzt leise am Seitenende, `selectable`: vier
+Milliarden Möglichkeiten, aus der vollen Kennung ableitbar, also keine zweite Wahrheit.
+
+### 5. „Mehr von diesem Verkäufer" war ein Raster
+
+Zweispaltig, Karten in voller Größe — bei vier Artikeln über einen ganzen Bildschirm, für etwas,
+das man im Vorbeigehen ansieht. Jetzt dieselbe `ShelfRail` wie auf der Startseite, mit `title` als
+Eigenschaft und der schmalen `tile`-Karte.
+
+### Offen — Zaurs Entscheidung
+
+**Marke, Farbe, Material** als eigene Felder. Kleinanzeigen hat dafür eine Attributtabelle; Marke
+ist bei Kleidung das meistgesuchte Merkmal. Dagegen: Das Einstell-Formular wurde am selben Tag
+entrümpelt (Abschnitt 113), vier neue Felder wären das Gegenteil. Nicht gebaut.
+
+### Geprüft
+
+`tsc` 0, **425 von 425**, iPhone-17-Simulator an einem fremden kaufbaren Angebot: Kauf-Block,
+Verkäuferzeile einzeilig, kein doppelter Versandsatz, helles Teilen-Blatt mit vier Zielen,
+Wischreihe, Angebots-Nummer.

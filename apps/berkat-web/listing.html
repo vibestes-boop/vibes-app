@@ -7,6 +7,28 @@
     <meta property="og:title" content="Angebot auf Berkat" />
     <meta property="og:description" content="Jemand bietet das dauerhaft an — ansehen und kaufen geht in der Berkat-App." />
     <meta property="og:type" content="website" />
+    <!--
+      ⚠️ Vorschaubild seit dem 21.09.2026 — dieselbe Luecke, die `live.html` am
+      14.09. hatte. Ohne `og:image` zeigt das iOS-Teilen-Blatt ein nacktes „A"
+      statt einer Karte, und genau das hatte Zaur am Live-Teilen beanstandet.
+      Die Artikelseite teilte weiter ohne Bild.
+
+      `og:url` OHNE die Kennung ist Absicht: Die Seite ist statisch, die
+      Kennung steht nur im Fragment/Query. Eine kanonische Adresse je Angebot
+      gibt es erst, wenn die Seite serverseitig gerendert wird.
+
+      ⚠️ Nach dem Deploy mit echten Bytes nachmessen. Cloudflare Pages
+      beantwortet Unbekanntes mit der Startseite — das Bild kam am 14.09.
+      direkt nach dem Ausrollen als `text/html` mit Status 200 zurueck.
+    -->
+    <meta property="og:url" content="https://berkat-live.pages.dev/listing" />
+    <meta property="og:image" content="https://berkat-live.pages.dev/og-listing.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Angebot auf Berkat" />
+    <meta property="og:site_name" content="Berkat" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>

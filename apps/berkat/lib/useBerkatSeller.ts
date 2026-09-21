@@ -53,11 +53,22 @@ export type BerkatSeller = {
    * dieses Verkäufers für ALLE ANDEREN aus — er selbst sieht sie weiter.
    */
   vacation_until: string | null;
+  /** Seit wann dieser Mensch als Verkaeufer eingetragen ist. */
+  created_at: string;
 };
 
+// ⚠️ `created_at` seit dem 21.09.2026 — fuer „Verkauft auf Berkat seit …" an
+// der Artikelseite. Bewusst AUS DIESER TABELLE und nicht aus `profiles`:
+// `profiles` hat eine eingefrorene Spaltenliste (CLAUDE.md Regel 11), ein
+// `created_at` von dort waere fuer anon/authenticated unsichtbar und der
+// Filter schluege mit 42501 fehl. `berkat_sellers` ist nicht eingefroren —
+// der Tabellenkommentar nennt genau diesen Grund fuer ihre Existenz.
+//
+// Semantisch ist es ausserdem das bessere Datum: nicht „hat ein Konto seit",
+// sondern „verkauft hier seit".
 const COLUMNS =
   'user_id, kind, legal_name, street, postal_code, city, country, ' +
-  'contact_email, vat_id, lucid_id, checkout_enabled, vacation_until';
+  'contact_email, vat_id, lucid_id, checkout_enabled, vacation_until, created_at';
 
 /**
  * Der Anbietertyp eines beliebigen Verkäufers — für die Kennzeichnung am

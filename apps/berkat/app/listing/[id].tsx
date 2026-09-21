@@ -40,6 +40,8 @@
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { ListingGallery } from '../../components/ListingGallery';
+import { ShelfRail } from '../../components/ShelfRail';
+import { ShareSheet } from '../../components/ShareSheet';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useListingDetail } from '../../lib/useListingDetail';
@@ -49,7 +51,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -63,7 +64,9 @@ import {
   ChevronDown,
   ChevronRight,
   Heart,
+  MessageSquareWarning,
   Package,
+  ShieldCheck,
   Share2,
   Star,
   Truck,
@@ -176,6 +179,42 @@ function listedWhen(iso: string): string {
   })}`;
 }
 
+/**
+ * „seit Aug. 2026" — das Signal, das ein Verkaeufer OHNE einen einzigen Verkauf
+ * schon hat.
+ *
+ * ⚠️ Warum das dazukam (21.09.2026): Bei einem neuen Verkaeufer stand in der
+ * Zeile ausschliesslich „Noch keine Bewertung". Das ist ehrlich und war das
+ * EINZIGE, was dort stand — eine Seite, die ueber Geld entscheidet, gab dem
+ * Kaeufer damit genau null Anhaltspunkte. Kleinanzeigen zeigt „Aktiv seit
+ * 27.11.18" an derselben Stelle und aus demselben Grund.
+ *
+ * Monat und Jahr, kein Tag: Der Tag ist keine Auskunft, und ein volles Datum
+ * neben Sternen und Zuschlaegen macht die Zeile unlesbar.
+ */
+function sellerSince(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return null;
+  return `seit ${then.toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })}`;
+}
+
+/**
+ * Die kurze Kennung eines Angebots.
+ *
+ * ⚠️ Berkats Kennungen sind UUIDs — sechsunddreissig Zeichen, die niemand
+ * vorliest und niemand abtippt. Kleinanzeigen hat dafuer eine zehnstellige
+ * Nummer; sie steht am Seitenende und ist das, was man nennt, wenn man ueber
+ * ein bestimmtes Angebot spricht (Meldung, Nachricht, Streitfall).
+ *
+ * Die ersten acht Hex-Stellen sind vier Milliarden Moeglichkeiten — fuer
+ * „welches Angebot meinst du" reicht das, und sie sind aus der vollen Kennung
+ * ableitbar, also keine zweite Wahrheit.
+ */
+function shortListingId(id: string): string {
+  return id.replace(/-/g, '').slice(0, 8).toUpperCase();
+}
+
 export default function ListingScreen() {
   const reducedMotion = useReducedMotion();
   // ⚠️ `?edit=1` seit dem 21.09.2026: Aus dem eigenen Regal fuehrt „Bearbeiten"
@@ -208,6 +247,7 @@ export default function ListingScreen() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [editOpen, setEditOpen] = useState(edit === '1');
+  const [shareOpen, setShareOpen] = useState(false);
   /** Die Rechtsfolge unter der Anbieterkennzeichnung — zu, bis jemand fragt. */
   const [legalOpen, setLegalOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -471,22 +511,37 @@ export default function ListingScreen() {
     [actions.buy, listing, needsLogin, passAgeGate],
   );
 
-  const onShare = useCallback(() => {
-    if (!listing) return;
-    // `Share` ist Kern-React-Native, kein natives Zusatzmodul — kein Build.
-    // Der Link führt auf die Web-Seite (`/listing?id=…`), und die trägt den
-    // „In Berkat öffnen"-Knopf. So funktioniert er auch bei Empfängern ohne App
-    // — also bei genau denen, für die man teilt.
-    // ⚠️ Bei Show-Ware gehört der Termin MIT in die geteilte Nachricht — sie
-    // ist der eigentliche Zweck des Teilens („komm Freitag dazu"), und ohne
-    // ihn stünde dort ein Startpreis, den der Empfänger für den Preis hält.
+  /**
+   * Der Satz, der mitgeteilt wird.
+   *
+   * ⚠️ Bei Show-Ware gehört der Termin MIT hinein — er ist der eigentliche
+   * Zweck des Teilens („komm Freitag dazu"), und ohne ihn stünde dort ein
+   * Startpreis, den der Empfänger für den Preis hält.
+   */
+  const shareText = useMemo(() => {
+    if (!listing) return '';
     const p = listingPrice(listing);
     const when = listing.show ? ` · live ${formatSlot(listing.show.scheduled_at)}` : '';
-    void Share.share({
-      message: `${listing.title} · ${p.from ? 'ab ' : ''}${formatEuro(p.cents)}${when}\n${listingLink(listing.id)}`,
-    }).catch(() => {
-      // Abgebrochenes Teilen ist kein Fehler.
-    });
+    return `${listing.title} · ${p.from ? 'ab ' : ''}${formatEuro(p.cents)}${when}`;
+  }, [listing]);
+
+  /**
+   * ⚠️ SEIT DEM 21.09.2026 BERKATS EIGENES BLATT.
+   *
+   * Hier stand `Share.share({ message: … })` — also das iOS-System-Fenster,
+   * und der Link als Teil des Fliesstextes. Beides hatte Zaur am 17.09. am
+   * LIVE-Teilen beanstandet („das teilen hat einen bild aber wenn man teilen
+   * drückt kommt eine iphone fenster von unten hoch"); der Live-Raum bekam
+   * daraufhin `ShareSheet`, die Artikelseite nicht. Dieselbe Geste, zwei
+   * verschiedene Antworten — und auf der Artikelseite die schlechtere.
+   *
+   * Der Link führt weiter auf die Web-Seite (`/listing?id=…`) mit dem
+   * „In Berkat öffnen"-Knopf: So funktioniert er auch bei Empfängern ohne App
+   * — also bei genau denen, für die man teilt.
+   */
+  const onShare = useCallback(() => {
+    if (!listing) return;
+    setShareOpen(true);
   }, [listing]);
 
   const onToggleSaved = useCallback(() => {
@@ -751,6 +806,62 @@ export default function ListingScreen() {
             </Pressable>
           ) : null}
 
+          {/* ── SO LÄUFT DER KAUF (21.09.2026) ──────────────────────────────
+              Zaur hat die Kleinanzeigen-Artikelseite danebengelegt und
+              gefragt, was uns fehlt. Das hier war die grösste Lücke: Berkat
+              sagte dem Käufer VOR dem Kauf **kein einziges Wort** darüber, wie
+              bezahlt wird und was passiert, wenn nichts ankommt. Stripe, der
+              Bestellstatus und das Streitfall-Verfahren gibt es alle — der
+              Käufer erfuhr davon erst danach. Bei einer Plattform, die niemand
+              kennt, ist genau das die Frage, die den Kauf entscheidet.
+
+              ⚠️ DAS WORT „KÄUFERSCHUTZ" FEHLT HIER MIT ABSICHT.
+              `STRATEGIE-VERKAEUFER-UND-GELD.md` Abschnitt 8 hält Fassung A
+              fest: kein Versprechen über die gesetzliche Pflicht hinaus,
+              solange Zaur Verkäufer und Betreiber zugleich ist. Eine Zusage
+              wäre dann keine Garantie gegen einen Dritten, sondern seine
+              eigene — und `useDispute.ts` sagt denselben Satz aus der anderen
+              Richtung: Der Weg verspricht einen **Vorgang**, kein Geld. Wer
+              hier „Geld zurück" hinschreibt, ändert eine Rechtsfrage und nicht
+              einen Text.
+
+              Kleinanzeigen zeigt an dieser Stelle einen grünen Kasten mit
+              Apple Pay, Visa, Mastercard und Klarna. Wir zeigen, was wahr ist.
+
+              Nur bei `canCheckout`: Ohne Kasse führt der Weg über „Nachricht",
+              und dann wäre jede Zeile über Zahlung eine Lüge.
+
+              ⚠️ Und nur bei `!mine`. „Berkat sieht DEINE Kartendaten nie"
+              steht sonst auf dem eigenen Angebot — gesagt zu dem Menschen,
+              der das Geld bekommt. Im Simulator am 21.09. gesehen, bevor es
+              jemand anderes lesen musste. ─────────────────────────────────── */}
+          {canCheckout && !mine && !gone && !upcoming ? (
+            <View key={`how-${fontScale}`} style={styles.howBlock}>
+              <View style={styles.howRow}>
+                <ShieldCheck size={16} color={ui.brand} />
+                <Text style={styles.howText}>
+                  Zahlung über Stripe — Karte oder Apple Pay. Berkat sieht deine Kartendaten nie.
+                </Text>
+              </View>
+              {/* ⚠️ HIER STAND EINE VERSAND-ZEILE, UND SIE MUSSTE WEG.
+                  „Kommt in dasselbe Paket — du zahlst nur einmal Versand"
+                  steht bereits unter der Verkaeuferkarte, dort sogar mit dem
+                  echten Satz („ab 4,90 €"). Im Simulator standen beide Saetze
+                  auf EINEM Bildschirm. Zweimal dieselbe Auskunft ist genau
+                  das, was ich heute aus dem Regal und dem Formular entfernt
+                  habe. Dieser Block beantwortet zwei Fragen, die sonst
+                  NIRGENDS beantwortet werden: wie bezahlt wird, und was
+                  passiert, wenn nichts kommt. */}
+              <View style={styles.howRow}>
+                <MessageSquareWarning size={16} color={ui.brand} />
+                <Text style={styles.howText}>
+                  Kam nichts an oder war es anders als beschrieben? Du meldest es aus deiner
+                  Bestellung heraus — der Fall bekommt eine Nummer, und der Verkäufer muss antworten.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           {/* ── Der Verkäufer. Das war bis heute das ZIEL jedes Tipps auf ein
               Angebot; jetzt ist es eine Zeile auf der Seite, die man
               eigentlich sehen wollte. ────────────────────────────────────── */}
@@ -790,6 +901,16 @@ export default function ListingScreen() {
                     <Truck size={11} color={ui.textMuted} />
                     <Text style={styles.sellerStatText}>{formatShipTime(stats.shipHours)}</Text>
                   </View>
+                ) : null}
+                {/* ⚠️ NUR WENN ES SONST NICHTS GIBT.
+                    Das ist der Rueckfall, nicht die Regel: Wer Sterne,
+                    Zuschlaege und ein Versandtempo hat, hat die Frage „kann
+                    ich dem trauen" schon beantwortet — „seit Aug. 2026" haengt
+                    dann nur hinten dran und schob die Zeile im Simulator in
+                    einen zweiten Umbruch. Wer NICHTS hat, bei dem ist es die
+                    einzige Antwort, die es gibt. */}
+                {stats?.rating == null && sellerSince(sellerRow?.created_at) ? (
+                  <Text style={styles.sellerStatText}>· {sellerSince(sellerRow?.created_at)}</Text>
                 ) : null}
               </View>
               {/* Die Bürgen — für diese Community das eigentliche Signal
@@ -941,34 +1062,36 @@ export default function ListingScreen() {
           {/* ── Mehr von diesem Verkäufer. Dieselbe Abfrage wie das
               Profil-Regal — wer hier steht, hat schon Interesse an genau
               diesem Menschen, und alles von ihm kommt in DASSELBE Paket. ── */}
+          {/* ⚠️ WISCHREIHE STATT RASTER (21.09.2026).
+              Hier stand ein zweispaltiges Raster mit Karten in voller Groesse —
+              bei vier Artikeln ueber einen ganzen Bildschirm, fuer etwas, das
+              man im Vorbeigehen ansieht. Dieselbe Reihe wie auf der
+              Startseite (`ShelfRail`), dieselbe schmale Karte (`tile`). */}
           {moreFromSeller.length > 0 ? (
-            <View style={styles.block}>
-              <Text style={styles.blockLabel}>Mehr von {seller?.username ?? 'diesem Verkäufer'}</Text>
-              <View style={styles.moreGrid}>
-                {moreFromSeller.map((item) => (
-                  <View key={item.id} style={styles.moreCell}>
-                    <ListingCard
-                      listing={item}
-                      mine={mine}
-                      saved={savedIds?.has(item.id)}
-                      onToggleSaved={
-                        mine
-                          ? undefined
-                          : () => {
-                              if (needsLogin()) return;
-                              toggleSaved.mutate({
-                                auctionId: item.id,
-                                saved: Boolean(savedIds?.has(item.id)),
-                              });
-                            }
-                      }
-                      onPress={() => router.push(`/listing/${item.id}`)}
-                    />
-                  </View>
-                ))}
-                {moreFromSeller.length % 2 === 1 ? <View style={styles.moreCell} /> : null}
-              </View>
-            </View>
+            <ShelfRail
+              title={`Mehr von ${seller?.username ?? 'diesem Verkäufer'}`}
+              items={moreFromSeller}
+              renderCard={(item) => (
+                <ListingCard
+                  listing={item}
+                  layout="tile"
+                  mine={mine}
+                  saved={savedIds?.has(item.id)}
+                  onToggleSaved={
+                    mine
+                      ? undefined
+                      : () => {
+                          if (needsLogin()) return;
+                          toggleSaved.mutate({
+                            auctionId: item.id,
+                            saved: Boolean(savedIds?.has(item.id)),
+                          });
+                        }
+                  }
+                  onPress={() => router.push(`/listing/${item.id}`)}
+                />
+              )}
+            />
           ) : null}
 
           {/* ── Melden — leise, am Ende, wie bei Kleinanzeigen. `user_reports`
@@ -983,6 +1106,15 @@ export default function ListingScreen() {
             >
               <Text style={styles.reportLinkText}>Angebot melden</Text>
             </Pressable>
+          ) : null}
+
+          {/* Ganz am Ende, leise — wie bei Kleinanzeigen. Man braucht sie nur,
+              wenn man ueber DIESES Angebot spricht: in einer Meldung, in einer
+              Nachricht, in einem Streitfall. */}
+          {!isPreview ? (
+            <Text key={`ref-${fontScale}`} style={styles.listingRef} selectable>
+              Angebot {shortListingId(id)}
+            </Text>
           ) : null}
         </View>
       </ScrollView>
@@ -1169,6 +1301,18 @@ export default function ListingScreen() {
           <ActionButton label="Nachricht schreiben" onPress={onContact} />
         )}
       </View>
+
+      {/* Das Teilen-Blatt. Hell, weil die Artikelseite hell ist — die dunkle
+          Fassung gehört der Bühne des Live-Raums. */}
+      <ShareSheet
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={listingLink(id)}
+        text={shareText}
+        surface="page"
+        title="Angebot teilen"
+        subject="Angebot auf Berkat"
+      />
 
       {/* ── Bearbeiten: DASSELBE Formular wie das Anlegen, vorbefüllt.
           Eine zweite Abschrift wäre der Karten-Fehler von HANDOFF 21 noch
@@ -1483,6 +1627,23 @@ const styles = StyleSheet.create({
   moreCell: { width: '47%' },
 
   reportLink: { alignSelf: 'center', paddingVertical: space.sm, marginTop: space.sm },
+  /* Klein, grau, mittig — eine Kennung ist kein Inhalt. `selectable`, damit
+     man sie in eine Nachricht kopieren kann; genau dafuer gibt es sie. */
+  /* Ruhig, nicht gruen: Kleinanzeigens Kasten ist ein Werbeelement fuer ein
+     bezahltes Extra (1,40 €). Unserer ist eine Auskunft — er soll gelesen und
+     nicht angepriesen werden. Dieselbe Flaeche wie die uebrigen Bloecke. */
+  howBlock: {
+    backgroundColor: ui.card,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ui.line,
+    padding: space.md,
+    marginTop: space.md,
+    gap: space.sm,
+  },
+  howRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
+  howText: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 18, color: ui.textMuted },
+  listingRef: { fontSize: 11, lineHeight: 16, color: ui.textMuted, textAlign: 'center', marginTop: space.md },
   reportLinkText: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
 
   ownRow: { flexDirection: 'row', gap: space.sm },
