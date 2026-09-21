@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict ZmvOu6Jr02MgxFTXA7o5kTbzehf0ldK1XHwHwSPZyAuVOqwQNNOmf5RZdXFtB7R
+-- \restrict 6geCUcZ6WlM9uN3brfTeSuWXzKHdDGjeKKW1R6cDjTAXPIqkYcnTDzwwKEK4EHG
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -2344,6 +2344,20 @@ $$;
 
 
 ALTER FUNCTION "public"."berkat_gen_referral_code"() OWNER TO "postgres";
+
+--
+-- Name: berkat_like_escape("text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_like_escape"("p_value" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE PARALLEL SAFE
+    SET "search_path" TO 'pg_catalog', 'pg_temp'
+    AS $$
+  SELECT replace(replace(replace(coalesce(p_value, ''), '\', '\\'), '%', '\%'), '_', '\_');
+$$;
+
+
+ALTER FUNCTION "public"."berkat_like_escape"("p_value" "text") OWNER TO "postgres";
 
 --
 -- Name: berkat_night_service_health(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -11388,35 +11402,22 @@ CREATE OR REPLACE FUNCTION "public"."notify_saved_searches"() RETURNS "trigger"
 DECLARE
   s record;
 BEGIN
-  -- Nur Regal-Angebote. Ein Show-Artikel (`session_id IS NOT NULL`) ist nicht
-  -- dauerhaft kaufbar, und ein vorbereiteter (`scheduled`) gehört noch keinem
-  -- Regal an — eine Meldung darauf ginge ins Leere.
+  -- Unveraendert: nur Regal-Angebote. Ein Show-Artikel ist nicht dauerhaft
+  -- kaufbar, ein vorbereiteter gehoert noch keinem Regal an.
   IF NEW.status <> 'listed' OR NEW.session_id IS NOT NULL THEN
     RETURN NEW;
   END IF;
 
   FOR s IN
-    -- ⚠️ `DISTINCT ON (ss.user_id)`: HÖCHSTENS EINE Meldung je Mensch und
-    -- Angebot. Ohne das erzeugte ein einziges „Abaya schwarz, Gr. 42, Berlin"
-    -- bei jemandem mit fünf gespeicherten Suchen fünf Pushes in derselben
-    -- Sekunde — im lokalen Postgres nachgestellt. Die zuletzt gespeicherte
-    -- Suche gewinnt; sie liefert auch den Begriff fürs Sprungziel.
+    -- `DISTINCT ON (ss.user_id)`: hoechstens EINE Meldung je Mensch und
+    -- Angebot (Begruendung in `20260821120000`).
     SELECT DISTINCT ON (ss.user_id) ss.id, ss.user_id, ss.query
       FROM public.berkat_saved_searches ss
-      -- Das Muster einmal je Zeile bauen, statt es dreimal zu wiederholen.
-      CROSS JOIN LATERAL (
-        SELECT '%' || replace(replace(replace(
-                 lower(btrim(ss.query)), '\', '\\'), '%', '\%'), '_', '\_') || '%' AS pat
-      ) p
      WHERE ss.user_id <> NEW.seller_id
        -- Drossel 1, je Suche.
        AND (ss.last_notified_at IS NULL
             OR ss.last_notified_at < now() - interval '20 hours')
-       -- ⚠️ Drossel 2, je MENSCH. Die erste allein reicht nicht: Sie hängt an
-       -- der Zeile, und wer viele Suchen hat, hat viele Zeilen. Serverseitig
-       -- ist deren Zahl durch nichts begrenzt — RLS erlaubt beliebig viele
-       -- INSERTs, der eindeutige Index verhindert nur exakte Dubletten, und
-       -- das `.limit(50)` im Client ist eine Anzeige-Grenze, kein Riegel.
+       -- Drossel 2, je Mensch.
        AND NOT EXISTS (
          SELECT 1 FROM public.notifications n
           WHERE n.recipient_id = ss.user_id
@@ -11424,34 +11425,75 @@ BEGIN
             AND n.app = 'berkat'
             AND n.created_at > now() - interval '20 hours'
        )
-       -- ⚠️ FELDWEISE, nicht über einen verketteten Gesamttext. Die erste
-       -- Fassung baute `concat_ws(' ', title, size, city)` und suchte darin —
-       -- damit traf „Abaya 42" auf „abaya 42 berlin", die Regal-Suche im
-       -- Client aber NICHT (`app/shop.tsx` prüft jedes Feld einzeln). Die
-       -- Meldung hätte einen Treffer versprochen, den die App danach nicht
-       -- zeigen kann, und dabei die 20-Stunden-Drossel verbraucht.
-       -- **Server und Client müssen dieselbe Frage stellen.**
-       AND (
-         lower(NEW.title) LIKE p.pat ESCAPE '\'
-         OR lower(coalesce(NEW.size, '')) LIKE p.pat ESCAPE '\'
-         OR lower(coalesce(NEW.city, '')) LIKE p.pat ESCAPE '\'
+
+       -- ⚠️ WORTWEISE UND UEBER SECHS SPALTEN — die Reparatur.
+       --
+       -- Gelesen als: „es gibt KEIN Wort, das nirgends vorkommt". Das ist
+       -- dasselbe wie „jedes Wort kommt irgendwo vor", nur in der Form, die
+       -- SQL ohne Aggregat ausdruecken kann.
+       --
+       -- Die sechs Spalten und ihre Reihenfolge sind dieselben wie in
+       -- `fetchBrowsePage` (`lib/useBrowseListingPages.ts`). Wer dort eine
+       -- Spalte hinzufuegt, muss sie hier hinzufuegen — sonst verspricht die
+       -- Suche etwas, das die Meldung nicht einloest, und der Fehler ist
+       -- wieder still.
+       --
+       -- ⚠️ Acht Woerter, wie im Client (`QUERY_WORDS_MAX`). Der Begriff darf
+       -- hier ohnehin nur 60 Zeichen lang sein; der Deckel steht trotzdem,
+       -- damit beide Seiten bei einem langen Begriff dasselbe tun.
+       AND NOT EXISTS (
+         SELECT 1
+           FROM regexp_split_to_table(lower(btrim(ss.query)), '\s+')
+                WITH ORDINALITY AS w(word, pos)
+          WHERE w.word <> ''
+            AND w.pos <= 8
+            AND lower(NEW.title)                    NOT LIKE '%' || public.berkat_like_escape(w.word) || '%' ESCAPE '\'
+            AND lower(coalesce(NEW.brand, ''))      NOT LIKE '%' || public.berkat_like_escape(w.word) || '%' ESCAPE '\'
+            AND lower(coalesce(NEW.color, ''))      NOT LIKE '%' || public.berkat_like_escape(w.word) || '%' ESCAPE '\'
+            AND lower(coalesce(NEW.description, '')) NOT LIKE '%' || public.berkat_like_escape(w.word) || '%' ESCAPE '\'
+            AND lower(coalesce(NEW.size, ''))       NOT LIKE '%' || public.berkat_like_escape(w.word) || '%' ESCAPE '\'
+            AND lower(coalesce(NEW.city, ''))       NOT LIKE '%' || public.berkat_like_escape(w.word) || '%' ESCAPE '\'
        )
-       -- ⚠️ Frauen-Only wird hier GEPRÜFT, nicht geerbt-durch-RLS: Diese
-       -- Funktion läuft als SECURITY DEFINER und sieht an jeder Policy vorbei.
+
+       -- ⚠️ DIE FILTER. Jeder einzeln abschaltbar (`IS NULL` = nicht gesetzt),
+       -- und jeder mit DERSELBEN Strenge wie im Client:
+       --   Kategorie  Oberkategorie rollt ihre Kinder auf (`useCategorySlugs`)
+       --   Zustand    ganzer Wert
+       --   Farbe      ganzer Wert, aus geschlossener Liste
+       --   Marke      Teiltreffer
+       --   Groesse    Teiltreffer
+       --   Ort        Teiltreffer
+       AND (ss.category IS NULL
+            OR NEW.category = ss.category
+            OR EXISTS (
+              SELECT 1 FROM public.berkat_categories c
+               WHERE c.slug = NEW.category AND c.parent_slug = ss.category
+            ))
+       AND (ss.condition IS NULL OR NEW.condition = ss.condition)
+       AND (ss.color IS NULL
+            OR lower(coalesce(NEW.color, '')) = lower(btrim(ss.color)))
+       AND (ss.brand IS NULL
+            OR lower(coalesce(NEW.brand, '')) LIKE
+               '%' || public.berkat_like_escape(lower(btrim(ss.brand))) || '%' ESCAPE '\')
+       AND (ss.size IS NULL
+            OR lower(coalesce(NEW.size, '')) LIKE
+               '%' || public.berkat_like_escape(lower(btrim(ss.size))) || '%' ESCAPE '\')
+       AND (ss.city IS NULL
+            OR lower(coalesce(NEW.city, '')) LIKE
+               '%' || public.berkat_like_escape(lower(btrim(ss.city))) || '%' ESCAPE '\')
+
+       -- ⚠️ Preis gegen `buy_now_cents`, weil dieser Trigger ausschliesslich
+       -- auf Regal-Ware feuert — dort ist das der Preis, den der Kaeufer
+       -- zahlt, und derselbe, gegen den `fetchBrowsePage` bei `listed` prueft.
        --
-       -- BEIDE Hälften, und das ist der Punkt: Die echte Lesegrenze ist
-       -- `is_women_only_verified()`, und die verlangt `gender = 'female'` UND
-       -- `women_only_verified = true`. Die erste Fassung prüfte nur die zweite.
-       -- Ein Konto, das freigegeben wurde und danach sein Geschlecht ändert
-       -- (erlaubt — der Sperr-Trigger schützt nur `women_only_verified`),
-       -- hätte die Meldung samt Titel bekommen, während das Regal ihm
-       -- dasselbe Angebot verweigert. Zwei Wahrheiten darüber, wer in der
-       -- Frauen-Zone ist — genau das Metadaten-Leck, das `20260819140000` an
-       -- vier anderen Tabellen geschlossen hat.
-       --
-       -- Der Helper selbst ist hier NICHT einsetzbar: Er läuft auf
-       -- `auth.uid()`, und das ist im Trigger der VERKÄUFER, nicht der
-       -- Empfänger. Deshalb Handarbeit — aber vollständig.
+       -- Ist `buy_now_cents` NULL, wird der Vergleich NULL und die Zeile faellt
+       -- heraus. Das ist richtig so: Ein Angebot ohne Preis kann keine
+       -- Preisgrenze erfuellen, und es ist im Stoebern ohnehin unsichtbar.
+       AND (ss.min_price_cents IS NULL OR NEW.buy_now_cents >= ss.min_price_cents)
+       AND (ss.max_price_cents IS NULL OR NEW.buy_now_cents <= ss.max_price_cents)
+
+       -- Frauen-Only, unveraendert und weiterhin BEIDE Haelften — Begruendung
+       -- vollstaendig in `20260821120000`.
        AND (
          NEW.women_only = false
          OR EXISTS (
@@ -11469,23 +11511,22 @@ BEGIN
       s.user_id,
       NEW.seller_id,
       'saved_search_hit',
-      -- ⚠️ `product_name` trägt hier den SUCHBEGRIFF, nicht den Artikelnamen.
-      -- Absicht: Der Client baut daraus das Sprungziel `/shop?q=…`, und dafür
-      -- braucht er den Begriff sauber — nicht aus einem zusammengesetzten Satz
-      -- herausgeschnitten. Der Artikelname steht vollständig in `comment_text`.
+      -- Weiterhin der SUCHBEGRIFF, nicht der Artikelname: Der Client baut
+      -- daraus `/shop?q=…`.
+      --
+      -- ⚠️ Die gespeicherten FILTER reisen hier NICHT mit. Das Sprungziel
+      -- stellt die Woerter wieder her, nicht die Verengung — der Empfaenger
+      -- landet also auf einer etwas breiteren Liste, in der sein Treffer
+      -- enthalten ist. Breiter, nicht falsch. Es sauber zu machen hiesse, die
+      -- Nutzlast von `fn_send_push_on_notification` zu erweitern; an genau
+      -- dieser Funktion sind schon zweimal spaetere Aenderungen verloren-
+      -- gegangen, und sie gehoert Serlo mit. Bewusst spaeter.
       btrim(s.query),
-      -- Beide Hälften: was gefunden wurde UND wonach gesucht war. Ohne das
-      -- zweite weiß der Empfänger nach zwei Wochen nicht mehr, warum er das
-      -- bekommt.
       format('%s · passend zu „%s"', NEW.title, btrim(s.query)),
-      -- ⚠️ Ohne `app` ginge die Meldung nach Voreinstellung ans SERLO-Gerät
-      -- (`20260814190000`) — genau der Fehler, den die App-Trennung behebt.
       'berkat'
     );
 
-    -- ⚠️ ALLE Suchen dieses Menschen stempeln, nicht nur die getroffene. Sonst
-    -- bliebe der Rest sofort wieder feuerbereit und das nächste Angebot löste
-    -- die nächste Meldung aus — die Drossel wäre wirkungslos.
+    -- ALLE Suchen dieses Menschen stempeln, sonst waere die Drossel wirkungslos.
     UPDATE public.berkat_saved_searches
        SET last_notified_at = now()
      WHERE user_id = s.user_id;
@@ -16555,6 +16596,13 @@ CREATE TABLE IF NOT EXISTS "public"."berkat_categories" (
 ALTER TABLE "public"."berkat_categories" OWNER TO "postgres";
 
 --
+-- Name: TABLE "berkat_categories"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."berkat_categories" IS 'Berkat-Kategorienbaum, genau zwei Ebenen. Ausgeschlossen bleiben Elektro, Batterien, Lebensmittel und Alkohol (Analyse A8) — der Marktplatzbetreiber traegt dort Pruefpflichten nach ElektroG und BattG. Stromlose Zubehoerteile (Huellen, Displayschutz) sind davon nicht beruehrt, siehe 20260921210000.';
+
+
+--
 -- Name: berkat_listing_views; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -16698,11 +16746,42 @@ CREATE TABLE IF NOT EXISTS "public"."berkat_saved_searches" (
     "query" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "last_notified_at" timestamp with time zone,
+    "category" "text",
+    "condition" "text",
+    "color" "text",
+    "brand" "text",
+    "size" "text",
+    "city" "text",
+    "min_price_cents" integer,
+    "max_price_cents" integer,
+    CONSTRAINT "berkat_saved_searches_filter_lengths" CHECK (((("category" IS NULL) OR (("char_length"("category") >= 1) AND ("char_length"("category") <= 60))) AND (("condition" IS NULL) OR (("char_length"("condition") >= 1) AND ("char_length"("condition") <= 40))) AND (("color" IS NULL) OR (("char_length"("color") >= 1) AND ("char_length"("color") <= 24))) AND (("brand" IS NULL) OR (("char_length"("brand") >= 1) AND ("char_length"("brand") <= 40))) AND (("size" IS NULL) OR (("char_length"("size") >= 1) AND ("char_length"("size") <= 24))) AND (("city" IS NULL) OR (("char_length"("city") >= 1) AND ("char_length"("city") <= 80))))),
+    CONSTRAINT "berkat_saved_searches_price_range" CHECK (((("min_price_cents" IS NULL) OR (("min_price_cents" >= 0) AND ("min_price_cents" <= 100000000))) AND (("max_price_cents" IS NULL) OR (("max_price_cents" >= 0) AND ("max_price_cents" <= 100000000))) AND (("min_price_cents" IS NULL) OR ("max_price_cents" IS NULL) OR ("min_price_cents" <= "max_price_cents")))),
     CONSTRAINT "berkat_saved_searches_query_check" CHECK ((("char_length"("btrim"("query")) >= 2) AND ("char_length"("btrim"("query")) <= 60)))
 );
 
 
 ALTER TABLE "public"."berkat_saved_searches" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "berkat_saved_searches"."category"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."berkat_saved_searches"."category" IS 'Oberkategorie-Slug. Der Trigger rollt Unterkategorien selbst auf.';
+
+
+--
+-- Name: COLUMN "berkat_saved_searches"."color"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."berkat_saved_searches"."color" IS 'Aus LISTING_COLORS. Ganzer Wert, kein Teiltreffer — "Rot" darf nicht "Rotbraun" holen.';
+
+
+--
+-- Name: COLUMN "berkat_saved_searches"."brand"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."berkat_saved_searches"."brand" IS 'Freitext, Teiltreffer — wie im Client: "nike" trifft "Nike Air".';
+
 
 --
 -- Name: berkat_seller_perks; Type: TABLE; Schema: public; Owner: postgres
@@ -20364,7 +20443,7 @@ CREATE INDEX "berkat_referrals_by_inviter" ON "public"."berkat_referrals" USING 
 -- Name: berkat_saved_searches_one_per_user; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE UNIQUE INDEX "berkat_saved_searches_one_per_user" ON "public"."berkat_saved_searches" USING "btree" ("user_id", "lower"("btrim"("query")));
+CREATE UNIQUE INDEX "berkat_saved_searches_one_per_user" ON "public"."berkat_saved_searches" USING "btree" ("user_id", "lower"("btrim"("query")), COALESCE("lower"("btrim"("category")), ''::"text"), COALESCE("lower"("btrim"("condition")), ''::"text"), COALESCE("lower"("btrim"("color")), ''::"text"), COALESCE("lower"("btrim"("brand")), ''::"text"), COALESCE("lower"("btrim"("size")), ''::"text"), COALESCE("lower"("btrim"("city")), ''::"text"), COALESCE("min_price_cents", '-1'::integer), COALESCE("max_price_cents", '-1'::integer));
 
 
 --
@@ -26986,5 +27065,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict ZmvOu6Jr02MgxFTXA7o5kTbzehf0ldK1XHwHwSPZyAuVOqwQNNOmf5RZdXFtB7R
+-- \unrestrict 6geCUcZ6WlM9uN3brfTeSuWXzKHdDGjeKKW1R6cDjTAXPIqkYcnTDzwwKEK4EHG
 

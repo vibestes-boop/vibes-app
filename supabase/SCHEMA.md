@@ -179,12 +179,20 @@
 - `auction_id uuid`
 - `created_at timestamp`
 
-### berkat_saved_searches (5)
+### berkat_saved_searches (13)
 - `id uuid`
 - `user_id uuid`
 - `query text`
 - `created_at timestamp`
 - `last_notified_at timestamp`
+- `category text`
+- `condition text`
+- `color text`
+- `brand text`
+- `size text`
+- `city text`
+- `min_price_cents integer`
+- `max_price_cents integer`
 
 ### berkat_seller_perks (8)
 - `id uuid`

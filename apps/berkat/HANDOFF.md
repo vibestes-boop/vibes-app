@@ -17255,3 +17255,118 @@ Commit `d9cbf289`, gepusht. OTA `production`, Runtime `1.0.0`, iOS und Android.
 - **Im Konto-Fuss erwartete Kennung: `01a0c5e7`**
 
 `package.json` unberuehrt — kein neues natives Modul.
+
+## 124. Gespeicherte Suchen merken sich die Filter — und der Trigger fragt wieder dasselbe (22.09.2026)
+
+**Auslöser.** Zaur: *„bau das auch ein, filter in gespeicherten suchen"* — der
+letzte der drei Punkte aus Abschnitt 121.
+
+### ⚠️ Zuerst ein Fund, der dringender war als der Auftrag
+
+`20260821120000` schreibt an der entscheidenden Stelle:
+
+> **Server und Client müssen dieselbe Frage stellen.**
+
+Genau das habe ich am 21.09.2026 **zweimal gebrochen** — und beide Male
+ausgeliefert, ohne es zu merken:
+
+| | Client seit gestern | Trigger seit August |
+|---|---|---|
+| Spalten | Titel, Beschreibung, Marke, Farbe, Größe, Ort | nur Titel, Größe, Ort |
+| Wörter | jedes einzeln, UND-verknüpft | **eine** Zeichenfolge am Stück |
+
+Die Folge war kein Fehler, den jemand sieht, sondern **Stille**: Eine
+gespeicherte Suche „wolle berlin" konnte nach Abschnitt 123 nicht mehr
+auslösen, weil kein Titel diese Zeichenfolge am Stück trägt. Und „nike" löste
+nicht aus, wenn die Marke im Markenfeld steht — obwohl der Client sie dort
+findet. **Die Funktion versprach Bescheid und schwieg.**
+
+⚠️ **Die Lehre ist nicht „an den Trigger denken".** Sie ist: *Wer die Frage
+ändert, muss alle Stellen suchen, die dieselbe Frage stellen.* Ein Grep nach
+`title` hätte es gefunden — ein Grep nach `imatch` nicht, weil der Trigger
+`LIKE` benutzt. **Dieselbe Frage in zwei Sprachen.** Genau deshalb reicht
+„suchen, wo mein neues Wort vorkommt" nicht; man muss suchen, wo die ALTE
+Antwort steht.
+
+### Gebaut (Migration `20260921230000`)
+
+**Acht Spalten** auf `berkat_saved_searches`: `category`, `condition`, `color`,
+`brand`, `size`, `city`, `min_price_cents`, `max_price_cents`. Einzeln statt
+`jsonb` — typisiert, per CHECK begrenzbar, im Trigger ohne Auspacken lesbar.
+
+⚠️ **Der eindeutige Index muss die Filter mitzählen.** „Abaya" und „Abaya in
+Größe 38" sind zwei Wünsche; bliebe der alte Index auf
+`(user_id, lower(btrim(query)))`, schlüge der zweite mit 23505 fehl und der
+Nutzer läse „hast du schon", obwohl er etwas anderes wollte.
+
+⚠️ **Und jede Spalte steht als `coalesce(...)` darin.** In einem eindeutigen
+Index sind NULL-Werte standardmäßig **verschieden** voneinander. Ohne die
+Umwandlung wären zwei Suchen ohne jeden Filter nicht mehr gleich — die
+Dublettensperre, der ganze Zweck des Index, wäre **still ausgeschaltet**.
+Postgres 15 kann `NULLS NOT DISTINCT`; darauf zu bauen hieße, sich auf eine
+Serverversion zu verlassen, die in der Datei nirgends geprüft wird.
+
+⚠️ **Nicht gespeichert: „In einer Show" und die Sortierung.** Sortieren ordnet,
+es wählt nicht aus. Und „In einer Show" wäre schlimmer als nutzlos: Der Trigger
+feuert ausschließlich auf Regal-Ware. Ein Filter, der die Benachrichtigung
+garantiert verstummen lässt, gehört nicht in eine Benachrichtigungs-Funktion.
+
+**Der Trigger** fragt jetzt wortweise über dieselben sechs Spalten wie
+`fetchBrowsePage` — gelesen als „es gibt KEIN Wort, das nirgends vorkommt" —
+und prüft danach jeden gesetzten Filter mit derselben Strenge wie der Client
+(Farbe ganz, Marke/Größe/Ort als Teiltreffer, Kategorie rollt ihre Kinder auf).
+
+### Die Einwände von damals, beantwortet statt übergangen
+
+`20260821120000` schloss Filter **ausdrücklich** aus:
+
+> „Filter würden das Treffer-Prädikat vervielfachen, und ein Treffer, den der
+> Nutzer nicht nachvollziehen kann, ist schlimmer als keiner."
+
+Die Sorge war richtig. Sie ist jetzt beantwortet, nicht weggewischt:
+
+1. **Nachvollziehbar** — die gespeicherten Filter stehen als Zeile an der
+   Suche in der Merkliste („mantel · Gut"), und der Sprung von dort stellt sie
+   wieder her. Man sieht, wonach man gefragt hat.
+2. **Vervielfachung** — Filter *verengen*. Sie erzeugen keine zusätzlichen
+   Meldungen, sondern weniger. Vervielfacht wird die Zahl der PRÜFUNGEN, nicht
+   die der Meldungen.
+
+### ⚠️ Was bewusst NICHT mitreist
+
+Die Push-Meldung trägt weiter nur den **Begriff** (`/shop?q=…`), nicht die
+Filter. Der Empfänger landet auf einer etwas breiteren Liste, in der sein
+Treffer enthalten ist — breiter, nicht falsch. Es sauber zu machen hieße, die
+Nutzlast von `fn_send_push_on_notification` zu erweitern; an genau dieser
+Funktion sind schon zweimal spätere Änderungen verlorengegangen, und sie
+gehört Serlo mit. **In der App gibt es diese Grenze nicht:** Der Weg aus der
+Merkliste trägt alles (`savedSearchHref`).
+
+### Am Gerät geprüft (iPhone 17)
+
+- „mantel" + Zustand „Gut" gespeichert → Lesezeichen wird grün. **Damit ist
+  auch Regel 11 beantwortet:** Das Grün entsteht aus einem Rücklesen der neuen
+  Spalten — sie sind für den Client lesbar, das Tabellenrecht deckt sie ab.
+- Filter entfernt → Lesezeichen wieder leer. „mantel" ohne Filter ist eine
+  ANDERE gespeicherte Suche. Vorher hätte ein Tipp hier die falsche Zeile
+  gelöscht.
+- Merkliste zeigt „mantel · Gut"; die ältere filterlose Suche zeigt keine
+  Zeile.
+- Tipp darauf → Begriff, „Filter · 1" und Chip „Gut" sind wieder da.
+
+`tsc` 0, **431 Tests** (fünf neue für die reinen Helfer).
+
+### Nebenbei nachgezogen
+
+`supabase/SCHEMA.md` und `schema_live.sql` neu abgezogen (113 Tabellen, 1014
+Spalten), `CLAUDE.md` Regel 10 auf den 22.09.2026 gesetzt. Der Abzug lief mit
+`--no-privileges`; `/tmp/dump.sh` mit dem kurzlebigen Passwort ist gelöscht.
+
+### Weiter offen
+
+- **Die Filter im Push-Sprungziel** (siehe oben) — braucht eine Änderung an
+  der geteilten Push-Funktion.
+- Der **echte Beweis des Triggers** steht aus: Er verlangt ein ZWEITES Konto
+  (`ss.user_id <> NEW.seller_id`) und gehört damit in Gruppe D der Prüfliste.
+  Bis dahin ist die neue Trefferlogik geprüft, aber nicht am lebenden Weg
+  belegt.

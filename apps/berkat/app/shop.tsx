@@ -31,9 +31,12 @@ import { SellerShopMore } from '../components/SellerShopMore';
 import { useSavedIds, useToggleSaved, useSavedCounts } from '../lib/useSaved';
 import {
   normalizeQuery,
+  sameSavedSearch,
+  savedFiltersFromParams,
   savedSearchError,
   useSavedSearches,
   useSavedSearchActions,
+  type SavedSearchFilters,
 } from '../lib/useSavedSearches';
 import { ListingCard } from '../components/ListingCard';
 import { BerkatMark } from '../components/BerkatMark';
@@ -61,32 +64,59 @@ export default function ShopScreen() {
   const { data: savedIds } = useSavedIds(myUserId);
   const toggleSaved = useToggleSaved(myUserId);
   const [pulling, setPulling] = useState(false);
-  const params = useLocalSearchParams<{ q?: string }>();
+  const params = useLocalSearchParams<{
+    q?: string; cat?: string; cond?: string; color?: string;
+    brand?: string; size?: string; city?: string; min?: string; max?: string;
+  }>();
   const [query, setQuery] = useState(typeof params.q === 'string' ? params.q.slice(0, 100) : '');
   const [searchNotice, setSearchNotice] = useState<string | null>(null);
   const [savingSearch, setSavingSearch] = useState(false);
+  // ⚠️ Nur EINMAL aus der Adresszeile lesen. `useLocalSearchParams` liefert bei
+  // jedem Render ein neues Objekt; als laufende Abhaengigkeit wuerde es die
+  // Filter bei jedem Tastendruck auf den Ankunftsstand zuruecksetzen.
+  const arriving = useRef(savedFiltersFromParams(params)).current;
   const {
     values: filters,
     patch: patchFilters,
     reset: resetFilters,
     activeCount: activeFilters,
     narrowed: narrowedByFilter,
-  } = useListingFilters();
+  } = useListingFilters({
+    cat: arriving.category, cond: arriving.condition, color: arriving.color,
+    brand: arriving.brand, size: arriving.size, city: arriving.city,
+    minPrice: arriving.minPriceCents, maxPrice: arriving.maxPriceCents,
+  });
+  /**
+   * Die speicherbare Teilmenge der Filter.
+   *
+   * ⚠️ `onlyShow` und `sort` fehlen hier mit Absicht — Begruendung am Typ in
+   * `useSavedSearches.ts`. Wer sie hier ergaenzt, baut eine gespeicherte
+   * Suche, die nie ausloest.
+   */
+  const savableFilters = useMemo((): SavedSearchFilters => ({
+    category: filters.cat, condition: filters.cond, color: filters.color,
+    brand: filters.brand, size: filters.size, city: filters.city,
+    minPriceCents: filters.minPrice, maxPriceCents: filters.maxPrice,
+  }), [filters]);
   const { save: saveSearchMutation, remove: removeSearchMutation } =
     useSavedSearchActions(myUserId);
   const { data: savedSearches = [] } = useSavedSearches(myUserId);
   const savedSearchRow = useMemo(() => {
-    const q = normalizeQuery(query).toLowerCase();
+    const q = normalizeQuery(query);
     if (q.length < 2) return null;
-    return savedSearches.find((s) => normalizeQuery(s.query).toLowerCase() === q) ?? null;
-  }, [savedSearches, query]);
+    // ⚠️ Text UND Filter. Verglichen wurde bis zum 21.09.2026 nur der Text;
+    // mit Filtern haette das Lesezeichen bei „Abaya" als gesetzt gegolten,
+    // obwohl „Abaya in Groesse 38" gespeichert war — und ein zweiter Tipp
+    // haette die falsche Zeile geloescht.
+    return savedSearches.find((row) => sameSavedSearch(row, q, savableFilters)) ?? null;
+  }, [savedSearches, query, savableFilters]);
   const saveSearch = useCallback(() => {
     const q = normalizeQuery(query);
     if (q.length < 2 || savingSearch) return;
     setSavingSearch(true);
     setSearchNotice(null);
     saveSearchMutation
-      .mutateAsync(q)
+      .mutateAsync({ query: q, filters: savableFilters })
       .then(() => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
           () => {},
@@ -95,7 +125,7 @@ export default function ShopScreen() {
       })
       .catch((err) => setSearchNotice(savedSearchError(err)))
       .finally(() => setSavingSearch(false));
-  }, [query, savingSearch, saveSearchMutation]);
+  }, [query, savingSearch, saveSearchMutation, savableFilters]);
   const toggleSavedSearch = useCallback(() => {
     if (!myUserId) {
       router.push('/login');

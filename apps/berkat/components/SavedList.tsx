@@ -52,7 +52,15 @@ import { ArrowRight, Bell, ChevronRight, Heart, RefreshCw, Search, X } from 'luc
 
 import { useSavedCounts, useSavedListings, useToggleSaved, type SavedListing } from '../lib/useSaved';
 import { useMyReminders, type MyReminder } from '../lib/useReminders';
-import { useSavedSearchActions, useSavedSearches } from '../lib/useSavedSearches';
+import {
+  savedSearchHref,
+  useSavedSearchActions,
+  useSavedSearches,
+  type SavedSearch,
+} from '../lib/useSavedSearches';
+import { conditionLabel } from '../lib/useBerkatSeller';
+import { formatEuro } from '../lib/useAuction';
+import { useCategoryOptions } from '../lib/useCategories';
 import { useUsernames } from '../lib/useAuction';
 import { ListingCard } from './ListingCard';
 import { radius, space, ui } from '../theme/tokens';
@@ -97,6 +105,17 @@ export function SavedList({ userId, bottomInset }: Props) {
   const { data: reminders = [], isLoading: remindersLoading, isError: remindersError, refetch: refetchReminders } = useMyReminders(userId);
   const { data: searches = [], isLoading: searchesLoading, isError: searchesError, refetch: refetchSearches } = useSavedSearches(userId);
   const { remove: removeSearch } = useSavedSearchActions(userId);
+  // Nur fuer die Namen der Kategorie-Slugs. Dieselbe Abfrage wie das
+  // Filterblatt — React Query gibt beiden denselben Zwischenspeicher.
+  const { groups: categoryGroups } = useCategoryOptions();
+  const categoryName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const parent of categoryGroups) {
+      map.set(parent.slug, parent.name);
+      for (const child of parent.children) map.set(child.slug, child.name);
+    }
+    return map;
+  }, [categoryGroups]);
   const toggle = useToggleSaved(userId);
 
   const [slice, setSlice] = useState<Slice>('alle');
@@ -261,13 +280,24 @@ export function SavedList({ userId, bottomInset }: Props) {
                     kann, wäre ein Zettel ohne Stift. */}
                 <PressFeedback
                   style={styles.searchAction}
-                  onPress={() => router.push(`/shop?q=${encodeURIComponent(sq.query)}`)}
+                  onPress={() => router.push(savedSearchHref(sq) as '/shop')}
                   accessibilityRole="button"
                   accessibilityLabel={`Nach ${sq.query} suchen`}
                 >
                   <Text numberOfLines={2} style={styles.lineTitle}>
                     {sq.query}
                   </Text>
+                  {/* ⚠️ Die Filter STEHEN an der Zeile, und das ist die
+                      Bedingung, unter der es sie ueberhaupt geben darf: Die
+                      Migration vom 21.08. hat sie ausgeschlossen, weil „ein
+                      Treffer, den der Nutzer nicht nachvollziehen kann,
+                      schlimmer ist als keiner". Sichtbar ist er
+                      nachvollziehbar. */}
+                  {savedFilterLine(sq, categoryName) ? (
+                    <Text numberOfLines={2} style={styles.searchFilters}>
+                      {savedFilterLine(sq, categoryName)}
+                    </Text>
+                  ) : null}
                   <Text style={styles.lineMeta}>Du wirst benachrichtigt, wenn etwas passt</Text>
                 </PressFeedback>
                 <PressFeedback
@@ -373,6 +403,9 @@ const styles = StyleSheet.create({
   lineTitle: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text, marginTop: space.xs },
   lineMeta: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: space.xs },
   searchAction: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
+  /* Markenfarbe, weil es dieselbe Auskunft ist wie die aktiven Chips ueber
+     der Trefferliste — dort tragen sie `ui.brand`. */
+  searchFilters: { fontSize: 12, lineHeight: 17, fontWeight: '600', color: ui.brand, marginTop: 2 },
   remove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   notice: { flexDirection: 'row', gap: space.sm, alignItems: 'center', backgroundColor: ui.card, borderRadius: radius.md, padding: space.md },
   noticeText: { flex: 1, fontSize: 13, lineHeight: 19, color: ui.textMuted },
@@ -390,3 +423,27 @@ const styles = StyleSheet.create({
   emptyAction: { minHeight: 48, paddingHorizontal: space.lg, paddingVertical: space.md, marginTop: space.md, borderRadius: radius.pill, backgroundColor: ui.brand, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   emptyActionText: { flexShrink: 1, fontSize: 15, lineHeight: 21, fontWeight: '700', color: ui.card },
 });
+
+/**
+ * Die gespeicherten Filter als eine Zeile — „Mode · Gr. 38 · Schwarz · bis 50 €".
+ *
+ * Reihenfolge wie im Filterblatt: erst wo, dann welche Groesse, dann das
+ * Sichtbare, zuletzt der Preis. Gibt `null` zurueck, wenn nichts gesetzt ist —
+ * eine leere Zeile waere ein Platzhalter fuer nichts.
+ */
+function savedFilterLine(row: SavedSearch, categoryName: Map<string, string>): string | null {
+  const parts = [
+    row.category ? categoryName.get(row.category) ?? row.category : null,
+    row.size ? `Gr. ${row.size}` : null,
+    row.color,
+    row.condition ? conditionLabel(row.condition) ?? row.condition : null,
+    row.brand,
+    row.city,
+    row.minPriceCents !== null && row.maxPriceCents !== null
+      ? `${formatEuro(row.minPriceCents)} – ${formatEuro(row.maxPriceCents)}`
+      : row.minPriceCents !== null ? `ab ${formatEuro(row.minPriceCents)}`
+      : row.maxPriceCents !== null ? `bis ${formatEuro(row.maxPriceCents)}`
+      : null,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length ? parts.join(' · ') : null;
+}
