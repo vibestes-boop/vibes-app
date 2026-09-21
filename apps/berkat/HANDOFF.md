@@ -17466,3 +17466,16 @@ selbst. Solange es offen ist, ist auch **B18** (echte Zahlung auf ein
 verbundenes Konto) nicht prüfbar, egal wie viele Konten bereitstehen.
 
 `tsc` 0, **431 Tests**.
+
+### Ausgeliefert
+
+Commit `43e2b5c4`, gepusht. OTA `production`, Runtime `1.0.0`.
+
+- Update-Gruppe: `cb07342c-cc31-4485-8757-ecccfa50a0a6`
+- iOS-Update: `01a0c60c-2365-7878-b5e9-d790fe2954bb`
+- **Im Konto-Fuss erwartete Kennung: `01a0c60c`**
+
+⚠️ Der Fuss zeigt sie nur im TestFlight-Paket. Im Simulator laeuft ein
+Entwicklungs-Build gegen Metro; dort steht „Berkat 1.0.0 (16) · Entwicklung"
+und **nie** eine OTA-Kennung. Wer dort nachsieht und nichts findet, hat nicht
+den Beweis, dass das Update fehlt.
