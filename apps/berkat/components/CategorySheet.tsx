@@ -17,11 +17,20 @@
  * zweiundsiebzig Einträge, also Kinder. Die ersten drei ergeben die Zeile.
  * Ein von Hand gepflegter Untertitel je Kategorie wäre eine zweite Wahrheit,
  * die beim nächsten neuen Kind veraltet.
+ *
+ * ⚠️ DIE BILDER SIND DIESELBEN WIE ÜBERALL SONST.
+ * Im ersten Anlauf stand hier ein Strichsymbol, während Leiste, Reiter und
+ * Interessen-Auswahl längst die freigestellten Motive aus
+ * `assets/categories/` tragen. Zaur hat es sofort gesehen. Dieselbe Kategorie
+ * muss auf jeder Fläche dasselbe Gesicht haben — sonst lernt niemand, sie am
+ * Bild zu erkennen, und jede Fläche sieht nach einer eigenen App aus.
+ * `categoryArt()` ist die eine Quelle; wer ein Motiv tauscht, ändert nur dort.
  */
 
 import { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
 import { categoryArt } from '../theme/categoryArt';
@@ -104,7 +113,21 @@ export function CategorySheet({
                 accessibilityLabel={badge ? `${node.name}, ${badge}` : node.name}
               >
                 <View style={[styles.art, { backgroundColor: art.tint }]}>
-                  <Icon size={22} color={ui.brand} />
+                  {/* `contentFit="contain"` — die Motive sind freigestellt und
+                      nicht quadratisch. Ein `cover` würde einer Tasche den
+                      Henkel abschneiden. */}
+                  {art.photo ? (
+                    <Image
+                      source={art.photo}
+                      style={styles.photo}
+                      contentFit="contain"
+                      enforceEarlyResizing
+                      transition={0}
+                      accessible={false}
+                    />
+                  ) : (
+                    <Icon size={22} color={ui.brand} />
+                  )}
                 </View>
                 <View style={styles.copy}>
                   <Text numberOfLines={1} style={styles.name}>{node.name}</Text>
@@ -161,7 +184,10 @@ const styles = StyleSheet.create({
     borderBottomColor: ui.line,
   },
   rowLast: { borderBottomWidth: 0 },
-  art: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  /* 48 statt 44: Ein Strichsymbol trägt bei 44 px, ein Motiv mit Material und
+     Schattenwurf braucht die vier Punkte mehr, sonst wird es zum Fleck. */
+  art: { width: 48, height: 48, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  photo: { width: '88%', height: '88%' },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   name: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text },
   line: { fontSize: 12, lineHeight: 17, color: ui.textMuted },

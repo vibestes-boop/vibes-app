@@ -16166,3 +16166,46 @@ Artikel ein zweites Mal ins Bild — der Bildschirm sähe voller aus und enthiel
 ⚠️ **Das ist eine Frage des Bestands, nicht der Gestaltung.** Sobald mehr Angebote da sind als in
 den sichtbaren Bereich passen, wird die Reihe richtig — dann trägt sie etwas, das im Raster erst
 nach langem Scrollen käme. Entscheidung liegt bei Zaur.
+
+---
+
+## 111. Die Kategorien-Liste trägt die Motive, nicht die Symbole (21.09.2026)
+
+Zaur, direkt am Bild des fertigen Blatts: *„die kategorien fenster haben icons, sie sollten bilder
+haben ihre eigene bilder"*.
+
+Er hatte recht, und der Fehler war kleiner, als er aussah: **Die Bilder lagen längst im Repo.** Seit
+dem 06.09.2026 trägt jede der zwölf Oberkategorien ein freigestelltes 3D-Motiv unter
+`assets/categories/<slug>-3d-v1.png`, eingetragen als `photo` in `theme/categoryArt.ts`. Drei
+Flächen lasen es bereits — die Leiste (`CategoryRail`), der Reiter (`app/(tabs)/categories.tsx`) und
+die Interessen-Auswahl (`app/interests.tsx`). Nur das neue Blatt griff auf `art.icon` zu, den
+Rückfall für **unbekannte** Kategorien.
+
+### Der Fehler hinter dem Fehler
+
+`categoryArt()` gibt beides zurück, `icon` und `photo`. Wer die Funktion benutzt und nur das erste
+Feld liest, bekommt ein gültiges Ergebnis — kein Typfehler, kein leeres Bild, nichts, worüber ein
+Werkzeug stolpern könnte. Das Symbol ist der Rückfall, und ein Rückfall, der ohne Not greift, sieht
+aus wie eine Entscheidung.
+
+⚠️ **Dieselbe Kategorie muss auf jeder Fläche dasselbe Gesicht haben.** Sonst lernt niemand, „Mode"
+an der Abaya zu erkennen, und jede Fläche wirkt wie eine eigene App. Die Regel steht jetzt als
+Warnung im Kopf von `CategorySheet.tsx`.
+
+### Geändert
+
+`components/CategorySheet.tsx`:
+- `expo-image` statt Symbol, `contentFit="contain"` — die Motive sind freigestellt und nicht
+  quadratisch; ein `cover` schnitte der Tasche den Henkel ab.
+- Kachel **44 → 48 px**, Bild auf 88 %. Ein Strichsymbol trägt bei 44; ein Motiv mit Material und
+  Schattenwurf wird bei 44 zum Fleck.
+- Der Symbol-Zweig bleibt als Rückfall stehen — eine Kategorie, die Zaur morgen anlegt, hat noch
+  kein Motiv und soll trotzdem eine Zeile bekommen.
+
+### Geprüft
+
+`tsc` 0, **417 von 417**, iPhone-17-Simulator: alle zwölf Zeilen gescrollt, jedes Motiv sichtbar und
+bei 48 px lesbar. Die vier Punkte mehr kosteten dem Untertitel vier Punkte Breite — **keine Zeile
+kippte dadurch ins Abschneiden**, Vorher/Nachher am Bild verglichen. „Beauty & Duft" und „Islamica"
+brechen weiterhin ab, wie schon vorher; zwei von zwölf ist der Preis für zwei echte Kindernamen
+statt eines getexteten Untertitels.
