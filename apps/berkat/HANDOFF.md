@@ -16611,3 +16611,92 @@ Beschreibung, rechtsbündig wie bei Kleinanzeigen, und nur die Zeilen mit Wert.
 Migration ausgerollt (nur diese eine war offen). `tsc` 0, **425 von 425**. Im iPhone-17-Simulator
 die ganze Kette durchgespielt: Bearbeiten → „Nike", „Leder", Kachel „Weiß" → Speichern → die
 Merkmalstabelle auf der Artikelseite zeigt alle drei. Formular → RPC → Datenbank → Anzeige.
+
+---
+
+## 116. Elektronik vorgeschlagen, zurückgezogen — und was stattdessen ging (21.09.2026)
+
+Zaur: *„warum hat kleinanzeigen 16 ober kategorien und wir nur 11"*.
+
+### Zuerst die Zahl: es sind zwölf
+
+Elf waren es bis zum 16.08.2026. `20260816150000` hat `schuhe` und `islamica` als eigene Eltern
+angelegt und `sneaker` zum Kind von `schuhe` gemacht — seitdem **zwölf**.
+
+### Warum Kleinanzeigen mehr hat
+
+Ihre sechzehn decken ganze Bereiche ab, die Berkat **mechanisch nicht kann**: Autos, Immobilien,
+Jobs, Dienstleistungen, Haustiere, Unterricht, Eintrittskarten. Berkats Versandstufen reichen von
+Brief bis großes Paket, und `live_auctions` hat kein `stock` — ein Angebot ist genau ein
+verschickbares Stück. Neun ihrer sechzehn sind damit nicht „nicht gewählt", sondern unmöglich.
+
+Umgekehrt passt Berkats ganzer Katalog bei Kleinanzeigen in ein bis zwei Kästchen. Wo die **ein**
+Feld „Mode & Beauty" haben, hat Berkat sechs. Im eigenen Feld ist der Baum also deutlich feiner.
+
+Dazu die Bestandsfrage: Von zwölf Kategorien sind heute **drei leer**. Mehr Kategorien machen den
+Laden nicht größer, sondern sichtbar leerer — das Kategorien-Blatt zeigt an jeder Zeile den Bestand.
+
+### ⚠️ Mein Vorschlag „Elektronik" war falsch — und zwar dokumentiert falsch
+
+Ich habe Elektronik als „echte Lücke" vorgeschlagen. Sie ist keine Lücke, sie ist ein
+**bewusster Ausschluss**, schriftlich an zwei Stellen:
+
+`WHATNOT-ANALYSE.md`, Zeile **A8**, höchste Risikostufe:
+> „Elektro (WEEE/EAR), Batterien, Lebensmittel, Alkohol — 🔴
+>  Kategorien ausschließen. Whatnot macht Elektronik und Essen — du kannst das nicht tragen."
+
+Und der Kopf von `20260816150000`:
+> „Nicht, weil sie sich nicht verkaufen würden, sondern weil Berkat die Haftung nicht tragen kann."
+
+Der Grund ist kein Geschmack: Seit 2022 muss ein **Marktplatzbetreiber** prüfen, ob ein Verkäufer
+von Elektrogeräten bei der Stiftung EAR registriert ist, bevor das Angebot online geht (ElektroG).
+Für Batterien gilt dasselbe nach dem BattG — ein Handy hat beides. Die Pflicht trifft **Zaur als
+Betreiber**, nicht den Verkäufer.
+
+> ⚠️ **Das ist derselbe Fehler wie in Abschnitt 109, am selben Tag.** Dort lautete die Lehre: „Eine
+> Konkurrenz-Analyse ohne Gegenprüfung des eigenen Standes erzeugt Arbeit, die es schon gibt." Hier
+> war es schlimmer als doppelte Arbeit — der Vorschlag hätte eine Prüfpflicht ausgelöst, die die
+> Projektunterlagen ausdrücklich als untragbar eingestuft haben.
+>
+> **Die Gegenprüfung vor einem Kategorie- oder Produktvorschlag ist `WHATNOT-ANALYSE.md`,
+> Abschnitt A — elf Zeilen Rechtsrisiken mit Urteil.** Nicht der Code, nicht das Schema.
+
+### Was stattdessen ging
+
+Zaurs eigenes Kleinanzeigen-Beispiel war eine **Displayschutzfolie**. Die enthält weder Elektronik
+noch eine Batterie und fällt unter keine dieser Pflichten — genau wie Hüllen und Halterungen ohne
+Strom.
+
+`20260921210000`: **„Handyhüllen & Displayschutz"** als sechstes Kind von `taschen`.
+
+⚠️ **Der Name macht die Arbeit, nicht ein CHECK.** Die Kategorie heißt ausdrücklich nicht
+„Handy & Zubehör" und auch nicht „Handyhüllen & Zubehör": „Zubehör" ist ein offenes Wort, unter das
+jemand ein Ladekabel, ein Netzteil oder eine Powerbank legt — und genau die drei sind Elektrogeräte
+bzw. tragen eine Batterie. „Displayschutz" benennt die zweite erlaubte Sache und lädt zu nichts
+Weiterem ein. SQL kann „hat keine Batterie" nicht prüfen; was eine Spalte nicht kann, muss die
+Beschriftung tun.
+
+⚠️ **Elternteil ist `taschen`, nicht `sonstiges`.** Eine Hülle ist ein Accessoire und wird neben
+Geldbörse und Sonnenbrille gesucht. Dieselbe Überlegung, aus der `schuhe` am 16.08. ein eigenes
+Elternteil bekam.
+
+**Keine App-Änderung nötig**: `theme/categoryArt.ts` hält Motive nur für die zwölf Oberkategorien,
+Unterkategorien sind reine Pillen. Der Baum kommt aus der Datenbank.
+
+### ⚠️ Und noch ein alter Bekannter
+
+Der Befehl, der diesen Abschnitt schreiben sollte, begann mit einem `cd` in ein Verzeichnis, in dem
+die Sitzung schon stand. Der `cd` scheiterte, der Text wurde **nicht** geschrieben — und der
+`git commit` auf der nächsten Zeile lief trotzdem durch. Der Merkzettel dazu heißt
+„Heredoc + Commit in EINER &&-Kette" und ist aus genau diesem Grund entstanden. Nachgetragen.
+
+### Geprüft
+
+Migration ausgerollt, im iPhone-17-Simulator im Einstell-Formular nachgesehen: „Taschen &
+Accessoires" klappt zu sechs Kindern auf, das sechste ist „Handyhüllen & Displayschutz".
+
+### Offen
+
+**Lebensmittel** (Datteln, Honig, Gewürze) wäre in dieser Gemeinschaft naheliegend und ist bei
+Kleinanzeigen sogar weitgehend verboten — steht aber in derselben A8-Zeile (LMIV, Kühlkette).
+Unangetastet.
