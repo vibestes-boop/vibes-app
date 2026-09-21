@@ -17170,3 +17170,78 @@ Commit `c0998748`, gepusht. OTA `production`, Runtime `1.0.0`, iOS und Android.
 
 `package.json` in diesem Commit unberuehrt — kein neues natives Modul, also
 fuer den TestFlight-Build ladbar.
+
+## 123. Wortsuche (21.09.2026)
+
+**Auslöser.** Zaur: *„bau die wortsuche"* — der zweite der drei Punkte, die
+Abschnitt 121 offen gelassen hat.
+
+Bis hierher war der Suchbegriff **eine einzige Zeichenfolge**. „nike schuhe"
+fand nur, wo genau diese zwei Wörter in dieser Reihenfolge in EINEM Feld
+standen. Praktisch also: nichts. Das war besonders bitter, seit `brand` am
+selben Tag zu den durchsuchten Spalten gekommen war — die Marke stand jetzt in
+ihrem eigenen Feld, und genau dadurch fand eine Zwei-Wort-Suche sie nicht mehr
+gemeinsam mit dem Titel.
+
+### Die Regel
+
+**Jedes Wort muss vorkommen, aber jedes darf in einer ANDEREN Spalte stehen.**
+
+```
+and(
+  or(title~*w1, brand~*w1, color~*w1, description~*w1, size~*w1, city~*w1),
+  or(title~*w2, brand~*w2, …)
+)
+```
+
+UND über die Wörter, ODER über die Spalten. Das ist der ganze Trick, und er ist
+das, was „nike schuhe" überhaupt erst beantwortbar macht: „nike" aus der Marke,
+„schuhe" aus dem Titel.
+
+⚠️ **Teilwort-Treffer bleiben.** „schuhe" findet auch „Schuhen", „mantel"
+findet „Wintermantel". Bei deutschen Beugungen und Komposita ist das die
+gewünschte Eigenschaft und nicht die geduldete — und es ist bemerkenswert
+dieselbe Eigenschaft, die in einer **Sperrwortliste** Schaden anrichtet (die
+Wortgrenzen-Härtung in `lib/liveModerationWords.ts` gibt es genau deswegen).
+Suchen will Treffer, Sperren will Genauigkeit. Derselbe Mechanismus, zwei
+entgegengesetzte Anforderungen — deshalb hier bewusst KEINE Wortgrenze.
+
+⚠️ **Acht Wörter, dann Schluss.** Jedes Wort kostet sechs `imatch`-Bedingungen
+in der URL. Der Begriff selbst ist auf 100 Zeichen begrenzt, was noch für etwa
+sechzehn kurze Wörter reicht — ein eingefügter Satz baute sonst eine Anfrage
+von mehreren Kilobyte. Neun Wörter tippt in eine Marktplatzsuche niemand.
+
+⚠️ **Mehrfache Leerzeichen fallen in `normalizeBrowseFilters` zusammen**, nicht
+an der Aufrufstelle. „nike  schuhe" und „nike schuhe" sind dieselbe Suche; ein
+Zwischenspeicher auf dem rohen Text holte beide getrennt und zeigte die zweite
+als frischen Ladevorgang.
+
+### Ein Test ist mitgekippt — zu Recht
+
+`changing filters aborts previous request …` prüfte über eine Attrappe, die in
+der Anfrage nach dem Wortlaut `'Offer 94'` suchte. Den gibt es nicht mehr: Dort
+stehen jetzt zwei getrennte `or(...)`-Gruppen. Die Attrappe fiel durch, beide
+Anfragen landeten in der Warteschlange, und die Abbruch-Zusicherung schlug fehl.
+**Das war keine Regression, sondern eine Annahme des Tests über die Form der
+Anfrage.** Auf `'"94"'` umgestellt.
+
+Und meine eigene erste Testerwartung war falsch: Ich hatte für „nike schuhe"
+einen Treffer erwartet und zwei bekommen — der zweite trug beide Wörter in
+seiner Beschreibung („Passend zu Nike Schuhen"). Der Code hatte recht, die
+Erwartung nicht.
+
+### Am Gerät geprüft (iPhone 17)
+
+- **„wolle berlin"** → 2 Treffer, darunter „Wintermantel Wolle, Camel":
+  *Wolle* aus dem Titel, *Berlin* aus der Stadt. **Vor heute: null Treffer.**
+- **„wolle berlin mantel"** → 1 Treffer. Jedes Wort verengt.
+- **„wolle berlin mantel kaputt"** → leer, mit dem neuen Satz „Jedes Wort muss
+  vorkommen …".
+
+`tsc` 0, **426 Tests**.
+
+### Weiter offen
+
+Von der Liste aus Abschnitt 121 bleibt: **gespeicherte Suchen merken sich die
+Wörter, nicht die Filter**, und die **ungenutzten `lower()`-Indizes** aus
+`20260921200000`.

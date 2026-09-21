@@ -104,6 +104,45 @@ test('parent/child, text, size, city, condition and price apply before first-pag
   assert.equal(calls[0].filters.find(f=>f[0]==='lte')[1],'buy_now_cents');
   assert.equal(calls[1].filters.find(f=>f[0]==='lte')[1],'start_price_cents');
 });
+// Every word must appear, but each may appear in a DIFFERENT column. Until
+// 21.09.2026 the whole text was one literal, so "nike schuhe" found nothing
+// unless a seller had typed both words in that order into a single field.
+test('search words are ANDed and may each land in a different column',async()=>{
+  const all=rows(9).map((row,i)=>({...row,
+    title:i===2?'Sneaker Schuhe':i===5?'Schuhe klassisch':`Offer ${i}`,
+    brand:i===2?'Nike Air':i===5?'Adidas':null,
+    description:i===7?'Passend zu Nike Schuhen':null}));
+  const lib=load(call=>response(all,call)),signal=new AbortController().signal;
+  const ids=async q=>Array.from((await lib.fetchBrowsePage({query:q},null,signal)).rows,row=>row.id);
+  // "nike" aus der Marke, "schuhe" aus dem Titel -- zwei verschiedene Spalten.
+  // all[7] kommt mit, weil sein Beschreibungstext beide Woerter traegt: Woerter
+  // matchen als TEILWORT, "schuhe" findet also auch "Schuhen". Bei deutschen
+  // Beugungen und Komposita ist das gewollt ("schuh" findet "Damenschuhe") --
+  // die Kehrseite derselben Eigenschaft, die in einer Sperrwortliste schadet.
+  assert.deepEqual(await ids('nike schuhe'),ordered([all[2],all[7]]).map(row=>row.id));
+  // "schuhen" steht NUR in der Beschreibung von all[7], nicht in all[2].
+  assert.deepEqual(await ids('nike schuhen'),[all[7].id]);
+  // Andere Marke, dasselbe Titelwort -- trennt sauber.
+  assert.deepEqual(await ids('adidas schuhe'),[all[5].id]);
+  // Reihenfolge und Gross-/Kleinschreibung sind egal.
+  assert.deepEqual(await ids('SCHUHE Adidas'),[all[5].id]);
+  // Ein Wort ohne Treffer kippt das ganze Ergebnis -- das ist UND, nicht ODER.
+  assert.deepEqual(await ids('nike schuhe rot'),[]);
+  // Mehrfache Leerzeichen sind dieselbe Suche und derselbe Zwischenspeicher.
+  assert.equal(lib.options({query:'  nike   schuhe '}).queryKey[3],
+    lib.options({query:'nike schuhe'}).queryKey[3]);
+});
+// Jedes Wort kostet sechs imatch-Bedingungen in der URL. Ohne Deckel baut ein
+// eingefuegter Satz eine Anfrage von mehreren Kilobyte.
+test('a long paste is cut to eight words instead of building a giant request',async()=>{
+  let seen=null;
+  const lib=load(call=>{seen=call;return{data:[],error:null};});
+  const many=Array.from({length:14},(_,i)=>`w${i}`).join(' ');
+  await lib.fetchBrowsePage({query:many},null,new AbortController().signal);
+  assert.equal((seen.or.match(/or\(title\.imatch/g)??[]).length,8);
+  assert.ok(seen.or.includes('"w7"'));
+  assert.ok(!seen.or.includes('"w8"'));
+});
 // Both bounds must measure the column of their OWN stream: show stock by
 // start_price_cents, shelf stock by buy_now_cents. If one bound takes the
 // wrong column, an item drops out of exactly the range the list claims.
@@ -217,7 +256,7 @@ test('retry is bounded, dedup guards cross-page changes and invalidation prefix 
 
 test('changing filters aborts previous request and a late reply cannot replace new results',async()=>{
   const all=rows(95);let pending=[];
-  const lib=load(call=>call.or?.includes('Offer 94')?response(all,call):new Promise(resolve=>pending.push({call,resolve})));
+  const lib=load(call=>call.or?.includes('"94"')?response(all,call):new Promise(resolve=>pending.push({call,resolve})));
   const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:Infinity}}});
   const observer=new InfiniteQueryObserver(client,lib.options()),stop=observer.subscribe(()=>{});
   try{

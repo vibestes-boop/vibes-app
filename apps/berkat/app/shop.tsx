@@ -256,7 +256,7 @@ export default function ShopScreen() {
                 {query.trim() && narrowedByFilter
                   ? 'Es liegt an der Suche, an den Filtern — oder an beidem zusammen.'
                   : query.trim()
-                    ? 'Gesucht wird in Titel, Beschreibung, Marke, Farbe, Größe und Ort. Versuch ein anderes Wort.'
+                    ? 'Jedes Wort muss vorkommen — in Titel, Beschreibung, Marke, Farbe, Größe oder Ort. Lass eins weg.'
                     : filters.onlyShow && activeFilters === 0
                       ? // Der eine Fall, in dem der Grund NICHT „zu eng" ist,
                         'Für kommende Sendungen ist gerade nichts vorbereitet.'

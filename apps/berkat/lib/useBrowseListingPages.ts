@@ -28,7 +28,10 @@ const PAGE_SIZE = 30;
 export function normalizeBrowseFilters(filters: BrowseFilters) {
   return {
     slugs: filters.slugs ? [...new Set(filters.slugs)].sort() : undefined,
-    query: filters.query?.trim().slice(0, 100) || '',
+    // ⚠️ Whitespace collapses here, not at the call site: "nike  schuhe" and
+    // "nike schuhe" are the same search, and a cache keyed on the raw text
+    // would fetch both separately and show the second as a fresh load.
+    query: filters.query?.trim().replace(/\s+/g, ' ').slice(0, 100) || '',
     condition: filters.condition || null,
     // The column caps are 24 and 40 (20260921200000). Cutting here keeps a
     // pasted essay from becoming a query the database has to reject.
@@ -50,6 +53,19 @@ function literalPattern(value: string) {
 }
 function quoted(value: string) {
   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * The search text as separate words.
+ *
+ * ⚠️ Eight at most. The query itself is capped at 100 characters, which still
+ * leaves room for roughly sixteen short words — and every word costs six more
+ * `imatch` terms in the URL. Nobody types nine words into a marketplace
+ * search; someone pasting a sentence would otherwise build a 6 kB request.
+ */
+const QUERY_WORDS_MAX = 8;
+function queryWords(value: string): string[] {
+  return value.split(' ').filter(Boolean).slice(0, QUERY_WORDS_MAX);
 }
 
 function micros(timestamp: string) {
@@ -96,14 +112,19 @@ export async function fetchBrowsePage(input: BrowseFilters, cursor: Cursor, sign
     if (filters.maxPrice !== null) query = query.lte(priceColumn, filters.maxPrice);
 
     const logic: string[] = [];
-    if (filters.query) {
-      // ⚠️ `brand`, `color` and `description` joined this list on 21.09.2026.
-      // Until then a search for "nike" found nothing unless the seller had
-      // typed the word into the title — which is exactly what the brand field
-      // was meant to stop them doing. The description is the bigger of the
-      // three: for a standing offer it is the only place the thing is
-      // described at all, because nobody talks over it in a show.
-      const pattern = quoted(literalPattern(filters.query));
+    // ⚠️ ONE `or(...)` PER WORD, and the words are ANDed by the join below.
+    // Every word must appear somewhere, but each may appear in a DIFFERENT
+    // column — that is the whole point: "nike schuhe" has to find an item
+    // titled "Schuhe" whose brand field says "Nike". Until 21.09.2026 the
+    // whole text was one literal, so that search found nothing unless a
+    // seller had typed both words in that order into one field.
+    //
+    // ⚠️ `brand`, `color` and `description` joined the column list earlier the
+    // same day. The description is the important one: for a standing offer it
+    // is the only place the thing is described at all, because nobody talks
+    // over it in a show.
+    for (const word of queryWords(filters.query)) {
+      const pattern = quoted(literalPattern(word));
       logic.push(`or(title.imatch.${pattern},brand.imatch.${pattern},color.imatch.${pattern},`
         + `description.imatch.${pattern},size.imatch.${pattern},city.imatch.${pattern})`);
     }

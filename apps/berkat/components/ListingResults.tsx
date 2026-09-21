@@ -30,7 +30,7 @@ export function ListingResults({ listings, userId, onSelect, savedIds, onToggleS
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const feedback = <SearchResultsState key={fontScale} {...state} kind="Artikel" hasResults={listings.length > 0}
-    emptyText="Gesucht wird in Titel, Beschreibung, Marke, Farbe, Größe und Ort. Versuch ein anderes Wort — oder nimm einen Filter weg." />;
+    emptyText="Jedes Wort muss vorkommen — in Titel, Beschreibung, Marke, Farbe, Größe oder Ort. Lass ein Wort weg oder nimm einen Filter heraus." />;
   return <FlatList
     data={listings} keyExtractor={(item) => item.id}
     keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
