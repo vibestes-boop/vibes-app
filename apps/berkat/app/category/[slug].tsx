@@ -26,6 +26,7 @@ import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { SellerShopMore } from '../../components/SellerShopMore';
 import { ListingCard } from '../../components/ListingCard';
+import { ListingFilterBar, useListingFilters } from '../../components/ListingFilters';
 import { radius, space, ui } from '../../theme/tokens';
 
 export default function CategoryScreen() {
@@ -57,7 +58,18 @@ export default function CategoryScreen() {
     return parent ? [slug, ...parent.children.map((child) => child.slug)] : [slug];
   }, [slug, tree]);
 
-  const { shows, listings } = useCategoryContent(slugs, focused && Boolean(categoryQuery.data));
+  // ⚠️ Ohne Kategorie-Wahl im Blatt: Die Kategorie IST dieser Bildschirm.
+  const { values: filters, patch: patchFilters, reset: resetFilters,
+    activeCount: activeFilters, narrowed } = useListingFilters();
+  const { shows, listings } = useCategoryContent(
+    slugs,
+    focused && Boolean(categoryQuery.data),
+    {
+      condition: filters.cond, color: filters.color, brand: filters.brand,
+      size: filters.size, city: filters.city, maxPrice: filters.maxPrice,
+      onlyShow: filters.onlyShow, sort: filters.sort,
+    },
+  );
 
   // Zwei Spalten, `flex: 1` je Zelle: Bleibt in der letzten Reihe ein Platz
   // frei, zöge sich der einzelne Artikel über die volle Breite. Der Platzhalter
@@ -130,6 +142,19 @@ export default function CategoryScreen() {
           {title}
         </Text>
         <View style={styles.back} />
+      </View>
+
+      {/* ⚠️ Über der Liste und nicht in ihrem Kopf: Wer in „Mode" nach
+          Größe M sucht, soll den Griff sehen, ohne erst an den laufenden
+          Shows vorbeizuscrollen. Die Filter gelten trotzdem nur für die
+          Angebote — begründet in `useCategoryContent`. */}
+      <View style={styles.filters}>
+        <ListingFilterBar
+          values={filters}
+          patch={patchFilters}
+          reset={resetFilters}
+          activeCount={activeFilters}
+        />
       </View>
 
       <FlatList
@@ -227,7 +252,28 @@ export default function CategoryScreen() {
             <View style={styles.empty}>
               <ActivityIndicator color={ui.brand} accessibilityLabel="Kategorie wird geladen" />
             </View>
-          ) : hasError || liveShows.length > 0 ? null : (
+          ) : hasError ? null : narrowed ? (
+            // ⚠️ Dieser Zweig steht VOR der Show-Prüfung, und das ist der Punkt:
+            // Filtert jemand die Angebote auf null, während oben eine Show läuft,
+            // sähe er sonst gar nichts — keine Treffer und keinen Grund.
+            <View style={styles.empty}>
+              <BerkatMark size={38} color={ui.sunken} />
+              <Text style={styles.emptyTitle}>Nichts in dieser Auswahl</Text>
+              <Text style={styles.emptyBody}>
+                {filters.onlyShow && activeFilters === 0
+                  ? 'Für kommende Sendungen ist hier gerade nichts vorbereitet.'
+                  : 'Die Filter sind zu eng. Nimm einen davon weg.'}
+              </Text>
+              <Pressable
+                style={styles.retry}
+                onPress={resetFilters}
+                accessibilityRole="button"
+                accessibilityLabel="Filter zurücksetzen"
+              >
+                <Text style={styles.retryText}>Filter zurücksetzen</Text>
+              </Pressable>
+            </View>
+          ) : liveShows.length > 0 ? null : (
             <View style={styles.empty}>
               <BerkatMark size={38} color={ui.sunken} />
               <Text style={styles.emptyTitle}>Hier ist noch nichts</Text>
@@ -278,6 +324,9 @@ export default function CategoryScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: ui.bg },
 
+  /* Die Filterzeile bringt ihren Seitenabstand selbst mit — sie scrollt
+     waagerecht und muss auf jeder Fläche am selben Rand beginnen. */
+  filters: { paddingBottom: space.sm },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

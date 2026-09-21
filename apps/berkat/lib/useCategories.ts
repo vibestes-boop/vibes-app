@@ -19,7 +19,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
-import { useBrowseListingPages } from './useBrowseListingPages';
+import { useBrowseListingPages, type BrowseFilters } from './useBrowseListingPages';
 
 export type Category = {
   slug: string;
@@ -168,7 +168,19 @@ export type CategoryShow = {
  * Regal trug es umgekehrt. Genau daran ist die Beschreibung zwei Tage lang
  * unsichtbar geblieben.
  */
-export function useCategoryContent(slugs: string[], enabled = true) {
+export function useCategoryContent(
+  slugs: string[],
+  enabled = true,
+  /**
+   * Größe, Farbe, Zustand, Marke, Ort, Preis, Sortierung — seit 21.09.2026.
+   *
+   * ⚠️ Die Filter gelten NUR für die Angebote, nicht für die laufenden Shows.
+   * Eine Show ist ein Ereignis mit Uhr; sie nach „Größe M" auszusieben hiesse,
+   * etwas zu verstecken, das in zwanzig Minuten vorbei ist. Deshalb nimmt die
+   * Show-Abfrage darunter die Filter bewusst nicht an.
+   */
+  filters: Omit<BrowseFilters, 'slugs'> = {},
+) {
   // Stabiler Schlüssel: Ohne das Sortieren käme bei jeder Neuberechnung des
   // Aufrufers eine andere Reihenfolge und damit ein anderer Query-Key heraus —
   // die Abfrage liefe bei jedem Render neu.
@@ -193,7 +205,9 @@ export function useCategoryContent(slugs: string[], enabled = true) {
     },
   });
 
-  const listings = useBrowseListingPages({ slugs }, enabled, 'category-listings');
+  // ⚠️ `slugs` steht HINTEN. Die Kategorie ist der Bildschirm; ein Aufrufer,
+  // der sie versehentlich mitgäbe, dürfte sie nicht überschreiben können.
+  const listings = useBrowseListingPages({ ...filters, slugs }, enabled, 'category-listings');
 
   return { shows, listings };
 }

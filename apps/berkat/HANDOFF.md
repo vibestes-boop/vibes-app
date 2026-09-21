@@ -16966,3 +16966,117 @@ die Frage in einem Blick beantwortet, statt in drei Runden „probier mal".
 
 `tsc` 0, **426 von 426**, iPhone-17-Simulator: Startseite mit warmem, aber nicht gelbem Grund;
 weiße Suchleiste und Karten stehen klar davor.
+
+## 121. Der Filter stand an einer von drei Flächen (21.09.2026)
+
+**Auslöser.** Zaur: *„was fehlt dieser app?"* — und danach *„ja bau den filter"*.
+
+⚠️ **MEINE ERSTE ANTWORT WAR FALSCH, UND ZWAR AUF DIE TEUERSTE ART.** Ich sagte
+ihm, Berkat habe „keinen einzigen Filter". Ich hatte in `app/search.tsx`
+nachgesehen und dort keinen gefunden. In `app/shop.tsx` stand seit Wochen
+einer: Kategorie, Zustand, Größe, Ort, Höchstpreis, Sortierung nach
+Neueste/Günstigste/Teuerste, gespeicherte Suchen, Keyset-Blättern über zwei
+Statusströme.
+
+Das war **am selben Tag der dritte** Befund dieser Art (Abschnitt 109:
+Kleinanzeigen angesehen und die eigene Arbeit übersehen; Abschnitt 116:
+Elektronik als Lücke vorgeschlagen, die ausdrücklich ausgeschlossen ist).
+Die Regel daraus steht schon zweimal hier und gilt unverändert: **Erst den
+eigenen Stand lesen, dann eine Lücke behaupten.** Eine Fläche zu prüfen und
+„die App" zu sagen ist keine Prüfung, sondern eine Stichprobe mit n = 1.
+
+**Der echte Befund, nach dem Nachsehen.** Die Maschine war gebaut — sie stand
+nur an genau einer von drei Flächen, und die prominenteste hatte die
+schlechteste:
+
+| Fläche | Filter | Sortierung | Blättern | Suchfelder |
+|---|---|---|---|---|
+| `/shop` „Alle Angebote" | 5 | ja | ja | Titel, Größe, Ort |
+| `/category/[slug]` | **keine** | **keine** | ja | — |
+| `/search` (die Lupe) | **keine** | **keine** | **nein**, 20 Treffer hart | **nur Titel** |
+
+Die Lupe hängt im Kopf der Startseite. Sie ist das, was ein neuer Nutzer
+zuerst antippt — und sie war die schwächste der drei.
+
+**Dazu die Lücke, die ich am selben Abend selbst gerissen hatte.** Abschnitt
+115 hat `brand`, `color` und `material` eingebaut; `LISTING_COLORS` gibt es
+ausdrücklich deshalb als feste Liste, *„ohne sie zerfällt Schwarz in fünf
+Schreibweisen, und ein Filter darüber findet nichts."* In
+`20260921200000` liegen zwei Indizes mit meinem eigenen Kommentar daneben:
+*„Indizes für den späteren Filter."* Den Filter gab es nicht. Der Verkäufer
+tippte die Marke ein, die Artikelseite zeigte sie in einer Tabelle, und
+gelesen hat sie **nichts**.
+
+### Was gebaut wurde
+
+1. **`lib/useBrowseListingPages.ts`** — `color` und `brand` in `BrowseFilters`.
+   ⚠️ Farbe **verankert** (`^…$`), Marke als Teilwort: „Rot" darf nicht
+   „Rotbraun" mitbringen, „nike" soll „Nike Air" finden. Und die Freitextsuche
+   greift jetzt auf sechs Spalten statt drei — `brand`, `color` und
+   **`description`** sind dazugekommen. Die Beschreibung ist der wichtigste
+   Zugewinn: Bei einem Dauerangebot ist sie die einzige Stelle, an der die
+   Sache überhaupt beschrieben wird, weil niemand darüber redet.
+
+2. **`components/ListingFilters.tsx`** (neu) — Zeile, Blatt, Zustand und die
+   Slug-Ableitung an einer Stelle. `withCategory` schaltet die
+   Kategorie-Auswahl ab, wo die Kategorie der Bildschirm IST.
+   ⚠️ `sort` überlebt „Zurücksetzen": Sortieren nimmt nichts weg.
+
+3. **Kategorie-Seite und Suche** bekommen dieselbe Zeile. `useCategoryContent`
+   nimmt Filter an — ⚠️ **nur für die Angebote, nicht für die laufenden
+   Shows.** Eine Show nach „Größe M" auszusieben hiesse, etwas zu verstecken,
+   das in zwanzig Minuten vorbei ist.
+
+4. **`useListingSearch` ist gelöscht.** Nach dem Umbau hatte sie keinen
+   Aufrufer mehr. Eine exportierte Funktion ohne Aufrufer ist dieselbe
+   Fehlerklasse wie ein Feld, das geschrieben und nie gelesen wird — nur in
+   Funktionsform, und mit der Einladung, die schwächere Suche versehentlich
+   wieder anzuschließen.
+
+**Netto −159 Zeilen**, bei zwei Flächen mehr Funktion. `shop.tsx` ist von 702
+auf 423 Zeilen geschrumpft.
+
+### ⚠️ Der Fehler, den erst das Gerät gezeigt hat
+
+TypeScript grün, 423 Tests grün — und die Filterzeile in der Suche war
+**unbrauchbar**: Die Chips waren rund 220 Punkte hoch und füllten den halben
+Bildschirm.
+
+Der Grund: In `shop.tsx` lag die Zeile in einem Elternteil mit eigener Höhe.
+In `search.tsx` ist sie ein Flex-Kind einer Spalte ohne Höhenvorgabe — die
+ScrollView dehnte sich über den ganzen Rest, und die Chips darin dehnten sich
+mit. Zwei Zeilen Stil (`flexGrow: 0` an der Fläche, `alignItems: 'center'` im
+Inhalt) haben es behoben.
+
+**Die Lehre ist nicht „Stile prüfen", sondern:** Ein Bauteil, das aus einem
+Bildschirm herausgelöst wird, erbt dessen Annahmen unsichtbar mit. Es sah an
+seiner alten Stelle richtig aus, weil ein Elternteil eine Höhe gab, die es
+selbst nie hatte. **Wer etwas teilbar macht, muss es einmal an der ZWEITEN
+Stelle ansehen** — an der ersten beweist es nichts.
+
+Das ist die Schwesterlehre zu *„Ein Test prüft die Rechnung, nicht den
+Vorrat"* (Abschnitt 112) — und sie ist am selben Tag zum zweiten Mal fällig
+geworden.
+
+### Am Gerät geprüft (iPhone 17)
+
+- **Suche „teppich"** → Treffer; Zustand „Neu" gesetzt → Treffer weg, Chip
+  „Filter · 1", aktiver Chip „Neu ×", neuer Leertext; Chip entfernt → Treffer
+  zurück.
+- **Kategorie „Mode"** (4 Artikel) → Größe „38" → genau der eine Artikel in
+  Größe 38, Chip „Gr. 38 ×".
+- **„Alle Angebote"** nach dem Umbau unverändert bedienbar, Blatt mit
+  Kategorie-Auswahl, 28 Angebote.
+
+### Offen geblieben (bewusst)
+
+- **Kein Mindestpreis** — nur die vier Stufen „bis X €".
+- **Kein Versand-Filter.** `shipping_tier` ist 1–4 und heisst „Brief" bis
+  „grosses Paket". Für den Käufer ist das keine Frage, die er stellt.
+- **Die Suche zerlegt den Begriff nicht in Wörter.** „nike schuhe" findet nur,
+  wo diese zwei Wörter genau so hintereinanderstehen.
+- **Gespeicherte Suchen merken sich die Wörter, nicht die Filter.**
+- **Die `lower()`-Indizes aus `20260921200000` sind weiter ungenutzt.**
+  PostgREST schickt `imatch` (`~*`), das kein Btree bedienen kann. Bei 28
+  Angeboten belanglos; wenn es zählt, braucht es eine generierte Spalte oder
+  eine RPC. **Nicht vergessen, aber auch nicht jetzt.**

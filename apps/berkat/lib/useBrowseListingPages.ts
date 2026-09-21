@@ -9,6 +9,10 @@ export type BrowseFilters = {
   slugs?: string[];
   query?: string;
   condition?: string | null;
+  /** One of LISTING_COLORS. Matched whole, not as a substring — see below. */
+  color?: string | null;
+  /** Free text, matched as a substring: "nike" finds "Nike Air". */
+  brand?: string | null;
   size?: string | null;
   city?: string | null;
   maxPrice?: number | null;
@@ -24,6 +28,10 @@ export function normalizeBrowseFilters(filters: BrowseFilters) {
     slugs: filters.slugs ? [...new Set(filters.slugs)].sort() : undefined,
     query: filters.query?.trim().slice(0, 100) || '',
     condition: filters.condition || null,
+    // The column caps are 24 and 40 (20260921200000). Cutting here keeps a
+    // pasted essay from becoming a query the database has to reject.
+    color: filters.color?.trim().slice(0, 24) || '',
+    brand: filters.brand?.trim().slice(0, 40) || '',
     size: filters.size?.trim().slice(0, 24) || '',
     city: filters.city?.trim().slice(0, 80) || '',
     maxPrice: filters.maxPrice ?? null,
@@ -69,14 +77,27 @@ export async function fetchBrowsePage(input: BrowseFilters, cursor: Cursor, sign
     if (status === 'listed') query = query.not('buy_now_cents', 'is', null);
     if (filters.slugs) query = query.in('category', filters.slugs);
     if (filters.condition) query = query.eq('condition', filters.condition);
+    // ⚠️ Anchored, unlike size, city and brand. Colour comes from a closed list
+    // of thirteen, and a substring match would let "Rot" pull in "Rotbraun" and
+    // "Bordeauxrot". A colour filter that answers with a different colour is
+    // worse than no filter — the buyer cannot see why the result is there.
+    if (filters.color) query = query.filter('color', 'imatch', `^${literalPattern(filters.color)}$`);
+    if (filters.brand) query = query.filter('brand', 'imatch', literalPattern(filters.brand));
     if (filters.size) query = query.filter('size', 'imatch', literalPattern(filters.size));
     if (filters.city) query = query.filter('city', 'imatch', literalPattern(filters.city));
     if (filters.maxPrice !== null) query = query.lte(priceColumn, filters.maxPrice);
 
     const logic: string[] = [];
     if (filters.query) {
+      // ⚠️ `brand`, `color` and `description` joined this list on 21.09.2026.
+      // Until then a search for "nike" found nothing unless the seller had
+      // typed the word into the title — which is exactly what the brand field
+      // was meant to stop them doing. The description is the bigger of the
+      // three: for a standing offer it is the only place the thing is
+      // described at all, because nobody talks over it in a show.
       const pattern = quoted(literalPattern(filters.query));
-      logic.push(`or(title.imatch.${pattern},size.imatch.${pattern},city.imatch.${pattern})`);
+      logic.push(`or(title.imatch.${pattern},brand.imatch.${pattern},color.imatch.${pattern},`
+        + `description.imatch.${pattern},size.imatch.${pattern},city.imatch.${pattern})`);
     }
     if (cursor) {
       const date = quoted(cursor.createdAt);

@@ -21,7 +21,6 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { supabase } from './supabase';
-import { SEARCH_MIN, useDebounced } from './useSellerSearch';
 
 /**
  * Ein Dauerangebot ist keine eigene Tabelle, sondern eine `live_auctions`-Zeile
@@ -612,43 +611,13 @@ export function listingImages(l: Pick<Listing, 'image_url' | 'image_urls'>): str
   return l.image_url?.trim() ? [l.image_url] : [];
 }
 
-/**
- * Artikel per Titel suchen — die zweite Hälfte des Suchfelds.
- *
- * `search_berkat_sellers` findet Menschen; das hier findet Ware. Bewusst KEINE
- * RPC: Die Regal-Zeilen sind für jeden lesbar (auch ohne Anmeldung — anders
- * als die Verkäufer-Suche, die für `anon` gesperrt ist), also reicht ein
- * `ilike` über die bestehende RLS. Ein Trigram-Index kommt, wenn die
- * Angebotszahl ihn je verlangt.
- *
- * `%` und `_` werden escaped — sonst wäre „100%" ein Joker statt einer Suche.
- */
-export function useListingSearch(query: string, enabled = true) {
-  const settled = useDebounced(query.trim());
-  const q = settled.replace(/[\\%_]/g, (m) => `\\${m}`);
-
-  const isDebouncing = query.trim() !== settled;
-  const result = useQuery({
-    queryKey: ['berkat', 'listing-search', settled],
-    enabled: enabled && !isDebouncing && settled.length >= SEARCH_MIN,
-    // Query steuert die Wiederholung; der HTTP-Client wiederholt nicht zusätzlich.
-    retry: 1,
-    staleTime: 30_000,
-    queryFn: async ({ signal }): Promise<Listing[]> => {
-      const { data, error } = await browseQuery()
-        .ilike('title', `%${q}%`)
-        .order('created_at', { ascending: false })
-        .limit(20)
-        .abortSignal(signal).retry(false);
-      if (error) throw error;
-      return withVisibleShow(asListings(data));
-    },
-  });
-  return { ...result, isDebouncing,
-    data: isDebouncing ? undefined : result.data,
-    error: isDebouncing ? null : result.error,
-  };
-}
+/* ⚠️ `useListingSearch` stand bis zum 21.09.2026 hier: `ilike` auf den
+   TITEL, zwanzig Treffer, kein Filter, keine Sortierung, kein Nachladen.
+   Sie hing an der Lupe — also an der Fläche, die jeder zuerst antippt —
+   während „Alle Angebote" längst `useBrowseListingPages` benutzte, das all
+   das kann. Zwei Suchen über dieselbe Tabelle, und die prominentere war die
+   schlechtere. Die Suche ruft jetzt dieselbe Maschine; diese hier hatte
+   danach keinen Aufrufer mehr und ist deshalb weg statt auskommentiert. */
 
 /**
  * Angebote zu einer ID-Liste — für die Merkliste.

@@ -6,13 +6,14 @@ import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Grid2X2, Radio, Search, X } from 'lucide-react-native';
 import { ListingResults } from '../components/ListingResults';
+import { ListingFilterBar, useCategorySlugs, useListingFilters } from '../components/ListingFilters';
 import { SellerResults, isSearchPermissionError } from '../components/SellerResults';
 import { SearchResultsState } from '../components/SearchResultsState';
 import { goBack } from '../lib/nav';
 import { NavigationRow } from '../components/NavigationRow';
 import { Avatar } from '../components/Avatar';
-import { useListingSearch } from '../lib/useListings';
 import { SEARCH_MIN, useSellerSearch } from '../lib/useSellerSearch';
+import { useBrowseListingPages } from '../lib/useBrowseListingPages';
 import { useLiveShows } from '../lib/useLiveShows';
 import { useProfiles } from '../lib/useAuction';
 import { useSavedIds, useToggleSaved } from '../lib/useSaved';
@@ -34,7 +35,32 @@ export default function SearchScreen() {
   const input = useRef<TextInput>(null);
   const term = query.trim();
   const ready = term.length >= SEARCH_MIN;
-  const articles = useListingSearch(query, focused && tab === 'articles');
+  /**
+   * ⚠️ DIESELBE MASCHINE WIE „ALLE ANGEBOTE" — seit 21.09.2026.
+   *
+   * Bis dahin hatte Berkat ZWEI Suchen: diese hier (`ilike` auf den Titel,
+   * zwanzig Treffer, keine Filter, keine Sortierung, kein Nachladen) und die
+   * unter „Alle Angebote", die alles davon konnte. Die schwächere hing an der
+   * Lupe, also an der Stelle, die jeder zuerst antippt.
+   *
+   * ⚠️ `enabled` trägt hier die Mindestlänge. `useBrowseListingPages` kennt
+   * kein `SEARCH_MIN` — ohne das Gatter liefe bei einem einzelnen Zeichen
+   * eine Abfrage über den ganzen Bestand.
+   */
+  const { values: filters, patch: patchFilters, reset: resetFilters,
+    activeCount: activeFilters } = useListingFilters();
+  const slugs = useCategorySlugs(filters.cat);
+  const articles = useBrowseListingPages({
+    slugs, query,
+    condition: filters.cond, color: filters.color, brand: filters.brand,
+    size: filters.size, city: filters.city, maxPrice: filters.maxPrice,
+    onlyShow: filters.onlyShow, sort: filters.sort,
+  }, focused && tab === 'articles' && ready);
+  const loadMoreArticles = () => {
+    if (!articles.isFetching && !articles.isDebouncing && articles.hasNextPage) {
+      void articles.fetchNextPage({ cancelRefetch: false });
+    }
+  };
   const sellers = useSellerSearch(query, focused && tab === 'sellers' && Boolean(userId));
   const live = useLiveShows(focused && tab === 'live' && ready);
   const shows = live.data ?? [];
@@ -92,13 +118,24 @@ export default function SearchScreen() {
     </ScrollView> : <>
       <View key={`context:${fontScale}`} style={s.context}>
         <Text accessibilityRole="header" style={s.heading}>{tab === 'articles' ? 'Passende Artikel' : tab === 'sellers' ? 'Verkäufer entdecken' : 'Live entdecken'}</Text>
-        <Text style={s.contextText}>{tab === 'articles' ? 'In allen Kategorien' : tab === 'sellers' ? 'Suche nach Benutzernamen' : 'Suche nach Titel und Verkäufer'}</Text>
+        <Text style={s.contextText}>{tab === 'articles' ? 'In Titel, Beschreibung und Merkmalen' : tab === 'sellers' ? 'Suche nach Benutzernamen' : 'Suche nach Titel und Verkäufer'}</Text>
       </View>
-      {tab === 'articles' ? <ListingResults key={term} listings={articles.data ?? []} userId={userId}
-        loading={articles.isDebouncing || articles.isFetching || articles.isPending} error={articles.error}
-        onRetry={() => void articles.refetch()} savedIds={savedIds}
-        onSelect={(id) => open(`/listing/${id}`)}
-        onToggleSaved={(auctionId, saved) => userId ? toggleSaved.mutate({ auctionId, saved }) : router.push('/login')} />
+      {tab === 'articles' ? <>
+        {/* ⚠️ `sidePadding` auf `lg`: Dieser Bildschirm rückt seine Karten
+            weiter ein als der Shop. Ohne das begännen Chips und Karten an
+            zwei verschiedenen Kanten. */}
+        <ListingFilterBar values={filters} patch={patchFilters} reset={resetFilters}
+          activeCount={activeFilters} sidePadding={space.lg} withCategory />
+        {/* ⚠️ `key` am Filterschlüssel, nicht mehr am Suchwort: Auch ein
+            geänderter Filter ist ein anderes Ergebnis und gehört an den
+            Anfang der Liste, nicht an die Stelle, an der man gerade stand. */}
+        <ListingResults key={articles.filterKey} listings={articles.data?.listings ?? []} userId={userId}
+          loading={articles.isLoading} error={articles.isError ? articles.error : undefined}
+          onRetry={() => void articles.refetch()} savedIds={savedIds}
+          onEndReached={loadMoreArticles} hasMore={articles.hasNextPage}
+          onSelect={(id) => open(`/listing/${id}`)}
+          onToggleSaved={(auctionId, saved) => userId ? toggleSaved.mutate({ auctionId, saved }) : router.push('/login')} />
+      </>
       : tab === 'sellers' ? <SellerResults key={term} sellers={userId ? sellers.data ?? [] : []}
         loading={sellers.isDebouncing || sellers.isFetching || sellers.isPending} error={sellers.error}
         needsLogin={!userId || isSearchPermissionError(sellers.error)} onSignIn={() => router.push('/login')}

@@ -104,6 +104,27 @@ test('parent/child, text, size, city, condition and price apply before first-pag
   assert.equal(calls[0].filters.find(f=>f[0]==='lte')[1],'buy_now_cents');
   assert.equal(calls[1].filters.find(f=>f[0]==='lte')[1],'start_price_cents');
 });
+// Colour is a closed list, brand is free text, and the two must not match the
+// same way: "Rot" that also returns "Rotbraun" is a filter the buyer cannot
+// read. Free text reaches brand, colour and description because until
+// 21.09.2026 it reached the title alone — the brand field existed so the seller
+// would stop typing "Nike" into the title, and then nothing searched it.
+test('colour matches whole, brand matches parts, free text reaches brand, colour and description',async()=>{
+  const all=rows(9).map((row,i)=>({...row,
+    color:i===3?'Rot':i===4?'Rotbraun':'Schwarz',
+    brand:i===5?'Nike Air':null,
+    description:i===6?'Handgenäht in Marokko':null}));
+  const lib=load(call=>response(all,call)),signal=new AbortController().signal;
+  // Array.from: the rows come out of the vm realm, and a realm-foreign array
+  // fails deepStrictEqual even when every element matches.
+  const ids=async filters=>Array.from((await lib.fetchBrowsePage(filters,null,signal)).rows,row=>row.id);
+  assert.deepEqual(await ids({color:'rot'}),[all[3].id]);
+  assert.deepEqual(await ids({color:'Schwarz'}),ordered(all.filter(r=>r.color==='Schwarz')).map(r=>r.id));
+  assert.deepEqual(await ids({brand:'nike'}),[all[5].id]);
+  assert.deepEqual(await ids({query:'Air'}),[all[5].id]);
+  assert.deepEqual(await ids({query:'marokko'}),[all[6].id]);
+  assert.deepEqual(await ids({query:'Rotbraun'}),[all[4].id]);
+});
 test('search literal cannot inject logic or become a wildcard; cursor AND search both apply',async()=>{
   const needle='100% * (x),"a"\\ b.[z]$';const all=rows(95).map(row=>({...row,title:needle}));
   all[70].title='non-matching';const lib=load(call=>response(all,call));

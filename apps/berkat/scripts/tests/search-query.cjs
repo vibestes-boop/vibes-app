@@ -32,7 +32,7 @@ function hook(name, query, settled, enabled = true, snapshot = {}, request = () 
 }
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 
-for (const name of ['useSellerSearch', 'useListingSearch']) {
+for (const name of ['useSellerSearch']) {
   test(`${name}: only settled, sufficiently long, visible searches run`, () => {
     assert.equal(hook(name, 'a', 'a').options.enabled, false);
     assert.equal(hook(name, '   ', '').options.enabled, false);
