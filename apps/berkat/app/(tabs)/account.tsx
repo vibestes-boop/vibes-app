@@ -112,6 +112,55 @@ export default function AccountScreen() {
           Der ScrollView und der Zustand dieses Screens bleiben erhalten. */}
       <View key={fontScale}>
       <Text accessibilityRole="header" style={styles.pageTitle}>Konto</Text>
+
+      {/* ── ⚠️ DER GELD-HINWEIS, WEIL ER SONST UNTER DER FALZ LIEGT ─────────
+          Übergabe 94 (26.08.2026) hat für diese Seite zugesichert: „Die ganze
+          Seite passt auf einen Bildschirm, inklusive Paket und Abmelden."
+          **Am 27.08. war die Zusicherung gebrochen** — der Connect-Umbau hat
+          „Geld empfangen" ergänzt (54 Zeilen), einen Tag später, und niemand
+          hat den Satz von gestern noch einmal gelesen.
+
+          Am 22.09.2026 am Gerät gesehen, was daraus folgt: Ausgerechnet die
+          EINE Zeile mit rotem „unvollständig" steht unter der Falz — die
+          Zeile, ohne die an jedem Artikel „Nachricht schreiben" statt
+          „Kaufen" steht. Der Verkäufer sieht nicht, warum niemand kauft.
+
+          ⚠️ Deshalb ein Hinweis OBEN und nicht ein Umbau der ganzen Seite.
+          Die Zusicherung „alles auf einen Bildschirm" ist mit acht Zielen
+          nicht mehr die richtige — wichtig ist nicht, dass „Abmelden" ohne
+          Scrollen erreichbar ist, sondern dass das Dringende sichtbar ist.
+          Der Hinweis verschwindet von selbst, sobald Stripe bereit ist.
+
+          ⚠️ Keine rote FLÄCHE, nur ein rotes Wort: In Berkat ist Rot die
+          laufende Uhr, nie der Hintergrund. ───────────────────────────── */}
+      {stripeConnectLabel(stripeState).tone === 'warn' ? (
+        <PressFeedback
+          kind="card"
+          style={styles.moneyNotice}
+          disabled={stripeStarting}
+          accessibilityState={{ disabled: stripeStarting, busy: stripeStarting }}
+          onPress={() => {
+            void startStripeConnect().catch((e) =>
+              Alert.alert('Das hat nicht geklappt', errText(e)),
+            );
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Geld empfangen ist ${stripeConnectLabel(stripeState).text} — jetzt einrichten`}
+        >
+          <Wallet size={21} color={ui.live} />
+          <View style={styles.linkCopy}>
+            <Text style={styles.moneyNoticeTitle}>
+              Geld empfangen ist {stripeConnectLabel(stripeState).text}
+            </Text>
+            <Text style={styles.moneyNoticeBody}>
+              Solange das offen ist, steht an deinen Artikeln „Nachricht schreiben" statt „Kaufen".
+            </Text>
+          </View>
+          {stripeStarting
+            ? <ActivityIndicator size="small" color={ui.textMuted} />
+            : <ChevronRight size={20} color={ui.textMuted} />}
+        </PressFeedback>
+      ) : null}
       {/* Die Tür zum eigenen Profil.
           Bis zum 16.08.2026 gab es keine: Acht Stellen in der App springen auf
           /seller/<id>, keine einzige mit der eigenen. Das eigene Regal, die
@@ -455,6 +504,21 @@ const styles = StyleSheet.create({
   linkLabel: { fontSize: 15, lineHeight: 21, fontWeight: '600', color: ui.text },
   linkHint: { fontSize: 12, lineHeight: 18, color: ui.textMuted },
   linkWarn: { fontSize: 12, lineHeight: 18, fontWeight: '600', color: ui.live },
+  /* ⚠️ Eigene Flaeche, sonst schwebt der Hinweis auf dem Grund, waehrend
+     jede andere Zeile der Seite auf einer Karte sitzt — am 22.09.2026 im
+     Simulator gesehen. `kind="card"` an `PressFeedback` steuert nur die
+     Druck-Animation, nicht den Hintergrund; das ist leicht zu verwechseln. */
+  moneyNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.md,
+    marginBottom: space.md,
+    backgroundColor: ui.card,
+    borderRadius: radius.lg,
+  },
+  moneyNoticeTitle: { fontSize: 15, lineHeight: 21, fontWeight: '700', color: ui.live },
+  moneyNoticeBody: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: 2 },
   linkBadge: {
     minWidth: 20,
     minHeight: 24,

@@ -8780,13 +8780,13 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | ~~A29~~ | ~~**Sortierung und Preisfilter**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
 | ~~A30~~ | ~~**Die Gegenprobe am Verkäufer-Profil**~~ — ✅ 25.08.2026, dieselbe Einschränkung wie A27 | 88 |
 | ~~A31~~ | ~~**Suche merken als Umschalter**~~ — ✅ **27.08.2026 am Simulator durchgespielt**, alle vier Proben: merken → **grün gefüllt** · App per `simctl terminate` **vollständig** beendet und neu gestartet → dieselbe Suche ist **immer noch grün** · Eingabe mit führendem Leerzeichen → **bleibt grün** · nochmal antippen → leer, und unter Gemerkt → Suchen ist der Eintrag **wirklich weg** (nur die ältere Suche „Parf" blieb stehen). ⚠️ Eine Einschränkung: Ob iOS das führende Leerzeichen überhaupt durchgereicht hat, ist am Bildschirm nicht zweifelsfrei zu sehen — die Normalisierung ist damit **wahrscheinlich**, nicht bewiesen | 88 |
-| A32 | **Der Preis-Hinweis am eigenen Regal**: Einen Artikel ohne Sofortkauf-Preis anlegen (oder den bestehenden nehmen) — auf „Verkaufen" muss **„N kaufbar · 1 ohne Preis"** stehen, das zweite rot. Im Regal trägt die Zeile den Satz „Ohne Preis findet ihn niemand". Preis eintragen → beides verschwindet, und der Artikel taucht im Stöbern auf | 88 |
+| A32 | **Der Preis-Hinweis am eigenen Regal**: Einen Artikel ohne Sofortkauf-Preis anlegen (oder den bestehenden nehmen) — auf „Verkaufen" muss **„N kaufbar · 1 ohne Preis"** stehen, das zweite rot. Im Regal trägt die Zeile den Satz „Ohne Preis findet ihn niemand". Preis eintragen → beides verschwindet, und der Artikel taucht im Stöbern auf | 88 | ⚠️ **22.09.2026: nicht prüfbar, Voraussetzung fehlt.** Auf „Verkaufen" steht „**6 kaufbar**" ohne den Zusatz — es gibt gerade **keinen** preislosen Artikel. Einen zu erzeugen geht nicht über das Formular (es verlangt einen Preis), sondern nur über den Umweg **Termin anlegen → Artikel dafür vorbereiten → Termin absagen** (`release_prepared_on_plan_end` legt ihn dann ohne Preis ins Regal zurück). Damit ist der Punkt kein Fünf-Minuten-Blick mehr und braucht eine bewusste Entscheidung, Testdaten anzulegen.
 | ~~A33~~ | ⚠️ **Nach Gruppe B verschoben (27.08.)** — `birth_date_locked`: Ein einmal gesetztes Geburtsdatum lässt sich nicht selbst ändern, und Zaurs Konto ist längst `adult`. Das Blatt kommt dort nie wieder; der Punkt braucht ein **frisches Konto**. Siehe **B15** | 90, 97 |
 | ~~A34~~ | ⚠️ **In B15 aufgegangen (27.08.)** — der 31. Februar ist eine Probe **im** Altersblatt, und das kommt ohne frisches Konto nicht mehr | 90, 97 |
 | ~~A35~~ | ⚠️ **In B15 aufgegangen (27.08.)** — dito für die Absage unter 18 | 90, 97 |
 | A36 | **Startseite bei laufender Sendung**: Live gehen → auf der Startseite muss **unter** der Show-Karte „Aus dem Regal" mit dem Raster stehen. ⚠️ Vorher prüfen, wie viele Follower das sendende Konto hat — der Start schickt ihnen einen Push | 91 |
 | A37 | **Sendung vormerken**: Termin auf „in 14 Minuten" legen, mit einem Konto vormerken, das dem Gastgeber **nicht** folgt → nach dem Cron muss die Erinnerung ankommen, und die Glocke ist wieder leer (verbraucht). ⚠️ Gegenprobe: ein Konto, das folgt **und** vormerkt, bekommt **eine** Meldung, nicht zwei | 92 |
-| A38 | **Das Konto als Liste**: Zwei Gruppen mit Haarlinien statt sechs Karten, Überschrift „Als Verkäufer" über den letzten zweien. Die Seite muss **ohne Scrollen** bis „Abmelden" reichen | 94 |
+| ~~A38~~ | ⚠️ **22.09.2026 geprüft — zwei von drei Zusicherungen stimmen nicht mehr, und das war richtig so.** ✅ Zwei Gruppen mit Haarlinien statt Karten: **steht**. ❌ Die Überschrift heißt „Verkaufen & Versand", nicht „Als Verkäufer", und deckt **drei** Zeilen. ❌ **„Ohne Scrollen bis Abmelden" gilt nicht mehr** — gebrochen am **27.08.**, einen Tag nach der Zusage, durch „Geld empfangen" aus dem Connect-Umbau (`16407015`, 54 Zeilen). Die Zusicherung wurde **nicht wiederhergestellt**, sondern ersetzt: Bei acht Zielen ist „alles auf einen Bildschirm" nicht mehr das Ziel — wichtig ist, dass das **Dringende** sichtbar ist. Die Folge war real: Ausgerechnet die Zeile mit rotem „unvollständig" lag unter der Falz. Dafür steht jetzt ein Hinweis ganz oben (Abschnitt 125) | 94, 125 |
 | ~~A39~~ | ⚠️ **Verschoben nach D8 (11.09.2026).** Stand hier falsch: Der Weg beginnt bei „Deine Zuschläge", und ein Zuschlag lässt sich **allein nicht erzeugen** — dafür braucht es eine Sendung und ein zweites Konto, das bietet. Am 11.09. am Gerät aufgefallen, als alle Zuschläge gelöscht oder abgelaufen waren | 94 |
 
 ### B — zweites Konto, aber keine Sendung nötig
@@ -17386,3 +17386,83 @@ der OTA. Umgekehrt haette der Client acht Spalten gelesen, die es noch nicht
 gibt — `42703` auf der Merkliste, bei jedem Nutzer, bis die Migration
 nachkommt. Bei reinen JS-Aenderungen ist die Reihenfolge egal; sobald ein OTA
 eine neue Spalte LIEST, ist sie es nicht mehr.
+
+## 125. Gruppe A angefasst — und eine Zusicherung von vorgestern war gebrochen (22.09.2026)
+
+**Auslöser.** Zaur: *„mach weiter mit den offenen punkten"*. Gruppe A der
+Prüfliste ist als *„eine halbe Stunde, braucht niemanden außer dir"*
+definiert; offen waren A32, A36, A37, A38.
+
+### A38 — geprüft, und die interessante Antwort ist ein Nein
+
+Abschnitt 94 (26.08.2026) hat für die Konto-Seite zugesichert:
+
+> „Die ganze Seite passt auf einen Bildschirm, inklusive Paket und Abmelden."
+
+Am Gerät nachgesehen: **Sie passt nicht.** Und die Ursache steht im eigenen
+Verlauf — `16407015` („Connect Standard") hat am **27.08.**, einen Tag nach
+der Zusage, „Geld empfangen" ergänzt. 54 Zeilen. Niemand hat den Satz von
+gestern noch einmal gelesen.
+
+⚠️ **Das ist dieselbe Fehlerklasse wie Abschnitt 124**, nur langsamer: Eine
+Zusicherung steht an einer Stelle, eine Änderung an einer anderen hebt sie
+auf, und weil nichts fehlschlägt, merkt es niemand. Dort war es eine
+SQL-Funktion gegen einen TypeScript-Client, hier ein Satz in der Übergabe
+gegen eine spätere Datei.
+
+**Die Zusicherung wurde nicht wiederhergestellt, sondern ersetzt.** Bei acht
+Zielen ist „alles auf einen Bildschirm" nicht mehr das richtige Maß — niemand
+sucht „Abmelden" ohne zu scrollen. Das eigentliche Anliegen von Abschnitt 94
+war ein anderes: *Wichtiges darf nicht unter die Falz fallen* (damals „Deine
+Pakete").
+
+**Und genau das war verletzt.** Unter der Falz lag ausgerechnet die eine
+Zeile mit rotem „unvollständig": **Geld empfangen**. Der Kommentar im Code
+sagt selbst, was daran hängt — ohne verbundenes Stripe-Konto steht an jedem
+Artikel „Nachricht schreiben" statt „Kaufen". Der Verkäufer sieht nicht,
+warum niemand kauft.
+
+Gebaut: ein Hinweis direkt unter „Konto", sichtbar nur solange der Zustand
+`warn` ist, mit demselben Ziel wie die Zeile unten. Er nennt die **Folge**,
+nicht den Mechanismus: *„Solange das offen ist, steht an deinen Artikeln
+‚Nachricht schreiben' statt ‚Kaufen'."*
+
+⚠️ **Rotes Wort, keine rote Fläche** — in Berkat ist Rot die laufende Uhr.
+⚠️ **Und ein Fehler beim Bauen, im Simulator gesehen:** `kind="card"` an
+`PressFeedback` steuert nur die Druck-Animation, **nicht** den Hintergrund.
+Der Hinweis schwebte ohne Fläche auf dem Grund, während jede andere Zeile der
+Seite auf einer Karte sitzt. Ein Name, der mehr verspricht als er tut.
+
+### A32 — nicht prüfbar, Voraussetzung fehlt
+
+Auf „Verkaufen" steht **„6 kaufbar"** ohne den Zusatz „· 1 ohne Preis". Es
+gibt gerade keinen preislosen Artikel, und über das Formular lässt sich keiner
+anlegen — es verlangt einen Preis. Der einzige Weg dahin ist der Umweg
+**Termin anlegen → Artikel vorbereiten → Termin absagen**
+(`release_prepared_on_plan_end` legt ihn dann ohne Preis zurück ins Regal).
+
+Damit ist A32 kein Fünf-Minuten-Blick, sondern eine bewusste Entscheidung,
+Testdaten auf einem echten Konto zu erzeugen. **Nicht ohne Zaurs Wort.**
+
+### A36 und A37 — angehalten, nicht gemacht
+
+Beide verlangen, **live zu gehen** oder **einen Termin anzukündigen**. Beides
+schickt einen Push an echte Follower. Das ist keine Prüfung, die man nebenbei
+macht — die Prüfliste sagt bei A36 selbst *„vorher prüfen, wie viele Follower
+das sendende Konto hat"*. Liegt bei Zaur.
+
+### Der größere Fund
+
+Zwei Dinge auf seinem Konto sind unfertig, und sie sind **nicht dasselbe**:
+
+| | Wo | Was fehlt |
+|---|---|---|
+| „Verkäuferprofil einrichten · 2 von 4" | Verkaufen | Termin ankündigen, erste Show — **Gewöhnung**, kein Blocker |
+| „Geld empfangen · unvollständig" | Konto | **Stripe Connect.** Solange das offen ist, kann niemand kaufen |
+
+Das Zweite ist der eigentliche offene Punkt dieser Woche — und **es ist kein
+Code**. Es ist Stripes Onboarding mit Ausweisdaten, und das kann nur Zaur
+selbst. Solange es offen ist, ist auch **B18** (echte Zahlung auf ein
+verbundenes Konto) nicht prüfbar, egal wie viele Konten bereitstehen.
+
+`tsc` 0, **431 Tests**.
