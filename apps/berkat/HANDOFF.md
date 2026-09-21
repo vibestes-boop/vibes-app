@@ -17370,3 +17370,19 @@ Spalten), `CLAUDE.md` Regel 10 auf den 22.09.2026 gesetzt. Der Abzug lief mit
   (`ss.user_id <> NEW.seller_id`) und gehört damit in Gruppe D der Prüfliste.
   Bis dahin ist die neue Trefferlogik geprüft, aber nicht am lebenden Weg
   belegt.
+
+### Ausgeliefert
+
+Commit `f181854b`, gepusht. Migration `20260921230000` ist per
+`supabase db push --linked` in der Live-Datenbank. OTA `production`,
+Runtime `1.0.0`, iOS und Android.
+
+- Update-Gruppe: `0698d269-20b3-486d-8e6c-8da3dce73986`
+- iOS-Update: `01a0c5fe-b448-7cc5-9564-dc11b85ffc3e`
+- **Im Konto-Fuss erwartete Kennung: `01a0c5fe`**
+
+⚠️ **Reihenfolge war hier Pflicht, nicht Geschmack:** erst die Migration, dann
+der OTA. Umgekehrt haette der Client acht Spalten gelesen, die es noch nicht
+gibt — `42703` auf der Merkliste, bei jedem Nutzer, bis die Migration
+nachkommt. Bei reinen JS-Aenderungen ist die Reihenfolge egal; sobald ein OTA
+eine neue Spalte LIEST, ist sie es nicht mehr.
