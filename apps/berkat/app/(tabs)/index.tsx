@@ -16,6 +16,7 @@ import { showReasonText } from '../../lib/showDiscovery';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
 import { CategoryRail, categoryRailMetrics, type RailItem } from '../../components/CategoryRail';
+import { splitShelf } from '../../lib/shelfSplit';
 import { CategorySheet } from '../../components/CategorySheet';
 import { HomeAccountActions } from '../../components/HomeAccountActions';
 import { HomeSkeleton } from '../../components/HomeSkeleton';
@@ -33,6 +34,7 @@ import { DEFAULT_DISCOVERY, expandInterests } from '../../lib/discovery';
 import { useDiscoveryPreferences } from '../../lib/useDiscoveryPreferences';
 import { useDiscoveryListings } from '../../lib/useDiscoveryListings';
 import { ListingCard } from '../../components/ListingCard';
+import { ShelfRail } from '../../components/ShelfRail';
 import { useSavedCounts, useSavedIds, useToggleSaved } from '../../lib/useSaved';
 import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
@@ -314,7 +316,21 @@ export default function HomeScreen() {
   const categoryShelfQuery = useCategoryListings(filterSlugs, browsing);
   const shelfQuery = filter === ALL ? wholeShelfQuery : categoryShelfQuery;
   const categoryShelf = categoryShelfQuery.data ?? [];
-  const shelf = useMemo(() => (shelfQuery.data ?? []).slice(0, SHELF_PREVIEW), [shelfQuery.data]);
+  /**
+   * ⚠️ EIN Bestand, ZWEI Formen — und kein Artikel zweimal.
+   *
+   * Die Wischreihe bekommt ausschließlich den Überhang: die Angebote, die
+   * unter dem Raster gar nicht erst erschienen wären. Das Raster behält seine
+   * acht Karten, immer. Die vier Fälle (zu wenig, knapp, normal, viel) und die
+   * Begründung stehen in `lib/shelfSplit.ts` — dort sind sie geprüft, hier
+   * wären sie es nicht.
+   */
+  const { rail: railShelf, grid: shelf } = useMemo(
+    () => splitShelf(shelfQuery.data ?? [], SHELF_PREVIEW),
+    [shelfQuery.data],
+  );
+  /** Reihe UND Raster — beide Flächen brauchen Name, Herz und Merk-Zahl. */
+  const shelfVisible = useMemo(() => [...railShelf, ...shelf], [railShelf, shelf]);
   const shelfLoading = browsing && (shelfQuery.isLoading || (filter === ALL && !preferencesReady));
   const discoveryWarning = filter === ALL && (wholeShelfQuery.partial || preferences.isError ||
     (selection.categorySlugs.length > 0 && categoryOptions.isError));
@@ -330,7 +346,7 @@ export default function HomeScreen() {
   // Kette läuft profiles → visible → idle → shelf, ein Ring wäre die Folge.
   // React Query hält beide Antworten ohnehin im selben Zwischenspeicher, und
   // bei leerem Regal fragt dieser hier gar nicht erst (`enabled`).
-  const shelfProfiles = useProfiles(shelf.map((l) => l.seller_id));
+  const shelfProfiles = useProfiles(shelfVisible.map((l) => l.seller_id));
 
   // ⚠️ Merken direkt von der Karte — hier fehlte es, und zwar als EINZIGES der
   // drei Raster. Der Kommentar am Regal-Zweig unten sagt seit dem 18.08.
@@ -348,7 +364,10 @@ export default function HomeScreen() {
   // Angebote unter demselben Schlüssel.
   const { data: savedIds } = useSavedIds(userId);
   const toggleSaved = useToggleSaved(userId);
-  const { data: saveCounts } = useSavedCounts(shelf.map((l) => l.id));
+  // ⚠️ Über BEIDE Flächen. Stünde hier weiter nur `shelf`, zeigte jede Karte
+  // der Wischreihe ein Herz ohne Zahl — dieselbe stumme Lücke wie am 18.08.,
+  // als das Herz auf der Startseite ganz fehlte.
+  const { data: saveCounts } = useSavedCounts(shelfVisible.map((l) => l.id));
 
   // Aktualisiert die sichtbare Quelle, einschließlich Regal, Stories und Zähler.
   // refetch() umgeht enabled: die ausgeblendete Kategorie-/Gesamtquelle deshalb
@@ -399,14 +418,14 @@ export default function HomeScreen() {
    * (Übergabe: vier Fassungen derselben Auskunft, und sie liefen auseinander).
    */
   const shelfCard = useCallback(
-    (listing: Listing) => {
+    (listing: Listing, layout: 'grid' | 'tile' = 'grid') => {
       const mine = listing.seller_id === userId;
       const saved = Boolean(savedIds?.has(listing.id));
       return (
         <ListingCard
           listing={listing}
           sellerName={shelfProfiles[listing.seller_id]?.username}
-          layout="grid"
+          layout={layout}
           mine={mine}
           saved={saved}
           saveCount={saveCounts?.get(listing.id)}
@@ -427,6 +446,18 @@ export default function HomeScreen() {
     },
     [savedIds, saveCounts, shelfProfiles, toggleSaved, userId],
   );
+
+  /**
+   * Zaurs „Galerie". Sie steht ÜBER dem Raster, weil sie das Neueste trägt —
+   * und sie trägt nichts, was unten noch einmal käme (`splitShelf`).
+   *
+   * ⚠️ Dieselbe `shelfCard` wie im Raster. Die Reihe ist eine Fläche, kein
+   * zweiter Kartentyp; die Anbieterkennzeichnung und das Merken-Herz gibt es
+   * nur einmal zu pflegen.
+   */
+  const shelfRail = railShelf.length > 0
+    ? <ShelfRail items={railShelf} renderCard={(listing) => shelfCard(listing, 'tile')} />
+    : null;
 
   const showCard = (show: LiveShow, featured = false) => {
     const preview = previews[show.id];
@@ -568,7 +599,9 @@ export default function HomeScreen() {
                 </View>
               ) : null}
               {singleShow ? showCard(singleShow, true) : null}
-              {shelfInGrid && (idle || shelf.length > 0 || shelfLoading) ? shelfHeading : null}
+              {shelfInGrid && (idle || shelf.length > 0 || shelfLoading) ? (
+                <>{shelfRail}{shelfHeading}</>
+              ) : null}
             </View>
         }
         ListEmptyComponent={
@@ -652,7 +685,9 @@ export default function HomeScreen() {
                   ⚠️ Die Überschrift steht NUR im Sende-Fall. Ohne Show trägt
                   sie schon der Kopf („Direkt kaufen") — zweimal derselbe Satz auf einem Bildschirm wäre
                   Lärm. */}
-              {!shelfInGrid && (shelf.length > 0 || shelfLoading) ? shelfHeading : null}
+              {!shelfInGrid && (shelf.length > 0 || shelfLoading) ? (
+                <>{shelfRail}{shelfHeading}</>
+              ) : null}
 
               {/* Ein eigenes, umbrechendes Raster statt weiterer Zeilen in der
                   Liste: Ein Abschnittskopf mitten in einem `numColumns={2}`-

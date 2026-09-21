@@ -19,7 +19,7 @@ const nodes = node => !node ? [] : Array.isArray(node) ? node.flatMap(nodes) : [
   ...nodes(node.props?.children), ...nodes(node.props?.ListHeaderComponent), ...nodes(node.props?.ListFooterComponent), ...nodes(node.props?.ListEmptyComponent)];
 const text = node => nodes(node).filter(n => n.type === 'Text').map(n => n.props.children).flat().join(' ');
 const show = (id, extra = {}) => ({ id, host_id: 'host', title: `Show ${id}`, thumbnail_url: null, viewer_count: 0, category: 'mode', women_only: false, ...extra });
-const listing = id => ({ id, seller_id: 'seller' });
+const listing = (id, created_at = `2026-09-01T00:00:0${id.length % 10}.000000Z`) => ({ id, seller_id: 'seller', created_at });
 function fixture() {
   let cursor = 0; const slots = [], routes = [];
   const state = { shows: [], shelf: [listing('a'), listing('b')], previews: {}, categoryError: false, shopCount: 10 };
@@ -55,6 +55,11 @@ function fixture() {
     '../../components/CategoryRail': { CategoryRail: 'CategoryRail', categoryRailMetrics: () => ({ tall: 92, short: 48 }) },
     // Seit dem 21.09.2026: das Blatt hinter dem Pfeil am Ende der Leiste.
     '../../components/CategorySheet': { CategorySheet: 'CategorySheet' },
+    '../../components/ShelfRail': { ShelfRail: 'ShelfRail' },
+    // ECHT, nicht gestellt: Die Aufteilung auf Reihe und Raster ist genau das,
+    // was dieser Test prueft ("without duplication"). Ein Stub wuerde die
+    // Zusicherung durch sich selbst ersetzen.
+    '../../lib/shelfSplit': load('lib/shelfSplit.ts', {}),
   };
   for (const name of ['BerkatMark', 'HomeLiveCard', 'HomeAccountActions', 'HomeSkeleton', 'StoryRail', 'UpcomingStrip', 'ListingCard', 'PressFeedback']) deps[`../../components/${name}`] = { [name]: name };
   const home = load('app/(tabs)/index.tsx', deps).default;
@@ -138,4 +143,47 @@ test('live status preserves restrictions and actual counts without inventing an 
   const open = nodes(restricted).find(n => n.type === 'PressFeedback');
   assert.match(open.props.accessibilityLabel, /12 Zuschauer, Frauen-Only/);
   assert.match(text(restricted), /Frauen-Only/);
+});
+
+// ── Die Wischreihe (Zaurs „Galerie"), seit dem 21.09.2026 ──────────────────
+// Der Einwand gegen die Reihe war, sie zeige dieselben Artikel ein zweites Mal.
+// Genau das prüfen diese beiden Tests — an der echten `splitShelf`, nicht an
+// einem Stub.
+const shelfOf = (count) => Array.from({ length: count }, (_, i) =>
+  listing(`l${String(i).padStart(2, '0')}`, `2026-09-${String(i + 1).padStart(2, '0')}T10:00:00.000000Z`));
+
+test('die Wischreihe trägt ausschließlich, was das Raster nicht trägt', () => {
+  const f = fixture();
+  f.state.shelf = shelfOf(16);
+  const list = f.list();
+  const rail = nodes(list.props.ListHeaderComponent).find(n => n.type === 'ShelfRail');
+  assert.ok(rail, 'die Reihe fehlt im Kopf');
+  const railIds = Array.from(plain(rail.props.items), row => row.id);
+  const gridIds = Array.from(plain(list.props.data.filter(n => !n.spacer)), n => n.shelf.id);
+  assert.equal(railIds.length, 8);
+  assert.equal(gridIds.length, 8, 'das Raster darf durch die Reihe nichts verlieren');
+  assert.equal(new Set([...railIds, ...gridIds]).size, 16, 'kein Artikel zweimal');
+  assert.equal(railIds[0], 'l15', 'die Reihe beginnt beim Neuesten');
+
+  // Läuft eine Show, steht das Regal im Fuß — und die Reihe mit ihm.
+  f.state.shows = [show('s0'), show('s1')];
+  const withShows = f.list();
+  assert.equal(nodes(withShows.props.ListHeaderComponent).filter(n => n.type === 'ShelfRail').length, 0);
+  const footRail = nodes(withShows.props.ListFooterComponent).find(n => n.type === 'ShelfRail');
+  assert.ok(footRail, 'die Reihe fehlt im Fuß');
+  const footIds = Array.from(plain(footRail.props.items), row => row.id);
+  const footCards = nodes(withShows.props.ListFooterComponent).filter(n => n.type === 'ListingCard');
+  assert.equal(footCards.length, 8);
+  assert.equal(new Set([...footIds, ...Array.from(plain(footCards), c => c.props.listing.id)]).size, 16);
+});
+
+test('wenig Bestand bekommt gar keine Reihe, nicht eine leere', () => {
+  const f = fixture();
+  for (const count of [0, 2, 8, 11]) {
+    f.state.shelf = shelfOf(count);
+    const list = f.list();
+    assert.equal(nodes(list.props.ListHeaderComponent).filter(n => n.type === 'ShelfRail').length, 0,
+      `${count} Angebote dürfen keine Reihe ergeben`);
+    assert.equal(list.props.data.filter(n => !n.spacer).length, Math.min(count, 8));
+  }
 });

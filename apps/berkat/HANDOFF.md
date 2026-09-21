@@ -16209,3 +16209,100 @@ bei 48 px lesbar. Die vier Punkte mehr kosteten dem Untertitel vier Punkte Breit
 kippte dadurch ins Abschneiden**, Vorher/Nachher am Bild verglichen. „Beauty & Duft" und „Islamica"
 brechen weiterhin ab, wie schon vorher; zwei von zwölf ist der Preis für zwei echte Kindernamen
 statt eines getexteten Untertitels.
+
+---
+
+## 112. Die Galerie — gebaut, aber nicht als zweite Ansicht derselben Artikel (21.09.2026)
+
+Zaur: *„baue jetzt die galerie"*.
+
+Gemeint ist die waagerechte Wischreihe aus der Kleinanzeigen-App, die er am selben Tag gezeigt
+hatte: *„diese kärtchen sind kleiner und man kann die horizontal wischen"*. In Abschnitt 110 hatte
+ich sie mit dieser Begründung **nicht** gebaut:
+
+> „Berkats ‚Neu entdecken' zeigt heute alles, was da ist. Eine Wischreihe darüber zöge dieselben
+> Artikel ein zweites Mal ins Bild — der Bildschirm sähe voller aus und enthielte weniger."
+
+⚠️ **Die Begründung gilt weiter — sie ist die Bauvorschrift, nicht ihr Gegenteil.** Die Reihe
+bekommt ausschließlich den **Überhang**: die Angebote, die unter dem Raster gar nicht erst
+erschienen wären. Ein Artikel steht auf der Startseite genau einmal.
+
+### Die Regel
+
+`lib/shelfSplit.ts` — eigene Datei, weil die Regel vier Fälle hat und jeder davon ein Bildschirm
+ist, den jemand sieht. In einer 880-Zeilen-Bildschirmdatei prüft die niemand nach.
+
+| Bestand | Raster | Reihe |
+|---|---|---|
+| ≤ 11 | alles (max. 8) | **keine** |
+| 12 | 8 | 4 |
+| 16+ | 8 | 8 |
+
+⚠️ **Das Raster verliert nie etwas.** Wer heute acht Karten sieht, sieht morgen acht Karten *und*
+darüber eine Reihe — nie sechs Karten und darüber eine Reihe. Eine neue Fläche, die eine alte
+leerräumt, ist ein Tausch und kein Gewinn.
+
+⚠️ **Unter vier Kärtchen keine Reihe.** Eine Wischfläche mit einem Kärtchen lädt zum Wischen ein
+und ist nach dem ersten Wisch leer. Das ist schlechter als keine Reihe.
+
+Die Reihe sortiert nach `created_at`, das Raster behält die Rangfolge aus `selectDiscovery`. Das ist
+der Unterschied, der die zweite Fläche rechtfertigt: „zuletzt eingestellt" gegen „passt zu dir".
+Zwei Fragen, zwei Antworten — nicht zweimal dieselbe Antwort in zwei Größen.
+
+### ⚠️ Der Fehler, den kein Werkzeug sehen konnte
+
+`selectDiscovery` hat einen **Vorgabewert `limit = 8`**. Die Entdeckung gab also acht Angebote
+zurück, das Raster zeigte acht — **der Überhang war immer null, die Reihe erschien nie**. Auf keinem
+Gerät, bei keinem Bestand.
+
+`tsc` war grün. Alle 425 Tests waren grün, einschließlich der neuen: Die Aufteilung **rechnete
+richtig, sie bekam nur nie etwas zu verteilen**. Sichtbar wurde es in einer Sekunde im Simulator.
+
+> ⚠️ **Lehre: Ein Test prüft die Rechnung, nicht den Vorrat.** Wer eine Fläche an eine Menge hängt,
+> muss die Quelle dieser Menge mitlesen — ein Vorgabewert drei Dateien weiter kann die ganze Fläche
+> stumm abschalten. Behoben mit `DISCOVERY_LIMIT = 16` in `useDiscoveryListings.ts` (acht fürs
+> Raster, acht für die Reihe; mehr wäre sinnlos, `CANDIDATES` holt je Quelle nur sechzehn).
+
+### Die vierte Kartenform
+
+Erster Anlauf: `layout="grid"` in 140 pt. Im Simulator sah die Reihe aus wie das Raster, nur
+waagerecht — und nahm **die halbe Höhe des Bildschirms** ein.
+
+Der Grund steht in `ListingCard` selbst: Der Titel reserviert `minHeight: 40 * fontScale` (zwei
+Zeilen) und die Merkmalszeile `32 * fontScale`, notfalls mit einem Leerzeichen gefüllt. Das ist im
+Raster **Absicht** — es hält die Preise zweier nebeneinanderliegender Karten auf gleicher Höhe. In
+einer waagerechten Reihe steht keine Nachbarkarte darunter; dort sind es 72 pt Luft.
+
+Deshalb `layout="tile"`: eine Titelzeile, keine reservierte Merkmalszeile, Anbieterangabe neben dem
+Namen statt darunter. Karte 126 pt statt 140. **Kein neuer Kartentyp** — vierte Form derselben
+`ListingCard`, aus dem Grund, der in ihrem Kopf steht (vier abgeschriebene Fassungen, die
+auseinanderliefen).
+
+⚠️ **Die Anbieterkennzeichnung bleibt** (Art. 246d § 1 EGBGB). Sie rückt nur. Schrumpfen darf allein
+der **Name** (`tileSeller: flexShrink 1`), nie die Angabe (`tileKind: flexShrink 0`) — ein
+abgeschnittenes „Privatverk…" wäre keine Angabe mehr. Und **kein `flexWrap`**: Mit Umbruch stand
+„zaur Gewerblich" auf einer Zeile und „brandwerkx1 / Privatverkauf" auf zweien, die Kärtchen waren
+verschieden hoch, und weil sie sich auf das größte strecken, wuchs die ganze Reihe mit dem längsten
+Verkäufernamen.
+
+### ⚠️ „Zuletzt", nicht „Frisch"
+
+Die Überschrift hieß zuerst „Frisch eingestellt". Im Simulator trug der **neueste** Artikel des
+Bestands „vor 5 Wochen eingestellt". Über einem fünf Wochen alten Teppich ist „frisch" ein
+Versprechen, das der Bestand nicht hält — und das Design-Gesetz verbietet ausdrücklich, Betrieb
+vorzutäuschen, wo keiner ist. „Zuletzt eingestellt" benennt die Sortierung und bleibt bei jedem
+Bestand wahr. Nebenbei: zweimal „neu" über „Neu entdecken" wäre Lärm gewesen.
+
+### Geprüft
+
+`tsc` 0, **425 von 425** (acht neu: sechs an der Aufteilung, zwei an der Startseite, beide an der
+**echten** `splitShelf` statt an einem Stub — ein Stub hätte die Zusicherung durch sich selbst
+ersetzt). iPhone-17-Simulator: Reihe sichtbar, acht Kärtchen durchgewischt, angeschnittenes drittes
+am Rand als Wisch-Zeichen, Tipp öffnet den richtigen Artikel, kein Artikel doppelt zwischen Reihe
+und Raster.
+
+### Offen
+
+Der Bestand liegt bei sechzehn Kandidaten je Quelle (`CANDIDATES`). Bei einem gewachsenen
+Marktplatz ist die Reihe damit weiterhin nur ein Ausschnitt; der Weg ins ganze Regal bleibt der
+Knopf unter dem Raster.

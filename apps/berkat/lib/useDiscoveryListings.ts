@@ -5,6 +5,24 @@ import { withDiscoveryDeadline } from './discoveryRequest';
 export { withDiscoveryDeadline } from './discoveryRequest';
 
 const CANDIDATES = 16;
+
+/**
+ * Wie viele Angebote die Entdeckung ZURÜCKGIBT — nicht, wie viele sie prüft.
+ *
+ * ⚠️ HIER STAND BIS ZUM 21.09.2026 NICHTS, UND DAMIT GALT DIE ACHT AUS
+ * `selectDiscovery`. Das war richtig, solange die Startseite EINE Fläche hatte:
+ * acht Karten im Raster, acht Angebote geholt, kein Rest.
+ *
+ * Mit der Wischreihe („Galerie", `lib/shelfSplit.ts`) sind es zwei Flächen, und
+ * die Reihe bekommt ausschließlich den Überhang. Bei acht Angeboten ist der
+ * Überhang null — die Reihe erschien also nie, auf keinem Gerät, bei keinem
+ * Bestand. `tsc` war grün, alle Tests waren grün: Die Aufteilung rechnete
+ * richtig, sie bekam nur nie etwas zu verteilen.
+ *
+ * Sechzehn = acht fürs Raster plus acht für die Reihe. Mehr wäre sinnlos, denn
+ * `CANDIDATES` holt je Quelle nur sechzehn Zeilen.
+ */
+const DISCOVERY_LIMIT = 16;
 // Verified foreign keys: live_auctions.seller_id → profiles.id ← follows.following_id.
 // The server filters all follow relationships; no first-page truncation or per-seller requests.
 const FOLLOW_COLUMNS = `${LISTING_COLUMNS},seller:profiles!live_auctions_seller_id_fkey!inner(followers:follows!follows_following_id_fkey!inner(follower_id))`;
@@ -39,7 +57,7 @@ export function useDiscoveryListings(
         return result?.status === 'fulfilled' ? result.value : [];
       };
       return {
-        ...selectDiscovery(rows('recent'), rows('interest'), rows('following'), userId),
+        ...selectDiscovery(rows('recent'), rows('interest'), rows('following'), userId, DISCOVERY_LIMIT),
         partial: results.some((r) => r.status === 'rejected'),
       };
     },

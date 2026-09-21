@@ -53,8 +53,17 @@ type Props = {
    * `grid` zum Stöbern („was soll ich mir ansehen?" — das Bild IST der Inhalt),
    * `search` für größere Suchzeilen, `row` zum Arbeiten („welches davon meine ich?" — das Bild ist nur
    * Wiedererkennung). Die Regel steht in HANDOFF 18.
+   *
+   * `tile` ist `grid` in schmal — für die Wischreihe auf der Startseite
+   * (21.09.2026). Sie verzichtet auf die zweite Titelzeile, die reservierte
+   * Merkmalszeile und die zweizeilige Anbieterangabe; das sind zusammen rund
+   * 90 pt, die im Raster die Preise auf gleiche Höhe bringen und in einer
+   * waagerechten Reihe nur Höhe kosten.
+   *
+   * ⚠️ Die ANBIETERKENNZEICHNUNG bleibt (Art. 246d § 1 EGBGB) — sie rückt nur
+   * neben den Namen statt darunter. Wer hier weiter kürzt, kürzt eine Pflicht.
    */
-  layout?: 'grid' | 'row' | 'search';
+  layout?: 'grid' | 'row' | 'search' | 'tile';
   /** Eigener Artikel — bekommt eine ruhige Markierung statt eines Kaufwegs. */
   mine?: boolean;
   /**
@@ -102,6 +111,7 @@ export function ListingCard({
   onToggleSaved,
 }: Props) {
   const { fontScale } = useWindowDimensions();
+  const tile = layout === 'tile';
   const imageCount = listingImages(listing).length;
   const meta = listingMeta(listing, conditionLabel(listing.condition));
   // Nur das Etikett, nicht der ganze Satz: Die Rechtsfolge („kein
@@ -332,7 +342,7 @@ export function ListingCard({
 
       {/* Zwei Titelzeilen halten Preise im Raster auf gleicher Höhe.
           Die Höhe folgt der Systemschrift, damit größere Schrift Platz behält. */}
-      <Text numberOfLines={2} style={[s.title, { minHeight: 40 * fontScale }]}>
+      <Text numberOfLines={tile ? 1 : 2} style={[s.title, tile ? null : { minHeight: 40 * fontScale }]}>
         {listing.title}
       </Text>
       {/* ⚠️ Der Preis bleibt UNTER dem Bild, nicht darauf.
@@ -349,12 +359,18 @@ export function ListingCard({
           zwei völlig verschiedene Zusagen. Ohne den Vorsatz sähe ein Kleid,
           das Freitag ab 1 € versteigert wird, aus wie ein Kleid für 1 €. */}
       <Text style={s.price}>{priceText}</Text>
-      <Text numberOfLines={2} style={[s.meta, { minHeight: 32 * fontScale }]}>
-        {meta ?? ' '}
-      </Text>
-      <View style={s.byline}>
-        {sellerName ? <Text numberOfLines={1} style={s.seller}>{sellerName}</Text> : null}
-        {kind ? <Text style={s.kind}>{kind}</Text> : null}
+      {/* ⚠️ Die leere Zeile ist im Raster ABSICHT: Sie haelt den Preis der
+          Nachbarkarte auf gleicher Hoehe, auch wenn ein Artikel weder Groesse
+          noch Zustand noch Ort traegt. In der Wischreihe steht keine
+          Nachbarkarte darunter — dort waeren es 32 pt Luft. */}
+      {tile ? null : (
+        <Text numberOfLines={2} style={[s.meta, { minHeight: 32 * fontScale }]}>
+          {meta ?? ' '}
+        </Text>
+      )}
+      <View style={[s.byline, tile && s.tileByline]}>
+        {sellerName ? <Text numberOfLines={1} style={[s.seller, tile && s.tileSeller]}>{sellerName}</Text> : null}
+        {kind ? <Text numberOfLines={1} style={[s.kind, tile && s.tileKind]}>{kind}</Text> : null}
       </View>
     </PressFeedback>
   );
@@ -447,6 +463,20 @@ const s = StyleSheet.create({
 
   // Anbietername und Typ bekommen eigene Zeilen, auch bei schmalen Karten.
   byline: { gap: 2, marginTop: space.sm },
+  /* Name und Anbietertyp nebeneinander statt untereinander — spart eine Zeile,
+     ohne die Pflichtangabe zu verlieren.
+
+     ⚠️ KEIN `flexWrap`. Mit Umbruch stand „zaur Gewerblich" auf einer Zeile
+     und „brandwerkx1 / Privatverkauf" auf zweien — die Karten der Reihe waren
+     unterschiedlich hoch, und weil sie sich auf die groesste strecken, wuchs
+     die ganze Reihe mit dem laengsten Namen. Im Simulator am 21.09. gesehen.
+
+     ⚠️ Schrumpfen darf nur der NAME (`tileSeller`). Die Anbieterangabe ist
+     Pflicht (Art. 246d § 1 EGBGB); ein abgeschnittenes „Privatverk…" waere
+     keine Angabe mehr. Der vollstaendige Name steht auf der Artikelseite. */
+  tileByline: { flexDirection: 'row', alignItems: 'baseline', columnGap: space.xs, marginTop: space.xs },
+  tileSeller: { flexShrink: 1 },
+  tileKind: { flexShrink: 0 },
   seller: { fontSize: 11, lineHeight: 15, color: ui.textMuted },
   title: {
     fontSize: 15,
