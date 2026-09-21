@@ -48,7 +48,7 @@ function match(row, logic) {
 function response(rows, call) {
   let result=rows.filter(row=>call.filters.every(([op,col,v,extra])=>
     op==='is' ? row[col]===v : op==='eq' ? row[col]===v : op==='in' ? v.includes(row[col]) :
-    op==='not' ? row[col]!==extra : op==='lte' ? row[col]<=v : new RegExp(extra,'i').test(row[col]??'')));
+    op==='not' ? row[col]!==extra : op==='lte' ? row[col]<=v : op==='gte' ? row[col]>=v : new RegExp(extra,'i').test(row[col]??'')));
   if(call.select.includes('!inner')) result=result.filter(row=>row.show!==null);
   if(call.or) result=result.filter(row=>match(row,call.or));
   result.sort((a,b)=> {for(const [col,{ascending}] of call.orders) {
@@ -62,7 +62,7 @@ function load(request, capturedResult={}, debounce) {
   const api={from:table=>{
     const call={table,filters:[],orders:[]};
     const builder={then:(yes,no)=>Promise.resolve().then(()=>request(call)).then(yes,no)};
-    for(const op of ['is','eq','not','in','lte','filter']) builder[op]=(...args)=>{call.filters.push([op,...args]);return builder;};
+    for(const op of ['is','eq','not','in','lte','gte','filter']) builder[op]=(...args)=>{call.filters.push([op,...args]);return builder;};
     for(const op of ['select','or','limit','retry']) builder[op]=value=>{call[op]=value;return builder;};
     builder.order=(...args)=>{call.orders.push(args);return builder;};
     builder.abortSignal=signal=>{call.signal=signal;return builder;};
@@ -103,6 +103,26 @@ test('parent/child, text, size, city, condition and price apply before first-pag
   for(const call of calls) assert.deepEqual(plain(call.filters.find(f=>f[0]==='in')),['in','category',['child','parent']]);
   assert.equal(calls[0].filters.find(f=>f[0]==='lte')[1],'buy_now_cents');
   assert.equal(calls[1].filters.find(f=>f[0]==='lte')[1],'start_price_cents');
+});
+// Both bounds must measure the column of their OWN stream: show stock by
+// start_price_cents, shelf stock by buy_now_cents. If one bound takes the
+// wrong column, an item drops out of exactly the range the list claims.
+test('price range applies both bounds against each stream own price column',async()=>{
+  const all=rows(95),calls=[],lib=load(call=>{calls.push(call);return response(all,call);});
+  const signal=new AbortController().signal;
+  const wide=await lib.fetchBrowsePage({minPrice:1000,maxPrice:3000},null,signal);
+  assert.equal(wide.rows.length,30);
+  assert.ok(wide.rows.every(row=>price(row)>=1000&&price(row)<=3000));
+  assert.equal(calls[0].filters.find(f=>f[0]==='gte')[1],'buy_now_cents');
+  assert.equal(calls[1].filters.find(f=>f[0]==='gte')[1],'start_price_cents');
+  // Each bound alone, and a range that lands on one exact price.
+  const onlyMin=await lib.fetchBrowsePage({minPrice:2700},null,signal);
+  assert.ok(onlyMin.rows.every(row=>price(row)>=2700));
+  const onlyMax=await lib.fetchBrowsePage({maxPrice:600},null,signal);
+  assert.ok(onlyMax.rows.every(row=>price(row)<=600));
+  const exact=await lib.fetchBrowsePage({minPrice:2700,maxPrice:2700},null,signal);
+  assert.deepEqual(Array.from(exact.rows,row=>row.id),
+    ordered(all.filter(row=>price(row)===2700)).slice(0,30).map(row=>row.id));
 });
 // Colour is a closed list, brand is free text, and the two must not match the
 // same way: "Rot" that also returns "Rotbraun" is a filter the buyer cannot

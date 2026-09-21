@@ -15,6 +15,8 @@ export type BrowseFilters = {
   brand?: string | null;
   size?: string | null;
   city?: string | null;
+  /** Cents, inclusive. Either bound can stand on its own. */
+  minPrice?: number | null;
   maxPrice?: number | null;
   onlyShow?: boolean;
   sort?: BrowseSort;
@@ -34,6 +36,7 @@ export function normalizeBrowseFilters(filters: BrowseFilters) {
     brand: filters.brand?.trim().slice(0, 40) || '',
     size: filters.size?.trim().slice(0, 24) || '',
     city: filters.city?.trim().slice(0, 80) || '',
+    minPrice: filters.minPrice ?? null,
     maxPrice: filters.maxPrice ?? null,
     onlyShow: Boolean(filters.onlyShow),
     sort: filters.sort ?? 'neu',
@@ -85,6 +88,11 @@ export async function fetchBrowsePage(input: BrowseFilters, cursor: Cursor, sign
     if (filters.brand) query = query.filter('brand', 'imatch', literalPattern(filters.brand));
     if (filters.size) query = query.filter('size', 'imatch', literalPattern(filters.size));
     if (filters.city) query = query.filter('city', 'imatch', literalPattern(filters.city));
+    // ⚠️ Both bounds measure `priceColumn`, not one fixed column: show stock
+    // is judged by `start_price_cents`, shelf stock by `buy_now_cents`. They
+    // must use the same yardstick as the sort above, or an item drops out of
+    // the very range the list claims to show.
+    if (filters.minPrice !== null) query = query.gte(priceColumn, filters.minPrice);
     if (filters.maxPrice !== null) query = query.lte(priceColumn, filters.maxPrice);
 
     const logic: string[] = [];

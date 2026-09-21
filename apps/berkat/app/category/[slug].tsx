@@ -66,7 +66,8 @@ export default function CategoryScreen() {
     focused && Boolean(categoryQuery.data),
     {
       condition: filters.cond, color: filters.color, brand: filters.brand,
-      size: filters.size, city: filters.city, maxPrice: filters.maxPrice,
+      size: filters.size, city: filters.city,
+      minPrice: filters.minPrice, maxPrice: filters.maxPrice,
       onlyShow: filters.onlyShow, sort: filters.sort,
     },
   );

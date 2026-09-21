@@ -118,7 +118,8 @@ export default function ShopScreen() {
   const pages = useBrowseListingPages({
     slugs, query,
     condition: filters.cond, color: filters.color, brand: filters.brand,
-    size: filters.size, city: filters.city, maxPrice: filters.maxPrice,
+    size: filters.size, city: filters.city,
+    minPrice: filters.minPrice, maxPrice: filters.maxPrice,
     onlyShow: filters.onlyShow, sort: filters.sort,
   }, focused);
   const { isLoading, refetch } = pages;

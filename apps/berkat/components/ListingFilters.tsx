@@ -54,6 +54,8 @@ export type ListingFilterValues = {
   brand: string | null;
   size: string | null;
   city: string | null;
+  /** Beide in Cents, beide einzeln setzbar. */
+  minPrice: number | null;
   maxPrice: number | null;
   onlyShow: boolean;
   sort: BrowseSort;
@@ -61,7 +63,7 @@ export type ListingFilterValues = {
 
 export const EMPTY_FILTERS: ListingFilterValues = {
   cat: null, cond: null, color: null, brand: null,
-  size: null, city: null, maxPrice: null, onlyShow: false, sort: 'neu',
+  size: null, city: null, minPrice: null, maxPrice: null, onlyShow: false, sort: 'neu',
 };
 
 const PRICE_STEPS = [2500, 5000, 10000, 25000];
@@ -70,6 +72,21 @@ const SORTS: { key: BrowseSort; label: string }[] = [
   { key: 'guenstig', label: 'Günstigste' },
   { key: 'teuer', label: 'Teuerste' },
 ];
+
+/**
+ * Der Preis als EIN Satz, egal welche der beiden Grenzen steht.
+ *
+ * ⚠️ Drei Formen, nicht eine mit Lücken: „ab 25 €", „bis 80 €", „25 € – 80 €".
+ * Ein Chip, der bei offener Untergrenze „– 80 €" zeigte, sähe aus wie ein
+ * Darstellungsfehler; einer, der immer „0 € – 80 €" zeigte, behauptete eine
+ * Grenze, die der Nutzer nie gesetzt hat.
+ */
+function priceLabel(min: number | null, max: number | null): string | null {
+  if (min !== null && max !== null) return `${formatEuro(min)} – ${formatEuro(max)}`;
+  if (min !== null) return `ab ${formatEuro(min)}`;
+  if (max !== null) return `bis ${formatEuro(max)}`;
+  return null;
+}
 
 /**
  * Oberkategorie plus ihre Kinder — die Liste, die `useBrowseListingPages`
@@ -97,10 +114,14 @@ export function useListingFilters(initial?: Partial<ListingFilterValues>) {
   // ⚠️ Die Sortierung bleibt stehen, siehe Kopf.
   const reset = useCallback(() => setValues((v) => ({ ...EMPTY_FILTERS, sort: v.sort })), []);
 
+  // ⚠️ Der Preis zählt als EINER, auch wenn beide Grenzen stehen. Die Zahl
+  // auf dem Knopf muss zu den Chips darunter passen, und dort ist der Bereich
+  // EIN Chip („25 € – 80 €"). Zwei zu zählen und einen zu zeigen wäre die
+  // Sorte kleine Lüge, die den Nutzer an der ganzen Anzeige zweifeln lässt.
   const activeCount = [
     values.cat, values.cond, values.color,
     values.brand?.trim() || null, values.size?.trim() || null, values.city?.trim() || null,
-    values.maxPrice,
+    values.minPrice !== null || values.maxPrice !== null ? 1 : null,
   ].filter((v) => v !== null).length;
 
   return { values, patch, reset, activeCount, narrowed: activeCount > 0 || values.onlyShow };
@@ -154,7 +175,9 @@ export function ListingFilterBar({
     values.cond ? { key: 'cond', label: conditionLabel(values.cond) ?? values.cond, clear: () => patch({ cond: null }) } : null,
     values.brand ? { key: 'brand', label: values.brand, clear: () => patch({ brand: null }) } : null,
     values.city ? { key: 'city', label: values.city, clear: () => patch({ city: null }) } : null,
-    values.maxPrice !== null ? { key: 'price', label: `bis ${formatEuro(values.maxPrice)}`, clear: () => patch({ maxPrice: null }) } : null,
+    priceLabel(values.minPrice, values.maxPrice) !== null
+      ? { key: 'price', label: priceLabel(values.minPrice, values.maxPrice)!,
+          clear: () => patch({ minPrice: null, maxPrice: null }) } : null,
     values.onlyShow ? { key: 'show', label: 'In einer Show', clear: () => patch({ onlyShow: false }) } : null,
   ].filter((chip) => chip !== null);
 
@@ -274,7 +297,22 @@ export function ListingFilterBar({
               placeholderTextColor={ui.textMuted} autoCorrect={false} style={s.filterInput} />
 
             <Text style={s.groupLabel}>Preis</Text>
-            <View style={s.groupRow}>
+            <View style={s.priceRow}>
+              <EuroField value={values.minPrice} onChange={(minPrice) => patch({ minPrice })}
+                placeholder="von" accessibilityLabel="Mindestpreis in Euro" />
+              <Text style={s.priceDash}>–</Text>
+              <EuroField value={values.maxPrice} onChange={(maxPrice) => patch({ maxPrice })}
+                placeholder="bis" accessibilityLabel="Höchstpreis in Euro" />
+            </View>
+            {/* ⚠️ Der Hinweis statt einer stillen Korrektur. „von 80 bis 20" ist
+                eine Sackgasse: Die Liste bliebe leer, und der Leertext sagte
+                „die Filter sind zu eng" — richtig, aber nicht hilfreich. Die
+                Zahlen ZU TAUSCHEN wäre schlimmer: Dann stünde im Feld etwas
+                anderes, als die Liste tut. */}
+            {values.minPrice !== null && values.maxPrice !== null && values.minPrice > values.maxPrice
+              ? <Text style={s.priceWarn}>„von" ist größer als „bis" — so findet die Suche nichts.</Text>
+              : null}
+            <View style={[s.groupRow, s.priceSteps]}>
               {PRICE_STEPS.map((cents) => {
                 const on = values.maxPrice === cents;
                 return (
@@ -301,6 +339,49 @@ export function ListingFilterBar({
         </KeyboardAvoidingView>
       </Modal>
     </>
+  );
+}
+
+/**
+ * Ein Preisfeld in ganzen Euro.
+ *
+ * ⚠️ GANZE EURO, BEWUSST KEIN KOMMA. Das ist keine Sparsamkeit, sondern der
+ * einzige Weg, Text und Zahl verlustfrei ineinander zu überführen: Mit Komma
+ * wäre „25," ein gültiger Zwischenstand beim Tippen, der zu 2500 Cent würde
+ * und beim Zurückschreiben als „25" erschiene — dem Tippenden verschwände das
+ * Komma unter den Fingern. Bei einem FILTER fragt ohnehin niemand nach
+ * „ab 25,50 €"; beim PREIS eines Artikels wäre die Entscheidung falsch.
+ *
+ * Deshalb hält das Feld auch keinen eigenen Textzustand: Aus den Cents oben
+ * lässt sich die Anzeige jederzeit ausrechnen. Ein zweiter Zustand hier würde
+ * auseinanderlaufen, sobald jemand eine der Preis-Stufen darunter antippt.
+ */
+function EuroField({ value, onChange, placeholder, accessibilityLabel }: {
+  value: number | null;
+  onChange: (cents: number | null) => void;
+  placeholder: string;
+  accessibilityLabel: string;
+}) {
+  return (
+    <View style={s.euroWrap}>
+      <FormInput
+        value={value === null ? '' : String(Math.round(value / 100))}
+        onChangeText={(text) => {
+          // Sechs Stellen: 999.999 € ist jenseits von allem, was hier gehandelt
+          // wird, und hält die Zahl weit von Rundungsfehlern entfernt.
+          const digits = text.replace(/[^0-9]/g, '').slice(0, 6);
+          onChange(digits ? Number(digits) * 100 : null);
+        }}
+        keyboardType="number-pad"
+        placeholder={placeholder}
+        accessibilityLabel={accessibilityLabel}
+        placeholderTextColor={ui.textMuted}
+        style={[s.filterInput, s.euroInput]}
+      />
+      {/* Innerhalb des Rahmens, nicht daneben: Ein € hinter dem Feld sähe aus
+          wie ein eigenes Element. Das Feld hält rechts Platz dafür frei. */}
+      <Text style={s.euroSuffix}>€</Text>
+    </View>
   );
 }
 
@@ -406,6 +487,16 @@ const s = StyleSheet.create({
   optOn: { backgroundColor: ui.brand },
   optText: { fontSize: 13, fontWeight: '600', color: ui.text },
   optTextOn: { color: ui.bg },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  /* Die Stufen sind eine Abkuerzung ZU den Feldern darueber, kein eigener
+     Abschnitt — sie haben deshalb keine Ueberschrift, brauchen aber den
+     Abstand, den sonst die Ueberschrift mitbringt. */
+  priceSteps: { marginTop: space.md },
+  priceDash: { fontSize: 15, color: ui.textMuted },
+  priceWarn: { marginTop: space.sm, fontSize: 12, lineHeight: 17, color: ui.textMuted },
+  euroWrap: { flex: 1, minWidth: 0, justifyContent: 'center' },
+  euroInput: { paddingRight: space.xl },
+  euroSuffix: { position: 'absolute', right: space.md, fontSize: 15, color: ui.textMuted },
   filterInput: { minHeight: 48, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: 15, color: ui.text },
   clearCta: {
     marginTop: space.md,

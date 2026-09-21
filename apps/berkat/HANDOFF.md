@@ -17096,3 +17096,66 @@ in diesem Commit **unberuehrt**, also kein neues natives Modul. Das ist die
 Bedingung, unter der ein OTA auf einem aelteren nativen Build ueberhaupt laden
 darf. Der Stern hinter dem Commit in der EAS-Ausgabe kommt vom unverfolgten
 `apps/heritage-preview/`, nicht von dieser Arbeit.
+
+## 122. Preis von–bis (21.09.2026)
+
+**Auslöser.** Zaur, nachdem Abschnitt 121 draussen war: *„bau preis von-bis ein"* —
+der erste der drei Punkte, die ich dort als bewusst offen notiert hatte.
+
+Vorher gab es nur `maxPrice`, und zwar ausschliesslich als vier Stufen
+(„bis 25/50/100/250 €"). Eine Untergrenze war nicht vorgesehen.
+
+### Was gebaut wurde
+
+`minPrice` in `BrowseFilters`, im Blatt zwei Felder `von – bis`, und die vier
+Stufen bleiben als Abkürzung darunter stehen.
+
+⚠️ **EINE WAHRHEIT, NICHT ZWEI.** Die Stufen-Chips schreiben in denselben Wert
+wie das „bis"-Feld — tippt man „bis 100 €", steht danach `100` im Feld. Die
+naheliegende Abkürzung wäre gewesen, den Feldern einen eigenen Textzustand zu
+geben; dann hätte ein Tipp auf eine Stufe das Feld nicht mitgenommen, und der
+Nutzer sähe zwei verschiedene Antworten auf dieselbe Frage. Dieselbe Klasse wie
+die doppelten Zeilentypen aus Abschnitt 88.
+
+⚠️ **GANZE EURO, BEWUSST KEIN KOMMA.** Mit Komma wäre „25," ein gültiger
+Zwischenstand beim Tippen, der zu 2500 Cent würde und beim Zurückschreiben als
+„25" erschiene — dem Tippenden verschwände das Komma unter den Fingern. Nur
+ohne Komma ist die Umrechnung Text ↔ Cent verlustfrei, und deshalb braucht das
+Feld auch keinen eigenen Zustand. Für einen **Filter** ist das richtig; beim
+**Preis eines Artikels** wäre dieselbe Entscheidung falsch.
+
+⚠️ **Beide Grenzen messen `priceColumn`, nicht eine feste Spalte.** Show-Ware
+wird nach `start_price_cents` beurteilt, Regal-Ware nach `buy_now_cents` — wie
+die Sortierung darüber. Nähme eine Grenze die falsche Spalte, fiele ein Artikel
+aus genau dem Bereich, den die Liste über sich behauptet. Der Test prüft beide
+Ströme einzeln auf ihre Spalte.
+
+⚠️ **Der Preis zählt als EIN Filter**, auch wenn beide Grenzen stehen. Die Zahl
+auf „Filter · N" muss zu den Chips darunter passen, und dort ist der Bereich
+ein Chip. Drei Beschriftungen je nach Lage: `ab 25 €`, `bis 80 €`,
+`25 € – 80 €`. Ein Chip, der bei offener Untergrenze „– 80 €" zeigte, sähe aus
+wie ein Darstellungsfehler.
+
+### „von" grösser als „bis"
+
+Ein Hinweis unter den Feldern, **keine stille Korrektur**. Die Zahlen zu
+tauschen wäre schlimmer als der Fehler: Dann stünde im Feld etwas anderes, als
+die Liste tut. Ohne Hinweis bliebe nur der allgemeine Leertext („die Filter
+sind zu eng") — richtig, aber nicht hilfreich, weil er den einen Grund nicht
+nennt, den der Nutzer selbst nicht sieht.
+
+### Am Gerät geprüft (iPhone 17)
+
+- „von 50" getippt → Zahlentastatur, € im Feld, „Zurücksetzen" erscheint.
+- „bis 100 €" angetippt → Chip markiert **und** `100` im bis-Feld.
+- „Auswahl anzeigen" → von 28 Angeboten auf **9 Treffer**, Chip `50 € – 100 €`,
+  sichtbare Preise 89 € und 59 €.
+- „bis 25 €" bei von = 50 → Hinweis erscheint.
+
+`tsc` 0, **424 Tests**.
+
+### Weiter offen
+
+Von der Liste aus Abschnitt 121 bleiben: **Wortweise Suche** („nike schuhe"
+findet nur die genaue Folge), **gespeicherte Suchen merken die Filter nicht**,
+und die **ungenutzten `lower()`-Indizes**.

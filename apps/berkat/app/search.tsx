@@ -53,7 +53,8 @@ export default function SearchScreen() {
   const articles = useBrowseListingPages({
     slugs, query,
     condition: filters.cond, color: filters.color, brand: filters.brand,
-    size: filters.size, city: filters.city, maxPrice: filters.maxPrice,
+    size: filters.size, city: filters.city,
+    minPrice: filters.minPrice, maxPrice: filters.maxPrice,
     onlyShow: filters.onlyShow, sort: filters.sort,
   }, focused && tab === 'articles' && ready);
   const loadMoreArticles = () => {
