@@ -17245,3 +17245,13 @@ Erwartung nicht.
 Von der Liste aus Abschnitt 121 bleibt: **gespeicherte Suchen merken sich die
 Wörter, nicht die Filter**, und die **ungenutzten `lower()`-Indizes** aus
 `20260921200000`.
+
+### Ausgeliefert
+
+Commit `d9cbf289`, gepusht. OTA `production`, Runtime `1.0.0`, iOS und Android.
+
+- Update-Gruppe: `e691843a-6162-4e00-9429-99bd5b4c3e62`
+- iOS-Update: `01a0c5e7-101b-7f57-953f-03a4e07f97b0`
+- **Im Konto-Fuss erwartete Kennung: `01a0c5e7`**
+
+`package.json` unberuehrt — kein neues natives Modul.
