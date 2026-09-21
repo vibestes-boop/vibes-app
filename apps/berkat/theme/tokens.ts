@@ -88,11 +88,52 @@ export const ui = {
    * leicht abgesenkter Grund angenehmer. Buntheit 0,7 — praktisch farblos,
    * damit der Bernstein alles an Farbe für sich hat.
    */
-  bg: '#F5F5F5',
+  /**
+   * ⚠️ ZURÜCK AUF WARMEN SAND (21.09.2026). Die Geschichte dieses Wertes:
+   *
+   *     #FAF7F2  warmer Sand — die ursprüngliche Entscheidung
+   *     #F4F4F6  kühles Blaugrau
+   *     #F7F4F8  Aubergine-Stich  ← hier hat Zaur im August reklamiert
+   *     #F5F5F5  reines Grau      ← die Korrektur, die zu weit ging
+   *     #FAF7F2  wieder Sand
+   *
+   * Zaur am 21.09.: „ich kann mich an das komplett graue nicht gewöhnen."
+   * `WHATNOT-ANALYSE.md`, Abschnitt 6, gibt ihm recht — dort steht Sand
+   * ausdrücklich als BERKATS WEG:
+   *
+   * > „Das ist die ‚Basar statt Jahrmarkt'-Entscheidung und der einzige Punkt,
+   * >  an dem die Plattform sichtbar sein soll."
+   *
+   * ⚠️ Der Fehler im August war nicht die Wärme, sondern das AUBERGINE. Die
+   * Korrektur setzte alle Buntheit auf null — richtig für `textMuted` und die
+   * Linien, wo ein Farbschleier über jeder Nebenzeile lag. Für den Grund ging
+   * sie über das Ziel hinaus und nahm die einzige Eigenschaft mit, die Berkat
+   * optisch von einer beliebigen grauen App unterscheidet.
+   *
+   * Der Ton bleibt winzig: Buntheit ~1,8, warm statt neutral. Es ist der
+   * Unterschied zwischen Papier und Beton, nicht zwischen bunt und grau.
+   * Whatnot ist übrigens GRAUER als Berkat (Weiß + `#F3F3F3`, 57×) — Farbe
+   * kommt dort aus der Ware, nicht aus der Oberfläche. Genau deshalb darf der
+   * eine warme Ton bleiben und alles andere neutral.
+   */
+  bg: '#FAF7F2',
   /** Karten und Sheets liegen als Weiß auf dem Grund. */
   card: '#FFFFFF',
-  /** Chips, Bildplatzhalter, ruhige Flächen. */
-  sunken: '#E7E7E7',
+  /**
+   * Chips, Bildplatzhalter, ruhige Flächen.
+   *
+   * ⚠️ MIT DEM GRUND MITGEWÄRMT (21.09.2026). Solange `bg` reines Grau war,
+   * war ein reingraues `sunken` richtig. Gegen den warmen Sand wirkte dieselbe
+   * Fläche plötzlich kalt und schmutzig — im Simulator an der Kategorie-Leiste
+   * gesehen, bevor irgendjemand es benennen musste.
+   *
+   * ⚠️ Die HELLIGKEIT ist unverändert (231 → 231 im Rot-Kanal, L bleibt ~91 %).
+   * Geändert hat sich nur der Ton, in genau demselben Verhältnis wie bei `bg`
+   * (−3 Grün, −8 Blau). Damit hält jeder Kontrastwert, der vorher hielt — das
+   * ist die Bedingung, unter der man eine Farbe in 49 Dateien gleichzeitig
+   * anfassen darf.
+   */
+  sunken: '#E7E4DF',
   /**
    * ⚠️ `bg` mit Alpha 0 — für Verläufe, die im Grund verschwinden sollen.
    *
@@ -102,7 +143,7 @@ export const ui = {
    * nur unsichtbar. Vor dem 23.08.2026 stand dieser Wert hartcodiert im
    * Verkäufer-Profil — und wäre beim Farbwechsel still falsch geworden.
    */
-  bgClear: 'rgba(245,245,245,0)',
+  bgClear: 'rgba(250,247,242,0)',
   /**
    * Verdunkelung hinter Blättern und Menüs. Aus dem Anker abgeleitet, nicht
    * Schwarz — sonst wirkt der Hintergrund tot statt zurückgetreten.

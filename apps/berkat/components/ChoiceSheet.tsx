@@ -226,6 +226,9 @@ export function ChoiceField({
 }
 
 const f = StyleSheet.create({
+  /* ⚠️ Dieselbe Kontur wie `FormInput` — weisse Flaeche, Haarlinie. Die Wahl
+     steht im Formular auf einer Stufe mit den getippten Feldern; saehe sie
+     anders aus, waere sie eine andere Art von Ding. */
   field: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -235,7 +238,9 @@ const f = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
     borderRadius: radius.md,
-    backgroundColor: ui.sunken,
+    borderWidth: 1,
+    borderColor: ui.lineStrong,
+    backgroundColor: ui.card,
   },
   value: { flex: 1, minWidth: 0, fontSize: 15, color: ui.text },
   placeholder: { color: ui.textMuted },

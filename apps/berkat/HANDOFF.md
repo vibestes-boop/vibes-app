@@ -16772,3 +16772,94 @@ den Baum ändert, muss der Test zweimal rendern — sonst prüft er den Stand vo
 `tsc` 0, **426 von 426**, iPhone-17-Simulator: Formular endet zwei Bildschirme früher, Kategorie-
 Blatt mit Aufklappen und „Islamica · Gebetsteppiche" in der Zeile, Zustands-Blatt mit allen sechs
 Maßstäben.
+
+---
+
+## 118. Der warme Grund kommt zurück — und die Felder sehen aus wie Felder (21.09.2026)
+
+Zaur: *„ich kann mich an das komplett graue nicht gewöhnen, wie sehen das normale user? wie macht
+es whatnot. welche erfahrung hast du da als experte?"*
+
+### Die Versionsgeschichte gibt ihm recht
+
+```
+#FAF7F2   warmer Sand — die ursprüngliche Entscheidung
+#F4F4F6   kühles Blaugrau
+#F7F4F8   Aubergine-Stich      ← hier hat Zaur im August reklamiert
+#F5F5F5   reines Grau          ← die Korrektur, die zu weit ging
+#FAF7F2   wieder Sand
+```
+
+`WHATNOT-ANALYSE.md`, Abschnitt 6, führt die Grundfläche als bewusste Abweichung von Whatnot:
+
+> Whatnot: Weiß/Grau, neutral · Berkat: **Sand `#FAF7F2`, warm** — **Berkats Weg.** Das ist die
+> „Basar statt Jahrmarkt"-Entscheidung und **der einzige Punkt, an dem die Plattform sichtbar sein
+> soll.**
+
+⚠️ **Der Fehler im August war das AUBERGINE, nicht die Wärme.** `tokens.ts` beschreibt die
+Korrektur vom 23.08. ausführlich und richtig — ein Farbschleier über jeder Nebenzeile, `textMuted`
+mit Buntheit 11,5. Für Text und Linien war „Buntheit 0" die Lösung. Für den **Grund** ging sie über
+das Ziel hinaus und nahm die einzige Eigenschaft mit, die Berkat optisch von einer beliebigen
+grauen App unterscheidet. Ein Monat lang hat niemand den Unterschied benannt — Zaur hat ihn
+gefühlt.
+
+### Und Whatnot? Grauer als wir
+
+Aus der Messung in derselben Analyse:
+
+| | Whatnot |
+|---|---|
+| Grundflächen | Weiß und `#F3F3F3` — **57×** |
+| Signalgelb | **2–3× auf einer ganzen Seite** |
+| Kaufknopf | **grau**, `rgba(0,0,0,0.05)` |
+
+Ihr Kaufknopf ist grau; das Gelb ist für „Folgen" reserviert. Die Farbe kommt aus der **Ware** —
+selbstgemachte Poster mit Versalien und Knallfarben. „Die Plattform tritt zurück, die Ware
+schreit." Mehr Farbe in der Oberfläche wäre also die falsche Antwort gewesen; ein warmer Grundton
+ist keine Farbe, sondern Papier statt Beton.
+
+### Was Nutzer wirklich sehen: die Felder
+
+⚠️ **Ein grau gefülltes Eingabefeld ist auf dem iPhone die Art, wie das System „abgeschaltet"
+zeigt.** Die Felder trugen `ui.sunken` — dieselbe Farbe wie Kacheln und leere Bildflächen. Drei
+Bedeutungen, ein Ton.
+
+⚠️ **Und es gab überhaupt keinen Fokus-Zustand.** Beim Hineintippen änderte sich nichts. Ein
+Formular, in dem nichts reagiert, wirkt tot — unabhängig von der Farbe. Das ist der größere der
+beiden Punkte und hat mit Grau nichts zu tun.
+
+`components/FormInput.tsx`: weiße Fläche, Haarlinie, beim Tippen wird die Linie aubergine.
+
+⚠️ **Die Linienstärke ändert sich NICHT, nur ihre Farbe.** Ein Rahmen, der beim Hineintippen von 1
+auf 2 Punkt wächst, verschiebt den Text um einen halben Punkt — bei jedem Feld, bei jedem Tipp.
+Das sieht man nicht bewusst, aber man spürt es als Zappeln.
+
+⚠️ **Eigenes Bauteil, kein Stil.** Fokus ist Zustand; acht Felder hätten acht `useState` gebraucht
+— eine Buchhaltung, bei der beim neunten jemand `onBlur` vergisst. `ChoiceField` bekam dieselbe
+Kontur, damit die Auswahl und die getippten Felder als dieselbe Art Ding lesbar bleiben.
+
+### `sunken` mitgewärmt — mit einer Bedingung
+
+Gegen den warmen Sand wirkte das reingraue `#E7E7E7` kalt und schmutzig; im Simulator an der
+Kategorie-Leiste gesehen. Jetzt `#E7E4DF`.
+
+⚠️ **Die HELLIGKEIT ist unverändert** (231 im Rot-Kanal, L ~91 %), geändert hat sich nur der Ton —
+in genau demselben Verhältnis wie bei `bg` (−3 Grün, −8 Blau). Damit hält jeder Kontrastwert, der
+vorher hielt. **Das ist die Bedingung, unter der man eine Farbe in 49 Dateien gleichzeitig
+anfassen darf.**
+
+### Geprüft
+
+`tsc` 0, **426 von 426**, iPhone-17-Simulator: warmer Grund auf Startseite und Formular, Felder
+weiß mit Haarlinie, Fokus-Rahmen an „PLZ" sichtbar während „Ort" ruhig bleibt.
+
+⚠️ Kein Token stand irgendwo hartcodiert — `grep` auf `#F5F5F5` und `245,245,245` über `app/`,
+`components/` und `lib/` fand null Treffer. Die Regel „NIE eine Farbe direkt in eine Komponente
+schreiben" hat gehalten, und genau deshalb war der Wechsel eine Zeile.
+
+### Offen
+
+Andere Bildschirme (Suche, Nachrichten, Profil bearbeiten) setzen `ui.sunken` weiterhin direkt als
+Feldfläche. Sie sind durch den gewärmten Ton stimmig, haben aber **keine Haarlinie und keinen
+Fokus-Rahmen**. Wer `FormInput` dort nachzieht, macht die App an einem Abend einheitlich; halb
+gemacht wäre es schlechter als gar nicht.

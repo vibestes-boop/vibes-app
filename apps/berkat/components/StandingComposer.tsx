@@ -24,7 +24,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -33,6 +32,7 @@ import { ui, radius, space } from '../theme/tokens';
 import { euroToCents } from '../lib/useStudio';
 import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
+import { FormInput } from './FormInput';
 import { ChoiceField, ChoiceSheet } from './ChoiceSheet';
 import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
 import { LISTING_COLORS, tidyAttribute, tidySize } from '../lib/useListings';
@@ -358,31 +358,28 @@ export function StandingComposer({
           Mindesthöhe — ein Titelfeld, das aussah wie ein Textfeld für einen
           Absatz. Wer drei Zeilen Platz sieht, schreibt drei Zeilen; auf der
           Karte werden davon zwei gezeigt. */}
-      <TextInput
+      <FormInput
         value={title}
         onChangeText={setTitle}
         placeholder="Zum Beispiel: Silberring, handgemacht"
-        placeholderTextColor={ui.textMuted}
         accessibilityLabel="Artikeltitel"
-        style={[s.input, s.fieldInput, { marginTop: space.xs }]}
+        style={[s.fieldInput, { marginTop: space.xs }]}
         maxLength={140}
         returnKeyType="next"
       />
       <View style={s.row}>
         <View style={s.field}>
           <Text style={s.fieldLabel}>Preis in €</Text>
-          <TextInput value={price} onChangeText={setPrice} placeholder="0,00"
-            placeholderTextColor={ui.textMuted} accessibilityLabel="Preis in Euro"
-            keyboardType="decimal-pad" style={[s.input, s.fieldInput]} />
+          <FormInput value={price} onChangeText={setPrice} placeholder="0,00" accessibilityLabel="Preis in Euro"
+            keyboardType="decimal-pad" style={s.fieldInput} />
         </View>
         <View style={s.field}>
           {/* „freiwillig" gehört an die Beschriftung, nicht in einen Satz
               darunter: Preis und Größe standen gleich groß nebeneinander, als
               wären beide Pflicht. Der Preis ist es, die Größe nie. */}
           <Text style={s.fieldLabel}>Größe (freiwillig)</Text>
-          <TextInput value={size} onChangeText={setSize} placeholder="Zum Beispiel M"
-            placeholderTextColor={ui.textMuted} accessibilityLabel="Größe"
-            style={[s.input, s.fieldInput]} maxLength={MAX_SIZE_LEN} />
+          <FormInput value={size} onChangeText={setSize} placeholder="Zum Beispiel M" accessibilityLabel="Größe"
+            style={s.fieldInput} maxLength={MAX_SIZE_LEN} />
         </View>
       </View>
 
@@ -420,15 +417,13 @@ export function StandingComposer({
           <View style={s.row}>
             <View style={s.field}>
               <Text style={s.fieldLabel}>Marke</Text>
-              <TextInput value={brand} onChangeText={setBrand} placeholder="Zum Beispiel Nike"
-                placeholderTextColor={ui.textMuted} accessibilityLabel="Marke"
-                style={[s.input, s.fieldInput]} maxLength={MAX_BRAND_LEN} />
+              <FormInput value={brand} onChangeText={setBrand} placeholder="Zum Beispiel Nike" accessibilityLabel="Marke"
+                style={s.fieldInput} maxLength={MAX_BRAND_LEN} />
             </View>
             <View style={s.field}>
               <Text style={s.fieldLabel}>Material</Text>
-              <TextInput value={material} onChangeText={setMaterial} placeholder="Zum Beispiel Wolle"
-                placeholderTextColor={ui.textMuted} accessibilityLabel="Material"
-                style={[s.input, s.fieldInput]} maxLength={MAX_BRAND_LEN} />
+              <FormInput value={material} onChangeText={setMaterial} placeholder="Zum Beispiel Wolle" accessibilityLabel="Material"
+                style={s.fieldInput} maxLength={MAX_BRAND_LEN} />
             </View>
           </View>
           {/* ⚠️ Vorschläge, kein Zwang. Die Spalte `live_auctions.color` nimmt
@@ -452,15 +447,14 @@ export function StandingComposer({
       )}
 
       {descOpen ? (
-        <TextInput
+        <FormInput
           value={description}
           onChangeText={setDescription}
           // „Größe" stand hier bis zum 19.08.2026 mit drin — und schickte damit
           // genau dorthin, wo sie nicht hingehört: in Fließtext, unfilterbar.
           // Seit es das Feld oben gibt, nennt der Platzhalter sie nicht mehr.
           placeholder="Was sollte man wissen? Marke, Mängel, Material …"
-          placeholderTextColor={ui.textMuted}
-          style={[s.input, { minHeight: 90 }]}
+          style={{ minHeight: 90 }}
           maxLength={2000}
           multiline
         />
@@ -619,22 +613,20 @@ export function StandingComposer({
           wäre nicht zu rechtfertigen. */}
       <Text style={s.label}>Von wo verschickst du?</Text>
       <View style={[s.row, { marginTop: space.xs }]}>
-        <TextInput
+        <FormInput
           value={postalCode}
           onChangeText={(t) => setPostalCode(t.replace(/[^0-9]/g, '').slice(0, 5))}
           placeholder="PLZ"
-          placeholderTextColor={ui.textMuted}
           accessibilityLabel="Postleitzahl"
           keyboardType="number-pad"
-          style={[s.input, s.fieldInput, { width: 104 }]}
+          style={[s.fieldInput, { width: 104 }]}
         />
-        <TextInput
+        <FormInput
           value={city}
           onChangeText={setCity}
           placeholder="Ort (freiwillig)"
-          placeholderTextColor={ui.textMuted}
           accessibilityLabel="Ort"
-          style={[s.input, s.fieldInput, { flex: 1 }]}
+          style={[s.fieldInput, { flex: 1 }]}
           maxLength={80}
         />
       </View>
@@ -814,15 +806,6 @@ const s = StyleSheet.create({
     borderColor: ui.line,
   },
 
-  input: {
-    marginTop: space.md,
-    backgroundColor: ui.sunken,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    paddingVertical: space.md,
-    fontSize: 15,
-    color: ui.text,
-  },
   picker: { width: 72, height: 80, borderRadius: radius.md, backgroundColor: ui.sunken, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 
   imageRow: { marginTop: space.sm },
