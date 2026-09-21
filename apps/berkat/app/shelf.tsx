@@ -36,6 +36,7 @@ import { useSession } from '../lib/session';
 import { goBack } from '../lib/nav';
 import { standingErrorText, useStandingActions } from '../lib/useStanding';
 import { useSellerListings } from '../lib/useListings';
+import { useMyListingViews } from '../lib/useListingViews';
 import { LeftoverShelf } from '../components/LeftoverShelf';
 import { shelfBridgeErrorText, useShelfBridge } from '../lib/useShelfBridge';
 import { useMyPlannedShows } from '../lib/useSchedule';
@@ -55,6 +56,10 @@ export default function ShelfScreen() {
   const { data: seller } = useBerkatSeller(myUserId);
   // Für „Wohin damit?" im Formular — die eigenen angekündigten Abende.
   const { data: plannedShows = [] } = useMyPlannedShows(myUserId);
+  // ⚠️ Erst NACH `standing` — die Kennungen kommen aus der Liste. Die Abfrage
+  // hält sich zurück, solange keine da sind (`enabled` im Hook).
+  const { data: viewCounts } = useMyListingViews(standing.map((l) => l.id));
+  const seenTotal = [...(viewCounts?.values() ?? [])].reduce((a, b) => a + b, 0);
   const bridge = useShelfBridge();
   const setTier = useSetShippingTier();
   const declareKind = useDeclareSellerKind(myUserId);
@@ -196,6 +201,7 @@ export default function ShelfScreen() {
         <StandingShelf
           listings={standing}
           isOwner
+          viewCounts={viewCounts}
           busyId={busyId}
           onCancel={(item) => {
             setBusyId(item.id);
@@ -209,6 +215,21 @@ export default function ShelfScreen() {
           }}
           emptyText="Noch nichts drin. Über „Neuen Artikel einstellen“ legst du dein erstes Angebot an — auch zwischen deinen Shows kaufbar."
         />
+
+        {/* ⚠️ EIN Satz statt einer Null an jedem Artikel.
+            „0 Mal angesehen“ fünfmal untereinander liest sich wie ein Urteil
+            über den Verkäufer; als ein Satz ist es eine Auskunft über den
+            Verkehr — und die stimmt in der frühen Phase auch. Warm und
+            handlungsleitend statt kalt (Design-Gesetz 2): Der Satz nennt das,
+            was wirklich hilft, nämlich Sendungen.
+            Erscheint nur, wenn etwas im Regal liegt UND noch niemand
+            hingesehen hat. Sobald die erste Zahl da ist, verschwindet er. */}
+        {standing.length > 0 && seenTotal === 0 ? (
+          <Text style={styles.seenNone}>
+            Deine Artikel wurden noch nicht angesehen. Sobald jemand hinschaut, steht es hier an
+            der Zeile — und am schnellsten geht es über eine Sendung.
+          </Text>
+        ) : null}
 
         {/* ── Was aus Sendungen übrig ist ────────────────────────────────────
             Steht UNTER dem Regal, nicht darüber: Das Regal ist der Bestand,
@@ -225,6 +246,7 @@ export default function ShelfScreen() {
 }
 
 const styles = StyleSheet.create({
+  seenNone: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: space.sm, marginBottom: space.md },
   createToggle: { minHeight: 52, padding: space.md, marginBottom: space.md, borderRadius: radius.pill, backgroundColor: ui.brand, justifyContent: 'center', alignItems: 'center' },
   createToggleText: { fontSize: 15, fontWeight: '700', color: ui.card, textAlign: 'center' },
   screen: { flex: 1, backgroundColor: ui.bg },

@@ -16021,3 +16021,81 @@ es) und kommt mit dem nächsten nativen Build.
 Belegt: `tsc` 0, 390 von 390. Nicht belegt: das Blatt am Gerät — im Simulator lief keine Show. Die
 Probe ist Zaurs nächste Sendung: „Mehr" → „Show teilen" → **Berkat-Blatt** mit vier Kreisen, WhatsApp
 tippen → WhatsApp öffnet sich mit Satz und Link, und beim Zurückkommen ist das Blatt zu. Per OTA raus: Gruppe `42f92388`.
+
+---
+
+## 109. Kleinanzeigen angesehen — und dabei die eigene Arbeit übersehen (21.09.2026)
+
+Auftrag: „analysiere aktuelle kleinanzeigen ebay app UI". Gemacht mit der echten Oberfläche —
+mobile Web-Ansicht im Browser (Tracking abgelehnt) und die acht App-Store-Screenshots von
+**Version 2026.39.0, am selben Tag erschienen**. Die App heißt inzwischen „Kleinanzeigen: Dein
+Marktplatz", Betreiber Marktplaats BV, 3,96 Mio. Bewertungen bei 4,74 Sternen. Bilder liegen unter
+`~/Desktop/kleinanzeigen-ui/`.
+
+### ⚠️ Der Fehler in der ersten Fassung dieser Analyse
+
+Ich habe fünf Verbesserungen genannt. Zaur fragte zurück: *„ich weiß nicht was Punkt 1 für mein app
+bringen wird, bist du dir sicher damit?"* — und die Gegenprüfung gab ihm recht:
+
+| Vorschlag | Gegenprüfung im Code |
+|---|---|
+| 1. Verkäufer-Profil mit Vertrauens-Abzeichen | ❌ **Nicht baubar.** Berkat misst keine Antwortzeit, hat kein „aktiv seit", kaum Bewertungen. Bei fünf Verkäufern wäre die Seite ein leeres Regal — und würde vor allem zeigen, wie jung alles ist |
+| 3. Merkungs-Zahl und Bildzähler auf der Karte | ✅ **Seit dem Whatnot-Tag gebaut** (Abschnitt 68). Steht als Kommentar in `ListingCard.tsx` |
+| 4. Kopfbereich verdichten | ✅ **Am 09.09. gemacht**, Shortcut-Zeile entfernt |
+| 5. Kategorie-Kacheln kleiner | ✅ **Am 09.09. gemacht**, 132 → 108 pt |
+
+> ⚠️ **Eine Konkurrenz-Analyse ohne Gegenprüfung des eigenen Standes erzeugt Arbeit, die es schon
+> gibt.** Im Dokument stehen 182 Erwähnungen von Whatnot und vier frühere Analyse-Runden. Ich habe
+> die fremde App gründlich angesehen und die eigene nicht — der teurere von zwei möglichen Fehlern,
+> weil er wie Fortschritt aussieht.
+
+### Was wirklich fehlte: der Verkäufer sieht nichts
+
+Kleinanzeigen trägt an jeder eigenen Anzeige „👁 33 ♡ 21" und nennt auf der Detailseite die
+Aufrufe. **Berkat zählt gar nichts** — Merkungen seit `20260822120000`, Aufrufe nie.
+
+Für Phase 0 ist das die wichtigere Zahl. Ein Verkäufer, der acht Artikel einstellt und nie erfährt,
+ob jemand hinsieht, hat keinen Grund für den neunten.
+
+### Gebaut
+
+`supabase/migrations/20260921100000_berkat_listing_views.sql` + `lib/useListingViews.ts`
+
+⚠️ **Keine Spalte auf `live_auctions`** — das ist eine der fünf Tabellen mit Spalten-REVOKE
+(CLAUDE.md Regel 11). Eine neue Spalte dort wäre für `anon`/`authenticated` unsichtbar, bis ein
+ausdrückliches `GRANT SELECT (<spalte>)` folgt, und ein vergessener GRANT scheitert mit `42501` an
+einer Stelle, die niemand mit der Spalte verbindet. Stattdessen eigene Tabelle, wie bei den
+Merkungen.
+
+⚠️ **Eine Zeile je Mensch, kein Zähler.** `UPDATE … SET views = views + 1` liesse sich beliebig oft
+auslösen — genau der Befund zu `join_live_session` (v1.27.0, Fund #3). Primärschlüssel je Paar,
+`ON CONFLICT DO NOTHING`. Gezählt wird, **wer** hingesehen hat, nicht wie oft.
+
+Weitere Entscheidungen:
+
+- **Eigene Aufrufe zählen nicht.** Sonst stünde bei jedem Verkäufer mindestens eine 1, und die
+  erste echte Zahl wäre nicht von der eigenen zu unterscheiden.
+- **Nur Angemeldete.** Anonyme bräuchten Gerätekennung oder IP — eine Datenschutz-Entscheidung,
+  keine Bauentscheidung. Die Zahl ist eine Untergrenze, und das ist ehrlicher als eine Schätzung.
+- **Nur der Verkäufer sieht sie.** Kleinanzeigen zeigt „103 Aufrufe" jedem; bei 32 Mio. Nutzern ist
+  das ein Vertrauenssignal, bei Berkats Verkehr wäre dieselbe Zeile eine Warnung an den Käufer.
+  **Dieselbe Zahl, umgekehrte Wirkung — der Unterschied ist das Volumen, nicht die Gestaltung.**
+  Öffentlich machen kostet später eine Zeile.
+- **Bei null ein Satz statt fünf Nullen.** „0 Mal angesehen" untereinander liest sich wie ein Urteil
+  über den Verkäufer; als ein Satz unter der Liste ist es eine Auskunft über den Verkehr — und
+  nennt den Weg, der wirklich hilft: eine Sendung.
+- Gezählt wird in `listing/[id].tsx` per `useEffect` auf `[id]`, **nicht** `useFocusEffect`: Sonst
+  zählte jede Rückkehr aus Profil oder Galerie erneut.
+
+Belegt: `tsc` 0, **417 von 417 Tests**. Nicht belegt: die Zahl am Gerät — dafür braucht es einen
+zweiten Menschen, der ein Angebot öffnet. Der Nullfall-Satz ist dagegen sofort im Regal zu sehen.
+
+### Offen aus dieser Analyse
+
+- **Die Zahlungskarte im Chat.** Kleinanzeigen zeigt den Kauf als Karte im Gesprächsverlauf: Betrag,
+  Aufschlüsselung (Betrag/Käuferschutz/Versand), dann „Artikel erhalten" grün und „Ich habe ein
+  Problem" rot. Berkat hat Artikelkarten im Chat (`messages.listing_id`) und `PurchaseStatusCard` —
+  aber der Kauf läuft über Live-Show und Sammelkorb, nicht über Chat-Verhandlung. Das Muster passt
+  nicht eins zu eins und ist deshalb eine eigene Entscheidung, kein Nachbau.
+- **Verkäufer-Identität später.** Wenn Bewertungen und Verkäufe da sind, ist Punkt 1 richtig — nur
+  mit Berkats echten Signalen (Zuschläge, Sendungen, Regal), nicht mit erfundenen Abzeichen.

@@ -32,6 +32,8 @@ type Props = {
   listings: Listing[];
   /** Der Betrachter ist der Verkäufer — dann steht am Regal das Zurückziehen. */
   isOwner: boolean;
+  /** Aufrufe je Angebot — nur im eigenen Regal gesetzt. */
+  viewCounts?: Map<string, number>;
   busyId: string | null;
   onCancel: (listing: Listing) => void;
   /**
@@ -82,6 +84,7 @@ type Props = {
 export function StandingShelf({
   listings,
   isOwner,
+  viewCounts,
   busyId,
   onCancel,
   emptyText,
@@ -143,6 +146,7 @@ export function StandingShelf({
             listing={item}
             layout="row"
             mine={isOwner}
+            viewCount={viewCounts?.get(item.id)}
             saved={Boolean(savedIds?.has(item.id))}
             onPress={() => open(item)}
             onToggleSaved={

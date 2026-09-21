@@ -38,7 +38,7 @@
 // Zaur: „Dass es keine angebotenen Produkte gibt, ist kein Grund, die App nicht
 // vollständig zu bauen."
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { ListingGallery } from '../../components/ListingGallery';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -74,6 +74,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { ActionButton } from '../../components/ActionButton';
 import { PurchaseStatusCard } from '../../components/PurchaseStatusCard';
 import { useSession } from '../../lib/session';
+import { markListingSeen } from '../../lib/useListingViews';
 import { errText } from '../../lib/errorText';
 import { goBack } from '../../lib/nav';
 import { listingLink } from '../../lib/links';
@@ -243,6 +244,19 @@ export default function ListingScreen() {
       if (id) void refetch({ cancelRefetch: false });
     }, [id, refetch]),
   );
+
+  /**
+   * Den Aufruf festhalten — genau einmal je Mensch und Angebot.
+   *
+   * ⚠️ `useEffect` mit `[id]`, NICHT `useFocusEffect`: Sonst zählte jede
+   * Rückkehr aus dem Profil oder aus der Galerie erneut. Die RPC schluckt
+   * Wiederholungen zwar (Primärschlüssel je Paar), aber eine Anfrage, die
+   * nichts tun kann, muss man nicht schicken.
+   *
+   * Eigene Aufrufe und Nicht-Angemeldete weist die RPC selbst ab — die Grenze
+   * steht im Server, nicht hier. Ein Client entscheidet nicht, was gezählt wird.
+   */
+  useEffect(() => { markListingSeen(id); }, [id]);
 
   const mine = Boolean(myUserId && listing && myUserId === listing.seller_id);
   /**

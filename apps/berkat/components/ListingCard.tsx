@@ -26,7 +26,7 @@
 import type { ReactNode } from 'react';
 import { ProductPhoto } from './ProductPhoto';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { CalendarClock, Camera, Heart, Lock } from 'lucide-react-native';
+import { CalendarClock, Camera, Eye, Heart, Lock } from 'lucide-react-native';
 
 import { formatEuro } from '../lib/useAuction';
 import { conditionLabel } from '../lib/useBerkatSeller';
@@ -77,6 +77,8 @@ type Props = {
    * Er sitzt bewusst NEBEN der Fläche, die zum Artikel führt, nicht darin —
    * sonst löste ein Tipp auf den Knopf beides aus.
    */
+  /** Wie viele Menschen das Angebot angesehen haben. Nur fuer den Besitzer, nur ab eins (`lib/useListingViews.ts`). */
+  viewCount?: number;
   trailing?: ReactNode;
   /**
    * Das Merken-Herz (in `grid` und `search`, nur fremde Artikel). Beides zusammen setzen:
@@ -93,6 +95,7 @@ export function ListingCard({
   layout = 'grid',
   mine = false,
   onPress,
+  viewCount,
   trailing,
   saved = false,
   saveCount,
@@ -160,6 +163,20 @@ export function ListingCard({
                 nur in einem von zwei Layouts stimmt, ist eine Falle, die
                 still auf ihren Tag wartet. */}
             <Text style={[s.rowPrice, layout === 'search' && s.searchPrice]}>{priceText}</Text>
+            {/* ⚠️ Nur dem Verkäufer, und nur ab eins. Kleinanzeigen zeigt die
+                Aufrufe jedem — bei 32 Mio. Nutzern ist das ein Vertrauens-
+                signal, bei Berkats Verkehr wäre dieselbe Zahl eine Warnung an
+                den Käufer. Eine „0" braucht auch der Verkäufer nicht an jedem
+                Artikel; sie steht als EIN Satz unter der Liste, wenn sie für
+                alle gilt. */}
+            {mine && viewCount != null && viewCount > 0 ? (
+              <View style={s.viewRow}>
+                <Eye size={12} color={ui.textMuted} />
+                <Text style={s.viewText}>
+                  {viewCount === 1 ? '1 Mal angesehen' : `${viewCount} Mal angesehen`}
+                </Text>
+              </View>
+            ) : null}
             {show ? (
               <Text numberOfLines={1} style={s.rowShow}>
                 In der Sendung {formatSlot(show.scheduled_at)}
@@ -439,6 +456,8 @@ const s = StyleSheet.create({
     marginTop: space.sm,
   },
   price: { fontSize: 17, lineHeight: 23, fontWeight: '700', color: ui.text, marginTop: 4 },
+  viewRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  viewText: { fontSize: 12, lineHeight: 17, color: ui.textMuted },
 
   // ── Zeile ────────────────────────────────────────────────────────────────
   searchCard: { backgroundColor: ui.card, padding: space.md, borderRadius: radius.lg },
