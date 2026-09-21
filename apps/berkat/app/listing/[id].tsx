@@ -932,6 +932,40 @@ export default function ListingScreen() {
             </View>
           ) : null}
 
+          {/* ── MERKMALE (21.09.2026) ───────────────────────────────────────
+              Zaur hat die Kleinanzeigen-Anzeige danebengelegt: Dort steht eine
+              Tabelle mit Typ, Zustand, Marke, Farbe und Material. Berkat hatte
+              davon zwei.
+
+              ⚠️ Eine TABELLE und keine weiteren Kacheln. Unter dem Preis
+              stehen bereits drei (Größe · Zustand · Ort) — das sind die drei,
+              die „ist das überhaupt für mich" beantworten, und drei ist die
+              Zahl, die man auf einen Blick liest. Marke, Farbe und Material
+              beantworten „was ist es genau"; sie gehören zur Beschreibung, und
+              eine Tabelle ist die Form, in der man Merkmale vergleicht.
+
+              Nur Zeilen, die einen Wert haben. Ein „Marke: —" ist keine
+              Auskunft, sondern eine Lücke in Tabellenform. */}
+          {listing.brand || listing.color || listing.material ? (
+            <View key={`facts-${fontScale}`} style={styles.block}>
+              <Text style={styles.blockLabel}>Merkmale</Text>
+              <View style={styles.factTable}>
+                {([
+                  ['Marke', listing.brand],
+                  ['Farbe', listing.color],
+                  ['Material', listing.material],
+                ] as const)
+                  .filter(([, value]) => Boolean(value))
+                  .map(([label, value], index) => (
+                    <View key={label} style={[styles.factRow, index === 0 && styles.factRowFirst]}>
+                      <Text style={styles.factLabel}>{label}</Text>
+                      <Text numberOfLines={2} style={styles.factValue}>{value}</Text>
+                    </View>
+                  ))}
+              </View>
+            </View>
+          ) : null}
+
           {/* ── Preisvorschläge. Steht ÜBER der Verkäuferkarte und unter der
               Beschreibung: Wer handeln will, hat den Artikel gelesen und noch
               nicht auf den Menschen geschaut. Der Kaufknopf unten bleibt
@@ -1370,6 +1404,14 @@ export default function ListingScreen() {
                 shippingTier: listing.shipping_tier,
                 postalCode: listing.postal_code,
                 city: listing.city,
+                // ⚠️ Dieselbe Pflicht wie bei `size`, nur über einen anderen
+                // Weg: Marke, Farbe und Material gehen in `set_listing_attributes`
+                // (eigene RPC, siehe unten) — und die schreibt VOLLERSATZ.
+                // Fehlten sie hier, schickte das Formular drei leere Werte und
+                // löschte die Marke beim ersten Speichern.
+                brand: listing.brand,
+                color: listing.color,
+                material: listing.material,
               }}
               submitLabel="Speichern"
               onSubmit={(input) => {
@@ -1390,6 +1432,32 @@ export default function ListingScreen() {
                         })
                         .catch(() => {
                           /* Der Rest ist gespeichert; die Stufe bleibt, wie sie war. */
+                        });
+                    }
+                  })
+                  // ⚠️ DRITTER Ruf, derselbe Grund wie der zweite:
+                  // `update_standing_listing` kennt Marke, Farbe und Material
+                  // nicht. Ihre Signatur ist seit App-Fassung 1.0.0
+                  // eingefroren; drei Parameter mehr erzeugten eine Überladung
+                  // und damit HTTP 300 für alle Aufrufer.
+                  //
+                  // Nur wenn sich etwas geändert hat — sonst schriebe jedes
+                  // Speichern dieselben drei Werte noch einmal.
+                  .then(async () => {
+                    const changed =
+                      (input.brand ?? null) !== (listing.brand ?? null) ||
+                      (input.color ?? null) !== (listing.color ?? null) ||
+                      (input.material ?? null) !== (listing.material ?? null);
+                    if (changed) {
+                      await actions.setAttributes
+                        .mutateAsync({
+                          id: listing.id,
+                          brand: input.brand ?? null,
+                          color: input.color ?? null,
+                          material: input.material ?? null,
+                        })
+                        .catch(() => {
+                          /* Der Rest ist gespeichert; die Merkmale bleiben, wie sie waren. */
                         });
                     }
                   })
@@ -1643,6 +1711,22 @@ const styles = StyleSheet.create({
   },
   howRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
   howText: { flex: 1, minWidth: 0, fontSize: 12, lineHeight: 18, color: ui.textMuted },
+  /* Haarlinien statt Flaeche — dieselbe Form wie Konto und Versand. Die erste
+     Zeile traegt keine, sonst laege sie direkt unter der Ueberschrift. */
+  factTable: { marginTop: space.xs },
+  factRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.md,
+    paddingVertical: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: ui.line,
+  },
+  factRowFirst: { borderTopWidth: 0 },
+  factLabel: { width: 96, fontSize: 13, lineHeight: 19, color: ui.textMuted },
+  /* Rechtsbuendig wie bei Kleinanzeigen: Die Werte stehen damit untereinander
+     an einer Kante und lassen sich ueberfliegen. */
+  factValue: { flex: 1, minWidth: 0, fontSize: 13, lineHeight: 19, color: ui.text, textAlign: 'right', fontWeight: '600' },
   listingRef: { fontSize: 11, lineHeight: 16, color: ui.textMuted, textAlign: 'center', marginTop: space.md },
   reportLinkText: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
 

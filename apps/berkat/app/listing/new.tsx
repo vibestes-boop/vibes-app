@@ -155,6 +155,24 @@ export default function NewListingScreen() {
                   }
                 }
 
+                // ⚠️ VIERTER Ruf, derselbe Grund wie der zweite und der
+                // dritte: `create_standing_listing` kennt Marke, Farbe und
+                // Material nicht, und ihre Signatur ist eingefroren. Scheitert
+                // er, steht der Artikel ohne Merkmale — nachtragbar, und der
+                // Verkäufer verliert nichts.
+                if (input.brand || input.color || input.material) {
+                  try {
+                    await actions.setAttributes.mutateAsync({
+                      id,
+                      brand: input.brand,
+                      color: input.color,
+                      material: input.material,
+                    });
+                  } catch {
+                    /* Der Artikel steht; die Merkmale lassen sich nachtragen. */
+                  }
+                }
+
                 if (!input.planId) {
                   setNotice('Liegt im Regal — ab jetzt kaufbar. 🎉');
                   return;

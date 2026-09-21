@@ -153,7 +153,7 @@ const { colors } = useTheme();
 7. **Supabase Migrations**: SQL-Dateien in `/supabase/*.sql` — immer `IF NOT EXISTS` nutzen
 8. **LiveKit Token**: `supabase/functions/livekit-token/index.ts` — Guests brauchen `canPublish: true`
 9. **Migration-Dateipfad & -Naming**: Neue Migrations IMMER unter `supabase/migrations/` mit **14-stelligem Timestamp-Prefix** `YYYYMMDDHHMMSS_<slug>.sql` (z. B. `20260428100000_post_aspect_ratio.sql`). Niemals lose unter `supabase/` und niemals nur 8-stellig — `supabase db push` ignoriert sonst still die Datei und das Schema-Tracking läuft auseinander.
-10. **Schema-Wahrheit**: `supabase/SCHEMA.md` (+ Roh-Dump `supabase/schema_live.sql`) ist die **Source of Truth** für reale Tabellen/Spalten der Live-DB. **Vor jeder neuen Spalten-Referenz im Code dort prüfen** — `profiles` hat z. B. KEIN `follower_count` (nur via Aggregation über `follows`). Stand des Abzugs: **14.08.2026, 93 Tabellen**. Die alten, manuell aufgesetzten Basis-SQL-Dateien liegen archiviert unter `supabase/_legacy/` (nicht mehr maßgeblich).
+10. **Schema-Wahrheit**: `supabase/SCHEMA.md` (+ Roh-Dump `supabase/schema_live.sql`) ist die **Source of Truth** für reale Tabellen/Spalten der Live-DB. **Vor jeder neuen Spalten-Referenz im Code dort prüfen** — `profiles` hat z. B. KEIN `follower_count` (nur via Aggregation über `follows`). Stand des Abzugs: **21.09.2026, 113 Tabellen**. Die alten, manuell aufgesetzten Basis-SQL-Dateien liegen archiviert unter `supabase/_legacy/` (nicht mehr maßgeblich).
 
     **Neu generieren — ohne Docker und ohne DB-Passwort.** `supabase db dump` braucht Docker (hier nicht installiert), und der alte `pg_dump "<connection-uri>"`-Weg braucht das DB-Passwort. Beides ist unnötig: Die CLI legt sich per Management-API eine kurzlebige Rolle an und kann das fertige `pg_dump`-Skript ausdrucken, statt es auszuführen. Natives `pg_dump` (Homebrew) führt es dann aus:
 
@@ -176,6 +176,22 @@ const { colors } = useTheme();
        AND a.attnum > 0 AND NOT a.attisdropped AND a.attacl IS NOT NULL;
     -- Kommt etwas zurück, ist die Liste eingefroren.
     ```
+    ⚠️ **Die Probe über-meldet — seit dem 21.09.2026 belegt.** `attacl` ist auch
+    dann gesetzt, wenn jemand eine Spalte ausdrücklich **GEWÄHRT** hat. Bei
+    `live_auctions` ist genau das sechsmal passiert (`women_only`, `category`,
+    `seller_kind`, `shipping_tier` …), und die Tabelle steht deshalb in der
+    Liste, obwohl ihr Tabellen-Recht nie aufgelöst wurde — `size` und
+    `planned_for` kamen ohne eigenen GRANT hinzu und sind bis heute lesbar.
+    Wer die Liste prüft, muss deshalb ZWEITENS fragen, ob das Tabellen-Recht
+    noch steht:
+    ```sql
+    SELECT relacl FROM pg_class WHERE oid = 'public.<tabelle>'::regclass;
+    -- enthält `anon=r/…` und `authenticated=r/…`? Dann ist NICHTS eingefroren,
+    -- egal was attacl meldet. Fehlt es, ist es ernst.
+    ```
+    Im Zweifel den GRANT trotzdem schreiben: Er kostet nichts, ein fehlender
+    kostet eine stille Ausfallzeit.
+
     Der Grund: Ein gezieltes `REVOKE SELECT (<geheime_spalte>)`. Postgres kann ein Recht nicht spaltenweise abziehen: Es löst das Tabellen-Recht auf und schreibt Einzelrechte für die damals vorhandenen Spalten. **Jede später hinzugefügte Spalte ist für `anon`/`authenticated` unsichtbar** — und ein `.eq('neue_spalte', …)` scheitert mit `42501 permission denied for table …`, auch wenn die Spalte gar nicht selektiert wird (ein Filter zählt als Lesezugriff). Am 14.08.2026 genau so zugeschlagen: `live_sessions.app` war nach `20260814280000` für keinen Client lesbar, die komplette App-Trennung wäre beim Ausrollen tot gewesen. Wer einer dieser **fünf** Tabellen eine Spalte hinzufügt, hängt ein `GRANT SELECT (<spalte>) ON <tabelle> TO anon, authenticated;` an — **nie** das Tabellen-Recht wiederherstellen, das gäbe die geheime Spalte mit frei. Bei allen anderen Tabellen (z. B. `messages`, `notifications`) ist der `GRANT` unnötig: Dort deckt das Tabellen-Recht neue Spalten mit ab.
 
 ---

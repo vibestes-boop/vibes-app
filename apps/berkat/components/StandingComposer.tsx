@@ -34,7 +34,7 @@ import { euroToCents } from '../lib/useStudio';
 import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
 import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
-import { tidySize } from '../lib/useListings';
+import { LISTING_COLORS, tidyAttribute, tidySize } from '../lib/useListings';
 import { SHIPPING_TIERS } from '../lib/useShippingTier';
 import { formatSlot, type PlannedShow } from '../lib/useSchedule';
 
@@ -43,6 +43,9 @@ const MAX_IMAGES = 8;
 
 /** Ebenfalls gespiegelt: `live_auctions_size_len` (20260819100000). */
 const MAX_SIZE_LEN = 24;
+
+/** Gespiegelt aus `live_auctions_brand_len` / `_material_len` (20260921200000). */
+const MAX_BRAND_LEN = 40;
 
 export type ListingFormValues = {
   title: string;
@@ -57,6 +60,17 @@ export type ListingFormValues = {
   condition: string | null;
   /** Freitext („42", „M", „One Size"). Freiwillig — siehe das Feld unten. */
   size: string | null;
+  /**
+   * Marke, Farbe und Material (seit 21.09.2026). Alle drei freiwillig.
+   *
+   * ⚠️ Sie fliessen NICHT in `create_standing_listing`/`update_standing_listing`,
+   * sondern in einen zweiten Ruf (`set_listing_attributes`). Die Signaturen
+   * jener beiden sind seit App-Fassung 1.0.0 eingefroren; drei zusätzliche
+   * Parameter erzeugten eine Überladung und damit HTTP 300 für alle.
+   */
+  brand: string | null;
+  color: string | null;
+  material: string | null;
   /**
    * Was der Artikel für den Weg braucht (1 Brief … 4 grosses Paket).
    *
@@ -144,6 +158,25 @@ export function StandingComposer({
 
   const [condition, setCondition] = useState<string | null>(initial?.condition ?? null);
   const [size, setSize] = useState(initial?.size ?? '');
+  const [brand, setBrand] = useState(initial?.brand ?? '');
+  const [color, setColor] = useState<string | null>(initial?.color ?? null);
+  const [material, setMaterial] = useState(initial?.material ?? '');
+  /**
+   * Marke, Farbe und Material liegen hinter EINEM Tipp — dieselbe Entscheidung
+   * wie bei der Beschreibung darunter.
+   *
+   * ⚠️ Das Formular wurde am 21.09.2026 entrümpelt, weil Zaur es „vibecodet"
+   * nannte; drei weitere Felder fest eingebaut wären am selben Tag das
+   * Gegenteil gewesen. Sie sind freiwillig, also gehören sie hinter den Tipp —
+   * der schnelle Weg („abends drei Sachen einstellen") bleibt schnell, und wer
+   * genauer werden will, kann.
+   *
+   * Beim BEARBEITEN offen, sobald einer der drei einen Wert trägt: Ein
+   * zugeklappter Abschnitt mit Inhalt sieht aus wie ein leerer.
+   */
+  const [detailsOpen, setDetailsOpen] = useState(
+    Boolean(initial?.brand || initial?.color || initial?.material),
+  );
   const [shippingTier, setShippingTier] = useState<number | null>(initial?.shippingTier ?? null);
   const [postalCode, setPostalCode] = useState(initial?.postalCode ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
@@ -388,6 +421,51 @@ export function StandingComposer({
           {CONDITIONS.find((c) => c.slug === condition)?.hint}
         </Text>
       ) : null}
+
+      {detailsOpen ? (
+        <>
+          <View style={s.row}>
+            <View style={s.field}>
+              <Text style={s.fieldLabel}>Marke</Text>
+              <TextInput value={brand} onChangeText={setBrand} placeholder="Zum Beispiel Nike"
+                placeholderTextColor={ui.textMuted} accessibilityLabel="Marke"
+                style={[s.input, s.fieldInput]} maxLength={MAX_BRAND_LEN} />
+            </View>
+            <View style={s.field}>
+              <Text style={s.fieldLabel}>Material</Text>
+              <TextInput value={material} onChangeText={setMaterial} placeholder="Zum Beispiel Wolle"
+                placeholderTextColor={ui.textMuted} accessibilityLabel="Material"
+                style={[s.input, s.fieldInput]} maxLength={MAX_BRAND_LEN} />
+            </View>
+          </View>
+          <Text style={s.label}>Farbe</Text>
+          {/* ⚠️ Vorschläge, kein Zwang. Die Spalte nimmt jeden Text an — die
+              Kacheln sorgen nur dafür, dass „Schwarz" nicht in fünf
+              Schreibweisen zerfällt. Zweiter Tipp wählt ab, wie beim Zustand. */}
+          <View style={s.chipRow}>
+            {LISTING_COLORS.map((c) => {
+              const on = color === c;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => setColor(on ? null : c)}
+                  style={[s.chip, on && s.chipOn]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Text style={[s.chipText, on && s.chipTextOn]}>{c}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      ) : (
+        <Pressable onPress={() => setDetailsOpen(true)} style={s.descOpener}
+          accessibilityRole="button" accessibilityLabel="Marke, Farbe und Material angeben">
+          <Plus size={16} color={ui.brand} />
+          <Text style={s.descOpenerText}>Marke, Farbe und Material</Text>
+        </Pressable>
+      )}
 
       {descOpen ? (
         <TextInput
@@ -650,6 +728,9 @@ export function StandingComposer({
             condition,
             shippingTier,
             size: tidySize(size),
+            brand: tidyAttribute(brand),
+            color: tidyAttribute(color ?? ''),
+            material: tidyAttribute(material),
             postalCode: postalCode.trim() || null,
             city: city.trim() || null,
             planId: mode === 'create' ? planId : null,
@@ -673,6 +754,14 @@ export function StandingComposer({
             // jedem Stück eine andere. Sie stehen zu lassen hieße, sie beim
             // zweiten Artikel still falsch zu behaupten.
             setSize('');
+            // Marke, Farbe und Material werden zurückgesetzt und der Abschnitt
+            // klappt zu: Sie gehören zum STÜCK, nicht zum Abend. Sie stehen zu
+            // lassen hiesse, sie beim zweiten Artikel still falsch zu
+            // behaupten — dieselbe Begründung wie bei der Größe darüber.
+            setBrand('');
+            setColor(null);
+            setMaterial('');
+            setDetailsOpen(false);
             setDescription('');
             setDescOpen(false);
             // PLZ und Ort bleiben ABSICHTLICH stehen: Wer abends fünf Sachen

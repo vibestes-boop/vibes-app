@@ -93,6 +93,18 @@ export type Listing = {
    */
   category: string | null;
   /**
+   * Marke, Farbe und Material (seit 20260921200000) — alle drei freiwillig,
+   * alle drei Freitext.
+   *
+   * ⚠️ SIE MÜSSEN IM TYP STEHEN, und zwar aus demselben Grund wie `category`
+   * direkt darüber: Das Bearbeiten ist Vollersatz. Ein Formular, das sie nicht
+   * KENNT, schickt beim Speichern drei leere Werte — und löscht die Marke,
+   * ohne dass jemand sie angefasst hätte.
+   */
+  brand: string | null;
+  color: string | null;
+  material: string | null;
+  /**
    * Seit 20260816210000, alle vier freiwillig.
    *
    * Für ein Angebot ohne Sendung ist die Beschreibung die einzige, die es je
@@ -165,6 +177,7 @@ export const LISTING_COLUMNS =
   'id, seller_id, title, image_url, image_urls, buy_now_cents, start_price_cents, ' +
   'current_bid_cents, winner_id, women_only, ' +
   'accepts_offers, created_at, status, category, description, condition, size, postal_code, ' +
+  'brand, color, material, ' +
   'city, seller_kind, shipping_tier, planned_for, ' +
   // Der Termin per Embed statt als zweite Abfrage: `planned_for` hat einen
   // echten Fremdschlüssel auf `scheduled_lives`, PostgREST löst ihn also auf.
@@ -678,6 +691,38 @@ export function tidySize(raw: string): string | null {
   const v = raw.trim();
   if (!v) return null;
   return /^[a-zA-Z]{1,3}$/.test(v) ? v.toUpperCase() : v;
+}
+
+/**
+ * Die dreizehn Farb-Vorschläge im Einstell-Formular.
+ *
+ * ⚠️ EIN VORSCHLAG, KEINE LISTE. Die Spalte `live_auctions.color` nimmt jeden
+ * Text an — „petrol", „altrosa", „roségold" sind richtig, und eine gepflegte
+ * Liste wäre am ersten Tag unvollständig. Dieselbe Abwägung wie bei `size`
+ * (Migration 20260819100000): Beim EINTRAGEN führen, beim FILTERN
+ * normalisieren. Eine Datenbank, die jemanden wegen seiner Farbe aussperrt,
+ * löst das falsche Problem.
+ *
+ * Warum überhaupt Vorschläge: Ohne sie zerfällt „Schwarz" in fünf
+ * Schreibweisen, und ein Filter darüber findet nichts. Die Reihenfolge folgt
+ * dem Bestand dieser Gemeinschaft — Abaya, Hijab und Schmuck zuerst.
+ */
+export const LISTING_COLORS = [
+  'Schwarz', 'Weiß', 'Beige', 'Grau', 'Braun',
+  'Blau', 'Grün', 'Rot', 'Rosa', 'Lila',
+  'Gold', 'Silber', 'Bunt',
+] as const;
+
+/**
+ * Freitext aufräumen: leeres Feld wird `null`, nicht der leere String.
+ *
+ * Der Unterschied zählt: `''` in der Spalte hiesse „der Verkäufer hat eine
+ * leere Marke angegeben" und würde in der Merkmals-Tabelle eine leere Zeile
+ * erzeugen. `null` heisst „keine Angabe" und blendet die Zeile aus.
+ */
+export function tidyAttribute(raw: string): string | null {
+  const v = raw.trim();
+  return v ? v : null;
 }
 
 /**

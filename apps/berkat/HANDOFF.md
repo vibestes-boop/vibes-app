@@ -16513,3 +16513,86 @@ entrümpelt (Abschnitt 113), vier neue Felder wären das Gegenteil. Nicht gebaut
 `tsc` 0, **425 von 425**, iPhone-17-Simulator an einem fremden kaufbaren Angebot: Kauf-Block,
 Verkäuferzeile einzeilig, kein doppelter Versandsatz, helles Teilen-Blatt mit vier Zielen,
 Wischreihe, Angebots-Nummer.
+
+---
+
+## 115. Marke, Farbe und Material (21.09.2026)
+
+Nach Abschnitt 114: *„ja baue marke farbe material auch"*. Ich hatte sie dort als Zaurs
+Entscheidung offengelassen, weil am selben Tag das Einstell-Formular entrümpelt worden war.
+
+### Drei Spalten, kein Merkmals-System
+
+Migration `20260921200000`. Der Reflex wäre `listing_attributes (auction_id, key, value)` oder eine
+JSONB-Spalte — „dann kann man später alles". Beides ist hier falsch, aus denselben Gründen, aus
+denen `size` am 19.08. eine Spalte wurde: Ein Filter über JSONB braucht einen GIN-Index und eine
+Abfragesprache, die niemand mehr liest; ein Schlüssel-Wert-Paar hat weder Typ noch Länge; und die
+Merkmale sind **nicht offen** — es sind genau die drei, die auf der Artikelseite stehen sollen.
+
+Indizes nur auf **Marke und Farbe** (`lower(…)`, Teil-Index auf `IS NOT NULL`). Nach einem Material
+sucht praktisch niemand, und ein ungenutzter Index kostet bei jedem Schreiben.
+
+### ⚠️ Der Schreibweg ist eine EIGENE Funktion
+
+`create_standing_listing` und `update_standing_listing` bekommen **keine** neuen Parameter. Der
+Grund steht wörtlich in `useStanding.ts`: *„Wer diese RPC jetzt noch einmal per DROP + CREATE
+ersetzt, macht jede ausgelieferte Fassung ohne passenden OTA blind — PGRST202."* Und ein Parameter
+mit Vorgabewert hilft nicht: `CREATE OR REPLACE` ersetzt nur bei **gleicher** Signatur; mit drei
+zusätzlichen Parametern entstünde eine zweite Funktion daneben, und PostgREST antwortet auf eine
+mehrdeutige Überladung mit **HTTP 300 für alle Aufrufer gleichzeitig**.
+
+Also `set_listing_attributes(uuid, text, text, text)` — dieselbe Bauart wie
+`set_listing_shipping_tier` und `move_listing_to_show`. Vier Rufe beim Anlegen, drei beim
+Bearbeiten; jeder nach dem ersten darf scheitern, ohne den ersten mitzureißen.
+
+### ⚠️ Regel 11 über-meldet — belegt und in CLAUDE.md korrigiert
+
+`live_auctions` steht in der Liste der fünf Tabellen mit „eingefrorener Spaltenliste". Die Probe
+dort fragt `pg_attribute.attacl IS NOT NULL` — dieses Feld ist aber **auch dann gesetzt, wenn
+jemand eine Spalte ausdrücklich GEWÄHRT hat.** Bei `live_auctions` ist genau das sechsmal
+passiert. Die Tabelle trägt weiterhin ein tabellenweites `GRANT SELECT`; deshalb funktionieren
+`size` und `planned_for` seit dem 19.08. ohne eigenen GRANT.
+
+Die Regel hat jetzt eine zweite Frage dazubekommen:
+`SELECT relacl FROM pg_class WHERE oid = '…'::regclass` — steht dort `anon=r/…`, ist nichts
+eingefroren, egal was `attacl` meldet. Die drei GRANTs in dieser Migration sind danach redundant
+und bleiben trotzdem stehen.
+
+### Im Formular: hinter EINEM Tipp
+
+„+ Marke, Farbe und Material" — dieselbe Entscheidung wie bei der Beschreibung darunter. Das
+Formular war am selben Tag entrümpelt worden; drei fest eingebaute Felder wären das Gegenteil
+gewesen. Sie sind freiwillig, also gehören sie hinter den Tipp: Der schnelle Weg („abends drei
+Sachen einstellen") bleibt schnell. Beim **Bearbeiten** offen, sobald einer der drei einen Wert
+trägt — ein zugeklappter Abschnitt mit Inhalt sieht aus wie ein leerer.
+
+Marke und Material als Textfelder nebeneinander, **Farbe als dreizehn Kacheln**.
+
+⚠️ Die Kacheln sind ein **Vorschlag, keine Liste**. Die Spalte nimmt jeden Text an — „petrol",
+„altrosa", „roségold" sind richtig. Dieselbe Abwägung wie bei `size`: beim Eintragen führen, beim
+Filtern normalisieren. Ohne die Kacheln zerfiele „Schwarz" in fünf Schreibweisen und ein Filter
+fände nichts; mit einer erzwungenen Liste sperrte die Datenbank jemanden aus, dessen Farbe sie
+nicht kennt.
+
+⚠️ **`initial` musste alle drei tragen.** Das Bearbeiten ist Vollersatz — auch über die neue RPC.
+Ein Formular, das sie nicht kennt, schickt drei leere Werte und löscht die Marke beim ersten
+Speichern. Derselbe Satz steht seit dem 19.08. über `size`.
+
+### Auf der Artikelseite: eine Tabelle
+
+Nicht drei weitere Kacheln. Unter dem Preis stehen bereits Größe · Zustand · Ort — die drei, die
+„ist das überhaupt für mich" beantworten, und drei ist die Zahl, die man auf einen Blick liest.
+Marke, Farbe und Material beantworten „was ist es genau"; sie stehen als Tabelle unter der
+Beschreibung, rechtsbündig wie bei Kleinanzeigen, und nur die Zeilen mit Wert.
+
+### Schema-Abzug erneuert
+
+`supabase/SCHEMA.md` und `schema_live.sql` standen auf dem **14.08.2026, 93 Tabellen**. Jetzt
+**21.09.2026, 113 Tabellen** — mit `--no-privileges` (das Repo ist öffentlich), auf null
+`GRANT`/`REVOKE`-Zeilen nachgemessen, `/tmp/dump.sh` sofort gelöscht.
+
+### Geprüft
+
+Migration ausgerollt (nur diese eine war offen). `tsc` 0, **425 von 425**. Im iPhone-17-Simulator
+die ganze Kette durchgespielt: Bearbeiten → „Nike", „Leder", Kachel „Weiß" → Speichern → die
+Merkmalstabelle auf der Artikelseite zeigt alle drei. Formular → RPC → Datenbank → Anzeige.

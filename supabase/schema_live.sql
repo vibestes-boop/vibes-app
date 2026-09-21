@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict 4yzxWcDhtqxaEr4QtAid3mgPYKbpvfBRwLBS1DxLS286jUeAH1NoNilSFPU9G8Y
+-- \restrict ZmvOu6Jr02MgxFTXA7o5kTbzehf0ldK1XHwHwSPZyAuVOqwQNNOmf5RZdXFtB7R
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -2247,6 +2247,304 @@ $$;
 ALTER FUNCTION "public"."auto_score_post"() OWNER TO "postgres";
 
 --
+-- Name: berkat_ask_stripe("text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_ask_stripe"("p_sweep" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'vault', 'net', 'extensions', 'pg_temp'
+    AS $$
+DECLARE
+  v_key text;
+  v_req bigint;
+BEGIN
+  SELECT decrypted_secret INTO v_key
+    FROM vault.decrypted_secrets
+   WHERE name = 'service_role_key'
+   LIMIT 1;
+
+  IF v_key IS NULL THEN
+    RAISE WARNING 'berkat_ask_stripe: service_role_key fehlt im Vault — übersprungen';
+    RETURN;
+  END IF;
+
+  v_req := net.http_post(
+    url     := 'https://llymwqfgujwkoxzqxrlm.supabase.co/functions/v1/berkat-confirm-payment',
+    headers := jsonb_build_object(
+      'Content-Type',  'application/json',
+      'Authorization', 'Bearer ' || v_key
+    ),
+    body    := jsonb_build_object('sweep', p_sweep),
+    timeout_milliseconds := 30000
+  );
+
+  INSERT INTO public.berkat_night_service_log (request_id, sweep)
+  VALUES (v_req, p_sweep);
+
+  -- Das Buch bleibt dünn. Vierzehn Tage reichen, um „läuft es?" zu beantworten;
+  -- alles darüber wäre eine Tabelle, die nur wächst und die niemand liest.
+  DELETE FROM public.berkat_night_service_log
+   WHERE sent_at < now() - interval '14 days';
+EXCEPTION WHEN OTHERS THEN
+  -- Bleibt eine Warnung — ein klemmender Wecker darf den Cron-Lauf nicht rot
+  -- färben. Aber mit SQLSTATE: Wer den Fehler doch einmal sucht, soll nicht
+  -- raten müssen, WARUM es nicht ging.
+  RAISE WARNING 'berkat_ask_stripe(%) fehlgeschlagen [%]: %', p_sweep, SQLSTATE, SQLERRM;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_ask_stripe"("p_sweep" "text") OWNER TO "postgres";
+
+--
+-- Name: berkat_categories_two_levels(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_categories_two_levels"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  -- Mein Elternteil darf selbst kein Kind sein.
+  IF NEW.parent_slug IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.berkat_categories
+     WHERE slug = NEW.parent_slug AND parent_slug IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'category_depth_exceeded: % ist bereits eine Unterkategorie', NEW.parent_slug
+      USING ERRCODE = '22023';
+  END IF;
+
+  -- Und ich darf nicht zum Kind werden, wenn ich selbst Kinder habe.
+  IF NEW.parent_slug IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.berkat_categories WHERE parent_slug = NEW.slug
+  ) THEN
+    RAISE EXCEPTION 'category_depth_exceeded: % hat selbst Unterkategorien', NEW.slug
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_categories_two_levels"() OWNER TO "postgres";
+
+--
+-- Name: berkat_gen_referral_code(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_gen_referral_code"() RETURNS "text"
+    LANGUAGE "sql"
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT string_agg(
+           substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', (floor(random() * 32) + 1)::int, 1),
+           ''
+         )
+    FROM generate_series(1, 6);
+$$;
+
+
+ALTER FUNCTION "public"."berkat_gen_referral_code"() OWNER TO "postgres";
+
+--
+-- Name: berkat_night_service_health(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_night_service_health"() RETURNS TABLE("wann" timestamp with time zone, "auftrag" "text", "status" integer, "befund" "text")
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'net', 'extensions', 'pg_temp'
+    AS $$
+  SELECT
+    l.sent_at,
+    l.sweep,
+    r.status_code,
+    CASE
+      WHEN r.id IS NULL      THEN '⏳ losgeschickt, Antwort noch nicht da (oder schon aufgeräumt)'
+      WHEN r.status_code = 200 THEN '✅ angekommen und angenommen'
+      WHEN r.status_code = 401 THEN '❌ abgewiesen — Vault-Schlüssel als JWT ungültig'
+      WHEN r.status_code = 403 THEN '❌ abgewiesen — Vault-Schlüssel ≠ SUPABASE_SERVICE_ROLE_KEY (rotiert?)'
+      WHEN r.status_code = 404 THEN '❌ Function nicht ausgerollt'
+      WHEN r.status_code IS NULL THEN '❌ keine Antwort — ' || COALESCE(r.error_msg, 'Zeitüberschreitung')
+      ELSE '⚠️ unerwartet ' || r.status_code || ': ' || COALESCE(left(r.content, 200), '')
+    END
+    FROM public.berkat_night_service_log l
+    LEFT JOIN net._http_response r ON r.id = l.request_id
+   ORDER BY l.sent_at DESC
+   LIMIT 20;
+$$;
+
+
+ALTER FUNCTION "public"."berkat_night_service_health"() OWNER TO "postgres";
+
+--
+-- Name: berkat_pay_out_buyer_referral(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_pay_out_buyer_referral"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_inviter   uuid;
+  v_policy    public.berkat_reward_policy;
+  v_converted integer;
+  v_this_month integer;
+BEGIN
+  IF NEW.status <> 'paid'
+     OR OLD.status IS NOT DISTINCT FROM 'paid'
+     OR NEW.cart_id IS NULL
+     OR NEW.buyer_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Einzelne Anweisung statt SELECT-dann-UPDATE: Die Bedingung
+  -- `buyer_reward_at IS NULL` im UPDATE ist die Sperre gegen doppelte
+  -- Auszahlung, auch wenn zwei Zahlungen gleichzeitig durchgehen.
+  --
+  -- Der Zeitstempel wird auch bei abgeschaltetem Bonus gesetzt: Er beantwortet
+  -- „hat der Geworbene je gekauft" und ist damit genau die Kennzahl, die vor
+  -- dem Anschalten fehlt.
+  UPDATE public.berkat_referrals
+     SET buyer_reward_at = now()
+   WHERE invitee_id = NEW.buyer_id
+     AND buyer_reward_at IS NULL
+  RETURNING inviter_id INTO v_inviter;
+
+  IF v_inviter IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT * INTO v_policy FROM public.berkat_reward_policy WHERE id = 1;
+  IF NOT COALESCE(v_policy.buyer_rewards_enabled, false) THEN
+    RETURN NEW;
+  END IF;
+
+  -- SCHWELLE: Die Gutschrift des Werbers ist ein Rabatt an einen Bestandskunden
+  -- und kauft keine Neukunden. Erst ab dem n-ten geworbenen KÄUFER (nicht: dem
+  -- n-ten angelegten Konto) ist sie aus deren Erstbestellungen bezahlt.
+  SELECT count(*) INTO v_converted
+    FROM public.berkat_referrals
+   WHERE inviter_id = v_inviter AND buyer_reward_at IS NOT NULL;
+
+  IF v_converted < v_policy.inviter_reward_after THEN
+    RETURN NEW;
+  END IF;
+
+  -- DECKEL je Kalendermonat. Ohne ihn wäre die Verbindlichkeit unbegrenzt.
+  SELECT count(*) INTO v_this_month
+    FROM public.berkat_shipping_credits
+   WHERE user_id = v_inviter
+     AND reason = 'invite_paid'
+     AND granted_at >= date_trunc('month', now());
+
+  IF v_this_month >= v_policy.monthly_cap THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO public.berkat_shipping_credits (user_id, reason)
+  VALUES (v_inviter, 'invite_paid');
+
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_pay_out_buyer_referral"() OWNER TO "postgres";
+
+--
+-- Name: berkat_pay_out_seller_referral(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_pay_out_seller_referral"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_inviter uuid;
+BEGIN
+  IF NEW.status <> 'sold'
+     OR OLD.status IS NOT DISTINCT FROM 'sold'
+     OR NEW.seller_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  UPDATE public.berkat_referrals
+     SET seller_reward_at = now()
+   WHERE invitee_id = NEW.seller_id
+     AND seller_reward_at IS NULL
+  RETURNING inviter_id INTO v_inviter;
+
+  IF v_inviter IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Beide Seiten. Der Geworbene bekommt es, weil es das Versprechen war, mit
+  -- dem man ihn geholt hat; der Werber, weil er die Arbeit hatte.
+  INSERT INTO public.berkat_seller_perks (user_id, kind, days, reason) VALUES
+    (v_inviter,      'commission_free', 30, 'Du hast einen Verkäufer gebracht'),
+    (NEW.seller_id,  'commission_free', 30, 'Über eine Einladung gekommen');
+
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_pay_out_seller_referral"() OWNER TO "postgres";
+
+--
+-- Name: berkat_revoke_checkout_enabled(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_revoke_checkout_enabled"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  -- ⚠️ Nur wenn die Verbindung zuletzt tatsächlich getragen hat. Sonst würde
+  -- ein abgebrochenes Onboarding, das der Verkäufer wieder löst, eine
+  -- HANDVERGEBENE Freigabe mitreissen — derselbe Fehler wie oben, nur am
+  -- anderen Ende.
+  IF OLD.charges_enabled THEN
+    UPDATE public.berkat_sellers
+       SET checkout_enabled = false
+     WHERE user_id = OLD.user_id;
+  END IF;
+  RETURN OLD;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_revoke_checkout_enabled"() OWNER TO "postgres";
+
+--
+-- Name: berkat_seller_stripe_touch(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_seller_stripe_touch"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_seller_stripe_touch"() OWNER TO "postgres";
+
+--
+-- Name: berkat_sellers_touch(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_sellers_touch"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_sellers_touch"() OWNER TO "postgres";
+
+--
 -- Name: berkat_server_time(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -2256,6 +2554,135 @@ CREATE OR REPLACE FUNCTION "public"."berkat_server_time"() RETURNS timestamp wit
 
 
 ALTER FUNCTION "public"."berkat_server_time"() OWNER TO "postgres";
+
+--
+-- Name: berkat_settle_shipping_credit(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_settle_shipping_credit"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_credit uuid;
+BEGIN
+  IF NEW.status <> 'paid'
+     OR OLD.status IS NOT DISTINCT FROM 'paid'
+     OR NEW.cart_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT id INTO v_credit
+    FROM public.berkat_shipping_credits
+   WHERE reserved_cart_id = NEW.cart_id AND consumed_at IS NULL;
+
+  IF v_credit IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF COALESCE(NEW.shipping_cents, 0) = 0 THEN
+    UPDATE public.berkat_shipping_credits
+       SET consumed_at = now(), consumed_order_id = NEW.id
+     WHERE id = v_credit;
+    NEW.shipping_credit_applied := true;
+  ELSE
+    -- Der Käufer hat trotz Gutschrift eine bezahlte Zone gewählt. Stripe lässt
+    -- die Wahl frei (HANDOFF 14), und ein Versehen darf keine Belohnung
+    -- verbrennen — die Reservierung wird gelöst, die Gutschrift bleibt.
+    UPDATE public.berkat_shipping_credits
+       SET reserved_cart_id = NULL
+     WHERE id = v_credit;
+  END IF;
+
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_settle_shipping_credit"() OWNER TO "postgres";
+
+--
+-- Name: berkat_shipping_rates_touch(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_shipping_rates_touch"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_shipping_rates_touch"() OWNER TO "postgres";
+
+--
+-- Name: berkat_sync_checkout_enabled(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_sync_checkout_enabled"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  -- Der Anfang: Zeile entsteht, Stripe hat noch nichts freigegeben.
+  -- Eine bestehende Freigabe bleibt unangetastet; fehlt die Verkäuferzeile
+  -- ganz, wird sie mit der Vorgabe `false` angelegt (wie ohne Connect auch).
+  IF TG_OP = 'INSERT' AND NEW.charges_enabled = false THEN
+    INSERT INTO public.berkat_sellers (user_id)
+    VALUES (NEW.user_id)
+    ON CONFLICT (user_id) DO NOTHING;
+    RETURN NEW;
+  END IF;
+
+  -- Ab hier hat Stripe etwas gesagt — einschalten oder sperren.
+  INSERT INTO public.berkat_sellers (user_id, checkout_enabled)
+  VALUES (NEW.user_id, NEW.charges_enabled)
+  ON CONFLICT (user_id) DO UPDATE
+     SET checkout_enabled = NEW.charges_enabled;
+
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."berkat_sync_checkout_enabled"() OWNER TO "postgres";
+
+--
+-- Name: berkat_unpaid_count("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."berkat_unpaid_count"("p_user" "uuid" DEFAULT "auth"."uid"()) RETURNS integer
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT count(*)::int
+    FROM public.berkat_unpaid_strikes s
+   WHERE s.buyer_id = p_user
+     AND s.reported_at > now() - INTERVAL '12 months';
+$$;
+
+
+ALTER FUNCTION "public"."berkat_unpaid_count"("p_user" "uuid") OWNER TO "postgres";
+
+--
+-- Name: birth_date_state(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."birth_date_state"() RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT CASE
+    WHEN auth.uid() IS NULL THEN 'anonymous'
+    WHEN NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()) THEN 'missing'
+    WHEN (SELECT birth_date FROM public.profiles WHERE id = auth.uid()) IS NULL THEN 'missing'
+    WHEN public.is_adult(auth.uid()) THEN 'adult'
+    ELSE 'minor'
+  END;
+$$;
+
+
+ALTER FUNCTION "public"."birth_date_state"() OWNER TO "postgres";
 
 --
 -- Name: block_cohost("uuid", "text", integer); Type: FUNCTION; Schema: public; Owner: postgres
@@ -2337,17 +2764,20 @@ $$;
 ALTER FUNCTION "public"."bump_product_sold_count"("p_product_id" "uuid", "p_qty" integer) OWNER TO "postgres";
 
 --
--- Name: buy_now_live_auction("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: buy_now_live_auction("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE FUNCTION "public"."buy_now_live_auction"("p_auction_id" "uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."buy_now_live_auction"("p_auction_id" "uuid", "p_offer_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
   a       public.live_auctions;
+  o       public.berkat_offers;
   v_uid   uuid := auth.uid();
+  v_ok    boolean;
   v_cart  uuid;
+  v_price integer;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
@@ -2357,10 +2787,20 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
   END IF;
+
+  -- ── Wächter 1: Frauen-Only ──
+  -- Bewusst dieselbe Meldung wie „gibt es nicht": Sonst verrät der Fehlertext
+  -- die Existenz eines Frauen-Only-Artikels.
+  IF a.women_only
+     AND a.seller_id <> v_uid
+     AND NOT public.is_women_only_verified() THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+
   IF a.buy_now_cents IS NULL THEN
     RAISE EXCEPTION 'no_buy_now' USING ERRCODE = '22023';
   END IF;
-  IF a.status NOT IN ('scheduled', 'running') THEN
+  IF a.status NOT IN ('scheduled', 'running', 'listed') THEN
     RAISE EXCEPTION 'auction_closed' USING ERRCODE = '22023';
   END IF;
   IF a.seller_id = v_uid THEN
@@ -2371,14 +2811,93 @@ BEGIN
     RAISE EXCEPTION 'buy_now_gone' USING ERRCODE = '22023';
   END IF;
 
+  -- ── Wächter 2: die ZAG-Schranke ──
+  --
+  -- Nur für das Regal: Ein Artikel in einer laufenden Sendung hat einen
+  -- Verkäufer, der sich bewusst zum Senden entschieden hat — dieser Weg wird
+  -- mit der Verkäufer-Aufnahme geregelt, nicht hier.
+  --
+  -- `IS DISTINCT FROM true` statt `IS NOT NULL AND = false`: Damit fällt auch
+  -- „keine Zeile" auf gesperrt. Wer hier wieder ein `IS NOT NULL` einbaut, macht
+  -- aus einer erlaubnisrechtlichen Schranke eine Vermutung.
+  -- ⚠️ URLAUB — und warum der Riegel HIER stehen muss und nicht nur in der
+  -- Policy. `live_auctions_select_standing` blendet die Ware eines
+  -- verreisten Verkäufers aus, aber diese Funktion ist `SECURITY DEFINER`
+  -- und liest mit `SELECT … FOR UPDATE` an der RLS vorbei. Wer den Link
+  -- gespeichert hat, käme sonst weiterhin durch — dieselbe Lücke, die am
+  -- 17.08. bei `women_only` gefunden wurde (Übergabe 20).
+  --
+  -- „gibt es nicht" statt „ist im Urlaub" wäre hier FALSCH: Der Verkäufer ist
+  -- öffentlich sichtbar, sein Urlaub steht auf seinem Profil, und ein Käufer,
+  -- der nichts erfährt, sucht den Fehler bei sich.
+  IF a.session_id IS NULL AND public.seller_on_vacation(a.seller_id) THEN
+    RAISE EXCEPTION 'seller_on_vacation' USING ERRCODE = '22023';
+  END IF;
+
+  IF a.session_id IS NULL THEN
+    SELECT checkout_enabled INTO v_ok
+      FROM public.berkat_sellers WHERE user_id = a.seller_id;
+    IF v_ok IS DISTINCT FROM true THEN
+      RAISE EXCEPTION 'contact_seller' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  -- ── Wächter 3: der vereinbarte Preis ── (NEU am 18.08.2026)
+  --
+  -- Ohne `p_offer_id` gilt der Listenpreis — der alte Weg, unverändert.
+  v_price := a.buy_now_cents;
+
+  IF p_offer_id IS NOT NULL THEN
+    -- ⚠️ Eine Zusage gilt NICHT mehr, sobald die Uhr läuft (22.08.2026).
+    --
+    -- Vorher liess die Statusprüfung weiter oben ('scheduled','running',
+    -- 'listed') auch den laufenden Fall durch: Stand die Auktion bei 80 € und
+    -- die Zusage lautete 50 €, konnte der Käufer sie einlösen — der
+    -- Höchstbietende verlor den Artikel, der Verkäufer die Differenz.
+    --
+    -- Berkats eigene Regel sagt, ein Gebot ist eine BINDENDE Willenserklärung
+    -- (Übergabe, Abschnitt 19). Eine Zusage, die ein bindendes Gebot schlägt,
+    -- nimmt dem Gebot seine Bedeutung — und wenn Bieter merken, dass ihnen der
+    -- Artikel zu einem vorher ausgehandelten Preis weggenommen werden kann,
+    -- hören sie auf zu bieten. Die Glaubwürdigkeit der Auktion IST das Produkt.
+    --
+    -- Whatnot kennt das Problem strukturell gar nicht: Dort gibt es Vorschläge
+    -- nur auf Buy-It-Now-Artikeln ("auctions don't support offers"), und ein
+    -- angenommener Vorschlag belastet die Karte SOFORT, statt als einlösbare
+    -- Zusage liegen zu bleiben.
+    --
+    -- ⚠️ Der SOFORTKAUF zum Listenpreis bleibt während der Auktion erlaubt —
+    -- nur der Rabatt gilt nicht mehr. Wer die Zusage einlösen will, tut es vor
+    -- dem Start; danach steht der volle Preis.
+    --
+    -- ⚠️ Dieser Riegel steht VOR dem SELECT INTO. `FOUND` gilt für die zuletzt
+    -- ausgeführte Anweisung; eine Prüfung dazwischen träfe das `IF NOT FOUND`
+    -- darunter.
+    IF a.status = 'running' THEN
+      RAISE EXCEPTION 'offer_auction_running' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT * INTO o FROM public.berkat_offers WHERE id = p_offer_id FOR UPDATE;
+    IF NOT FOUND
+       OR o.auction_id <> a.id            -- Zusage für einen ANDEREN Artikel
+       OR o.buyer_id  <> v_uid            -- fremde Zusage einlösen
+       OR o.status    <> 'accepted' THEN  -- abgelehnt, offen oder schon benutzt
+      RAISE EXCEPTION 'offer_not_valid' USING ERRCODE = '42501';
+    END IF;
+    -- Der Käufer zahlt nie mehr als den Listenpreis, auch wenn die Zeile je
+    -- anders aussähe. Ein Gürtel zum Hosenträger — die RPC ist der einzige Weg
+    -- zu diesem Feld, aber sie ist auch der einzige Weg zum Geld.
+    v_price := LEAST(o.amount_cents, a.buy_now_cents);
+  END IF;
+
   v_cart := public.ensure_auction_cart(v_uid, a.seller_id);
 
   INSERT INTO public.live_bids (auction_id, bidder_id, amount_cents)
-  VALUES (a.id, v_uid, a.buy_now_cents);
+  VALUES (a.id, v_uid, v_price);
 
   UPDATE public.live_auctions
      SET status            = 'sold',
-         current_bid_cents = a.buy_now_cents,
+         current_bid_cents = v_price,
          current_bidder_id = v_uid,
          winner_id         = v_uid,
          bid_count         = a.bid_count + 1,
@@ -2387,17 +2906,25 @@ BEGIN
          cart_id           = v_cart
    WHERE id = a.id;
 
+  -- Alle noch offenen Vorschläge auf diesen Artikel sind gegenstandslos —
+  -- er ist weg. Ohne das warteten andere Käufer auf eine Antwort, die nie
+  -- kommt, und der Verkäufer sähe eine Liste toter Verhandlungen.
+  UPDATE public.berkat_offers
+     SET status = 'declined', responded_at = now()
+   WHERE auction_id = a.id
+     AND status IN ('pending', 'countered', 'accepted');
+
   RETURN jsonb_build_object(
     'auction_id', a.id,
     'status',     'sold',
     'winner_id',  v_uid,
     'cart_id',    v_cart,
-    'paid_cents', a.buy_now_cents
+    'paid_cents', v_price
   );
 END $$;
 
 
-ALTER FUNCTION "public"."buy_now_live_auction"("p_auction_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."buy_now_live_auction"("p_auction_id" "uuid", "p_offer_id" "uuid") OWNER TO "postgres";
 
 --
 -- Name: buy_product("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
@@ -2725,6 +3252,36 @@ END $$;
 ALTER FUNCTION "public"."cancel_live_auction"("p_auction_id" "uuid") OWNER TO "postgres";
 
 --
+-- Name: cancel_prebid("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."cancel_prebid"("p_auction_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  a     public.live_auctions;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND OR a.status <> 'scheduled' OR a.session_id IS NOT NULL THEN
+    -- Dieselbe Sprache wie überall: Was man nicht darf, „gibt es nicht" —
+    -- sonst sickert über die Fehlermeldung durch, dass die Show schon läuft.
+    RAISE EXCEPTION 'prebid_locked' USING ERRCODE = '22023';
+  END IF;
+
+  DELETE FROM public.live_auto_bids
+   WHERE auction_id = p_auction_id AND bidder_id = v_uid;
+END $$;
+
+
+ALTER FUNCTION "public"."cancel_prebid"("p_auction_id" "uuid") OWNER TO "postgres";
+
+--
 -- Name: cancel_product_order("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -2834,6 +3391,36 @@ $$;
 ALTER FUNCTION "public"."cancel_scheduled_post"("p_id" "uuid") OWNER TO "postgres";
 
 --
+-- Name: cancel_standing_listing("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."cancel_standing_listing"("p_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.live_auctions
+     SET status = 'cancelled'
+   WHERE id = p_id
+     AND seller_id = v_uid
+     AND session_id IS NULL
+     AND status = 'listed';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+END $$;
+
+
+ALTER FUNCTION "public"."cancel_standing_listing"("p_id" "uuid") OWNER TO "postgres";
+
+--
 -- Name: check_ai_image_rate_limit("uuid", "public"."ai_image_purpose"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -2933,6 +3520,41 @@ BEGIN
     RAISE EXCEPTION 'cart_closed' USING ERRCODE = '22023';
   END IF;
 
+  -- ⚠️ DIE ZAG-SCHRANKE — hier fehlte sie bis zum 23.08.2026.
+  --
+  -- `checkout_enabled` wurde im ganzen Schema genau EINMAL gelesen: in
+  -- `buy_now_live_auction`, und dort nur für Regal-Artikel
+  -- (`session_id IS NULL`). Der Weg über den Sammelkorb — also der
+  -- HAUPTweg, jeder Live-Zuschlag — lief völlig ungeprüft in die
+  -- Stripe-Sitzung.
+  --
+  -- Warum das eine erlaubnisrechtliche Frage ist und keine Produktfrage:
+  -- Das Geld landet auf dem Konto des Betreibers und müsste von dort an den
+  -- Verkäufer weiter. Genau das ist nach ZAG erlaubnispflichtig, solange es
+  -- kein Stripe Connect gibt (Übergabe 20). `checkout_enabled` ist die
+  -- Erklärung „für diesen Verkäufer ist das geklärt".
+  --
+  -- `IS DISTINCT FROM true` statt `IS NOT NULL AND = false`: Damit fällt
+  -- auch „keine Zeile" auf gesperrt. Wer hier wieder ein `IS NOT NULL`
+  -- einbaut, macht aus einer Schranke eine Vermutung — die Lehre aus
+  -- `20260817120000`.
+  --
+  -- ⚠️ Der Riegel steht NACH der Idempotenz-Abfrage. Wer schon eine
+  -- Bestellung hat, kommt weiterhin zu ihr zurück, auch wenn dem Verkäufer
+  -- die Freigabe zwischenzeitlich entzogen wurde. Eine begonnene Zahlung
+  -- abzuschneiden würde den Käufer stranden lassen, ohne irgendetwas zu
+  -- schützen — die Verpflichtung besteht dann bereits.
+  -- Eine Unterabfrage ohne Treffer liefert NULL, und `NULL IS DISTINCT FROM
+  -- true` ist wahr — „keine Zeile" fällt damit ohne Zusatzprüfung auf
+  -- gesperrt. Ein zusätzliches `EXISTS` daneben läse sich wie zwei
+  -- Bedingungen und wäre eine davon zu viel.
+  IF (
+    SELECT s.checkout_enabled FROM public.berkat_sellers s
+     WHERE s.user_id = c.seller_id
+  ) IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'contact_seller' USING ERRCODE = '42501';
+  END IF;
+
   SELECT COALESCE(SUM(current_bid_cents), 0), COUNT(*)
     INTO v_total, v_items
     FROM public.live_auctions
@@ -2980,6 +3602,50 @@ COMMENT ON FUNCTION "public"."checkout_auction_cart"("p_cart_id" "uuid") IS 'Ber
 
 
 --
+-- Name: claim_prepared_auctions("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."claim_prepared_auctions"("p_session_id" "uuid", "p_planned_for" "uuid" DEFAULT NULL::"uuid") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid   uuid := auth.uid();
+  v_host  uuid;
+  v_moved integer;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  -- `app = 'berkat'` (Fehler 2): Eine Serlo-Session darf keine Berkat-Artikel
+  -- aufnehmen, auch nicht die des eigenen Hosts.
+  SELECT host_id INTO v_host
+    FROM public.live_sessions
+   WHERE id = p_session_id AND app = 'berkat';
+  IF v_host IS NULL THEN
+    RAISE EXCEPTION 'session_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF v_host <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.live_auctions
+     SET session_id = p_session_id,
+         updated_at = now()
+   WHERE seller_id = v_uid
+     AND session_id IS NULL
+     AND status = 'scheduled'
+     AND (p_planned_for IS NULL OR planned_for = p_planned_for);
+
+  GET DIAGNOSTICS v_moved = ROW_COUNT;
+  RETURN v_moved;
+END $$;
+
+
+ALTER FUNCTION "public"."claim_prepared_auctions"("p_session_id" "uuid", "p_planned_for" "uuid") OWNER TO "postgres";
+
+--
 -- Name: claim_referral("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -3017,6 +3683,79 @@ END $$;
 
 
 ALTER FUNCTION "public"."claim_referral"("p_code" "text") OWNER TO "postgres";
+
+--
+-- Name: claim_referral_code("text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."claim_referral_code"("p_code" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid     uuid := auth.uid();
+  v_inviter uuid;
+  v_name    text;
+  v_enabled boolean;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT c.user_id INTO v_inviter
+    FROM public.berkat_referral_codes c
+   WHERE c.code = upper(btrim(p_code));
+
+  IF v_inviter IS NULL THEN
+    RAISE EXCEPTION 'unknown_code' USING ERRCODE = '22023';
+  END IF;
+  IF v_inviter = v_uid THEN
+    RAISE EXCEPTION 'own_code' USING ERRCODE = '22023';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.berkat_referrals WHERE invitee_id = v_uid) THEN
+    RAISE EXCEPTION 'already_claimed' USING ERRCODE = '22023';
+  END IF;
+  -- `cart_id IS NOT NULL` ist die Berkat-Weiche (dieselbe wie in
+  -- create-checkout-session und notify_order_shipped): Eine Serlo-Bestellung
+  -- soll die Einladung nicht verbrauchen.
+  IF EXISTS (
+    SELECT 1 FROM public.product_orders
+     WHERE buyer_id = v_uid
+       AND cart_id IS NOT NULL
+       AND status IN ('paid', 'shipped', 'delivered')
+  ) THEN
+    RAISE EXCEPTION 'too_late' USING ERRCODE = '22023';
+  END IF;
+
+  -- Die Verbindung wird IMMER verzeichnet, auch bei abgeschaltetem Bonus.
+  -- Genau das ist der Sinn des dunklen Zustands: Ob Einladungen überhaupt
+  -- stattfinden, ist die Zahl, die man vor dem Anschalten braucht — und sie
+  -- entsteht nur, wenn von Anfang an mitgeschrieben wird.
+  INSERT INTO public.berkat_referrals (invitee_id, inviter_id) VALUES (v_uid, v_inviter);
+
+  SELECT buyer_rewards_enabled INTO v_enabled FROM public.berkat_reward_policy WHERE id = 1;
+
+  IF COALESCE(v_enabled, false) THEN
+    -- Der Eingeladene bekommt SOFORT — das ist der Anlass, überhaupt zu kommen.
+    -- Der Einlader bekommt erst, wenn wirklich bezahlt wurde (Trigger unten).
+    -- Diese Asymmetrie IST die Missbrauchssperre: Konten anlegen kostet nichts,
+    -- bezahlen schon.
+    INSERT INTO public.berkat_shipping_credits (user_id, reason) VALUES (v_uid, 'invited');
+  END IF;
+
+  SELECT username INTO v_name FROM public.profiles WHERE id = v_inviter;
+
+  -- `credit_granted` sagt der App, welchen Satz sie anzeigen darf. Ohne das
+  -- verspräche die Erfolgsmeldung einen geschenkten Versand, den es nicht gibt.
+  RETURN jsonb_build_object(
+    'ok', true,
+    'inviter_name', v_name,
+    'credit_granted', COALESCE(v_enabled, false)
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."claim_referral_code"("p_code" "text") OWNER TO "postgres";
 
 --
 -- Name: classify_post_moderation("text", "text"[], "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -3291,6 +4030,61 @@ $$;
 ALTER FUNCTION "public"."cost_health_snapshot"() OWNER TO "postgres";
 
 --
+-- Name: create_berkat_tip("uuid", integer, "text", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."create_berkat_tip"("p_recipient_id" "uuid", "p_amount_cents" integer, "p_message" "text" DEFAULT NULL::"text", "p_session_id" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_sender uuid := auth.uid();
+  v_id     uuid;
+BEGIN
+  IF v_sender IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+  IF p_recipient_id IS NULL THEN
+    RAISE EXCEPTION 'recipient_missing' USING ERRCODE = '22023';
+  END IF;
+  IF p_recipient_id = v_sender THEN
+    RAISE EXCEPTION 'cannot_tip_self' USING ERRCODE = '22023';
+  END IF;
+  -- Die Grenzen stehen zusätzlich im CHECK. Hier für eine Fehlermeldung, die
+  -- der Client übersetzen kann, statt einer nackten Constraint-Verletzung.
+  IF p_amount_cents IS NULL OR p_amount_cents < 100 OR p_amount_cents > 50000 THEN
+    RAISE EXCEPTION 'amount_out_of_range' USING ERRCODE = '22023';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_recipient_id) THEN
+    RAISE EXCEPTION 'recipient_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  -- ⚠️ DIESELBE ZAG-SCHRANKE WIE AN DER KASSE.
+  --
+  -- Ein Trinkgeld ist der zweite Weg, auf dem echtes Geld über das Konto des
+  -- Betreibers an einen Dritten fliesst — und er hatte bis zum 23.08.2026
+  -- gar keine Prüfung. Der Betrag ist kleiner als bei einem Kauf, die
+  -- Rechtslage ist dieselbe: weitergeleitetes Geld ist weitergeleitetes Geld.
+  --
+  -- `IS DISTINCT FROM true`, also „keine Zeile" = gesperrt (siehe oben).
+  IF (
+    SELECT s.checkout_enabled FROM public.berkat_sellers s
+     WHERE s.user_id = p_recipient_id
+  ) IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'contact_seller' USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO public.berkat_tips (sender_id, recipient_id, session_id, amount_cents, message)
+  VALUES (v_sender, p_recipient_id, p_session_id, p_amount_cents, nullif(btrim(p_message), ''))
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END $$;
+
+
+ALTER FUNCTION "public"."create_berkat_tip"("p_recipient_id" "uuid", "p_amount_cents" integer, "p_message" "text", "p_session_id" "uuid") OWNER TO "postgres";
+
+--
 -- Name: create_duet_invite("uuid", "uuid", "text", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -3378,6 +4172,7 @@ DECLARE
   v_uid    uuid := auth.uid();
   v_host   uuid;
   v_next   int;
+  v_kind   text;
   v_new_id uuid;
 BEGIN
   IF v_uid IS NULL THEN
@@ -3405,12 +4200,17 @@ BEGIN
   SELECT COALESCE(MAX(sort_index), 0) + 1 INTO v_next
     FROM public.live_auctions WHERE session_id = p_session_id;
 
+  -- Nur LESEN, nicht anlegen — Begründung im Kopf dieser Datei.
+  SELECT kind INTO v_kind FROM public.berkat_sellers WHERE user_id = v_uid;
+
   INSERT INTO public.live_auctions (
     session_id, seller_id, product_id, title, image_url,
-    start_price_cents, min_increment_cents, buy_now_cents, sort_index
+    start_price_cents, min_increment_cents, buy_now_cents, sort_index,
+    seller_kind
   ) VALUES (
     p_session_id, v_uid, p_product_id, btrim(p_title), p_image_url,
-    p_start_price_cents, p_min_increment_cents, p_buy_now_cents, v_next
+    p_start_price_cents, p_min_increment_cents, p_buy_now_cents, v_next,
+    v_kind
   )
   RETURNING id INTO v_new_id;
 
@@ -3633,6 +4433,74 @@ $$;
 
 
 ALTER FUNCTION "public"."create_report"("p_target_type" "text", "p_target_id" "uuid", "p_reason" "text") OWNER TO "postgres";
+
+--
+-- Name: create_standing_listing("text", integer, "text"[], boolean, boolean, "text", "text", "text", "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."create_standing_listing"("p_title" "text", "p_price_cents" integer, "p_image_urls" "text"[] DEFAULT NULL::"text"[], "p_women_only" boolean DEFAULT false, "p_accepts_offers" boolean DEFAULT false, "p_category" "text" DEFAULT NULL::"text", "p_description" "text" DEFAULT NULL::"text", "p_condition" "text" DEFAULT NULL::"text", "p_postal_code" "text" DEFAULT NULL::"text", "p_city" "text" DEFAULT NULL::"text", "p_size" "text" DEFAULT NULL::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid  uuid := auth.uid();
+  v_kind text;
+  v_urls text[];
+  v_id   uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+  IF p_price_cents IS NULL OR p_price_cents <= 100 THEN
+    RAISE EXCEPTION 'price_too_low' USING ERRCODE = '22023';
+  END IF;
+  IF p_women_only AND NOT public.is_women_only_verified() THEN
+    RAISE EXCEPTION 'not_women_only_verified' USING ERRCODE = '42501';
+  END IF;
+  IF p_category IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.berkat_categories WHERE slug = p_category AND active
+  ) THEN
+    RAISE EXCEPTION 'unknown_category' USING ERRCODE = '22023';
+  END IF;
+
+  v_urls := ARRAY(
+    SELECT btrim(u)
+      FROM unnest(coalesce(p_image_urls, '{}'::text[])) WITH ORDINALITY AS t(u, ord)
+     WHERE NULLIF(btrim(u), '') IS NOT NULL
+     ORDER BY ord
+  );
+  IF coalesce(array_length(v_urls, 1), 0) > 8 THEN
+    RAISE EXCEPTION 'too_many_images' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.berkat_sellers (user_id, kind)
+  VALUES (v_uid, 'private')
+  ON CONFLICT (user_id) DO NOTHING;
+
+  SELECT kind INTO v_kind FROM public.berkat_sellers WHERE user_id = v_uid;
+
+  INSERT INTO public.live_auctions (
+    session_id, seller_id, title, image_url, image_urls,
+    start_price_cents, buy_now_cents, status, women_only, accepts_offers, category,
+    description, condition, postal_code, city, seller_kind, size
+  ) VALUES (
+    NULL, v_uid, btrim(p_title), v_urls[1], v_urls,
+    100, p_price_cents, 'listed', coalesce(p_women_only, false),
+    coalesce(p_accepts_offers, false), p_category,
+    NULLIF(btrim(coalesce(p_description, '')), ''),
+    NULLIF(btrim(coalesce(p_condition, '')), ''),
+    NULLIF(btrim(coalesce(p_postal_code, '')), ''),
+    NULLIF(btrim(coalesce(p_city, '')), ''),
+    v_kind,
+    NULLIF(btrim(coalesce(p_size, '')), '')
+  )
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END $$;
+
+
+ALTER FUNCTION "public"."create_standing_listing"("p_title" "text", "p_price_cents" integer, "p_image_urls" "text"[], "p_women_only" boolean, "p_accepts_offers" boolean, "p_category" "text", "p_description" "text", "p_condition" "text", "p_postal_code" "text", "p_city" "text", "p_size" "text") OWNER TO "postgres";
 
 --
 -- Name: create_support_thread("text", "text", "text", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -4010,11 +4878,220 @@ ALTER FUNCTION "public"."delete_ai_image_generations"("p_ids" "uuid"[]) OWNER TO
 
 CREATE OR REPLACE FUNCTION "public"."delete_own_account"() RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'auth'
+    SET "search_path" TO 'public', 'auth', 'pg_temp'
     AS $$
+DECLARE
+  v_uid      uuid := auth.uid();
+  v_open     int;
+  v_unship   int;
+  v_tag      text;
+  v_avatar   text;
+  v_banner   text;
+  v_voice    text;
 BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
-  DELETE FROM auth.users WHERE id = auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  -- Schon gelöscht? Dann ist nichts zu tun. Idempotent, damit ein zweiter
+  -- Aufruf (Doppeltipp, Netz-Wiederholung) nicht in einen Fehler läuft.
+  IF EXISTS (SELECT 1 FROM public.profiles
+              WHERE id = v_uid AND deleted_at IS NOT NULL) THEN
+    RETURN;
+  END IF;
+
+  -- ── Blocker: offene Verpflichtungen ──────────────────────────────────────
+  -- Beide sind ausdrücklich VORÜBERGEHEND und lösen sich von selbst — der Korb
+  -- läuft nach 24 Stunden ab, die Bestellung ist nach dem Versand erledigt.
+  -- Apple 5.1.1(v) erlaubt das: Was nicht erlaubt wäre, ist eine Löschung, die
+  -- gar nicht geht oder nur per E-Mail an den Support.
+  --
+  -- ⚠️ Und genau deshalb steht `payment_requested` unten NICHT mehr dabei (seit
+  -- dieser Migration). Der Satz oben galt für diesen Zustand nie: Es gibt kein
+  -- Auto-Storno, nur eine einmalige Erinnerung nach 24 Stunden
+  -- (`send_payment_reminders`, `20260629170000`). Eine angefangene und nie
+  -- bezahlte Bestellung hätte den Verkäufer dauerhaft festgehalten — eine Sperre,
+  -- die ein Fremder durch Nichtstun setzt. Wer sie wieder einträgt, macht die
+  -- Löschung unerreichbar und den Satz oben zur Unwahrheit.
+  SELECT count(*) INTO v_open
+    FROM public.auction_carts
+   WHERE buyer_id = v_uid
+     AND status IN ('open', 'checkout_pending');
+
+  IF v_open > 0 THEN
+    RAISE EXCEPTION 'account_delete_open_cart'
+      USING ERRCODE = 'P0001',
+            HINT = 'Bezahle deinen Sammelkorb oder warte, bis er abläuft.';
+  END IF;
+
+  SELECT count(*) INTO v_unship
+    FROM public.product_orders
+   WHERE seller_id = v_uid
+     AND status = 'paid';
+
+  IF v_unship > 0 THEN
+    RAISE EXCEPTION 'account_delete_unshipped'
+      USING ERRCODE = 'P0001',
+            HINT = 'Versende erst, was schon bezahlt wurde.';
+  END IF;
+
+  -- ── Was WIRKLICH gelöscht wird ───────────────────────────────────────────
+  -- Persönliches ohne Aufbewahrungspflicht. Alles hier ist eine Äußerung oder
+  -- eine Vorliebe dieses Menschen, kein Beleg über ein Geschäft.
+  DELETE FROM public.berkat_saved_searches    WHERE user_id = v_uid;
+  DELETE FROM public.berkat_saved_listings    WHERE user_id = v_uid;
+  DELETE FROM public.berkat_auction_reminders WHERE user_id = v_uid;
+  -- Bürgschaften, die ER ausgesprochen hat: Sie tragen seinen Namen und wären
+  -- ohne ihn sinnlos. Bürgschaften, die er BEKOMMEN hat, sind Aussagen anderer
+  -- Menschen über ihn — die gehören denen, nicht ihm. Der Fremdschlüssel
+  -- räumt sie ohnehin nicht ab, weil die Zeile bleibt.
+  DELETE FROM public.berkat_vouches           WHERE voucher_id = v_uid;
+  DELETE FROM public.follows                  WHERE follower_id = v_uid OR following_id = v_uid;
+  DELETE FROM public.push_tokens              WHERE user_id = v_uid;
+  DELETE FROM public.notifications            WHERE recipient_id = v_uid;
+  -- Offene Stellvertreter-Gebote: Sie würden sonst nach dem Löschen
+  -- weiterbieten. Zugeschlagene Gebote (`live_bids`) bleiben — die sind Beleg.
+  DELETE FROM public.live_auto_bids           WHERE bidder_id = v_uid;
+
+  -- Der Text einer Bewertung kann Persönliches enthalten; die Sternzahl ist
+  -- eine Aussage ÜBER den Verkäufer und fließt in seinen Schnitt. Deshalb nur
+  -- den Text nehmen, die Wertung lassen.
+  UPDATE public.order_reviews SET comment = NULL WHERE reviewer_id = v_uid;
+
+  -- ══ MEDIEN — NEU AM 24.08.2026 ═══════════════════════════════════════════
+  --
+  -- ⚠️ REIHENFOLGE IST DER GANZE PUNKT: erst die Adressen holen, dann leeren.
+  -- Andersherum stünde gleich das UPDATE unten, und danach wüsste niemand mehr,
+  -- welche Datei zu diesem Menschen gehörte. Genau deshalb blieben die Bilder
+  -- bis heute liegen.
+  SELECT avatar_url, banner_url, voice_sample_url
+    INTO v_avatar, v_banner, v_voice
+    FROM public.profiles
+   WHERE id = v_uid;
+
+  -- Die drei Einzeladressen. `r2-delete` prüft beim Abarbeiten selbst, ob der
+  -- Pfad erlaubt ist — eine fremde oder unbekannte Adresse (etwa ein extern
+  -- gehostetes Bild) landet dort sichtbar als `status = 'error'` mit Begründung,
+  -- statt still zu verschwinden.
+  INSERT INTO public.r2_delete_queue (author_id, media_url, reason)
+  SELECT v_uid, u, 'account_deleted'
+    FROM unnest(ARRAY[v_avatar, v_banner, v_voice]) AS u
+   WHERE u IS NOT NULL AND btrim(u) <> '';
+
+  -- ── Highlights: Zeile UND Datei, und zwar zusammen ───────────────────────
+  --
+  -- ⚠️ Die Zeilen überleben die Löschung sonst. `story_highlights.user_id` hängt
+  -- an `auth.users` mit ON DELETE CASCADE — aber diese Zeile wird ja gerade
+  -- NICHT gelöscht, sondern gesperrt. Ohne das DELETE hier stünde auf dem Profil
+  -- von `geloescht-xxxxxxxx` weiter die volle Reihe seiner Bilder, während Bio,
+  -- Avatar und Kopfbild leer sind. Ein Highlight ist dieselbe Art Aussage über
+  -- sich selbst wie eine Bio.
+  --
+  -- ⚠️ Und beides MUSS zusammen geschehen. Nur fegen hiesse: Zeile zeigt auf
+  -- gelöschte Datei → leeres Cover, kein Inhalt. Das ist genau der Fehler, für
+  -- den `highlight-copy-media` überhaupt gebaut wurde.
+  --
+  -- An `story_highlights` hängt nichts (geprüft: keine Fremdschlüssel darauf) —
+  -- dieses DELETE kann niemand Dritten treffen.
+  DELETE FROM public.story_highlights WHERE user_id = v_uid;
+
+  -- Der Ordner. Er nimmt auch die Kopien mit, die KEINE Zeile mehr kennt:
+  -- `useCreateHighlight` kopiert erst und schreibt dann — scheitert das
+  -- Schreiben, liegt die Datei verwaist da. Nur ein Ordner-Blick findet die.
+  --
+  -- ⚠️ Für SERLO-Highlights greift das nicht, und das ist richtig so: Die zeigen
+  -- auf die Medien der Story selbst (`story_id` gesetzt), nicht auf eine Kopie
+  -- unter `highlights/`. Das DELETE oben nimmt die Zeile, die Datei gehört
+  -- weiterhin dem Lebenslauf der Story.
+  INSERT INTO public.r2_delete_queue (author_id, prefix, reason)
+  VALUES (v_uid, 'highlights/' || v_uid::text || '/', 'account_deleted');
+
+  -- ⚠️ WAS HIER BEWUSST NICHT STEHT — und warum, damit es niemand „nachträgt":
+  --
+  --   `products/images/<uid>/`  Artikelfotos. Die Bestellungen dazu bleiben
+  --                             absichtlich stehen (Abschnitt 59). Ein Beleg mit
+  --                             totem Bild ist ein entwerteter Beleg.
+  --   `thumbnails/<uid>/`       Geteilter Pfad. Dort liegen auch die Fotos, die
+  --                             dieser Mensch in fremde Chats gesendet hat, und
+  --                             die Cover von Shows, die andere gewonnen haben.
+  --   `stories`                 Die Zeilen werden hier NICHT gelöscht. An
+  --                             `stories` hängen `story_comments` und
+  --                             `story_polls` mit ON DELETE CASCADE — das sind
+  --                             Äußerungen und Stimmen ANDERER Menschen. Und die
+  --                             Story-Medien werden ohnehin von NIEMANDEM
+  --                             aufgeräumt: einen `AFTER DELETE`-Trigger gibt es
+  --                             nur auf `posts`, nicht auf `stories`. Das ist ein
+  --                             eigener, größerer Fund (er betrifft JEDE
+  --                             abgelaufene Story, nicht nur gelöschte Konten)
+  --                             und gehört in eine eigene Migration, nicht in
+  --                             die Löschfunktion.
+
+  -- ── Was anonymisiert wird ────────────────────────────────────────────────
+  -- Kurz und stabil: acht Hex-Zeichen aus der eigenen ID. Kein Zufall, damit
+  -- ein zweiter Lauf denselben Namen erzeugt und der eindeutige Index nicht
+  -- kollidiert.
+  v_tag := 'geloescht-' || substr(replace(v_uid::text, '-', ''), 1, 8);
+
+  UPDATE public.profiles
+     SET username         = v_tag,
+         display_name     = NULL,
+         bio              = NULL,
+         avatar_url       = NULL,
+         banner_url       = NULL,
+         push_token       = NULL,
+         expo_push_token  = NULL,
+         voice_sample_url = NULL,
+         country_code     = NULL,
+         country_name     = NULL,
+         region_name      = NULL,
+         deleted_at       = now()
+   WHERE id = v_uid;
+
+  -- Anbieterangaben eines gewerblichen Verkäufers: Anschrift und USt-ID sind
+  -- personenbezogen und stehen öffentlich (§ 5 DDG). Ohne aktives Angebot gibt
+  -- es keinen Grund mehr, sie zu zeigen.
+  UPDATE public.berkat_sellers
+     SET legal_name = NULL, street = NULL, postal_code = NULL,
+         city = NULL, country = NULL, contact_email = NULL, vat_id = NULL,
+         checkout_enabled = false
+   WHERE user_id = v_uid;
+
+  -- Laufende Angebote zurückziehen — ein Regal ohne Verkäufer ist eine Falle
+  -- für Käufer. Verkauftes bleibt unangetastet.
+  UPDATE public.live_auctions
+     SET status = 'cancelled'
+   WHERE seller_id = v_uid
+     AND session_id IS NULL
+     AND status IN ('listed', 'scheduled');
+
+  -- ── Der Login wird zugemacht ─────────────────────────────────────────────
+  -- ⚠️ KEIN `DELETE FROM auth.users`. Genau das war der Fehler: Die Zeile hängt
+  -- mit ON DELETE CASCADE an `profiles`, und daran hängen die Belege.
+  --
+  -- Stattdessen dreifach dicht: `banned_until` sperrt die Anmeldung,
+  -- `encrypted_password` macht das Passwort unbrauchbar, und die E-Mail wird
+  -- durch eine Adresse in einer reservierten Domain ersetzt (RFC 2606), damit
+  -- weder Zurücksetzen noch Neuanmeldung mit derselben Adresse möglich ist —
+  -- und die Adresse selbst nicht mehr gespeichert bleibt.
+  UPDATE auth.users
+     SET email              = v_tag || '@geloescht.invalid',
+         phone              = NULL,
+         encrypted_password = NULL,
+         raw_user_meta_data = '{}'::jsonb,
+         banned_until       = 'infinity'::timestamptz,
+         deleted_at         = now()
+   WHERE id = v_uid;
+
+  -- Alle offenen Sitzungen beenden, sonst bliebe das Gerät bis zum Ablauf des
+  -- Tokens angemeldet.
+  DELETE FROM auth.sessions   WHERE user_id = v_uid;
+  -- ⚠️ `::text` ist kein Schönheitsfehler, sondern Pflicht: `user_id` ist in
+  -- DIESER Tabelle `character varying`, in `auth.sessions` daneben `uuid`.
+  -- Ohne die Umwandlung wirft Postgres `42883 operator does not exist:
+  -- character varying = uuid` — und weil das die letzte Zeile ist, rollt die
+  -- ganze Löschung zurück. Wer den Zusatz entfernt, macht die Kontolöschung
+  -- wieder unbrauchbar, ohne dass irgendeine Prüfung das merkt.
+  DELETE FROM auth.refresh_tokens WHERE user_id = v_uid::text;
 END;
 $$;
 
@@ -4073,6 +5150,38 @@ $$;
 
 
 ALTER FUNCTION "public"."delete_post_draft"("p_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: discard_prepared_auction("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."discard_prepared_auction"("p_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  a     public.live_auctions;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_id FOR UPDATE;
+  -- `session_id IS NOT NULL` heißt: Der Artikel ist schon in einer Show. Dort
+  -- gilt `cancel_auction`, weil dann Gebote im Spiel sein können.
+  IF NOT FOUND OR a.session_id IS NOT NULL OR a.status <> 'scheduled' THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF a.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  DELETE FROM public.live_auctions WHERE id = p_id;
+END $$;
+
+
+ALTER FUNCTION "public"."discard_prepared_auction"("p_id" "uuid") OWNER TO "postgres";
 
 --
 -- Name: draw_live_giveaway("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -4406,6 +5515,76 @@ $$;
 ALTER FUNCTION "public"."enqueue_r2_media_delete"() OWNER TO "postgres";
 
 --
+-- Name: enqueue_r2_story_media_delete(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enqueue_r2_story_media_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  PERFORM public.enqueue_story_media_delete(
+    OLD.id, OLD.user_id, OLD.media_url, OLD.thumbnail_url, 'story_deleted'
+  );
+  RETURN OLD;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enqueue_r2_story_media_delete"() OWNER TO "postgres";
+
+--
+-- Name: enqueue_story_media_delete("uuid", "uuid", "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."enqueue_story_media_delete"("p_story_id" "uuid", "p_user_id" "uuid", "p_media" "text", "p_thumb" "text", "p_reason" "text") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_media text := nullif(btrim(coalesce(p_media, '')), '');
+  v_thumb text := nullif(btrim(coalesce(p_thumb, '')), '');
+BEGIN
+  -- `20260518203000` hat für Bild-Stories `thumbnail_url = media_url` gesetzt.
+  -- Zweimal dieselbe Adresse in einer Zeile wäre kein Schaden (der Abarbeiter
+  -- entdoppelt selbst, `functions/r2-delete/index.ts:297`), aber beim späteren
+  -- Nachsehen liest sich eine Zeile mit zwei gleichen Adressen wie ein Fehler.
+  IF v_thumb IS NOT NULL AND v_thumb = v_media THEN
+    v_thumb := NULL;
+  END IF;
+
+  -- ⚠️ JEDE Adresse einzeln prüfen. Es kommt vor, dass ein Highlight nur das
+  -- Vorschaubild übernommen hat und nicht das Video dahinter.
+  IF v_media IS NOT NULL
+     AND public.story_media_claimed_by_highlight(p_story_id, v_media) THEN
+    v_media := NULL;
+  END IF;
+
+  IF v_thumb IS NOT NULL
+     AND public.story_media_claimed_by_highlight(p_story_id, v_thumb) THEN
+    v_thumb := NULL;
+  END IF;
+
+  IF v_media IS NULL AND v_thumb IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  -- ⚠️ `post_id` bleibt leer und wird NICHT zweckentfremdet. Die Spalte hält
+  -- eine `posts`-Kennung; eine Story-Kennung dort hineinzuschreiben, hiesse,
+  -- jede spätere Auswertung in die Irre zu führen. Die Herkunft steht in
+  -- `reason`, der Mensch dahinter in `author_id`.
+  INSERT INTO public.r2_delete_queue (author_id, media_url, thumbnail_url, reason)
+  VALUES (p_user_id, v_media, v_thumb, p_reason);
+
+  RETURN (CASE WHEN v_media IS NULL THEN 0 ELSE 1 END)
+       + (CASE WHEN v_thumb IS NULL THEN 0 ELSE 1 END);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enqueue_story_media_delete"("p_story_id" "uuid", "p_user_id" "uuid", "p_media" "text", "p_thumb" "text", "p_reason" "text") OWNER TO "postgres";
+
+--
 -- Name: ensure_auction_cart("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -4424,20 +5603,52 @@ BEGIN
      AND status = 'open'
      AND closes_at <= now();
 
+  -- ⚠️ `FOR UPDATE` — der offene Korb darf zwischen Suchen und Zurückgeben
+  -- nicht wegkippen. Ohne die Sperre kann `checkout_auction_cart` ihn
+  -- parallel einfrieren, und der Zuschlag hängt sich an einen Korb, der
+  -- gerade zur Kasse getragen wird: bezahlte Ware ohne Bezahlung.
   SELECT id INTO v_cart_id
     FROM public.auction_carts
    WHERE buyer_id = p_buyer_id
      AND seller_id = p_seller_id
      AND status = 'open'
-   LIMIT 1;
+   LIMIT 1
+     FOR UPDATE;
 
   IF v_cart_id IS NOT NULL THEN
     RETURN v_cart_id;
   END IF;
 
+  -- ⚠️ Und der zweite Wettlauf, den `FOR UPDATE` NICHT abdeckt: Findet die
+  -- Abfrage nichts, gibt es keine Zeile, die man sperren könnte. Zwei
+  -- gleichzeitige Zuschläge desselben Käufers beim selben Verkäufer laufen
+  -- dann beide hierher — und der Partial-Index `auction_carts_one_open`
+  -- lässt nur einen durch. Der andere stirbt mit `23505`, und das heisst in
+  -- der App: **ein gewonnener Artikel landet in keinem Korb.**
+  --
+  -- `ON CONFLICT DO NOTHING` macht daraus den Normalfall statt eines Fehlers.
+  -- Kommt nichts zurück, hat der andere gewonnen — dann seinen Korb holen.
   INSERT INTO public.auction_carts (buyer_id, seller_id)
   VALUES (p_buyer_id, p_seller_id)
+  ON CONFLICT (buyer_id, seller_id) WHERE status = 'open' DO NOTHING
   RETURNING id INTO v_cart_id;
+
+  IF v_cart_id IS NULL THEN
+    SELECT id INTO v_cart_id
+      FROM public.auction_carts
+     WHERE buyer_id = p_buyer_id
+       AND seller_id = p_seller_id
+       AND status = 'open'
+     LIMIT 1
+       FOR UPDATE;
+  END IF;
+
+  IF v_cart_id IS NULL THEN
+    -- Kann nur eintreten, wenn der Korb im selben Augenblick geschlossen
+    -- wurde. Ehrlich scheitern statt NULL zurückzugeben — der Aufrufer
+    -- schreibt die `cart_id` sonst als NULL an den Zuschlag.
+    RAISE EXCEPTION 'cart_race' USING ERRCODE = '40001';
+  END IF;
 
   RETURN v_cart_id;
 END $$;
@@ -4723,6 +5934,19 @@ BEGIN
   -- Self-Notification nie pushen.
   IF NEW.recipient_id = NEW.sender_id THEN RETURN NEW; END IF;
 
+  -- ⚠️ STUMMSCHALTUNG. Die Meldung entsteht trotzdem und steht in der Glocke —
+  -- nur der Push bleibt aus. Das ist der Unterschied zwischen „nicht stören"
+  -- und „nicht informieren", und nur der erste ist eine Einstellung.
+  IF EXISTS (
+    SELECT 1 FROM public.push_mutes m
+     WHERE m.user_id = NEW.recipient_id
+       AND m.app     = COALESCE(NEW.app, 'serlo')
+       AND m.type    = NEW.type
+  ) THEN
+    RETURN NEW;
+  END IF;
+
+
   -- Typen mit eigenem Direkt-Push (notify_on_like/comment/follow/dm) hier
   -- überspringen → sonst Doppel-Push.
   IF NEW.type IN ('like', 'comment', 'follow', 'follow_request', 'dm') THEN
@@ -4801,6 +6025,27 @@ BEGIN
     WHEN 'order_dispute' THEN
       v_title := '⚠️ Problem gemeldet';
       v_body  := COALESCE(NEW.comment_text, 'Ein Problem mit einer Bestellung wurde gemeldet');
+    -- Berkat: der vorgemerkte Artikel wird JETZT aufgerufen. Ohne eigenen
+    -- Zweig fiele er in den ELSE darunter und käme als „Neue Aktivität auf
+    -- Serlo" an — falsche Marke, und vor allem kein Anlass: Diese Meldung hat
+    -- eine Halbwertszeit von Sekunden.
+    -- Gespeicherte Suche. Anders als bei Belohnungen und Preisvorschlaegen ist
+    -- ein Push hier NICHT Beiwerk, sondern der ganze Zweck: Die Meldung soll
+    -- jemanden zurueckholen, der die App verlassen hat. Ohne Push waere die
+    -- Funktion sinnlos, weil sie nur den erreicht, der ohnehin schon da ist.
+    WHEN 'saved_search_hit' THEN
+      v_title := '🔎 Das hast du gesucht';
+      v_body  := COALESCE(NEW.comment_text, 'Etwas Neues passt zu deiner Suche');
+    -- Antwort auf einen Kommentar. Ohne eigenen Zweig fiele der Typ in den
+    -- ELSE darunter und käme als "Neue Aktivität auf Serlo" an — richtig
+    -- zugestellt, aber ohne zu sagen, worum es geht.
+    WHEN 'comment_reply' THEN
+      v_title := '💬 Antwort auf deinen Kommentar';
+      v_body  := COALESCE(v_actor || ': ' || NEW.comment_text,
+                          v_actor || ' hat dir geantwortet');
+    WHEN 'auction_up' THEN
+      v_title := '🔨 Dein Artikel ist dran';
+      v_body  := COALESCE(NEW.comment_text, 'Die Auktion läuft — jetzt mitbieten');
     ELSE
       v_title := 'Neue Aktivität auf Serlo';
       v_body  := COALESCE(NEW.comment_text, '');
@@ -4812,7 +6057,26 @@ BEGIN
     'sessionId', NEW.session_id,
     'senderId',  NEW.sender_id,
     'productId', NEW.product_id
-  );
+  )
+  -- ⚠️ ERGÄNZT 21.08.2026, zweite Änderung an dieser Funktion in dieser Datei.
+  -- Ohne dieses Feld liest `usePush.ts` `data.query` als `undefined`, und
+  -- `notificationTarget` fällt auf `/shop` OHNE Suchbegriff zurück — der
+  -- Empfänger müsste erneut tippen. Kaputt wäre damit ausgerechnet der Weg,
+  -- mit dem diese Meldung ihren Push überhaupt rechtfertigt („jemanden
+  -- zurückholen, der die App verlassen hat").
+  --
+  -- Es ist derselbe Fehler wie am 19.08. bei `auction_up`: zwei Wahrheiten über
+  -- dasselbe Ziel, diesmal zwischen SQL-Nutzlast und Client-Erwartung. Vier von
+  -- fünf Prüf-Blickwinkeln haben ihn unabhängig gefunden.
+  --
+  -- Als CASE und nicht als sechster Dauer-Schlüssel: Die Funktion gehört Serlo
+  -- mit, und für jeden anderen Typ ist `product_name` ein ARTIKELNAME, kein
+  -- Suchbegriff. Unbedingt mitzugeben hieße, ihn dort falsch zu benennen.
+  || CASE
+       WHEN NEW.type = 'saved_search_hit' AND NEW.product_name IS NOT NULL
+         THEN jsonb_build_object('query', NEW.product_name)
+       ELSE '{}'::jsonb
+     END;
 
   PERFORM public.send_push_to_user(
     p_user_id := NEW.recipient_id,
@@ -5322,6 +6586,52 @@ $$;
 ALTER FUNCTION "public"."get_ai_image_user_quota"("p_user_id" "uuid") OWNER TO "postgres";
 
 --
+-- Name: get_berkat_category_counts(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_berkat_category_counts"() RETURNS TABLE("slug" "text", "name" "text", "parent_slug" "text", "sort_index" integer, "live_count" bigint, "viewer_count" bigint, "listing_count" bigint)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  WITH scope AS (
+    -- Je Kategorie die Menge der Slugs, die auf sie einzahlen: sie selbst plus
+    -- ihre direkten Kinder. Bei einem Kind bleibt es bei ihm selbst.
+    SELECT c.slug,
+           c.name,
+           c.parent_slug,
+           c.sort_index,
+           ARRAY(
+             SELECT k.slug FROM public.berkat_categories k WHERE k.parent_slug = c.slug
+             UNION ALL SELECT c.slug
+           ) AS slugs
+      FROM public.berkat_categories c
+     WHERE c.active
+  )
+  SELECT s.slug,
+         s.name,
+         s.parent_slug,
+         s.sort_index,
+         (SELECT count(*) FROM public.live_sessions v
+           WHERE v.app = 'berkat' AND v.status = 'active' AND v.category = ANY(s.slugs)),
+         (SELECT COALESCE(SUM(GREATEST(v.viewer_count, 0)), 0) FROM public.live_sessions v
+           WHERE v.app = 'berkat' AND v.status = 'active' AND v.category = ANY(s.slugs)),
+         (SELECT count(*) FROM public.live_auctions a
+           WHERE a.session_id IS NULL AND a.status = 'listed' AND a.category = ANY(s.slugs))
+    FROM scope s
+   ORDER BY s.sort_index, s.name;
+$$;
+
+
+ALTER FUNCTION "public"."get_berkat_category_counts"() OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "get_berkat_category_counts"(); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."get_berkat_category_counts"() IS 'Berkat: Kategorien mit Zählern. Eltern rollen ihre Kinder auf, genau eine Ebene tief.';
+
+
+--
 -- Name: get_blocked_user_ids(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -5336,6 +6646,177 @@ $$;
 
 
 ALTER FUNCTION "public"."get_blocked_user_ids"() OWNER TO "postgres";
+
+--
+-- Name: get_cart_shipping_options("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_cart_shipping_options"("p_cart_id" "uuid") RETURNS TABLE("country" "text", "label" "text", "cents" integer, "free" boolean)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_seller uuid;
+  v_goods  integer;
+  v_tier   smallint;
+BEGIN
+  SELECT c.seller_id INTO v_seller
+    FROM public.auction_carts c
+   WHERE c.id = p_cart_id;
+
+  IF v_seller IS NULL THEN
+    RETURN;  -- kein Korb, keine Sätze — der Aufrufer entscheidet, was das heißt
+  END IF;
+
+  SELECT COALESCE(SUM(a.current_bid_cents), 0) INTO v_goods
+    FROM public.live_auctions a
+   WHERE a.cart_id = p_cart_id AND a.status = 'sold';
+
+  -- ⚠️ DIE STUFE DES KORBS IST DIE HÖCHSTE SEINER ARTIKEL.
+  -- Ein Kopftuch und ein Paar Schuhe gehen zusammen in EIN Paket — dann gilt
+  -- der Paketpreis, nicht der Briefpreis. `COALESCE(…, 4)` innen und nicht
+  -- aussen: Ein Artikel OHNE Angabe muss die höchste Stufe erzwingen, sonst
+  -- verbilligt eine fehlende Angabe den Versand. Im Zweifel teurer für den
+  -- Käufer ist hier richtig herum — die Alternative wäre, dass der Verkäufer
+  -- draufzahlt, und der hat die Angabe nicht gemacht.
+  SELECT COALESCE(MAX(COALESCE(a.shipping_tier, 4)), 4) INTO v_tier
+    FROM public.live_auctions a
+   WHERE a.cart_id = p_cart_id AND a.status = 'sold';
+
+  RETURN QUERY
+  SELECT DISTINCT ON (r.country)
+         r.country,
+         r.label,
+         CASE WHEN r.free_from_cents IS NOT NULL AND v_goods >= r.free_from_cents
+              THEN 0 ELSE r.cents END,
+         (r.free_from_cents IS NOT NULL AND v_goods >= r.free_from_cents)
+    FROM public.berkat_shipping_rates r
+   WHERE r.seller_id = v_seller OR r.seller_id IS NULL
+   -- Je Land GENAU EINE Zeile, sonst sprengt die Kasse Stripes Grenze von
+   -- fünf Versandoptionen (3 Länder × 4 Stufen wären zwölf). Die Reihenfolge
+   -- entscheidet, welche:
+   --   1. der eigene Satz des Verkäufers schlägt die Vorgabe der Plattform
+   --   2. Stufen, die ausreichen, vor solchen, die es nicht tun
+   --   3. darunter die KLEINSTE ausreichende — und wenn keine ausreicht, die
+   --      grösste vorhandene (daher das negative Vorzeichen)
+   -- Damit trägt ein Land, für das nur eine Pauschale hinterlegt ist (AT, CH),
+   -- weiterhin genau diese — ohne Sonderfall.
+   ORDER BY r.country,
+            (r.seller_id IS NULL),
+            (r.tier < v_tier),
+            CASE WHEN r.tier >= v_tier THEN r.tier ELSE -r.tier END;
+END $$;
+
+
+ALTER FUNCTION "public"."get_cart_shipping_options"("p_cart_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: get_cart_shipping_options_for_checkout("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_cart_shipping_options_for_checkout"("p_cart_id" "uuid") RETURNS TABLE("country" "text", "label" "text", "cents" integer, "free" boolean)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_buyer  uuid;
+  v_seller uuid;
+  v_goods  integer;
+  v_credit uuid;
+  v_min    integer;
+  v_seller_connected boolean;
+BEGIN
+  SELECT c.buyer_id, c.seller_id INTO v_buyer, v_seller
+    FROM public.auction_carts c
+   WHERE c.id = p_cart_id;
+
+  IF v_seller IS NULL THEN
+    RETURN;  -- kein Korb, keine Sätze — wie in der STABLE-Schwester
+  END IF;
+
+  -- ⚠️ NEU (11.09.2026): Kassiert der Verkäufer selbst, geht jede Gutschrift zu
+  -- SEINEN Lasten. `charges_enabled` ist dabei die richtige Grenze, nicht
+  -- „Zeile vorhanden" — dieselbe Bedingung, unter der
+  -- `create-checkout-session` die `Stripe-Account`-Kopfzeile setzt. Ein Konto
+  -- im Onboarding kassiert noch nicht, dort zahlt weiter der Betreiber.
+  SELECT COALESCE(st.charges_enabled, false) INTO v_seller_connected
+    FROM public.berkat_seller_stripe st
+   WHERE st.user_id = v_seller;
+  v_seller_connected := COALESCE(v_seller_connected, false);
+
+  -- Der Warenwert steht VOR der Gutschrift-Auswahl, weil er darüber
+  -- mitentscheidet.
+  SELECT COALESCE(SUM(a.current_bid_cents), 0) INTO v_goods
+    FROM public.live_auctions a
+   WHERE a.cart_id = p_cart_id AND a.status = 'sold';
+
+  IF v_seller_connected THEN
+    -- Eine früher reservierte Gutschrift wieder freigeben. Ohne das bliebe sie
+    -- an einem Korb hängen, auf den sie nie angewendet wird — der Käufer hätte
+    -- sie faktisch verloren, ohne dass sie je gewirkt hat.
+    UPDATE public.berkat_shipping_credits
+       SET reserved_cart_id = NULL
+     WHERE reserved_cart_id = p_cart_id
+       AND consumed_at IS NULL;
+    v_credit := NULL;
+  ELSE
+    -- Hängt schon eine an diesem Korb? Dann die. Die Kasse darf für denselben
+    -- Korb zweimal geöffnet werden (abgebrochene Zahlung, Idempotenz-Abfrage in
+    -- `checkout_auction_cart`) — beim zweiten Mal darf das keine zweite
+    -- Gutschrift kosten.
+    SELECT id INTO v_credit
+      FROM public.berkat_shipping_credits
+     WHERE reserved_cart_id = p_cart_id AND consumed_at IS NULL
+     LIMIT 1;
+
+    -- ⚠️ MINDESTWARENWERT. Eine eingelöste Gutschrift kostet 4,83 € (Pauschale
+    -- weg, Porto bleibt); die Verlustschwelle liegt bei 6,64 € Warenwert. Ohne
+    -- diese Bedingung wäre der häufigste Fall genau der teuerste: Ein Neuer löst
+    -- den Code ein und testet mit EINEM Artikel für 1 €. Rechnung im Kopf von
+    -- `20260816130000`.
+    --
+    -- Bewusst KEINE Fehlermeldung, sondern schlicht keine Reservierung: Die
+    -- Gutschrift bleibt dem Käufer erhalten und greift beim nächsten, größeren
+    -- Korb.
+    SELECT min_cart_cents INTO v_min FROM public.berkat_reward_policy WHERE id = 1;
+
+    IF v_credit IS NULL AND v_goods >= COALESCE(v_min, 1500) THEN
+      UPDATE public.berkat_shipping_credits
+         SET reserved_cart_id = p_cart_id
+       WHERE id = (
+         SELECT id FROM public.berkat_shipping_credits
+          WHERE user_id = v_buyer
+            AND consumed_at IS NULL
+            AND reserved_cart_id IS NULL
+          ORDER BY granted_at
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
+       )
+      RETURNING id INTO v_credit;
+    END IF;
+  END IF;
+
+  -- Ab hier unverändert. Der Gratis-ab-Betrag (`free_from_cents`) bleibt auch
+  -- bei verbundenen Verkäufern gültig: Den legt der VERKÄUFER selbst in
+  -- `berkat_shipping_rates` fest — es ist sein Angebot, nicht Berkats Geschenk.
+  RETURN QUERY
+  SELECT DISTINCT ON (r.country)
+         r.country,
+         CASE WHEN v_credit IS NOT NULL
+              THEN r.label || ' · geschenkt (Einladung)'
+              ELSE r.label END,
+         CASE WHEN v_credit IS NOT NULL THEN 0
+              WHEN r.free_from_cents IS NOT NULL AND v_goods >= r.free_from_cents THEN 0
+              ELSE r.cents END,
+         (v_credit IS NOT NULL)
+           OR (r.free_from_cents IS NOT NULL AND v_goods >= r.free_from_cents)
+    FROM public.berkat_shipping_rates r
+   WHERE r.seller_id = v_seller OR r.seller_id IS NULL
+   ORDER BY r.country, (r.seller_id IS NULL), r.sort_index;
+END $$;
+
+
+ALTER FUNCTION "public"."get_cart_shipping_options_for_checkout"("p_cart_id" "uuid") OWNER TO "postgres";
 
 --
 -- Name: get_conversations(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -6008,6 +7489,28 @@ $$;
 ALTER FUNCTION "public"."get_my_ingress_credentials"("p_session_id" "uuid") OWNER TO "postgres";
 
 --
+-- Name: get_my_listing_views("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_my_listing_views"("p_ids" "uuid"[]) RETURNS TABLE("listing_id" "uuid", "views" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT v.auction_id AS listing_id, count(*)::int AS views
+    FROM public.berkat_listing_views v
+    JOIN public.live_auctions a ON a.id = v.auction_id
+   WHERE v.auction_id = ANY(p_ids)
+     -- Der ganze Riegel. RLS gilt in einer SECURITY-DEFINER-Funktion nicht
+     -- (Übergabe, Abschnitt 3), die Grenze steht also hier — und sie lautet:
+     -- nur die eigenen Angebote.
+     AND a.seller_id = auth.uid()
+   GROUP BY v.auction_id;
+$$;
+
+
+ALTER FUNCTION "public"."get_my_listing_views"("p_ids" "uuid"[]) OWNER TO "postgres";
+
+--
 -- Name: get_my_preorder_summary(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -6030,6 +7533,56 @@ $$;
 ALTER FUNCTION "public"."get_my_preorder_summary"() OWNER TO "postgres";
 
 --
+-- Name: get_my_referral_code(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_my_referral_code"() RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid  uuid := auth.uid();
+  v_code text;
+  v_try  integer := 0;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT code INTO v_code FROM public.berkat_referral_codes WHERE user_id = v_uid;
+  IF v_code IS NOT NULL THEN
+    RETURN v_code;
+  END IF;
+
+  -- 32^6 ≈ 1,07 Mrd. Möglichkeiten. Eine Kollision ist auf Jahre unwahrschein-
+  -- lich, aber „unwahrscheinlich" ist kein Fehlerbehandlung — deshalb die
+  -- Schleife statt eines einzelnen Versuchs.
+  LOOP
+    v_try  := v_try + 1;
+    v_code := public.berkat_gen_referral_code();
+    BEGIN
+      INSERT INTO public.berkat_referral_codes (user_id, code) VALUES (v_uid, v_code);
+      RETURN v_code;
+    EXCEPTION WHEN unique_violation THEN
+      -- Zwei Fälle, ein Fehler: Entweder war der Code schon vergeben (dann
+      -- nochmal würfeln), oder ein paralleler Aufruf hat für denselben Nutzer
+      -- gerade eine Zeile angelegt (dann ist dessen Code der richtige).
+      SELECT code INTO v_code FROM public.berkat_referral_codes WHERE user_id = v_uid;
+      IF v_code IS NOT NULL THEN
+        RETURN v_code;
+      END IF;
+    END;
+
+    IF v_try >= 10 THEN
+      RAISE EXCEPTION 'code_generation_failed' USING ERRCODE = '22023';
+    END IF;
+  END LOOP;
+END $$;
+
+
+ALTER FUNCTION "public"."get_my_referral_code"() OWNER TO "postgres";
+
+--
 -- Name: get_my_referral_count(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -6042,6 +7595,111 @@ $$;
 
 
 ALTER FUNCTION "public"."get_my_referral_count"() OWNER TO "postgres";
+
+--
+-- Name: get_my_rewards(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_my_rewards"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN jsonb_build_object(
+    -- Die App darf keinen Gratis-Versand versprechen, den es gerade nicht gibt.
+    -- Nur dieses eine Feld verlässt die Policy-Tabelle; die Schwellen bleiben
+    -- Betriebswissen (wer sie kennt, reizt sie aus).
+    'buyer_rewards_enabled', COALESCE(
+      (SELECT buyer_rewards_enabled FROM public.berkat_reward_policy WHERE id = 1), false),
+    'min_cart_cents', COALESCE(
+      (SELECT min_cart_cents FROM public.berkat_reward_policy WHERE id = 1), 1500),
+
+    'code', (SELECT code FROM public.berkat_referral_codes WHERE user_id = v_uid),
+
+    'invited_by', (
+      SELECT p.username
+        FROM public.berkat_referrals r
+        JOIN public.profiles p ON p.id = r.inviter_id
+       WHERE r.invitee_id = v_uid
+    ),
+
+    'invited', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+               'name',    COALESCE(p.username, 'Jemand'),
+               'bought',  r.buyer_reward_at  IS NOT NULL,
+               'selling', r.seller_reward_at IS NOT NULL
+             ) ORDER BY r.created_at DESC)
+        FROM public.berkat_referrals r
+        JOIN public.profiles p ON p.id = r.invitee_id
+       WHERE r.inviter_id = v_uid
+    ), '[]'::jsonb),
+
+    'credits_open', (
+      SELECT count(*) FROM public.berkat_shipping_credits
+       WHERE user_id = v_uid AND consumed_at IS NULL
+    ),
+    'credits_used', (
+      SELECT count(*) FROM public.berkat_shipping_credits
+       WHERE user_id = v_uid AND consumed_at IS NOT NULL
+    ),
+
+    'perks', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+               'days',      k.days,
+               'reason',    k.reason,
+               'starts_at', k.starts_at,
+               'ends_at',   k.ends_at
+             ) ORDER BY k.granted_at DESC)
+        FROM public.berkat_seller_perks k
+       WHERE k.user_id = v_uid
+    ), '[]'::jsonb)
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."get_my_rewards"() OWNER TO "postgres";
+
+--
+-- Name: get_my_stripe_connect(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_my_stripe_connect"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_row public.berkat_seller_stripe%ROWTYPE;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_row FROM public.berkat_seller_stripe WHERE user_id = v_uid;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('state', 'none');
+  END IF;
+
+  RETURN jsonb_build_object(
+    'state', CASE
+               WHEN v_row.charges_enabled       THEN 'ready'
+               WHEN v_row.details_submitted     THEN 'pending'
+               ELSE                                  'incomplete'
+             END,
+    'disabled_reason', v_row.disabled_reason,
+    'connected_at',    v_row.connected_at
+  );
+END $$;
+
+
+ALTER FUNCTION "public"."get_my_stripe_connect"() OWNER TO "postgres";
 
 --
 -- Name: get_my_whip_ingress(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -6210,6 +7868,27 @@ $$;
 
 
 ALTER FUNCTION "public"."get_post_like_counts"("p_post_ids" "uuid"[]) OWNER TO "postgres";
+
+--
+-- Name: get_prebid_counts("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_prebid_counts"("p_auction_ids" "uuid"[]) RETURNS TABLE("auction_id" "uuid", "bidders" integer)
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT ab.auction_id, count(*)::int
+    FROM public.live_auto_bids ab
+    JOIN public.live_auctions a ON a.id = ab.auction_id
+   WHERE ab.auction_id = ANY (p_auction_ids)
+     -- Nur die eigenen Artikel. Ohne das könnte jeder die Nachfrage eines
+     -- fremden Verkäufers ausmessen.
+     AND a.seller_id = auth.uid()
+   GROUP BY ab.auction_id;
+$$;
+
+
+ALTER FUNCTION "public"."get_prebid_counts"("p_auction_ids" "uuid"[]) OWNER TO "postgres";
 
 --
 -- Name: get_product_preorders("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -6666,6 +8345,8 @@ CREATE OR REPLACE FUNCTION "public"."get_public_profile_web"("p_username" "text"
     WHERE ls.host_id = p.id
       AND ls.status = 'active'
       AND COALESCE(ls.women_only, false) = false
+      -- NEU: Berkat-Shows erzeugen keinen LIVE-Ring auf dem Serlo-Profil.
+      AND ls.app = 'serlo'
     ORDER BY ls.started_at DESC
     LIMIT 1
   ) live ON true;
@@ -6697,6 +8378,62 @@ $$;
 
 
 ALTER FUNCTION "public"."get_public_shop_preview_products"("result_limit" integer) OWNER TO "postgres";
+
+--
+-- Name: get_reminder_counts("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_reminder_counts"("p_auction_ids" "uuid"[]) RETURNS TABLE("auction_id" "uuid", "watchers" integer)
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT r.auction_id, count(*)::int
+    FROM public.berkat_auction_reminders r
+    JOIN public.live_auctions a ON a.id = r.auction_id
+   WHERE r.auction_id = ANY (p_auction_ids)
+     -- Nur die eigenen Artikel. Ohne das könnte jeder die Nachfrage eines
+     -- fremden Verkäufers ausmessen.
+     AND a.seller_id = auth.uid()
+   GROUP BY r.auction_id;
+$$;
+
+
+ALTER FUNCTION "public"."get_reminder_counts"("p_auction_ids" "uuid"[]) OWNER TO "postgres";
+
+--
+-- Name: get_saved_counts("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_saved_counts"("p_ids" "uuid"[]) RETURNS TABLE("listing_id" "uuid", "saves" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT s.auction_id AS listing_id, count(*)::int AS saves
+    FROM public.berkat_saved_listings s
+    JOIN public.live_auctions a ON a.id = s.auction_id
+   WHERE s.auction_id = ANY(p_ids)
+     -- Dieselbe Schranke wie `live_auctions_select_standing`. Von Hand
+     -- mitgeschrieben, weil RLS in einer SECURITY-DEFINER-Funktion nicht gilt
+     -- (HANDOFF, Abschnitt 3) — und GANZ mitgeschrieben, nicht halb: Die echte
+     -- Lesegrenze ist `is_women_only_verified()`, nicht nur das Flag am Profil
+     -- (der Fehler aus Abschnitt 57).
+     AND (
+       a.women_only = false
+       OR a.seller_id = auth.uid()
+       OR public.is_women_only_verified()
+     )
+   GROUP BY s.auction_id;
+$$;
+
+
+ALTER FUNCTION "public"."get_saved_counts"("p_ids" "uuid"[]) OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "get_saved_counts"("p_ids" "uuid"[]); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."get_saved_counts"("p_ids" "uuid"[]) IS 'Zahl der Merkungen je Artikel — nur die Summe, nie wer. Die Zeilen selbst bleiben durch berkat_saved_select_own privat. Frauen-Only-Schranke von Hand mitgeschrieben, weil RLS in SECURITY DEFINER nicht greift.';
+
 
 --
 -- Name: get_saved_products(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
@@ -6743,6 +8480,128 @@ $$;
 
 
 ALTER FUNCTION "public"."get_saved_products"("p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+--
+-- Name: get_seller_rating("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_seller_rating"("p_seller_id" "uuid") RETURNS TABLE("rating" numeric, "review_count" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT
+    round(avg(r.rating)::numeric, 2) AS rating,
+    count(*)::int                    AS review_count
+  FROM public.order_reviews r
+  WHERE r.reviewee_id = p_seller_id
+    AND r.reviewer_role = 'buyer'
+    AND r.rating IS NOT NULL;
+$$;
+
+
+ALTER FUNCTION "public"."get_seller_rating"("p_seller_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "get_seller_rating"("p_seller_id" "uuid"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."get_seller_rating"("p_seller_id" "uuid") IS 'Öffentliches Aggregat der Käufer-Bewertungen eines Verkäufers. Gibt bewusst NUR Schnitt und Anzahl heraus — die einzelnen Bewertungen bleiben hinter order_reviews_party_read.';
+
+
+--
+-- Name: get_seller_reviews("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_seller_reviews"("p_seller_id" "uuid", "p_limit" integer DEFAULT 20) RETURNS TABLE("id" "uuid", "rating" integer, "comment" "text", "created_at" timestamp with time zone, "reviewer_id" "uuid", "reviewer_name" "text", "reviewer_avatar" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT r.id,
+         r.rating,
+         r.comment,
+         r.created_at,
+         r.reviewer_id,
+         p.username,
+         p.avatar_url
+    FROM public.order_reviews r
+    JOIN public.product_orders o ON o.id = r.order_id
+    LEFT JOIN public.profiles  p ON p.id = r.reviewer_id
+   WHERE r.reviewee_id   = p_seller_id
+     AND r.reviewer_role = 'buyer'
+     AND r.rating IS NOT NULL
+     -- Ein Eintrag ohne Text ist in einer Textliste nichts wert; die Zahl
+     -- dazu steht ohnehin schon in der Kachel darüber.
+     AND btrim(coalesce(r.comment, '')) <> ''
+     -- Schranke 1: Berkat-Weiche, dieselbe wie in create-checkout-session
+     -- und notify_order_shipped.
+     AND o.cart_id IS NOT NULL
+     -- Schranke 2: Frauen-Only.
+     AND (
+       NOT EXISTS (
+         SELECT 1
+           FROM public.live_auctions a
+          WHERE a.cart_id = o.cart_id
+            AND (
+              a.women_only
+              OR EXISTS (
+                SELECT 1 FROM public.live_sessions s
+                 WHERE s.id = a.session_id AND s.women_only
+              )
+            )
+       )
+       OR auth.uid() = p_seller_id
+       OR auth.uid() = r.reviewer_id
+       OR public.is_women_only_verified()
+     )
+   ORDER BY r.created_at DESC
+   LIMIT LEAST(GREATEST(coalesce(p_limit, 20), 1), 50);
+$$;
+
+
+ALTER FUNCTION "public"."get_seller_reviews"("p_seller_id" "uuid", "p_limit" integer) OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "get_seller_reviews"("p_seller_id" "uuid", "p_limit" integer); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."get_seller_reviews"("p_seller_id" "uuid", "p_limit" integer) IS 'Berkat: öffentliche Bewertungstexte eines Verkäufers. Nur Berkat-Bestellungen, Frauen-Only nur für Verifizierte.';
+
+
+--
+-- Name: get_seller_ship_stats("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_seller_ship_stats"("p_seller_id" "uuid") RETURNS TABLE("avg_hours" numeric, "ship_count" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  -- Die Auswahl ist ZEICHENGENAU die des Clients von vorher, damit die Zahl
+  -- sich nicht ändert, nur weil sie den Weg wechselt:
+  --   • nur Berkat-Bestellungen (`cart_id IS NOT NULL`) — dieselbe Weiche wie
+  --     in `create-checkout-session`. Serlos Shop-Versand hat andere Wege und
+  --     würde die Zahl verfälschen.
+  --   • nur bezahlt UND versendet
+  --   • negative Spannen raus (versendet vor bezahlt = Datenmüll)
+  --   • die letzten 20: Wer vor einem Jahr langsam war und heute schnell ist,
+  --     soll heute gemessen werden.
+  SELECT
+    AVG(EXTRACT(EPOCH FROM (o.shipped_at - o.paid_at)) / 3600.0)::numeric,
+    COUNT(*)::integer
+  FROM (
+    SELECT po.paid_at, po.shipped_at
+      FROM public.product_orders po
+     WHERE po.seller_id = p_seller_id
+       AND po.cart_id IS NOT NULL
+       AND po.paid_at IS NOT NULL
+       AND po.shipped_at IS NOT NULL
+       AND po.shipped_at >= po.paid_at
+     ORDER BY po.shipped_at DESC
+     LIMIT 20
+  ) o;
+$$;
+
+
+ALTER FUNCTION "public"."get_seller_ship_stats"("p_seller_id" "uuid") OWNER TO "postgres";
 
 --
 -- Name: get_shop_products("uuid", "text", integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
@@ -7101,6 +8960,26 @@ $$;
 ALTER FUNCTION "public"."get_vibe_feed"("explore_weight" double precision, "brain_weight" double precision, "result_limit" integer, "filter_tag" "text", "include_seen" boolean, "exclude_ids" "uuid"[]) OWNER TO "postgres";
 
 --
+-- Name: get_vouch_weights("uuid"[]); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."get_vouch_weights"("p_user_ids" "uuid"[]) RETURNS TABLE("user_id" "uuid", "purchases" integer, "sales" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT
+    u.id,
+    (SELECT COUNT(*)::integer FROM public.product_orders o
+      WHERE o.buyer_id = u.id AND o.status IN ('paid','shipped','delivered')),
+    (SELECT COUNT(*)::integer FROM public.live_auctions a
+      WHERE a.seller_id = u.id AND a.status = 'sold')
+  FROM unnest(p_user_ids) AS u(id);
+$$;
+
+
+ALTER FUNCTION "public"."get_vouch_weights"("p_user_ids" "uuid"[]) OWNER TO "postgres";
+
+--
 -- Name: get_women_only_requests("text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -7211,6 +9090,171 @@ END $$;
 
 
 ALTER FUNCTION "public"."grant_moderator"("p_session_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: guard_adult_commitment(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."guard_adult_commitment"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $_$
+DECLARE
+  v_user  uuid;
+  v_state text;
+BEGIN
+  EXECUTE format('SELECT ($1).%I', TG_ARGV[0]) INTO v_user USING NEW;
+
+  -- Keine Person, keine Prüfung. Kommt nicht vor (alle drei Spalten sind NOT
+  -- NULL), steht hier als Netz statt als Absturz.
+  IF v_user IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF public.is_adult(v_user) THEN
+    RETURN NEW;
+  END IF;
+
+  -- ⚠️ Zwei verschiedene Meldungen, und das ist keine Kosmetik: Der Client
+  -- muss unterscheiden können, ob er FRAGEN soll oder ABSAGEN. Ein
+  -- gemeinsames „nicht erlaubt" würde einem Erwachsenen, der die Frage nur
+  -- noch nicht beantwortet hat, sagen, er sei zu jung.
+  SELECT CASE
+    WHEN (SELECT birth_date FROM public.profiles WHERE id = v_user) IS NULL
+      THEN 'birth_date_missing'
+    ELSE 'under_age'
+  END INTO v_state;
+
+  RAISE EXCEPTION '%', v_state USING ERRCODE = '42501';
+END $_$;
+
+
+ALTER FUNCTION "public"."guard_adult_commitment"() OWNER TO "postgres";
+
+--
+-- Name: guard_order_money(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."guard_order_money"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  o jsonb := to_jsonb(OLD);
+  n jsonb := to_jsonb(NEW);
+  v_changed text;
+BEGIN
+  IF current_user NOT IN ('anon', 'authenticated') THEN
+    RETURN NEW;
+  END IF;
+
+  v_changed := CASE
+    WHEN n->>'total_coins' IS DISTINCT FROM o->>'total_coins' THEN 'total_coins'
+    WHEN n->>'buyer_id'    IS DISTINCT FROM o->>'buyer_id'    THEN 'buyer_id'
+    WHEN n->>'product_id'  IS DISTINCT FROM o->>'product_id'  THEN 'product_id'
+    WHEN n->>'seller_id'   IS DISTINCT FROM o->>'seller_id'   THEN 'seller_id'
+    ELSE NULL
+  END;
+
+  IF v_changed IS NOT NULL THEN
+    RAISE EXCEPTION '% darf nicht vom Client geaendert werden', v_changed
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."guard_order_money"() OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "guard_order_money"(); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."guard_order_money"() IS 'Sperrt Betrag, Kaeufer, Produkt und Verkaeufer einer Bestellung gegen direkte Client-Schreibzugriffe. Geprueft wird die ROLLE — SECURITY DEFINER und service_role kommen durch. Ergaenzt das WITH CHECK auf orders_update_seller (22.08.2026).';
+
+
+--
+-- Name: guard_profile_privileges(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."guard_profile_privileges"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_changed text;
+BEGIN
+  IF current_user NOT IN ('anon', 'authenticated') THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.is_admin OR NEW.is_moderator OR NEW.is_operator OR NEW.is_creator_ops
+       OR NEW.is_verified OR NEW.is_creator OR NEW.is_banned OR NEW.is_restricted
+       OR NEW.is_shadow_banned
+       OR COALESCE(NEW.verification_level, 0) <> 0
+       OR NEW.restricted_until IS NOT NULL
+       OR NEW.birth_date IS NOT NULL THEN
+      RAISE EXCEPTION 'Rechte-Spalten koennen beim Anlegen nicht gesetzt werden'
+        USING ERRCODE = 'insufficient_privilege';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  v_changed := CASE
+    WHEN NEW.is_admin           IS DISTINCT FROM OLD.is_admin           THEN 'is_admin'
+    WHEN NEW.is_moderator       IS DISTINCT FROM OLD.is_moderator       THEN 'is_moderator'
+    WHEN NEW.is_operator        IS DISTINCT FROM OLD.is_operator        THEN 'is_operator'
+    WHEN NEW.is_creator_ops     IS DISTINCT FROM OLD.is_creator_ops     THEN 'is_creator_ops'
+    WHEN NEW.is_verified        IS DISTINCT FROM OLD.is_verified        THEN 'is_verified'
+    WHEN NEW.is_creator         IS DISTINCT FROM OLD.is_creator         THEN 'is_creator'
+    WHEN NEW.is_banned          IS DISTINCT FROM OLD.is_banned          THEN 'is_banned'
+    WHEN NEW.is_restricted      IS DISTINCT FROM OLD.is_restricted      THEN 'is_restricted'
+    WHEN NEW.restricted_until   IS DISTINCT FROM OLD.restricted_until   THEN 'restricted_until'
+    WHEN NEW.is_shadow_banned   IS DISTINCT FROM OLD.is_shadow_banned   THEN 'is_shadow_banned'
+    WHEN NEW.verification_level IS DISTINCT FROM OLD.verification_level THEN 'verification_level'
+    WHEN NEW.birth_date         IS DISTINCT FROM OLD.birth_date         THEN 'birth_date'
+    ELSE NULL
+  END;
+
+  IF v_changed IS NOT NULL THEN
+    RAISE EXCEPTION '% darf nicht vom Client geaendert werden', v_changed
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."guard_profile_privileges"() OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "guard_profile_privileges"(); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."guard_profile_privileges"() IS 'Sperrt die Rechte-Spalten von profiles gegen direkte Client-Schreibzugriffe. Geprueft wird die ROLLE: anon und authenticated werden geblockt, SECURITY DEFINER (postgres) und service_role kommen durch. Ohne diesen Wachter konnte sich jeder angemeldete Nutzer per PATCH selbst is_admin setzen (22.08.2026).';
+
+
+--
+-- Name: guard_unpaid_strikes(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."guard_unpaid_strikes"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF public.berkat_unpaid_count(NEW.bidder_id) >= 3 THEN
+    RAISE EXCEPTION 'too_many_unpaid' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION "public"."guard_unpaid_strikes"() OWNER TO "postgres";
 
 --
 -- Name: guard_women_only_verified(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -7458,6 +9502,28 @@ $$;
 ALTER FUNCTION "public"."is_admin"() OWNER TO "postgres";
 
 --
+-- Name: is_adult("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."is_adult"("p_user" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles p
+     WHERE p.id = p_user
+       AND p.birth_date IS NOT NULL
+       -- `::date` ist Pflicht: `CURRENT_DATE - INTERVAL` ergibt einen
+       -- timestamp, und der Vergleich mit einer `date`-Spalte würde still
+       -- über die Tageszeit entscheiden.
+       AND p.birth_date <= (CURRENT_DATE - INTERVAL '18 years')::date
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_adult"("p_user" "uuid") OWNER TO "postgres";
+
+--
 -- Name: is_cohost_blocked("uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -7565,6 +9631,29 @@ ALTER FUNCTION "public"."is_live_session_moderator"("p_session_id" "uuid", "p_us
 
 COMMENT ON FUNCTION "public"."is_live_session_moderator"("p_session_id" "uuid", "p_user_id" "uuid") IS 'Prüft, ob ein User Moderations-Autorität in einer live_sessions-Zeile hat. TRUE für: explizite live_moderators-Einträge ODER aktive live_cohosts (revoked_at IS NULL). v1.27.2';
 
+
+--
+-- Name: is_own_dispute_evidence("text", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."is_own_dispute_evidence"("p_ref" "text", "p_owner" "uuid") RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  SELECT p_ref IS NOT NULL
+     AND p_owner IS NOT NULL
+     AND (
+       -- NEU: Pfad im privaten Eimer, erster Teil ist der Melder
+       p_ref LIKE p_owner::text || '/%'
+       -- ALT: öffentliche R2-Adresse im Ordner des Melders
+       OR p_ref LIKE 'https://pub-35c122d523ba4396b15392ace804c19b.r2.dev/thumbnails/'
+                     || p_owner::text || '/%'
+       OR p_ref LIKE 'https://pub-35c122d523ba4396b15392ace804c19b.r2.dev/products/images/'
+                     || p_owner::text || '/%'
+     )
+$$;
+
+
+ALTER FUNCTION "public"."is_own_dispute_evidence"("p_ref" "text", "p_owner" "uuid") OWNER TO "postgres";
 
 --
 -- Name: is_product_saved("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -7842,6 +9931,66 @@ $$;
 ALTER FUNCTION "public"."live_notification_backlog_recovery"("p_older_than_days" integer, "p_limit" integer, "p_execute" boolean) OWNER TO "postgres";
 
 --
+-- Name: make_berkat_offer("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."make_berkat_offer"("p_auction_id" "uuid", "p_amount_cents" integer) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  a     public.live_auctions;
+  v_uid uuid := auth.uid();
+  v_id  uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id;
+  IF NOT FOUND OR a.session_id IS NOT NULL THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  -- Frauen-Only: dieselbe Meldung wie „gibt es nicht", damit die Existenz eines
+  -- geschützten Artikels nicht über die Fehlermeldung durchsickert.
+  IF a.women_only AND a.seller_id <> v_uid AND NOT public.is_women_only_verified() THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  IF a.status <> 'listed' THEN
+    RAISE EXCEPTION 'auction_closed' USING ERRCODE = '22023';
+  END IF;
+  IF a.seller_id = v_uid THEN
+    RAISE EXCEPTION 'seller_cannot_bid' USING ERRCODE = '42501';
+  END IF;
+  IF NOT a.accepts_offers THEN
+    RAISE EXCEPTION 'offers_not_accepted' USING ERRCODE = '22023';
+  END IF;
+  IF p_amount_cents IS NULL OR p_amount_cents <= 100 THEN
+    RAISE EXCEPTION 'price_too_low' USING ERRCODE = '22023';
+  END IF;
+  -- Ein Vorschlag ÜBER dem Preis ist kein Vorschlag, sondern ein Kauf. Ihn
+  -- anzunehmen wäre für den Käufer schlechter als der Kaufknopf daneben.
+  IF p_amount_cents >= a.buy_now_cents THEN
+    RAISE EXCEPTION 'offer_above_price' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.berkat_offers (auction_id, buyer_id, seller_id, amount_cents)
+  VALUES (a.id, v_uid, a.seller_id, p_amount_cents)
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+EXCEPTION
+  -- Der Teil-Index oben. Als freundlicher Fehler statt als Constraint-Text.
+  WHEN unique_violation THEN
+    RAISE EXCEPTION 'offer_already_open' USING ERRCODE = '22023';
+END $$;
+
+
+ALTER FUNCTION "public"."make_berkat_offer"("p_auction_id" "uuid", "p_amount_cents" integer) OWNER TO "postgres";
+
+--
 -- Name: mark_ai_image_consumed("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -7875,8 +10024,8 @@ CREATE OR REPLACE FUNCTION "public"."mark_due_scheduled_lives_reminded"("p_batch
     SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_row       public.scheduled_lives%ROWTYPE;
-  v_count     INT;
+  v_row   public.scheduled_lives%ROWTYPE;
+  v_count INT;
 BEGIN
   FOR v_row IN
     SELECT *
@@ -7894,49 +10043,45 @@ BEGIN
              reminded_at = NOW()
        WHERE id = v_row.id;
 
-      WITH inserted AS (
+      WITH targets AS (
+        -- Wer dem Gastgeber folgt — der alte Weg, unverändert.
+        SELECT f.follower_id AS uid
+          FROM public.follows f
+         WHERE f.following_id = v_row.host_id
+        -- ⚠️ UNION, nicht UNION ALL. Wer folgt UND vorgemerkt hat, bekommt
+        -- EINE Meldung. Zwei wären schlimmer als keine: Der Nutzer lernt
+        -- daraus, dass die App doppelt schickt, und schaltet sie ab.
+        UNION
+        SELECT r.user_id
+          FROM public.berkat_show_reminders r
+         WHERE r.schedule_id = v_row.id
+      ),
+      inserted AS (
         INSERT INTO public.notifications (
-          recipient_id,
-          sender_id,
-          type,
-          session_id,
-          comment_text
+          recipient_id, sender_id, type, session_id, comment_text, app
         )
         SELECT
-          f.follower_id,
+          t.uid,
           v_row.host_id,
           'scheduled_live_reminder',
           NULL,
-          v_row.title
-        FROM public.follows f
-        WHERE f.following_id = v_row.host_id
-          AND f.follower_id <> v_row.host_id
-          AND NOT EXISTS (
-            SELECT 1
-            FROM public.muted_live_hosts m
-            WHERE m.user_id = f.follower_id
-              AND m.host_id = v_row.host_id
-          )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM public.notifications n
-            WHERE n.recipient_id = f.follower_id
-              AND n.sender_id = v_row.host_id
-              AND n.type IN ('live', 'scheduled_live_reminder')
-              AND n.read = false
-              AND n.created_at > NOW() - INTERVAL '7 days'
-          )
-          AND (
-            SELECT COUNT(*)
-            FROM public.notifications n
-            WHERE n.recipient_id = f.follower_id
-              AND n.type IN ('live', 'scheduled_live_reminder')
-              AND n.read = false
-              AND n.created_at > NOW() - INTERVAL '30 days'
-          ) < 100
+          v_row.title,
+          v_row.app
+          FROM targets t
+         -- Der Gastgeber braucht keine Erinnerung an seine eigene Sendung.
+         -- Über `follows` konnte das bisher nicht passieren (niemand folgt
+         -- sich selbst); über eine Vormerkung schon.
+         WHERE t.uid <> v_row.host_id
         RETURNING 1
       )
       SELECT COUNT(*)::INT INTO v_count FROM inserted;
+
+      -- ⚠️ Verbraucht, wie die Glocke am Artikel (`20260819160000`): Eine
+      -- Vormerkung hat genau einen Zweck, und der ist jetzt erfüllt. Ohne das
+      -- Aufräumen bliebe sie liegen und niemand wüsste, ob sie noch etwas
+      -- bedeutet — dieselbe Überlegung, aus der `start_live_auction` die
+      -- Artikel-Vormerkung löscht.
+      DELETE FROM public.berkat_show_reminders WHERE schedule_id = v_row.id;
 
       scheduled_live_id := v_row.id;
       host_id           := v_row.host_id;
@@ -7959,6 +10104,35 @@ $$;
 
 
 ALTER FUNCTION "public"."mark_due_scheduled_lives_reminded"("p_batch_size" integer) OWNER TO "postgres";
+
+--
+-- Name: mark_listing_seen("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."mark_listing_seen"("p_auction_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_me     uuid := auth.uid();
+  v_seller uuid;
+BEGIN
+  IF v_me IS NULL THEN RETURN; END IF;
+
+  SELECT seller_id INTO v_seller FROM public.live_auctions WHERE id = p_auction_id;
+
+  -- Kein Angebot, oder der Verkäufer sieht sein eigenes an: nichts zählen.
+  -- Ohne die zweite Bedingung stünde bei jedem Verkäufer mindestens eine 1,
+  -- und die erste echte Zahl wäre nicht von der eigenen zu unterscheiden.
+  IF v_seller IS NULL OR v_seller = v_me THEN RETURN; END IF;
+
+  INSERT INTO public.berkat_listing_views (auction_id, viewer_id)
+  VALUES (p_auction_id, v_me)
+  ON CONFLICT (auction_id, viewer_id) DO NOTHING;
+END $$;
+
+
+ALTER FUNCTION "public"."mark_listing_seen"("p_auction_id" "uuid") OWNER TO "postgres";
 
 --
 -- Name: mark_messages_read("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -8110,6 +10284,88 @@ END $$;
 
 
 ALTER FUNCTION "public"."mark_preorders_payable"("p_product_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: may_notify("text", "uuid", "uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."may_notify"("p_type" "text", "p_recipient" "uuid", "p_session" "uuid", "p_comment" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL OR p_recipient IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Sich selbst zu benachrichtigen ist immer sinnlos und in keinem der sechs
+  -- Wege vorgesehen — alle filtern den Absender ausdrücklich heraus.
+  IF p_recipient = v_uid THEN
+    RETURN false;
+  END IF;
+
+  -- ⚠️ GESUCHTES CASE (`CASE WHEN <bedingung>`), nicht die einfache Form mit
+  -- einem Ausdruck hinter `CASE`. Der erste Entwurf schrieb
+  -- `WHEN 'comment', 'comment_reply', 'mention' THEN` — und eine Kommaliste
+  -- gibt es nur in der ANWEISUNGS-Form von PL/pgSQL, nicht im AUSDRUCK.
+  -- Postgres antwortet darauf mit `42601 syntax error at or near ","`. Die
+  -- zwei Formen sehen fast gleich aus und sind es nicht.
+  RETURN CASE
+
+    -- Kommentar, Antwort und Erwähnung: Der Kommentar muss existieren UND von
+    -- mir sein. Damit ist der Text nicht mehr frei erfunden, sondern das, was
+    -- ich ohnehin öffentlich geschrieben habe.
+    WHEN p_type IN ('comment', 'comment_reply', 'mention') THEN
+      p_comment IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.comments c
+         WHERE c.id = p_comment AND c.user_id = v_uid
+      )
+
+    -- „Ich bin live": Nur der Gastgeber der genannten Sendung.
+    WHEN p_type = 'live' THEN
+      p_session IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.live_sessions s
+         WHERE s.id = p_session AND s.host_id = v_uid
+      )
+
+    -- Einladung in eine Sendung: Die Sendung muss laufen. Bewusst NICHT auf
+    -- den Gastgeber begrenzt — das Teilen-Blatt ist für Zuschauer gebaut.
+    WHEN p_type = 'live_invite' THEN
+      p_session IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.live_sessions s
+         WHERE s.id = p_session AND s.status = 'active'
+      )
+
+    -- Follow-Anfrage: Es muss eine geben, und sie muss von mir an genau diesen
+    -- Empfänger gehen.
+    WHEN p_type = 'follow_request' THEN
+      EXISTS (
+        SELECT 1 FROM public.follow_requests r
+         WHERE r.sender_id = v_uid AND r.receiver_id = p_recipient
+      )
+
+    -- Angenommen: Der Empfänger muss mir jetzt tatsächlich folgen. Das ist die
+    -- Tatsache, über die die Meldung berichtet — gibt es sie nicht, ist die
+    -- Meldung eine Behauptung.
+    WHEN p_type = 'follow_request_accepted' THEN
+      EXISTS (
+        SELECT 1 FROM public.follows f
+         WHERE f.follower_id = p_recipient AND f.following_id = v_uid
+      )
+
+    -- ⚠️ ALLES ANDERE IST SERVERSACHE. `auction_won`, `order_paid`,
+    -- `saved_search_hit`, `order_dispute`, `gift` … entstehen in Triggern und
+    -- SECURITY-DEFINER-Funktionen, die als `postgres` laufen und diese Policy
+    -- gar nicht sehen. Ein Client, der sie schreiben will, will etwas
+    -- vortäuschen.
+    ELSE false
+  END;
+END $$;
+
+
+ALTER FUNCTION "public"."may_notify"("p_type" "text", "p_recipient" "uuid", "p_session" "uuid", "p_comment" "uuid") OWNER TO "postgres";
 
 --
 -- Name: moderation_health_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -8284,6 +10540,212 @@ $_$;
 ALTER FUNCTION "public"."moderation_health_snapshot"() OWNER TO "postgres";
 
 --
+-- Name: move_auction_to_shelf("uuid", integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."move_auction_to_shelf"("p_id" "uuid", "p_price_cents" integer) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid  uuid := auth.uid();
+  v_item public.live_auctions%ROWTYPE;
+  v_woz  boolean;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  -- Dieselbe Untergrenze wie in `create_standing_listing`: Der Startpreis
+  -- bleibt bei 100, und `buy_now_cents > start_price_cents` steht als CHECK auf
+  -- der Spalte. Ein Regalpreis von genau 1 € wäre also nicht speicherbar — das
+  -- hier vorher zu sagen ist freundlicher als ein 23514 aus der Tiefe.
+  IF p_price_cents IS NULL OR p_price_cents <= 100 THEN
+    RAISE EXCEPTION 'price_too_low' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_item
+    FROM public.live_auctions
+   WHERE id = p_id
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF v_item.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'not_owner' USING ERRCODE = '42501';
+  END IF;
+  IF v_item.status NOT IN ('unsold', 'scheduled') THEN
+    RAISE EXCEPTION 'not_returnable' USING ERRCODE = '22023';
+  END IF;
+
+  -- ⚠️ Siehe Kopf, Leck 2. Die Session ist die einzige Stelle, an der die
+  -- Wahrheit über den Schutz dieses Artikels heute steht; sobald sie weg ist,
+  -- zählt nur noch die Spalte. Ohne Session (vorbereitet, aber nie gesendet)
+  -- gilt, was schon am Artikel steht.
+  IF v_item.session_id IS NOT NULL THEN
+    SELECT coalesce(s.women_only, false) INTO v_woz
+      FROM public.live_sessions s
+     WHERE s.id = v_item.session_id;
+    v_woz := coalesce(v_woz, false) OR v_item.women_only;
+  ELSE
+    v_woz := v_item.women_only;
+  END IF;
+
+  -- Der Artikel wird zurückgesetzt, nicht bloß umgehängt: Ein Regal-Artikel mit
+  -- `ends_at` aus der letzten Show hätte einen abgelaufenen Countdown, und ein
+  -- stehengebliebener `winner_id` wäre eine Behauptung über einen Menschen.
+  -- `bid_count` geht mit — bei `unsold` ist er ohnehin 0, bei `scheduled` auch.
+  UPDATE public.live_auctions
+     SET session_id        = NULL,
+         planned_for       = NULL,
+         status            = 'listed',
+         women_only        = v_woz,
+         start_price_cents = 100,
+         buy_now_cents     = p_price_cents,
+         current_bid_cents = NULL,
+         current_bidder_id = NULL,
+         bid_count         = 0,
+         ends_at           = NULL,
+         started_at        = NULL,
+         settled_at        = NULL,
+         winner_id         = NULL,
+         cart_id           = NULL,
+         sort_index        = 0,
+         updated_at        = now()
+   WHERE id = p_id;
+
+  RETURN p_id;
+END $$;
+
+
+ALTER FUNCTION "public"."move_auction_to_shelf"("p_id" "uuid", "p_price_cents" integer) OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "move_auction_to_shelf"("p_id" "uuid", "p_price_cents" integer); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."move_auction_to_shelf"("p_id" "uuid", "p_price_cents" integer) IS 'Legt einen nicht verkauften oder nie gestarteten Show-Artikel als Dauerangebot ins Regal. Setzt die Auktionsspuren zurück und erbt women_only von der Session, die der Artikel verlässt — sonst stünde die Ware einer Frauen-Only-Show offen.';
+
+
+--
+-- Name: move_listing_to_show("uuid", "uuid", "uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."move_listing_to_show"("p_id" "uuid", "p_session_id" "uuid" DEFAULT NULL::"uuid", "p_planned_for" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid        uuid := auth.uid();
+  v_item       public.live_auctions%ROWTYPE;
+  v_target_woz boolean;
+  v_next       int;
+  v_count      int;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  -- Genau ein Ziel. Beides gesetzt wäre keine Bequemlichkeit, sondern eine
+  -- offene Frage darüber, wohin der Artikel gehört.
+  IF (p_session_id IS NULL) = (p_planned_for IS NULL) THEN
+    RAISE EXCEPTION 'target_required' USING ERRCODE = '22023';
+  END IF;
+
+  -- Sperren, bevor irgendetwas geprüft wird: Zwischen Prüfung und UPDATE
+  -- könnte sonst ein zweiter Ruf denselben Artikel in eine andere Show ziehen.
+  SELECT * INTO v_item
+    FROM public.live_auctions
+   WHERE id = p_id
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF v_item.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'not_owner' USING ERRCODE = '42501';
+  END IF;
+
+  -- Nur was WIRKLICH im Regal liegt. `sold` und `cancelled` haben ebenfalls
+  -- keine Session — ohne diese Prüfung ließe sich ein verkaufter Artikel
+  -- erneut versteigern.
+  IF v_item.session_id IS NOT NULL OR v_item.status <> 'listed' THEN
+    RAISE EXCEPTION 'not_on_shelf' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_session_id IS NOT NULL THEN
+    -- ⚠️ `app = 'berkat'` gehört dazu. Wer in beiden Apps sendet, zöge seinen
+    -- Artikel sonst in eine SERLO-Session — Serlo kennt `live_auctions` nicht,
+    -- und Berkats Abfragen finden ihn über die fremde Session nie wieder.
+    -- Derselbe Fehler wie Nr. 2 in `20260819130000`.
+    SELECT coalesce(s.women_only, false) INTO v_target_woz
+      FROM public.live_sessions s
+     WHERE s.id = p_session_id
+       AND s.host_id = v_uid
+       AND s.app = 'berkat'
+       AND s.status = 'active';
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'show_not_available' USING ERRCODE = '22023';
+    END IF;
+  ELSE
+    SELECT coalesce(p.women_only, false) INTO v_target_woz
+      FROM public.scheduled_lives p
+     WHERE p.id = p_planned_for
+       AND p.host_id = v_uid
+       AND p.app = 'berkat';
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'plan_not_available' USING ERRCODE = '22023';
+    END IF;
+
+    -- Derselbe Deckel wie in `prepare_live_auction`. Wer aus dem Regal
+    -- vorbereitet, darf ihn nicht umgehen.
+    SELECT count(*) INTO v_count
+      FROM public.live_auctions
+     WHERE planned_for = p_planned_for AND session_id IS NULL;
+    IF v_count >= 50 THEN
+      RAISE EXCEPTION 'too_many_prepared' USING ERRCODE = '22023';
+    END IF;
+  END IF;
+
+  -- ⚠️ Siehe Kopf, Leck 1. Enger darf immer, weiter nie.
+  IF v_item.women_only AND NOT v_target_woz THEN
+    RAISE EXCEPTION 'women_only_mismatch' USING ERRCODE = '42501';
+  END IF;
+
+  -- `max(…) + 1` statt `count(*)`: Fehler 3 aus `20260819130000`.
+  IF p_session_id IS NOT NULL THEN
+    SELECT coalesce(max(sort_index), -1) + 1 INTO v_next
+      FROM public.live_auctions WHERE session_id = p_session_id;
+  ELSE
+    SELECT coalesce(max(sort_index), -1) + 1 INTO v_next
+      FROM public.live_auctions
+     WHERE planned_for = p_planned_for AND session_id IS NULL;
+  END IF;
+
+  UPDATE public.live_auctions
+     SET session_id  = p_session_id,
+         planned_for = p_planned_for,
+         status      = 'scheduled',
+         women_only  = v_target_woz,
+         sort_index  = v_next,
+         updated_at  = now()
+   WHERE id = p_id;
+
+  RETURN p_id;
+END $$;
+
+
+ALTER FUNCTION "public"."move_listing_to_show"("p_id" "uuid", "p_session_id" "uuid", "p_planned_for" "uuid") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "move_listing_to_show"("p_id" "uuid", "p_session_id" "uuid", "p_planned_for" "uuid"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."move_listing_to_show"("p_id" "uuid", "p_session_id" "uuid", "p_planned_for" "uuid") IS 'Verschiebt einen Regal-Artikel (status listed) in eine laufende Show oder an einen Termin. Verschiebt, kopiert nicht — der Artikel verlässt das Regal. Erbt women_only vom Ziel und lehnt den weiter machenden Fall ab.';
+
+
+--
 -- Name: notify_auction_won(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -8352,7 +10814,8 @@ BEGIN
     type,
     session_id,
     comment_text,
-    created_at
+    created_at,
+    app
   )
   SELECT
     f.follower_id,
@@ -8360,7 +10823,8 @@ BEGIN
     'live',
     NEW.id,
     NEW.title,
-    NOW()
+    NOW(),
+    COALESCE(NEW.app, 'serlo')
   FROM public.follows f
   WHERE f.following_id = NEW.host_id
     AND f.follower_id <> NEW.host_id
@@ -8455,6 +10919,8 @@ BEGIN
     p_title   := '💬 Neuer Kommentar',
     p_body    := '@' || v_commenter_name || ': ' || v_comment_preview,
     p_data    := json_build_object('type', 'comment', 'postId', NEW.post_id)::jsonb
+  ,
+    p_app := 'serlo'
   );
 
   RETURN NEW;
@@ -8499,6 +10965,7 @@ DECLARE
   v_sender_id    UUID;
   v_recipient_id UUID;
   v_sender_name  TEXT;
+  v_app          TEXT;
 BEGIN
   v_sender_id := NEW.sender_id;
 
@@ -8519,9 +10986,61 @@ BEGIN
     FROM public.profiles
    WHERE id = v_sender_id;
 
-  -- In-App Notification (unverändert)
-  INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
-  VALUES (v_recipient_id, v_sender_id, 'dm', LEFT(NEW.content, 200))
+  -- ⚠️ DER FADEN ENTSCHEIDET, NICHT DIE NACHRICHT.
+  --
+  -- Bis zum 23.08.2026 stand hier kein `app`, die Zeile fiel also auf den
+  -- Vorgabewert `'serlo'`. Seit dem 22.08. filtern BEIDE Glocken
+  -- (`20260822220000` und Serlos Client) — eine Direktnachricht aus Berkat
+  -- erschien damit in keiner Berkat-Glocke.
+  --
+  -- Der naheliegende Weg wäre, die einzelne Nachricht zu fragen
+  -- (`NEW.listing_id IS NOT NULL`). Der ist falsch: Nur die ERSTE Nachricht
+  -- aus einem Angebot trägt den Bezug, die Antwort darauf nicht mehr — derselbe
+  -- Faden läge dann in zwei Apps, und der Verkäufer bekäme die Frage in Berkat
+  -- und die Rückfrage in Serlo.
+  --
+  -- Deshalb entscheidet die UNTERHALTUNG: Trug irgendeine ihrer Nachrichten je
+  -- einen Angebots-Bezug, ist es ein Berkat-Faden — dauerhaft. Sonst bleibt es
+  -- bei `'serlo'`, also beim heutigen Verhalten.
+  --
+  -- Bewusst NICHT gewählt: zwei Zeilen schreiben, eine je App. Wer beide Apps
+  -- hat, bekäme zwei Pushes für eine Nachricht — und das ist die Sorte Fehler,
+  -- die Nutzer Benachrichtigungen ganz abschalten lässt.
+  -- ⚠️ ERWEITERT 23.08.2026 — die Fassung darunter war zu eng.
+  --
+  -- Sie fragte NUR nach `listing_id`. Wer in Berkat einfach jemanden
+  -- anschreibt — vom Verkäufer-Profil, aus dem Posteingang, als Antwort —
+  -- hängt an keinem Angebot. Der Faden fiel damit auf 'serlo', und die Meldung
+  -- landete in SERLOS Glocke. Von Zaur am Gerät gefunden:
+  -- „wenn man einfach nachricht in berkat schreibt dann geht die meldung ins
+  --  serlo nicht berkat, da fehlt was".
+  --
+  -- Der Angebots-Bezug war nie das Merkmal, er war nur das einzige, das die
+  -- Tabelle hatte. Das Merkmal ist: **in welcher App wurde geschrieben.**
+  -- Dafür gibt es jetzt `messages.app`.
+  --
+  -- `listing_id` bleibt als ODER stehen, und zwar aus zwei Gründen: die
+  -- Fäden von VOR dieser Migration tragen keinen Stempel, und ausgelieferte
+  -- App-Fassungen ohne den OTA schicken ihn nicht. Beide sollen weiter als
+  -- Berkat gelten.
+  --
+  -- NEW wird ZUSÄTZLICH direkt gefragt, nicht nur über das EXISTS: Damit ist
+  -- die Entscheidung unabhängig davon, ob dieser Trigger vor oder nach dem
+  -- Schreiben der Zeile läuft.
+  SELECT CASE
+           WHEN NEW.app = 'berkat' OR NEW.listing_id IS NOT NULL THEN 'berkat'
+           WHEN EXISTS (
+             SELECT 1 FROM public.messages m
+              WHERE m.conversation_id = NEW.conversation_id
+                AND (m.listing_id IS NOT NULL OR m.app = 'berkat')
+           ) THEN 'berkat'
+           ELSE 'serlo'
+         END
+    INTO v_app;
+
+  -- In-App Notification
+  INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text, app)
+  VALUES (v_recipient_id, v_sender_id, 'dm', LEFT(NEW.content, 200), v_app)
   ON CONFLICT DO NOTHING;
 
   -- Push über den kanonischen Direkt-Helper (identisch zu notify_on_like).
@@ -8536,6 +11055,8 @@ BEGIN
       'senderId',       v_sender_id::text,
       'senderUsername', v_sender_name
     )
+  ,
+    p_app := v_app
   );
 
   RETURN NEW;
@@ -8564,6 +11085,8 @@ BEGIN
     p_title   := '👤 Neuer Follower',
     p_body    := '@' || v_follower_name || ' folgt dir jetzt',
     p_data    := json_build_object('type', 'follow', 'userId', NEW.follower_id)::jsonb
+  ,
+    p_app := 'serlo'
   );
 
   RETURN NEW;
@@ -8706,6 +11229,8 @@ BEGIN
     p_title   := '❤️ Neues Like',
     p_body    := '@' || v_liker_username || ' hat „' || v_post_caption || '" geliked',
     p_data    := json_build_object('type', 'like', 'postId', NEW.post_id)::jsonb
+  ,
+    p_app := 'serlo'
   );
 
   RETURN NEW;
@@ -8851,6 +11376,127 @@ $$;
 
 
 ALTER FUNCTION "public"."notify_preorder_buyers"("p_product_id" "uuid", "p_message" "text") OWNER TO "postgres";
+
+--
+-- Name: notify_saved_searches(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."notify_saved_searches"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  s record;
+BEGIN
+  -- Nur Regal-Angebote. Ein Show-Artikel (`session_id IS NOT NULL`) ist nicht
+  -- dauerhaft kaufbar, und ein vorbereiteter (`scheduled`) gehört noch keinem
+  -- Regal an — eine Meldung darauf ginge ins Leere.
+  IF NEW.status <> 'listed' OR NEW.session_id IS NOT NULL THEN
+    RETURN NEW;
+  END IF;
+
+  FOR s IN
+    -- ⚠️ `DISTINCT ON (ss.user_id)`: HÖCHSTENS EINE Meldung je Mensch und
+    -- Angebot. Ohne das erzeugte ein einziges „Abaya schwarz, Gr. 42, Berlin"
+    -- bei jemandem mit fünf gespeicherten Suchen fünf Pushes in derselben
+    -- Sekunde — im lokalen Postgres nachgestellt. Die zuletzt gespeicherte
+    -- Suche gewinnt; sie liefert auch den Begriff fürs Sprungziel.
+    SELECT DISTINCT ON (ss.user_id) ss.id, ss.user_id, ss.query
+      FROM public.berkat_saved_searches ss
+      -- Das Muster einmal je Zeile bauen, statt es dreimal zu wiederholen.
+      CROSS JOIN LATERAL (
+        SELECT '%' || replace(replace(replace(
+                 lower(btrim(ss.query)), '\', '\\'), '%', '\%'), '_', '\_') || '%' AS pat
+      ) p
+     WHERE ss.user_id <> NEW.seller_id
+       -- Drossel 1, je Suche.
+       AND (ss.last_notified_at IS NULL
+            OR ss.last_notified_at < now() - interval '20 hours')
+       -- ⚠️ Drossel 2, je MENSCH. Die erste allein reicht nicht: Sie hängt an
+       -- der Zeile, und wer viele Suchen hat, hat viele Zeilen. Serverseitig
+       -- ist deren Zahl durch nichts begrenzt — RLS erlaubt beliebig viele
+       -- INSERTs, der eindeutige Index verhindert nur exakte Dubletten, und
+       -- das `.limit(50)` im Client ist eine Anzeige-Grenze, kein Riegel.
+       AND NOT EXISTS (
+         SELECT 1 FROM public.notifications n
+          WHERE n.recipient_id = ss.user_id
+            AND n.type = 'saved_search_hit'
+            AND n.app = 'berkat'
+            AND n.created_at > now() - interval '20 hours'
+       )
+       -- ⚠️ FELDWEISE, nicht über einen verketteten Gesamttext. Die erste
+       -- Fassung baute `concat_ws(' ', title, size, city)` und suchte darin —
+       -- damit traf „Abaya 42" auf „abaya 42 berlin", die Regal-Suche im
+       -- Client aber NICHT (`app/shop.tsx` prüft jedes Feld einzeln). Die
+       -- Meldung hätte einen Treffer versprochen, den die App danach nicht
+       -- zeigen kann, und dabei die 20-Stunden-Drossel verbraucht.
+       -- **Server und Client müssen dieselbe Frage stellen.**
+       AND (
+         lower(NEW.title) LIKE p.pat ESCAPE '\'
+         OR lower(coalesce(NEW.size, '')) LIKE p.pat ESCAPE '\'
+         OR lower(coalesce(NEW.city, '')) LIKE p.pat ESCAPE '\'
+       )
+       -- ⚠️ Frauen-Only wird hier GEPRÜFT, nicht geerbt-durch-RLS: Diese
+       -- Funktion läuft als SECURITY DEFINER und sieht an jeder Policy vorbei.
+       --
+       -- BEIDE Hälften, und das ist der Punkt: Die echte Lesegrenze ist
+       -- `is_women_only_verified()`, und die verlangt `gender = 'female'` UND
+       -- `women_only_verified = true`. Die erste Fassung prüfte nur die zweite.
+       -- Ein Konto, das freigegeben wurde und danach sein Geschlecht ändert
+       -- (erlaubt — der Sperr-Trigger schützt nur `women_only_verified`),
+       -- hätte die Meldung samt Titel bekommen, während das Regal ihm
+       -- dasselbe Angebot verweigert. Zwei Wahrheiten darüber, wer in der
+       -- Frauen-Zone ist — genau das Metadaten-Leck, das `20260819140000` an
+       -- vier anderen Tabellen geschlossen hat.
+       --
+       -- Der Helper selbst ist hier NICHT einsetzbar: Er läuft auf
+       -- `auth.uid()`, und das ist im Trigger der VERKÄUFER, nicht der
+       -- Empfänger. Deshalb Handarbeit — aber vollständig.
+       AND (
+         NEW.women_only = false
+         OR EXISTS (
+           SELECT 1 FROM public.profiles pr
+            WHERE pr.id = ss.user_id
+              AND pr.gender = 'female'
+              AND pr.women_only_verified = true
+         )
+       )
+     ORDER BY ss.user_id, ss.created_at DESC
+  LOOP
+    INSERT INTO public.notifications
+      (recipient_id, sender_id, type, product_name, comment_text, app)
+    VALUES (
+      s.user_id,
+      NEW.seller_id,
+      'saved_search_hit',
+      -- ⚠️ `product_name` trägt hier den SUCHBEGRIFF, nicht den Artikelnamen.
+      -- Absicht: Der Client baut daraus das Sprungziel `/shop?q=…`, und dafür
+      -- braucht er den Begriff sauber — nicht aus einem zusammengesetzten Satz
+      -- herausgeschnitten. Der Artikelname steht vollständig in `comment_text`.
+      btrim(s.query),
+      -- Beide Hälften: was gefunden wurde UND wonach gesucht war. Ohne das
+      -- zweite weiß der Empfänger nach zwei Wochen nicht mehr, warum er das
+      -- bekommt.
+      format('%s · passend zu „%s"', NEW.title, btrim(s.query)),
+      -- ⚠️ Ohne `app` ginge die Meldung nach Voreinstellung ans SERLO-Gerät
+      -- (`20260814190000`) — genau der Fehler, den die App-Trennung behebt.
+      'berkat'
+    );
+
+    -- ⚠️ ALLE Suchen dieses Menschen stempeln, nicht nur die getroffene. Sonst
+    -- bliebe der Rest sofort wieder feuerbereit und das nächste Angebot löste
+    -- die nächste Meldung aus — die Drossel wäre wirkungslos.
+    UPDATE public.berkat_saved_searches
+       SET last_notified_at = now()
+     WHERE user_id = s.user_id;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."notify_saved_searches"() OWNER TO "postgres";
 
 --
 -- Name: notify_scheduled_post_failure(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -9168,6 +11814,80 @@ $$;
 ALTER FUNCTION "public"."post_drafts_touch"() OWNER TO "postgres";
 
 --
+-- Name: prepare_live_auction("uuid", "text", integer, integer, "text", integer, "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."prepare_live_auction"("p_planned_for" "uuid", "p_title" "text", "p_start_cents" integer, "p_increment_cents" integer DEFAULT 100, "p_image_url" "text" DEFAULT NULL::"text", "p_buy_now_cents" integer DEFAULT NULL::integer, "p_category" "text" DEFAULT NULL::"text", "p_condition" "text" DEFAULT NULL::"text", "p_size" "text" DEFAULT NULL::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid   uuid := auth.uid();
+  v_host  uuid;
+  v_woz   boolean;
+  v_id    uuid;
+  v_count integer;
+  v_next  integer;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  -- Termin holen — samt Frauen-Only-Kennzeichnung (Fehler 1).
+  SELECT host_id, coalesce(women_only, false)
+    INTO v_host, v_woz
+    FROM public.scheduled_lives
+   WHERE id = p_planned_for AND app = 'berkat';
+  IF v_host IS NULL THEN
+    RAISE EXCEPTION 'schedule_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF v_host <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_title IS NULL OR char_length(btrim(p_title)) < 2 THEN
+    RAISE EXCEPTION 'title_too_short' USING ERRCODE = '22023';
+  END IF;
+  IF p_start_cents IS NULL OR p_start_cents < 100 THEN
+    RAISE EXCEPTION 'price_too_low' USING ERRCODE = '22023';
+  END IF;
+  IF p_category IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.berkat_categories WHERE slug = p_category AND active
+  ) THEN
+    RAISE EXCEPTION 'unknown_category' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT count(*), coalesce(max(sort_index), -1) + 1
+    INTO v_count, v_next
+    FROM public.live_auctions
+   WHERE planned_for = p_planned_for AND session_id IS NULL;
+  IF v_count >= 50 THEN
+    RAISE EXCEPTION 'too_many_prepared' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.live_auctions (
+    session_id, planned_for, seller_id, title, image_url,
+    start_price_cents, min_increment_cents, buy_now_cents,
+    status, category, condition, size, sort_index, women_only
+  ) VALUES (
+    NULL, p_planned_for, v_uid, btrim(p_title), NULLIF(btrim(coalesce(p_image_url, '')), ''),
+    p_start_cents, greatest(coalesce(p_increment_cents, 100), 100), p_buy_now_cents,
+    'scheduled', p_category,
+    NULLIF(btrim(coalesce(p_condition, '')), ''),
+    NULLIF(btrim(coalesce(p_size, '')), ''),
+    v_next,
+    -- Vom Termin geerbt, nicht vom Aufrufer behauptet.
+    v_woz
+  )
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END $$;
+
+
+ALTER FUNCTION "public"."prepare_live_auction"("p_planned_for" "uuid", "p_title" "text", "p_start_cents" integer, "p_increment_cents" integer, "p_image_url" "text", "p_buy_now_cents" integer, "p_category" "text", "p_condition" "text", "p_size" "text") OWNER TO "postgres";
+
+--
 -- Name: product_health_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -9392,11 +12112,14 @@ CREATE OR REPLACE FUNCTION "public"."production_integrity_snapshot"() RETURNS "j
     AS $_$
 DECLARE
   v_pending_count INTEGER := 0;
+  v_retrying_count INTEGER := 0;
   v_error_count INTEGER := 0;
   v_deleted_count INTEGER := 0;
   v_total_count INTEGER := 0;
   v_oldest_pending_at TIMESTAMPTZ := NULL;
+  v_oldest_retrying_at TIMESTAMPTZ := NULL;
   v_latest_error TEXT := NULL;
+  v_latest_retry_error TEXT := NULL;
   v_empty_posts_count INTEGER := 0;
   v_media_reference_count INTEGER := 0;
   v_cron_jobs JSONB := '[]'::JSONB;
@@ -9404,20 +12127,29 @@ BEGIN
   SELECT
     COUNT(*)::INTEGER,
     COUNT(*) FILTER (WHERE status = 'pending')::INTEGER,
+    COUNT(*) FILTER (WHERE status = 'retrying')::INTEGER,
     COUNT(*) FILTER (WHERE status = 'error')::INTEGER,
     COUNT(*) FILTER (WHERE status = 'deleted')::INTEGER,
     MIN(created_at) FILTER (WHERE status = 'pending'),
+    MIN(created_at) FILTER (WHERE status = 'retrying'),
     (
       ARRAY_AGG(last_error ORDER BY processed_at DESC NULLS LAST, created_at DESC)
         FILTER (WHERE status = 'error' AND last_error IS NOT NULL)
+    )[1],
+    (
+      ARRAY_AGG(last_error ORDER BY processed_at DESC NULLS LAST, created_at DESC)
+        FILTER (WHERE status = 'retrying' AND last_error IS NOT NULL)
     )[1]
   INTO
     v_total_count,
     v_pending_count,
+    v_retrying_count,
     v_error_count,
     v_deleted_count,
     v_oldest_pending_at,
-    v_latest_error
+    v_oldest_retrying_at,
+    v_latest_error,
+    v_latest_retry_error
   FROM public.r2_delete_queue;
 
   SELECT COUNT(*)::INTEGER
@@ -9465,6 +12197,7 @@ BEGIN
     'r2_delete_queue', JSONB_BUILD_OBJECT(
       'total', COALESCE(v_total_count, 0),
       'pending', COALESCE(v_pending_count, 0),
+      'retrying', COALESCE(v_retrying_count, 0),
       'error', COALESCE(v_error_count, 0),
       'deleted', COALESCE(v_deleted_count, 0),
       'oldest_pending_at', v_oldest_pending_at,
@@ -9473,7 +12206,14 @@ BEGIN
           WHEN v_oldest_pending_at IS NULL THEN NULL
           ELSE EXTRACT(EPOCH FROM (NOW() - v_oldest_pending_at))::INTEGER
         END,
-      'latest_error', v_latest_error
+      'oldest_retrying_at', v_oldest_retrying_at,
+      'oldest_retrying_age_seconds',
+        CASE
+          WHEN v_oldest_retrying_at IS NULL THEN NULL
+          ELSE EXTRACT(EPOCH FROM (NOW() - v_oldest_retrying_at))::INTEGER
+        END,
+      'latest_error', v_latest_error,
+      'latest_retry_error', v_latest_retry_error
     ),
     'posts', JSONB_BUILD_OBJECT(
       'empty_content', COALESCE(v_empty_posts_count, 0),
@@ -9629,6 +12369,59 @@ $$;
 
 
 ALTER FUNCTION "public"."publish_due_scheduled_posts"("p_batch_size" integer) OWNER TO "postgres";
+
+--
+-- Name: purge_expired_story_media(interval, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."purge_expired_story_media"("p_older_than" interval DEFAULT '90 days'::interval, "p_limit" integer DEFAULT 500) RETURNS TABLE("scanned" integer, "enqueued" integer)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  r         record;
+  v_scanned integer := 0;
+  v_enq     integer := 0;
+  v_urls    integer;
+BEGIN
+  FOR r IN
+    SELECT s.id, s.user_id, s.media_url, s.thumbnail_url
+      FROM public.stories s
+     WHERE s.media_purged_at IS NULL
+       AND s.created_at < now() - p_older_than
+       AND NOT public.story_media_claimed_by_highlight(s.id, s.media_url)
+       AND NOT public.story_media_claimed_by_highlight(s.id, s.thumbnail_url)
+     ORDER BY s.created_at
+     LIMIT greatest(1, least(coalesce(p_limit, 500), 5000))
+     FOR UPDATE SKIP LOCKED
+  LOOP
+    v_scanned := v_scanned + 1;
+
+    v_urls := public.enqueue_story_media_delete(
+      r.id, r.user_id, r.media_url, r.thumbnail_url, 'story_expired'
+    );
+
+    IF v_urls > 0 THEN
+      v_enq := v_enq + 1;
+      UPDATE public.stories SET media_purged_at = now() WHERE id = r.id;
+    END IF;
+  END LOOP;
+
+  scanned  := v_scanned;
+  enqueued := v_enq;
+  RETURN NEXT;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."purge_expired_story_media"("p_older_than" interval, "p_limit" integer) OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "purge_expired_story_media"("p_older_than" interval, "p_limit" integer); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."purge_expired_story_media"("p_older_than" interval, "p_limit" integer) IS 'Reiht die Medien abgelaufener Stories zum Löschen ein und LÄSST DIE ZEILE STEHEN. Ein DELETE wäre hier falsch: daran hängen story_comments, story_polls, story_views, story_likes und story_highlights mit CASCADE.';
+
 
 --
 -- Name: push_feed_health_snapshot(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -10034,6 +12827,34 @@ $$;
 ALTER FUNCTION "public"."reject_women_only"("p_user" "uuid", "p_note" "text") OWNER TO "postgres";
 
 --
+-- Name: release_prepared_on_plan_end(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."release_prepared_on_plan_end"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  UPDATE public.live_auctions
+     SET status      = 'listed',
+         planned_for = NULL
+   WHERE planned_for = NEW.id
+     -- ⚠️ Beide Bedingungen sind Schutz, nicht Zierde: `session_id IS NULL`
+     -- hält die Finger von Ware, die schon in einer Show hängt, und
+     -- `status = 'scheduled'` von allem, was bereits verkauft, zurückgezogen
+     -- oder ohnehin im Regal ist. Ohne sie könnte dieser Auslöser einen
+     -- verkauften Artikel wieder ins Regal legen.
+     AND session_id IS NULL
+     AND status = 'scheduled';
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."release_prepared_on_plan_end"() OWNER TO "postgres";
+
+--
 -- Name: remind_due_auction_carts(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -10101,56 +12922,98 @@ $$;
 ALTER FUNCTION "public"."remind_due_auction_carts"() OWNER TO "postgres";
 
 --
--- Name: report_order_dispute("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: report_order_dispute("uuid", "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE FUNCTION "public"."report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text" DEFAULT NULL::"text", "p_image_url" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_caller  uuid := auth.uid();
-  v_order   public.product_orders%rowtype;
+  v_order   public.product_orders%ROWTYPE;
   v_role    text;
   v_against uuid;
   v_detail  text := nullif(btrim(p_detail), '');
+  v_image   text := nullif(btrim(p_image_url), '');
+  v_app     text;
   r_admin   record;
 BEGIN
   IF v_caller IS NULL THEN RETURN jsonb_build_object('error','not_authenticated'); END IF;
   IF p_reason NOT IN ('not_received','damaged','not_as_described','not_paid','fraud','other') THEN
-    RETURN jsonb_build_object('error','invalid_reason');
+    RETURN jsonb_build_object('error','bad_reason');
   END IF;
   IF v_detail IS NOT NULL AND length(v_detail) > 2000 THEN v_detail := left(v_detail, 2000); END IF;
+
+  -- ⚠️ Nur eigene Adressen. Ohne diese Prüfung könnte jemand eine beliebige
+  -- fremde URL an einen Vorgang hängen, den Admins später öffnen — und der
+  -- Aufruf dieser Adresse verriete dem Betreiber der Gegenseite, wann und von
+  -- wo aus ein Admin hinsieht. Der Upload läuft ohnehin über `r2-sign`; hier
+  -- steht nur der Riegel dazu.
+  -- ⚠️ Die Adresse muss aus UNSEREM Haus kommen UND dem Melder gehören.
+  --
+  -- Bis zum 23.08.2026 stand hier nur `NOT LIKE 'https://%'`. Das wehrte
+  -- `javascript:` und `http://` ab und liess jede fremde Domain durch —
+  -- also genau den Fall, vor dem der Kommentar warnte: Ein Melder hängt
+  -- `https://sein-server/pixel.png` an, und der Abruf verrät ihm, wann und
+  -- von wo aus ein Admin den Vorgang öffnet.
+  --
+  -- Zwei Formen sind erlaubt, und beide binden das Bild an den Melder:
+  --   • NEU  — Pfad im privaten Eimer `dispute-evidence`: `<melder>/…`
+  --   • ALT  — öffentliche R2-Adresse im Ordner des Melders. Bleibt drin,
+  --            solange ausgelieferte App-Fassungen sie schicken (die
+  --            Reihenfolge ist Datenbank vor OTA, siehe Übergabe 72).
+  --
+  -- Der gemeinsame Nenner ist NICHT „sieht aus wie eine URL", sondern
+  -- „liegt im Ordner dessen, der meldet" — dieselbe Invariante, die
+  -- `isOwnedUploadKey` in `r2-sign` beim Hochladen durchsetzt.
+  IF v_image IS NOT NULL AND NOT public.is_own_dispute_evidence(v_image, v_caller) THEN
+    RETURN jsonb_build_object('error','bad_image');
+  END IF;
 
   SELECT * INTO v_order FROM public.product_orders WHERE id = p_order_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('error','order_not_found'); END IF;
 
   IF v_caller = v_order.buyer_id THEN v_role := 'buyer'; v_against := v_order.seller_id;
   ELSIF v_caller = v_order.seller_id THEN v_role := 'seller'; v_against := v_order.buyer_id;
-  ELSE RETURN jsonb_build_object('error','not_authorized'); END IF;
-
-  -- Erst ab Zahlung sinnvoll (vorher gibt's „Doch nicht"/Stornieren).
-  IF v_order.status NOT IN ('paid','shipped','delivered') THEN
-    RETURN jsonb_build_object('error','not_reportable');
+  ELSE RETURN jsonb_build_object('error','not_participant');
   END IF;
 
-  INSERT INTO public.order_disputes (order_id, reporter_id, against_id, reporter_role, reason, detail)
-  VALUES (p_order_id, v_caller, v_against, v_role, p_reason, v_detail)
-  ON CONFLICT (order_id, reporter_id) DO UPDATE
-    SET reason = excluded.reason, detail = excluded.detail, status = 'open', resolved_at = NULL;
+  IF v_order.status NOT IN ('paid','shipped','delivered') THEN
+    RETURN jsonb_build_object('error','bad_status');
+  END IF;
 
-  -- Gegenseite informieren.
+  -- Siehe `20260821170000`: ohne den Stempel landet die Meldung per DEFAULT in
+  -- Serlos Posteingang.
+  v_app := CASE WHEN v_order.cart_id IS NOT NULL THEN 'berkat' ELSE 'serlo' END;
+
+  INSERT INTO public.order_disputes
+    (order_id, reporter_id, against_id, reporter_role, reason, detail, image_url)
+  VALUES (p_order_id, v_caller, v_against, v_role, p_reason, v_detail, v_image)
+  ON CONFLICT (order_id, reporter_id) DO UPDATE
+    SET reason = excluded.reason,
+        detail = excluded.detail,
+        -- ⚠️ COALESCE, nicht Vollersatz: Wer seine Meldung nachschärft und
+        -- diesmal kein Foto anhängt, soll das erste nicht verlieren. Dieselbe
+        -- Regel wie beim Anbietertyp (`20260817130000`) und beim Kopfbild
+        -- (Übergabe 60, Fund 2): Ein Formular, das ein Feld nicht kennt, darf
+        -- es nicht löschen.
+        image_url = COALESCE(excluded.image_url, order_disputes.image_url),
+        status = 'open',
+        resolved_at = NULL;
+
   BEGIN
-    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
-    VALUES (v_against, v_caller, 'order_dispute', 'Ein Problem mit einer Bestellung wurde gemeldet ⚠️');
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text, app)
+    VALUES (v_against, v_caller, 'order_dispute',
+            'Ein Problem mit einer Bestellung wurde gemeldet ⚠️', v_app);
   EXCEPTION WHEN OTHERS THEN NULL; END;
 
-  -- Admins informieren (außer wenn schon als Gegenseite/Melder benachrichtigt).
   FOR r_admin IN SELECT id FROM public.profiles WHERE is_admin = true LOOP
     IF r_admin.id <> v_caller AND r_admin.id <> v_against THEN
       BEGIN
-        INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
-        VALUES (r_admin.id, v_caller, 'order_dispute', 'Neue Streit-Meldung zu einer Bestellung ⚠️');
+        INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text, app)
+        VALUES (r_admin.id, v_caller, 'order_dispute',
+                'Neue Streit-Meldung zu einer Bestellung ⚠️', v_app);
       EXCEPTION WHEN OTHERS THEN NULL; END;
     END IF;
   END LOOP;
@@ -10159,7 +13022,67 @@ BEGIN
 END $$;
 
 
-ALTER FUNCTION "public"."report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text", "p_image_url" "text") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text", "p_image_url" "text"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."report_order_dispute"("p_order_id" "uuid", "p_reason" "text", "p_detail" "text", "p_image_url" "text") IS 'Meldet ein Problem zu einer Bestellung, mit optionalem Belegfoto. Stempelt notifications.app aus product_orders.cart_id. Alte Aufrufe mit drei benannten Parametern funktionieren unverändert — p_image_url hat einen Default.';
+
+
+--
+-- Name: report_unpaid_buyer("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."report_unpaid_buyer"("p_auction_id" "uuid", "p_note" "text" DEFAULT NULL::"text") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_a   public.live_auctions%ROWTYPE;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  SELECT * INTO v_a FROM public.live_auctions WHERE id = p_auction_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF v_a.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'not_owner' USING ERRCODE = '42501';
+  END IF;
+  IF v_a.status <> 'sold' OR v_a.winner_id IS NULL THEN
+    RAISE EXCEPTION 'not_sold' USING ERRCODE = '22023';
+  END IF;
+
+  IF COALESCE(v_a.settled_at, v_a.created_at) > now() - INTERVAL '48 hours' THEN
+    RAISE EXCEPTION 'too_early' USING ERRCODE = '22023';
+  END IF;
+
+  -- ⚠️ `status`, nicht `payment_status` — und drei Werte, nicht einer. Eine
+  -- versendete oder zugestellte Bestellung wurde bezahlt; der Status ist nur
+  -- weitergewandert. Dieselbe Liste wie in `useMyOrders.ts`.
+  IF v_a.cart_id IS NOT NULL AND EXISTS (
+    SELECT 1
+      FROM public.product_orders o
+     WHERE o.cart_id = v_a.cart_id
+       AND o.status IN ('paid', 'shipped', 'delivered')
+  ) THEN
+    RAISE EXCEPTION 'already_paid' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.berkat_unpaid_strikes (auction_id, buyer_id, seller_id, note)
+  VALUES (p_auction_id, v_a.winner_id, v_uid, NULLIF(btrim(coalesce(p_note, '')), ''))
+  ON CONFLICT (auction_id) DO NOTHING;
+
+  RETURN public.berkat_unpaid_count(v_a.winner_id);
+END $$;
+
+
+ALTER FUNCTION "public"."report_unpaid_buyer"("p_auction_id" "uuid", "p_note" "text") OWNER TO "postgres";
 
 --
 -- Name: request_women_only(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -10200,6 +13123,48 @@ $$;
 
 
 ALTER FUNCTION "public"."request_women_only"() OWNER TO "postgres";
+
+--
+-- Name: requeue_failed_r2_deletes(integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."requeue_failed_r2_deletes"("p_limit" integer DEFAULT 100, "p_reason" "text" DEFAULT NULL::"text") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_count integer;
+BEGIN
+  WITH candidates AS (
+    SELECT id
+      FROM public.r2_delete_queue
+     WHERE status = 'error'
+       AND (p_reason IS NULL OR reason = p_reason)
+     ORDER BY created_at
+     LIMIT greatest(1, least(coalesce(p_limit, 100), 5000))
+     FOR UPDATE SKIP LOCKED
+  )
+  UPDATE public.r2_delete_queue q
+     SET status          = 'pending',
+         attempts        = 0,
+         next_attempt_at = NULL
+    FROM candidates c
+   WHERE q.id = c.id;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."requeue_failed_r2_deletes"("p_limit" integer, "p_reason" "text") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "requeue_failed_r2_deletes"("p_limit" integer, "p_reason" "text"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."requeue_failed_r2_deletes"("p_limit" integer, "p_reason" "text") IS 'Stellt endgültig aufgegebene Zeilen zurück in die Warteschlange, NACHDEM ein Mensch die Ursache behoben hat. Setzt attempts zurück, behält last_error.';
+
 
 --
 -- Name: reschedule_live("uuid", timestamp with time zone); Type: FUNCTION; Schema: public; Owner: postgres
@@ -10400,12 +13365,22 @@ DECLARE
   v_caller  uuid := auth.uid();
   v_dispute public.order_disputes%rowtype;
   v_res     text := nullif(btrim(p_resolution), '');
+  v_app     text;
 BEGIN
   IF v_caller IS NULL THEN RETURN jsonb_build_object('error','not_authenticated'); END IF;
   IF NOT COALESCE(public.is_admin(), false) THEN RETURN jsonb_build_object('error','not_authorized'); END IF;
 
   SELECT * INTO v_dispute FROM public.order_disputes WHERE id = p_dispute_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('error','dispute_not_found'); END IF;
+
+  -- Dieselbe Weiche wie in report_order_dispute (20260821170000): cart_id gibt
+  -- es nur in Berkat, und beide Berkat-Geldwege setzen ihn. Exakte Grenze,
+  -- keine Naeherung.
+  SELECT CASE WHEN o.cart_id IS NOT NULL THEN 'berkat' ELSE 'serlo' END
+    INTO v_app
+    FROM public.product_orders o
+   WHERE o.id = v_dispute.order_id;
+  v_app := COALESCE(v_app, 'serlo');
 
   UPDATE public.order_disputes
      SET status = CASE WHEN p_dismiss THEN 'dismissed' ELSE 'resolved' END,
@@ -10415,10 +13390,10 @@ BEGIN
 
   -- Beide Parteien informieren.
   BEGIN
-    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
+    INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text, app)
     VALUES
-      (v_dispute.reporter_id, v_caller, 'order_dispute', 'Deine Streit-Meldung wurde geklärt ✓'),
-      (v_dispute.against_id,  v_caller, 'order_dispute', 'Eine Streit-Meldung zu deiner Bestellung wurde geklärt ✓');
+      (v_dispute.reporter_id, v_caller, 'order_dispute', 'Deine Streit-Meldung wurde geklärt ✓', v_app),
+      (v_dispute.against_id,  v_caller, 'order_dispute', 'Eine Streit-Meldung zu deiner Bestellung wurde geklärt ✓', v_app);
   EXCEPTION WHEN OTHERS THEN NULL; END;
 
   RETURN jsonb_build_object('success', true);
@@ -10426,6 +13401,66 @@ END $$;
 
 
 ALTER FUNCTION "public"."resolve_order_dispute"("p_dispute_id" "uuid", "p_resolution" "text", "p_dismiss" boolean) OWNER TO "postgres";
+
+--
+-- Name: respond_berkat_offer("uuid", "text", integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."respond_berkat_offer"("p_offer_id" "uuid", "p_action" "text", "p_counter_cents" integer DEFAULT NULL::integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  o     public.berkat_offers;
+  a     public.live_auctions;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+  IF p_action NOT IN ('accept', 'decline', 'counter') THEN
+    RAISE EXCEPTION 'unknown_action' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO o FROM public.berkat_offers WHERE id = p_offer_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'offer_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF o.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+  IF o.status <> 'pending' THEN
+    RAISE EXCEPTION 'offer_closed' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = o.auction_id;
+  IF a.status <> 'listed' THEN
+    RAISE EXCEPTION 'auction_closed' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_action = 'counter' THEN
+    IF p_counter_cents IS NULL OR p_counter_cents <= o.amount_cents THEN
+      -- Ein Gegenvorschlag UNTER dem Vorschlag wäre ein Geschenk, kein Handeln.
+      RAISE EXCEPTION 'counter_too_low' USING ERRCODE = '22023';
+    END IF;
+    IF p_counter_cents >= a.buy_now_cents THEN
+      -- Auf den vollen Preis zu kontern heißt „nein" — dann soll es auch „nein"
+      -- heißen, sonst wartet der Käufer auf eine Verhandlung, die keine ist.
+      RAISE EXCEPTION 'counter_above_price' USING ERRCODE = '22023';
+    END IF;
+    UPDATE public.berkat_offers
+       SET status = 'countered', counter_cents = p_counter_cents, responded_at = now()
+     WHERE id = o.id;
+  ELSE
+    UPDATE public.berkat_offers
+       SET status = CASE WHEN p_action = 'accept' THEN 'accepted' ELSE 'declined' END,
+           responded_at = now()
+     WHERE id = o.id;
+  END IF;
+END $$;
+
+
+ALTER FUNCTION "public"."respond_berkat_offer"("p_offer_id" "uuid", "p_action" "text", "p_counter_cents" integer) OWNER TO "postgres";
 
 --
 -- Name: respond_duet_invite("uuid", boolean, "text"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -10671,6 +13706,59 @@ $$;
 ALTER FUNCTION "public"."revoke_women_only"("p_user" "uuid", "p_note" "text") OWNER TO "postgres";
 
 --
+-- Name: schedule_berkat_show(timestamp with time zone, "text", boolean, "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."schedule_berkat_show"("p_scheduled_at" timestamp with time zone, "p_title" "text", "p_women_only" boolean DEFAULT false, "p_cover_url" "text" DEFAULT NULL::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_id    UUID;
+  v_cover TEXT := NULLIF(btrim(COALESCE(p_cover_url, '')), '');
+BEGIN
+  -- `schedule_live` bleibt der Eingang und damit die einzige Stelle, an der die
+  -- Regeln stehen: Anmeldung, nicht-leerer Titel, Fenster 5 Minuten bis 30 Tage.
+  v_id := public.schedule_live(
+    p_scheduled_at   => p_scheduled_at,
+    p_title          => p_title,
+    p_description    => NULL,
+    p_allow_comments => true,
+    -- Geschenke laufen in Serlo über Coins, und Coins sind in Berkat
+    -- ausgeschlossen (E-Geld, HANDOFF § 7).
+    p_allow_gifts    => false,
+    p_women_only     => p_women_only
+  );
+
+  IF v_cover IS NULL THEN
+    SELECT s.thumbnail_url
+      INTO v_cover
+      FROM public.live_sessions s
+     WHERE s.host_id = auth.uid()
+       AND s.app = 'berkat'
+       AND s.thumbnail_url IS NOT NULL
+       -- ⚠️ DIE ZEILE, UM DIE ES IN DIESER MIGRATION GEHT.
+       -- Ohne sie wandert das Cover einer Frauen-Only-Show in eine öffentlich
+       -- lesbare Zeile. Die Policy auf `live_sessions` greift hier nicht — eine
+       -- SECURITY-DEFINER-Funktion läuft als Eigentümer und sieht alles.
+       AND s.women_only = false
+     ORDER BY s.started_at DESC NULLS LAST
+     LIMIT 1;
+  END IF;
+
+  UPDATE public.scheduled_lives
+     SET app       = 'berkat',
+         cover_url = v_cover
+   WHERE id = v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."schedule_berkat_show"("p_scheduled_at" timestamp with time zone, "p_title" "text", "p_women_only" boolean, "p_cover_url" "text") OWNER TO "postgres";
+
+--
 -- Name: schedule_live(timestamp with time zone, "text", "text", boolean, boolean, boolean); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -10843,6 +13931,43 @@ $$;
 ALTER FUNCTION "public"."scheduled_posts_touch"() OWNER TO "postgres";
 
 --
+-- Name: search_berkat_sellers("text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."search_berkat_sellers"("p_query" "text") RETURNS TABLE("id" "uuid", "username" "text", "avatar_url" "text", "listings" integer, "sold" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT
+    p.id,
+    p.username,
+    p.avatar_url,
+    (SELECT COUNT(*)::integer FROM public.live_auctions a
+      WHERE a.seller_id = p.id AND a.session_id IS NULL AND a.status = 'listed'),
+    (SELECT COUNT(*)::integer FROM public.live_auctions a
+      WHERE a.seller_id = p.id AND a.status = 'sold')
+  FROM public.profiles p
+  -- Mindestens zwei Zeichen: Ein einzelner Buchstabe wäre ein Tabellendurchlauf
+  -- über alle Nutzer beider Apps, und das Ergebnis wäre ohnehin unbrauchbar.
+  WHERE char_length(btrim(coalesce(p_query, ''))) >= 2
+    AND p.username ILIKE '%' || btrim(p_query) || '%'
+    AND (
+      EXISTS (SELECT 1 FROM public.live_auctions a WHERE a.seller_id = p.id)
+      OR EXISTS (
+        SELECT 1 FROM public.live_sessions s
+         WHERE s.host_id = p.id AND s.app = 'berkat'
+      )
+    )
+  -- Wer gerade etwas anzubieten hat, steht oben. Danach, wer schon geliefert
+  -- hat. Ein Verkäufer ohne beides ist zwar auffindbar, aber zuletzt.
+  ORDER BY 4 DESC, 5 DESC, p.username ASC
+  LIMIT 20;
+$$;
+
+
+ALTER FUNCTION "public"."search_berkat_sellers"("p_query" "text") OWNER TO "postgres";
+
+--
 -- Name: search_public_profiles_web("text", integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -10877,6 +14002,25 @@ $$;
 
 
 ALTER FUNCTION "public"."search_public_profiles_web"("search_query" "text", "result_limit" integer) OWNER TO "postgres";
+
+--
+-- Name: seller_on_vacation("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."seller_on_vacation"("p_seller" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.berkat_sellers s
+     WHERE s.user_id = p_seller
+       AND s.vacation_until IS NOT NULL
+       AND s.vacation_until > now()
+  );
+$$;
+
+
+ALTER FUNCTION "public"."seller_on_vacation"("p_seller" "uuid") OWNER TO "postgres";
 
 --
 -- Name: send_creator_tip("uuid", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -11094,21 +14238,29 @@ BEGIN
      AND last_seen_at < NOW() - INTERVAL '90 days';
 
   -- Gibt es Geräte der Ziel-App?
+  --
+  -- ⚠️ `v_count` wird weiterhin gezählt, obwohl der Rückfall weg ist. Die Zeile
+  -- kostet nichts und hält die Diagnose offen: Wer je wissen will, ob eine
+  -- Meldung mangels Gerät verpuffte, hat die Zahl hier stehen. Sie zu streichen
+  -- hiesse, die Frage „warum kam nichts an?" unbeantwortbar zu machen.
   SELECT COUNT(*) INTO v_count
     FROM public.push_tokens
    WHERE user_id = p_user_id
      AND (p_app IS NULL OR app = p_app);
 
-  -- RÜCKFALL, bewusst: Findet sich kein Gerät der Ziel-App, gehen die Meldungen
-  -- an alle Geräte des Nutzers. Solange Berkat noch keinen Token registriert
-  -- (braucht expo-notifications und damit einen EAS-Rebuild), bekommt ein Nutzer
-  -- mit beiden Apps den Zuschlag so wenigstens in Serlo. Unschön, aber besser als
-  -- Stille. Sobald Berkat Tokens registriert, greift der Filter und dieser Zweig
-  -- läuft leer. Zum Abschalten: die COALESCE-Bedingung durch `app = p_app` ersetzen.
+  -- ⚠️ KEIN RÜCKFALL MEHR (26.08.2026). Hier stand `OR v_count = 0` — damit
+  -- ging eine Berkat-Meldung an ein SERLO-Gerät, wenn der Nutzer Berkat nicht
+  -- installiert oder Mitteilungen nicht erlaubt hatte. Das ist keine
+  -- Zustellung, sondern eine Verwechslung: Der Empfänger tippt darauf und
+  -- landet in einer App, die den Artikel nicht kennt (Übergabe 78).
+  --
+  -- Abgeschaltet wurde er erst, nachdem gemessen war, dass JEDES registrierte
+  -- Gerät einen App-Wert trägt (serlo 5, berkat 1, kein NULL). Ohne diese
+  -- Messung hätte das Abschalten stumme Geräte erzeugt, und zwar lautlos.
   FOR v_token IN
     SELECT token FROM public.push_tokens
      WHERE user_id = p_user_id
-       AND (p_app IS NULL OR v_count = 0 OR app = p_app)
+       AND (p_app IS NULL OR app = p_app)
   LOOP
     PERFORM send_expo_push(
       token := v_token,
@@ -11174,6 +14326,177 @@ $$;
 
 
 ALTER FUNCTION "public"."set_admin_support_thread_updated_at"() OWNER TO "postgres";
+
+--
+-- Name: set_berkat_seller_kind("text", "text", "text", "text", "text", "text", "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_berkat_seller_kind"("p_kind" "text", "p_legal_name" "text" DEFAULT NULL::"text", "p_street" "text" DEFAULT NULL::"text", "p_postal_code" "text" DEFAULT NULL::"text", "p_city" "text" DEFAULT NULL::"text", "p_country" "text" DEFAULT NULL::"text", "p_contact_email" "text" DEFAULT NULL::"text", "p_vat_id" "text" DEFAULT NULL::"text", "p_lucid_id" "text" DEFAULT NULL::"text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+  IF p_kind IS NULL OR p_kind NOT IN ('private', 'business') THEN
+    RAISE EXCEPTION 'unknown_seller_kind' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.berkat_sellers AS s (
+    user_id, kind, legal_name, street, postal_code, city, country,
+    contact_email, vat_id, lucid_id, declared_at
+  ) VALUES (
+    v_uid, p_kind,
+    NULLIF(btrim(coalesce(p_legal_name, '')), ''),
+    NULLIF(btrim(coalesce(p_street, '')), ''),
+    NULLIF(btrim(coalesce(p_postal_code, '')), ''),
+    NULLIF(btrim(coalesce(p_city, '')), ''),
+    NULLIF(btrim(coalesce(p_country, '')), ''),
+    NULLIF(btrim(coalesce(p_contact_email, '')), ''),
+    NULLIF(btrim(coalesce(p_vat_id, '')), ''),
+    NULLIF(btrim(coalesce(p_lucid_id, '')), ''),
+    now()
+  )
+  ON CONFLICT (user_id) DO UPDATE SET
+    kind          = EXCLUDED.kind,
+    legal_name    = COALESCE(EXCLUDED.legal_name,    s.legal_name),
+    street        = COALESCE(EXCLUDED.street,        s.street),
+    postal_code   = COALESCE(EXCLUDED.postal_code,   s.postal_code),
+    city          = COALESCE(EXCLUDED.city,          s.city),
+    country       = COALESCE(EXCLUDED.country,       s.country),
+    contact_email = COALESCE(EXCLUDED.contact_email, s.contact_email),
+    vat_id        = COALESCE(EXCLUDED.vat_id,        s.vat_id),
+    lucid_id      = COALESCE(EXCLUDED.lucid_id,      s.lucid_id),
+    declared_at   = now()
+  -- `checkout_enabled` steht bewusst NICHT in der Liste: Ein Wechsel des
+  -- Anbietertyps darf die Kassen-Freigabe weder erteilen noch verlieren.
+  WHERE s.user_id = v_uid;
+
+  -- ⚠️ Noch OFFENE eigene Angebote ziehen den neuen Typ nach, VERKAUFTE nie.
+  -- Art. 246d verlangt die Angabe vor der Vertragserklärung — ein bereits
+  -- geschlossener Kauf behält den Stand von damals, sonst änderte eine spätere
+  -- Umstufung rückwirkend die Rechtslage abgeschlossener Geschäfte. Ein noch
+  -- offenes Angebot muss dagegen den heutigen Stand zeigen, sonst wirbt ein
+  -- Unternehmer weiter mit „Privatverkauf".
+  UPDATE public.live_auctions
+     SET seller_kind = p_kind
+   WHERE seller_id = v_uid
+     AND status IN ('listed', 'scheduled', 'running');
+END $$;
+
+
+ALTER FUNCTION "public"."set_berkat_seller_kind"("p_kind" "text", "p_legal_name" "text", "p_street" "text", "p_postal_code" "text", "p_city" "text", "p_country" "text", "p_contact_email" "text", "p_vat_id" "text", "p_lucid_id" "text") OWNER TO "postgres";
+
+--
+-- Name: set_listing_attributes("uuid", "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_listing_attributes"("p_auction_id" "uuid", "p_brand" "text", "p_color" "text", "p_material" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid    uuid := auth.uid();
+  v_seller uuid;
+  v_status text;
+  v_brand    text := NULLIF(btrim(COALESCE(p_brand, '')), '');
+  v_color    text := NULLIF(btrim(COALESCE(p_color, '')), '');
+  v_material text := NULLIF(btrim(COALESCE(p_material, '')), '');
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  -- Die Längen spiegeln die CHECKs oben. Sie hier ZUSÄTZLICH zu prüfen ist
+  -- kein Doppel: Ein CHECK wirft `23514` mit dem Constraint-Namen im Text —
+  -- eine Meldung, die kein Mensch liest. Diese Prüfung gibt der Oberfläche
+  -- einen Namen, den sie übersetzen kann.
+  IF char_length(COALESCE(v_brand, '')) > 40
+     OR char_length(COALESCE(v_color, '')) > 24
+     OR char_length(COALESCE(v_material, '')) > 40 THEN
+    RAISE EXCEPTION 'attribute_too_long' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT seller_id, status INTO v_seller, v_status
+    FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+
+  -- „Gibt es nicht" statt „gehört dir nicht": Die Antwort darf die Existenz
+  -- eines fremden — womöglich Frauen-Only — Artikels nicht verraten. Dieselbe
+  -- Sprache wie in `buy_now_live_auction` und `set_listing_shipping_tier`.
+  IF v_seller IS NULL OR v_seller <> v_uid THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  -- ⚠️ Nach dem Zuschlag ist die Beschaffenheit Teil dessen, wofür jemand
+  -- bezahlt hat. Sie dann noch zu ändern hiesse, den Kaufgegenstand
+  -- nachträglich umzuschreiben — beim Privatverkauf genau die Angabe, an der
+  -- der Verkäufer gemessen wird.
+  IF v_status IN ('sold', 'cancelled') THEN
+    RAISE EXCEPTION 'listing_closed' USING ERRCODE = '22023';
+  END IF;
+
+  -- Vollersatz, kein Teil-Update: Das Formular schickt immer alle drei Werte,
+  -- und nur so lässt sich eine Marke auch wieder LEEREN. Dieselbe Regel wie
+  -- bei `update_standing_listing`.
+  UPDATE public.live_auctions
+     SET brand = v_brand, color = v_color, material = v_material
+   WHERE id = p_auction_id;
+END $$;
+
+
+ALTER FUNCTION "public"."set_listing_attributes"("p_auction_id" "uuid", "p_brand" "text", "p_color" "text", "p_material" "text") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "set_listing_attributes"("p_auction_id" "uuid", "p_brand" "text", "p_color" "text", "p_material" "text"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."set_listing_attributes"("p_auction_id" "uuid", "p_brand" "text", "p_color" "text", "p_material" "text") IS 'Setzt Marke, Farbe und Material am eigenen offenen Angebot. Eigene Funktion statt neuer Parameter an create_/update_standing_listing — deren Signaturen sind seit App-Fassung 1.0.0 eingefroren (PGRST202 / HTTP 300). Siehe 20260921200000.';
+
+
+--
+-- Name: set_listing_shipping_tier("uuid", smallint); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_listing_shipping_tier"("p_auction_id" "uuid", "p_tier" smallint) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_seller uuid;
+  v_status text;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+  IF p_tier IS NOT NULL AND (p_tier < 1 OR p_tier > 4) THEN
+    RAISE EXCEPTION 'bad_tier' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT seller_id, status INTO v_seller, v_status
+    FROM public.live_auctions WHERE id = p_auction_id FOR UPDATE;
+
+  -- „Gibt es nicht" statt „gehört dir nicht": Die Antwort darf die Existenz
+  -- eines fremden — womöglich Frauen-Only — Artikels nicht verraten. Dieselbe
+  -- Sprache wie in `buy_now_live_auction` (Übergabe 20).
+  IF v_seller IS NULL OR v_seller <> v_uid THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  -- ⚠️ Nach dem Zuschlag ist der Versandpreis Teil einer Abrechnung. Ihn dann
+  -- noch zu ändern hiesse, den Betrag einer laufenden Bestellung zu bewegen.
+  IF v_status IN ('sold', 'cancelled') THEN
+    RAISE EXCEPTION 'listing_closed' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.live_auctions SET shipping_tier = p_tier WHERE id = p_auction_id;
+END $$;
+
+
+ALTER FUNCTION "public"."set_listing_shipping_tier"("p_auction_id" "uuid", "p_tier" smallint) OWNER TO "postgres";
 
 --
 -- Name: set_live_shop_mode("uuid", boolean); Type: FUNCTION; Schema: public; Owner: postgres
@@ -11268,6 +14591,7 @@ DECLARE
   a           public.live_auctions;
   v_uid       uuid := auth.uid();
   v_next_min  int;
+  v_prebid    boolean := false;
   c_max_cents constant int := 1000000;
 BEGIN
   IF v_uid IS NULL THEN
@@ -11280,12 +14604,27 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'auction_not_found' USING ERRCODE = '22023';
   END IF;
-  IF a.status <> 'running' THEN
+
+  -- Zwei erlaubte Zustände statt einem:
+  --   'running'                             → das bisherige Verhalten
+  --   'scheduled' UND session_id IS NULL    → Vorabgebot auf Vorbereitetes
+  --
+  -- Die zweite Bedingung ist nicht überflüssig: Ein Artikel, der in einer
+  -- laufenden Show wartet, hat ebenfalls `status = 'scheduled'` — auf DEN darf
+  -- man nicht vorab bieten, denn dort entscheidet der Gastgeber Sekunden
+  -- später über Start und Dauer. Vorabgebote gehören zur Vorbereitung, nicht
+  -- zur Warteschlange.
+  IF a.status = 'scheduled' AND a.session_id IS NULL THEN
+    v_prebid := true;
+  ELSIF a.status <> 'running' THEN
     RAISE EXCEPTION 'auction_not_running' USING ERRCODE = '22023';
   END IF;
-  IF a.ends_at IS NULL OR a.ends_at <= now() THEN
+
+  -- Ein Vorabgebot hat kein Ende — die Uhr entsteht erst beim Start.
+  IF NOT v_prebid AND (a.ends_at IS NULL OR a.ends_at <= now()) THEN
     RAISE EXCEPTION 'auction_ended' USING ERRCODE = '22023';
   END IF;
+
   IF a.seller_id = v_uid THEN
     RAISE EXCEPTION 'seller_cannot_bid' USING ERRCODE = '42501';
   END IF;
@@ -11310,7 +14649,13 @@ BEGIN
     -- Zuschlag rückwirkend entwerten.
     SET max_cents = GREATEST(public.live_auto_bids.max_cents, EXCLUDED.max_cents);
 
-  PERFORM public.resolve_auto_bids(p_auction_id);
+  -- Vor der Show wird NICHT aufgelöst. `resolve_auto_bids` würde ohnehin sofort
+  -- zurückkehren (`status <> 'running'`), aber der Aufruf hier wegzulassen sagt,
+  -- dass das Absicht ist und kein Zufall: Bis zum Start gibt es keinen
+  -- Gebotsstand, keinen Führenden und keine Zeile in `live_bids`.
+  IF NOT v_prebid THEN
+    PERFORM public.resolve_auto_bids(p_auction_id);
+  END IF;
 
   SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id;
 
@@ -11319,12 +14664,59 @@ BEGIN
     'current_bid_cents', a.current_bid_cents,
     'leading',           a.current_bidder_id = v_uid,
     'my_max_cents',      p_max_cents,
-    'ends_at',           a.ends_at
+    'ends_at',           a.ends_at,
+    -- Neu: Der Client soll „hinterlegt" sagen können statt „du führst" —
+    -- vor dem Start führt niemand, und ein „Du führst" wäre eine Behauptung
+    -- über einen Wettbewerb, der noch nicht begonnen hat.
+    'prebid',            v_prebid
   );
 END $$;
 
 
 ALTER FUNCTION "public"."set_max_bid"("p_auction_id" "uuid", "p_max_cents" integer) OWNER TO "postgres";
+
+--
+-- Name: set_my_birth_date("date"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_my_birth_date"("p_date" "date") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_old date;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+  IF p_date IS NULL THEN
+    RAISE EXCEPTION 'birth_date_required' USING ERRCODE = '22023';
+  END IF;
+
+  -- Ein Datum in der Zukunft oder vor 1900 ist kein Geburtsdatum, sondern ein
+  -- Vertipper. Das vorher zu sagen ist freundlicher als eine Sperre, die
+  -- niemand mehr aufheben kann.
+  IF p_date > CURRENT_DATE OR p_date < DATE '1900-01-01' THEN
+    RAISE EXCEPTION 'birth_date_implausible' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT birth_date INTO v_old FROM public.profiles WHERE id = v_uid;
+
+  -- ⚠️ Das gleiche Datum noch einmal ist KEIN Fehler. Ein Client, der nach
+  -- einem Verbindungsabbruch wiederholt, soll nicht auf eine Sperre laufen —
+  -- dieselbe Idempotenz-Überlegung wie beim Sammelkorb (Abschnitt 4).
+  IF v_old IS NOT NULL AND v_old <> p_date THEN
+    RAISE EXCEPTION 'birth_date_locked' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.profiles SET birth_date = p_date WHERE id = v_uid;
+
+  RETURN public.birth_date_state();
+END $$;
+
+
+ALTER FUNCTION "public"."set_my_birth_date"("p_date" "date") OWNER TO "postgres";
 
 --
 -- Name: set_order_reviews_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -11417,6 +14809,48 @@ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
 
 ALTER FUNCTION "public"."set_products_updated_at"() OWNER TO "postgres";
+
+--
+-- Name: set_seller_vacation(timestamp with time zone); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."set_seller_vacation"("p_until" timestamp with time zone) RETURNS timestamp with time zone
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  -- Ein Datum in der Vergangenheit ist ein Tippfehler, kein Urlaub. Es
+  -- stillschweigend zu übernehmen hiesse, dem Verkäufer zu bestätigen, dass er
+  -- weg ist, während sein Regal weiter offen steht.
+  IF p_until IS NOT NULL AND p_until <= now() THEN
+    RAISE EXCEPTION 'vacation_in_past' USING ERRCODE = '22023';
+  END IF;
+
+  -- Ein Jahr als Obergrenze. Wer länger weg ist, zieht seine Angebote zurück —
+  -- ein Regal, das zwei Jahre unsichtbar in der Datenbank liegt, ist kein
+  -- Urlaub mehr, sondern eine Leiche.
+  IF p_until IS NOT NULL AND p_until > now() + interval '1 year' THEN
+    RAISE EXCEPTION 'vacation_too_long' USING ERRCODE = '22023';
+  END IF;
+
+  -- ⚠️ Der Verkäufer hat womöglich noch keine Zeile — dann entsteht sie hier.
+  -- `kind` bleibt dabei auf seiner Vorgabe; `checkout_enabled` fasst diese
+  -- Funktion NICHT an (die ZAG-Schranke ist keine Urlaubsfrage).
+  INSERT INTO public.berkat_sellers (user_id, vacation_until)
+  VALUES (v_uid, p_until)
+  ON CONFLICT (user_id) DO UPDATE SET vacation_until = EXCLUDED.vacation_until;
+
+  RETURN p_until;
+END $$;
+
+
+ALTER FUNCTION "public"."set_seller_vacation"("p_until" timestamp with time zone) OWNER TO "postgres";
 
 --
 -- Name: set_web_coin_orders_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -11632,6 +15066,7 @@ DECLARE
   a       public.live_auctions;
   v_host  uuid;
   v_uid   uuid := auth.uid();
+  v_ends  timestamptz;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
@@ -11649,6 +15084,11 @@ BEGIN
 
   -- Host oder Moderator. Der Helper schließt seit v1.27.2 aktive CoHosts ein,
   -- damit gilt hier dieselbe Autoritätsgrenze wie bei der Chat-Moderation.
+  --
+  -- Nebenwirkung, die hier zum Schutz wird: Ein VORBEREITETER Artikel hat keine
+  -- Session, `v_host` ist damit NULL und der Vergleich schlägt fehl. Er lässt
+  -- sich also nicht starten, bevor `claim_prepared_auctions` ihn in eine Show
+  -- geholt hat — genau richtig.
   IF v_host IS DISTINCT FROM v_uid
      AND NOT public.is_live_session_moderator(a.session_id, v_uid) THEN
     RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
@@ -11667,22 +15107,106 @@ BEGIN
     RAISE EXCEPTION 'another_auction_running' USING ERRCODE = '22023';
   END IF;
 
+  v_ends := now() + make_interval(secs => p_duration_seconds);
+
   UPDATE public.live_auctions
      SET status     = 'running',
          started_at = now(),
-         ends_at    = now() + make_interval(secs => p_duration_seconds)
+         ends_at    = v_ends
    WHERE id = a.id;
+
+  -- Vorabgebote gelten ab jetzt. Der Aufruf steht NACH dem UPDATE, weil
+  -- `resolve_auto_bids` auf `status = 'running'` prüft und vorher nichts täte.
+  -- Er ist folgenlos, wenn niemand vorab geboten hat.
+  PERFORM public.resolve_auto_bids(a.id);
+
+  -- Und die Glocke: Wer sich den Artikel vorgemerkt hat, erfährt es jetzt.
+  --
+  -- Ein mengenbasiertes INSERT statt einer Schleife. Der Trigger auf
+  -- `notifications` feuert je Zeile und schickt den Push über pg_net, also
+  -- ASYNCHRON — der Start der Auktion wartet auf nichts. Bei fünfzig
+  -- Vormerkungen sind es fünfzig Warteschlangen-Einträge, keine fünfzig
+  -- HTTP-Aufrufe.
+  --
+  -- ⚠️ `app = 'berkat'` ist Pflicht. Ohne das ginge die Meldung nach der
+  -- Voreinstellung an das SERLO-Gerät des Nutzers (20260814190000) — genau
+  -- der Fehler, den die App-Trennung damals beheben sollte.
+  --
+  -- `session_id` mitzugeben ist der eigentliche Nutzen: Ein Tipp auf die
+  -- Meldung landet im laufenden Raum, nicht auf einer Übersicht. Bei einer
+  -- Auktion, die zwanzig Sekunden dauert, ist jeder Zwischenschritt einer
+  -- zu viel.
+  INSERT INTO public.notifications (recipient_id, sender_id, type, app, session_id, comment_text)
+  SELECT r.user_id, a.seller_id, 'auction_up', 'berkat', a.session_id,
+         a.title || ' · ab ' || to_char(a.start_price_cents / 100.0, 'FM999G999D00') || ' €'
+    FROM public.berkat_auction_reminders r
+   WHERE r.auction_id = a.id
+     AND r.user_id <> a.seller_id;
+
+  -- Verbraucht. Eine Vormerkung hat genau einen Zweck, und der ist jetzt
+  -- erfüllt — sie stehen zu lassen hieße, dem Verkäufer beim nächsten Blick
+  -- eine Nachfrage anzuzeigen, die längst bedient ist.
+  DELETE FROM public.berkat_auction_reminders WHERE auction_id = a.id;
+
+  -- Neu einlesen: Die Auflösung kann Gebotsstand und Führenden gesetzt haben,
+  -- und `next_min_cents` wäre sonst der Startpreis — also eine Zahl, unter der
+  -- der erste Handbieter sofort abgewiesen würde.
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_auction_id;
 
   RETURN jsonb_build_object(
     'auction_id',    a.id,
     'status',        'running',
-    'ends_at',       now() + make_interval(secs => p_duration_seconds),
-    'next_min_cents', a.start_price_cents
+    'ends_at',       v_ends,
+    'next_min_cents', CASE
+                        WHEN a.current_bid_cents IS NULL THEN a.start_price_cents
+                        ELSE a.current_bid_cents + a.min_increment_cents
+                      END
   );
 END $$;
 
 
 ALTER FUNCTION "public"."start_live_auction"("p_auction_id" "uuid", "p_duration_seconds" integer) OWNER TO "postgres";
+
+--
+-- Name: story_media_claimed_by_highlight("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."story_media_claimed_by_highlight"("p_story_id" "uuid", "p_url" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT
+    -- (a)
+    EXISTS (
+      SELECT 1 FROM public.story_highlights h
+       WHERE h.story_id = p_story_id
+    )
+    OR (
+      p_url IS NOT NULL AND btrim(p_url) <> '' AND (
+        -- (b)
+        EXISTS (
+          SELECT 1 FROM public.story_highlights h
+           WHERE h.media_url = p_url OR h.thumbnail_url = p_url
+        )
+        -- (c)
+        OR EXISTS (
+          SELECT 1 FROM public.story_highlights h
+           WHERE h.items @> jsonb_build_array(jsonb_build_object('media_url', p_url))
+              OR h.items @> jsonb_build_array(jsonb_build_object('thumbnail_url', p_url))
+        )
+      )
+    );
+$$;
+
+
+ALTER FUNCTION "public"."story_media_claimed_by_highlight"("p_story_id" "uuid", "p_url" "text") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "story_media_claimed_by_highlight"("p_story_id" "uuid", "p_url" "text"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."story_media_claimed_by_highlight"("p_story_id" "uuid", "p_url" "text") IS 'TRUE, wenn ein Highlight diese Story-Zeile oder diese Adresse noch braucht. Wer sie auf FALSE zwingt, löscht das Bild eines lebenden Highlights.';
+
 
 --
 -- Name: submit_order_review("uuid", integer, "text"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -11723,8 +15247,9 @@ BEGIN
 
   IF NOT v_existing THEN
     BEGIN
-      INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text)
-      VALUES (v_reviewee, v_caller, 'order_review', 'Du wurdest mit ' || p_rating || '★ bewertet ⭐');
+      INSERT INTO public.notifications (recipient_id, sender_id, type, comment_text, app)
+      VALUES (v_reviewee, v_caller, 'order_review', 'Du wurdest mit ' || p_rating || '★ bewertet ⭐',
+              CASE WHEN v_order.cart_id IS NOT NULL THEN 'berkat' ELSE 'serlo' END);
     EXCEPTION WHEN OTHERS THEN NULL; END;
   END IF;
 
@@ -12532,6 +16057,79 @@ $$;
 ALTER FUNCTION "public"."update_product_rating"() OWNER TO "postgres";
 
 --
+-- Name: update_standing_listing("uuid", "text", integer, "text"[], boolean, boolean, "text", "text", "text", "text", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."update_standing_listing"("p_id" "uuid", "p_title" "text", "p_price_cents" integer, "p_image_urls" "text"[] DEFAULT NULL::"text"[], "p_women_only" boolean DEFAULT false, "p_accepts_offers" boolean DEFAULT false, "p_category" "text" DEFAULT NULL::"text", "p_description" "text" DEFAULT NULL::"text", "p_condition" "text" DEFAULT NULL::"text", "p_postal_code" "text" DEFAULT NULL::"text", "p_city" "text" DEFAULT NULL::"text", "p_size" "text" DEFAULT NULL::"text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  a      public.live_auctions;
+  v_uid  uuid := auth.uid();
+  v_urls text[];
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO a FROM public.live_auctions WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND OR a.session_id IS NOT NULL THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+  IF a.seller_id <> v_uid THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+  IF a.status <> 'listed' THEN
+    RAISE EXCEPTION 'listing_not_found' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_title IS NULL OR char_length(btrim(p_title)) < 2 THEN
+    RAISE EXCEPTION 'title_too_short' USING ERRCODE = '22023';
+  END IF;
+  IF p_price_cents IS NULL OR p_price_cents <= 100 THEN
+    RAISE EXCEPTION 'price_too_low' USING ERRCODE = '22023';
+  END IF;
+  IF p_women_only AND NOT public.is_women_only_verified() THEN
+    RAISE EXCEPTION 'not_women_only_verified' USING ERRCODE = '42501';
+  END IF;
+  IF p_category IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.berkat_categories WHERE slug = p_category AND active
+  ) THEN
+    RAISE EXCEPTION 'unknown_category' USING ERRCODE = '22023';
+  END IF;
+
+  v_urls := ARRAY(
+    SELECT btrim(u)
+      FROM unnest(coalesce(p_image_urls, '{}'::text[])) WITH ORDINALITY AS t(u, ord)
+     WHERE NULLIF(btrim(u), '') IS NOT NULL
+     ORDER BY ord
+  );
+  IF coalesce(array_length(v_urls, 1), 0) > 8 THEN
+    RAISE EXCEPTION 'too_many_images' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.live_auctions
+     SET title          = btrim(p_title),
+         buy_now_cents  = p_price_cents,
+         image_url      = v_urls[1],
+         image_urls     = v_urls,
+         women_only     = coalesce(p_women_only, false),
+         accepts_offers = coalesce(p_accepts_offers, false),
+         category       = p_category,
+         description    = NULLIF(btrim(coalesce(p_description, '')), ''),
+         condition      = NULLIF(btrim(coalesce(p_condition, '')), ''),
+         postal_code    = NULLIF(btrim(coalesce(p_postal_code, '')), ''),
+         city           = NULLIF(btrim(coalesce(p_city, '')), ''),
+         size           = NULLIF(btrim(coalesce(p_size, '')), ''),
+         updated_at     = now()
+   WHERE id = p_id;
+END $$;
+
+
+ALTER FUNCTION "public"."update_standing_listing"("p_id" "uuid", "p_title" "text", "p_price_cents" integer, "p_image_urls" "text"[], "p_women_only" boolean, "p_accepts_offers" boolean, "p_category" "text", "p_description" "text", "p_condition" "text", "p_postal_code" "text", "p_city" "text", "p_size" "text") OWNER TO "postgres";
+
+--
 -- Name: upsert_post_draft("uuid", "text", "text"[], "text", "text", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -12637,6 +16235,64 @@ $$;
 
 
 ALTER FUNCTION "public"."vote_on_poll"("p_poll_id" "uuid", "p_option_index" integer) OWNER TO "postgres";
+
+--
+-- Name: withdraw_berkat_offer("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."withdraw_berkat_offer"("p_offer_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  o     public.berkat_offers;
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO o FROM public.berkat_offers WHERE id = p_offer_id FOR UPDATE;
+  IF NOT FOUND OR o.buyer_id <> v_uid THEN
+    RAISE EXCEPTION 'offer_not_found' USING ERRCODE = '22023';
+  END IF;
+  -- Auch einen ANGENOMMENEN darf der Käufer zurückziehen: Die Zusage ist eine
+  -- Einladung zum Kauf, kein geschlossener Vertrag — der entsteht erst beim
+  -- Kaufknopf. Wer nicht mehr will, soll nicht in einer offenen Zusage hängen.
+  IF o.status NOT IN ('pending', 'countered', 'accepted') THEN
+    RAISE EXCEPTION 'offer_closed' USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.berkat_offers
+     SET status = 'withdrawn', responded_at = now()
+   WHERE id = o.id;
+END $$;
+
+
+ALTER FUNCTION "public"."withdraw_berkat_offer"("p_offer_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: withdraw_unpaid_report("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."withdraw_unpaid_report"("p_auction_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  DELETE FROM public.berkat_unpaid_strikes
+   WHERE auction_id = p_auction_id
+     AND seller_id = v_uid;
+END $$;
+
+
+ALTER FUNCTION "public"."withdraw_unpaid_report"("p_auction_id" "uuid") OWNER TO "postgres";
 
 --
 -- Name: admin_audit_log; Type: TABLE; Schema: public; Owner: postgres
@@ -12858,6 +16514,408 @@ CREATE TABLE IF NOT EXISTS "public"."auction_carts" (
 
 
 ALTER TABLE "public"."auction_carts" OWNER TO "postgres";
+
+--
+-- Name: berkat_auction_reminders; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_auction_reminders" (
+    "auction_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."berkat_auction_reminders" OWNER TO "postgres";
+
+--
+-- Name: TABLE "berkat_auction_reminders"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."berkat_auction_reminders" IS 'Wer will benachrichtigt werden, wenn dieser vorbereitete Artikel aufgerufen wird. Wird beim Start der Auktion verbraucht (start_live_auction).';
+
+
+--
+-- Name: berkat_categories; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_categories" (
+    "slug" "text" NOT NULL,
+    "name" "text" NOT NULL,
+    "sort_index" integer DEFAULT 0 NOT NULL,
+    "active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "parent_slug" "text",
+    CONSTRAINT "berkat_categories_name_check" CHECK ((("char_length"("btrim"("name")) >= 2) AND ("char_length"("btrim"("name")) <= 40))),
+    CONSTRAINT "berkat_categories_no_self_parent" CHECK ((("parent_slug" IS NULL) OR ("parent_slug" <> "slug"))),
+    CONSTRAINT "berkat_categories_slug_check" CHECK (("slug" ~ '^[a-z][a-z0-9-]{1,30}$'::"text"))
+);
+
+
+ALTER TABLE "public"."berkat_categories" OWNER TO "postgres";
+
+--
+-- Name: berkat_listing_views; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_listing_views" (
+    "auction_id" "uuid" NOT NULL,
+    "viewer_id" "uuid" NOT NULL,
+    "seen_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."berkat_listing_views" OWNER TO "postgres";
+
+--
+-- Name: berkat_night_service_log; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_night_service_log" (
+    "id" bigint NOT NULL,
+    "request_id" bigint NOT NULL,
+    "sweep" "text" NOT NULL,
+    "sent_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."berkat_night_service_log" OWNER TO "postgres";
+
+--
+-- Name: berkat_night_service_log_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE IF NOT EXISTS "public"."berkat_night_service_log_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."berkat_night_service_log_id_seq" OWNER TO "postgres";
+
+--
+-- Name: berkat_night_service_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE "public"."berkat_night_service_log_id_seq" OWNED BY "public"."berkat_night_service_log"."id";
+
+
+--
+-- Name: berkat_offers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_offers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "auction_id" "uuid" NOT NULL,
+    "buyer_id" "uuid" NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "amount_cents" integer NOT NULL,
+    "counter_cents" integer,
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "responded_at" timestamp with time zone,
+    CONSTRAINT "berkat_offers_amount_cents_check" CHECK (("amount_cents" > 100)),
+    CONSTRAINT "berkat_offers_check" CHECK (("buyer_id" <> "seller_id")),
+    CONSTRAINT "berkat_offers_counter_cents_check" CHECK ((("counter_cents" IS NULL) OR ("counter_cents" > 100))),
+    CONSTRAINT "berkat_offers_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'accepted'::"text", 'declined'::"text", 'countered'::"text", 'withdrawn'::"text"])))
+);
+
+
+ALTER TABLE "public"."berkat_offers" OWNER TO "postgres";
+
+--
+-- Name: berkat_referral_codes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_referral_codes" (
+    "user_id" "uuid" NOT NULL,
+    "code" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "berkat_referral_codes_code_check" CHECK (("code" ~ '^[A-HJ-NP-Z2-9]{6}$'::"text"))
+);
+
+
+ALTER TABLE "public"."berkat_referral_codes" OWNER TO "postgres";
+
+--
+-- Name: berkat_referrals; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_referrals" (
+    "invitee_id" "uuid" NOT NULL,
+    "inviter_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "buyer_reward_at" timestamp with time zone,
+    "seller_reward_at" timestamp with time zone,
+    CONSTRAINT "berkat_referrals_no_self" CHECK (("inviter_id" <> "invitee_id"))
+);
+
+
+ALTER TABLE "public"."berkat_referrals" OWNER TO "postgres";
+
+--
+-- Name: berkat_reward_policy; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_reward_policy" (
+    "id" integer DEFAULT 1 NOT NULL,
+    "buyer_rewards_enabled" boolean DEFAULT false NOT NULL,
+    "min_cart_cents" integer DEFAULT 1500 NOT NULL,
+    "inviter_reward_after" integer DEFAULT 3 NOT NULL,
+    "monthly_cap" integer DEFAULT 3 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "berkat_reward_policy_id_check" CHECK (("id" = 1)),
+    CONSTRAINT "berkat_reward_policy_inviter_reward_after_check" CHECK (("inviter_reward_after" >= 1)),
+    CONSTRAINT "berkat_reward_policy_min_cart_cents_check" CHECK (("min_cart_cents" >= 0)),
+    CONSTRAINT "berkat_reward_policy_monthly_cap_check" CHECK (("monthly_cap" >= 0))
+);
+
+
+ALTER TABLE "public"."berkat_reward_policy" OWNER TO "postgres";
+
+--
+-- Name: berkat_saved_listings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_saved_listings" (
+    "user_id" "uuid" NOT NULL,
+    "auction_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."berkat_saved_listings" OWNER TO "postgres";
+
+--
+-- Name: berkat_saved_searches; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_saved_searches" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "query" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "last_notified_at" timestamp with time zone,
+    CONSTRAINT "berkat_saved_searches_query_check" CHECK ((("char_length"("btrim"("query")) >= 2) AND ("char_length"("btrim"("query")) <= 60)))
+);
+
+
+ALTER TABLE "public"."berkat_saved_searches" OWNER TO "postgres";
+
+--
+-- Name: berkat_seller_perks; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_seller_perks" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "kind" "text" NOT NULL,
+    "days" integer NOT NULL,
+    "reason" "text",
+    "granted_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "starts_at" timestamp with time zone,
+    "ends_at" timestamp with time zone,
+    CONSTRAINT "berkat_seller_perks_days_check" CHECK ((("days" > 0) AND ("days" <= 365))),
+    CONSTRAINT "berkat_seller_perks_kind_check" CHECK (("kind" = 'commission_free'::"text"))
+);
+
+
+ALTER TABLE "public"."berkat_seller_perks" OWNER TO "postgres";
+
+--
+-- Name: berkat_seller_stripe; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_seller_stripe" (
+    "user_id" "uuid" NOT NULL,
+    "stripe_account_id" "text" NOT NULL,
+    "charges_enabled" boolean DEFAULT false NOT NULL,
+    "details_submitted" boolean DEFAULT false NOT NULL,
+    "disabled_reason" "text",
+    "connected_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."berkat_seller_stripe" OWNER TO "postgres";
+
+--
+-- Name: TABLE "berkat_seller_stripe"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."berkat_seller_stripe" IS 'Verbundenes Stripe-Konto je Berkat-Verkäufer (Connect Standard). Getrennt von berkat_sellers, weil dessen Lese-Policy bewusst USING(true) ist.';
+
+
+--
+-- Name: berkat_sellers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_sellers" (
+    "user_id" "uuid" NOT NULL,
+    "kind" "text" DEFAULT 'private'::"text" NOT NULL,
+    "legal_name" "text",
+    "street" "text",
+    "postal_code" "text",
+    "city" "text",
+    "country" "text",
+    "contact_email" "text",
+    "vat_id" "text",
+    "lucid_id" "text",
+    "checkout_enabled" boolean DEFAULT false NOT NULL,
+    "declared_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "vacation_until" timestamp with time zone,
+    CONSTRAINT "berkat_sellers_country_check" CHECK ((("country" IS NULL) OR ("country" = ANY (ARRAY['DE'::"text", 'AT'::"text", 'CH'::"text"])))),
+    CONSTRAINT "berkat_sellers_kind_check" CHECK (("kind" = ANY (ARRAY['private'::"text", 'business'::"text"])))
+);
+
+
+ALTER TABLE "public"."berkat_sellers" OWNER TO "postgres";
+
+--
+-- Name: TABLE "berkat_sellers"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."berkat_sellers" IS 'Anbietertyp und Impressumsangaben je Berkat-Verkäufer. Getrennt von profiles, weil profiles eine eingefrorene Spaltenliste hat und Serlo mitgehört.';
+
+
+--
+-- Name: berkat_shipping_credits; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_shipping_credits" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "reason" "text" NOT NULL,
+    "granted_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "reserved_cart_id" "uuid",
+    "consumed_at" timestamp with time zone,
+    "consumed_order_id" "uuid",
+    CONSTRAINT "berkat_shipping_credits_reason_check" CHECK (("reason" = ANY (ARRAY['invited'::"text", 'invite_paid'::"text"])))
+);
+
+
+ALTER TABLE "public"."berkat_shipping_credits" OWNER TO "postgres";
+
+--
+-- Name: berkat_shipping_rates; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_shipping_rates" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "seller_id" "uuid",
+    "country" "text" NOT NULL,
+    "label" "text" NOT NULL,
+    "cents" integer NOT NULL,
+    "free_from_cents" integer,
+    "sort_index" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "tier" smallint DEFAULT 4 NOT NULL,
+    CONSTRAINT "berkat_shipping_rates_cents_check" CHECK ((("cents" >= 0) AND ("cents" <= 100000))),
+    CONSTRAINT "berkat_shipping_rates_country_check" CHECK (("country" = ANY (ARRAY['DE'::"text", 'AT'::"text", 'CH'::"text"]))),
+    CONSTRAINT "berkat_shipping_rates_free_from_cents_check" CHECK ((("free_from_cents" IS NULL) OR ("free_from_cents" > 0))),
+    CONSTRAINT "berkat_shipping_rates_label_check" CHECK ((("char_length"(TRIM(BOTH FROM "label")) >= 3) AND ("char_length"(TRIM(BOTH FROM "label")) <= 60))),
+    CONSTRAINT "berkat_shipping_rates_tier_check" CHECK ((("tier" >= 1) AND ("tier" <= 4)))
+);
+
+
+ALTER TABLE "public"."berkat_shipping_rates" OWNER TO "postgres";
+
+--
+-- Name: berkat_show_reminders; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_show_reminders" (
+    "schedule_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."berkat_show_reminders" OWNER TO "postgres";
+
+--
+-- Name: TABLE "berkat_show_reminders"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."berkat_show_reminders" IS 'Wer will an DIESEN Termin erinnert werden, ohne dem Gastgeber zu folgen. Wird beim Erinnerungs-Fanout verbraucht (mark_due_scheduled_lives_reminded).';
+
+
+--
+-- Name: berkat_tips; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_tips" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "sender_id" "uuid" NOT NULL,
+    "recipient_id" "uuid" NOT NULL,
+    "session_id" "uuid",
+    "amount_cents" integer NOT NULL,
+    "currency" "text" DEFAULT 'eur'::"text" NOT NULL,
+    "message" "text",
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "stripe_session_id" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "paid_at" timestamp with time zone,
+    CONSTRAINT "berkat_tips_amount_cents_check" CHECK ((("amount_cents" >= 100) AND ("amount_cents" <= 50000))),
+    CONSTRAINT "berkat_tips_message_check" CHECK ((("message" IS NULL) OR ("char_length"("message") <= 140))),
+    CONSTRAINT "berkat_tips_not_self" CHECK (("sender_id" <> "recipient_id")),
+    CONSTRAINT "berkat_tips_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'paid'::"text", 'cancelled'::"text"])))
+);
+
+
+ALTER TABLE "public"."berkat_tips" OWNER TO "postgres";
+
+--
+-- Name: TABLE "berkat_tips"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."berkat_tips" IS 'Trinkgeld in Berkat, in echtem Geld über Stripe. Kein Kauf: keine Ware, kein Versand, kein Widerruf. Coins sind in Berkat ausgeschlossen, deshalb nicht creator_tips.';
+
+
+--
+-- Name: berkat_unpaid_strikes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_unpaid_strikes" (
+    "auction_id" "uuid" NOT NULL,
+    "buyer_id" "uuid" NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "reported_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "note" "text",
+    CONSTRAINT "berkat_unpaid_strikes_note_check" CHECK ((("note" IS NULL) OR ("char_length"("note") <= 300)))
+);
+
+
+ALTER TABLE "public"."berkat_unpaid_strikes" OWNER TO "postgres";
+
+--
+-- Name: TABLE "berkat_unpaid_strikes"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."berkat_unpaid_strikes" IS 'Vom Verkäufer gemeldete Nichtzahlung. KEINE Feststellung des Systems: Ohne Stripe Connect kassiert der Verkäufer selbst, Berkat sieht die Zahlung nie. Nicht oeffentlich - lesbar nur fuer Betroffenen und Meldenden.';
+
+
+--
+-- Name: berkat_vouches; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."berkat_vouches" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "seller_id" "uuid" NOT NULL,
+    "voucher_id" "uuid" NOT NULL,
+    "note" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "berkat_vouches_not_self" CHECK (("seller_id" <> "voucher_id")),
+    CONSTRAINT "berkat_vouches_note_check" CHECK ((("note" IS NULL) OR (("char_length"(TRIM(BOTH FROM "note")) >= 3) AND ("char_length"(TRIM(BOTH FROM "note")) <= 140))))
+);
+
+
+ALTER TABLE "public"."berkat_vouches" OWNER TO "postgres";
 
 --
 -- Name: bookmarks; Type: TABLE; Schema: public; Owner: postgres
@@ -13109,6 +17167,8 @@ CREATE TABLE IF NOT EXISTS "public"."live_sessions" (
     "ingress_stream_key" "text",
     "ingress_type" "text",
     "followers_only" boolean DEFAULT false NOT NULL,
+    "app" "text" DEFAULT 'serlo'::"text" NOT NULL,
+    CONSTRAINT "live_sessions_app_check" CHECK (("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))),
     CONSTRAINT "live_sessions_goal_type_check" CHECK (("goal_type" = ANY (ARRAY['gift_value'::"text", 'likes'::"text"]))),
     CONSTRAINT "live_sessions_ingress_type_check" CHECK ((("ingress_type" IS NULL) OR ("ingress_type" = ANY (ARRAY['whip'::"text", 'rtmp'::"text"])))),
     CONSTRAINT "live_sessions_slow_mode_seconds_check" CHECK ((("slow_mode_seconds" >= 0) AND ("slow_mode_seconds" <= 300))),
@@ -13151,6 +17211,13 @@ COMMENT ON COLUMN "public"."live_sessions"."slow_mode_seconds" IS 'Sekunden Cool
 --
 
 COMMENT ON COLUMN "public"."live_sessions"."followers_only" IS 'Wenn true: nur Follower des Hosts bekommen ein LiveKit-Token (Zuschauen). Durchsetzung in Edge Function livekit-token. Unterscheidet sich von followers_only_chat (steuert nur das Schreibrecht im Chat).';
+
+
+--
+-- Name: COLUMN "live_sessions"."app"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_sessions"."app" IS 'Herkunfts-App der Session: serlo | berkat. Steuert, in welcher App die Session gelistet wird. Default serlo — Bestandszeilen wurden am 14.08.2026 über das room_name-Präfix zugeordnet.';
 
 
 --
@@ -13199,6 +17266,9 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "nav_slot_4" "text",
     "referred_by" "uuid",
     "locale" "text" DEFAULT 'de'::"text" NOT NULL,
+    "banner_url" "text",
+    "deleted_at" timestamp with time zone,
+    "birth_date" "date",
     CONSTRAINT "profiles_country_code_check" CHECK ((("country_code" IS NULL) OR ("country_code" ~ '^[A-Z]{2}$'::"text"))),
     CONSTRAINT "profiles_gender_check" CHECK (("gender" = ANY (ARRAY['female'::"text", 'male'::"text", 'other'::"text"]))),
     CONSTRAINT "profiles_locale_check" CHECK (("locale" = ANY (ARRAY['de'::"text", 'ru'::"text", 'en'::"text", 'ce'::"text"]))),
@@ -13305,6 +17375,27 @@ COMMENT ON COLUMN "public"."profiles"."nav_slot_4" IS 'Bottom-Nav Slot 4 (rechts
 --
 
 COMMENT ON COLUMN "public"."profiles"."locale" IS 'App-Sprache des Users (von der App gesynct); Push-Texte werden danach lokalisiert.';
+
+
+--
+-- Name: COLUMN "profiles"."banner_url"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."banner_url" IS 'Breites Kopfbild auf dem Verkäufer-Profil. Vom Nutzer hochgeladen (R2, Präfix thumbnails).';
+
+
+--
+-- Name: COLUMN "profiles"."deleted_at"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."deleted_at" IS 'Gesetzt von delete_own_account(): Konto anonymisiert und gesperrt. Die Zeile bleibt, weil Geschäftsbelege (product_orders, berkat_tips, coin_purchases) per FK daran hängen und aufbewahrungspflichtig sind (§ 147 AO, § 257 HGB).';
+
+
+--
+-- Name: COLUMN "profiles"."birth_date"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."profiles"."birth_date" IS 'Selbstauskunft zum Geburtsdatum (Altersschranke, §§ 106-108 BGB). Bewusst OHNE GRANT an anon/authenticated: personenbezogen. Zugriff nur ueber is_adult() und birth_date_state(). Schreiben nur ueber set_my_birth_date().';
 
 
 --
@@ -13452,7 +17543,7 @@ ALTER TABLE "public"."likes" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."live_auctions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "session_id" "uuid" NOT NULL,
+    "session_id" "uuid",
     "seller_id" "uuid" NOT NULL,
     "product_id" "uuid",
     "title" "text" NOT NULL,
@@ -13473,10 +17564,36 @@ CREATE TABLE IF NOT EXISTS "public"."live_auctions" (
     "cart_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "women_only" boolean DEFAULT false NOT NULL,
+    "category" "text",
+    "seller_kind" "text",
+    "description" "text",
+    "condition" "text",
+    "postal_code" "text",
+    "city" "text",
+    "image_urls" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "accepts_offers" boolean DEFAULT false NOT NULL,
+    "size" "text",
+    "planned_for" "uuid",
+    "shipping_tier" smallint,
+    "brand" "text",
+    "color" "text",
+    "material" "text",
+    CONSTRAINT "live_auctions_brand_len" CHECK ((("brand" IS NULL) OR ("char_length"("brand") <= 40))),
     CONSTRAINT "live_auctions_check" CHECK ((("buy_now_cents" IS NULL) OR ("buy_now_cents" > "start_price_cents"))),
+    CONSTRAINT "live_auctions_city_check" CHECK ((("city" IS NULL) OR ("char_length"("city") <= 80))),
+    CONSTRAINT "live_auctions_color_len" CHECK ((("color" IS NULL) OR ("char_length"("color") <= 24))),
+    CONSTRAINT "live_auctions_condition_check" CHECK ((("condition" IS NULL) OR ("condition" = ANY (ARRAY['neu-mit-etikett'::"text", 'neu'::"text", 'sehr-gut'::"text", 'gut'::"text", 'in-ordnung'::"text", 'defekt'::"text"])))),
+    CONSTRAINT "live_auctions_description_check" CHECK ((("description" IS NULL) OR ("char_length"("description") <= 2000))),
+    CONSTRAINT "live_auctions_material_len" CHECK ((("material" IS NULL) OR ("char_length"("material") <= 40))),
     CONSTRAINT "live_auctions_min_increment_cents_check" CHECK (("min_increment_cents" > 0)),
+    CONSTRAINT "live_auctions_postal_code_check" CHECK ((("postal_code" IS NULL) OR ("postal_code" ~ '^[0-9]{4,5}$'::"text"))),
+    CONSTRAINT "live_auctions_seller_kind_check" CHECK ((("seller_kind" IS NULL) OR ("seller_kind" = ANY (ARRAY['private'::"text", 'business'::"text"])))),
+    CONSTRAINT "live_auctions_shelf_check" CHECK (((("session_id" IS NOT NULL) AND ("status" <> 'listed'::"text")) OR (("session_id" IS NULL) AND ("status" = ANY (ARRAY['listed'::"text", 'sold'::"text", 'cancelled'::"text", 'scheduled'::"text"]))))),
+    CONSTRAINT "live_auctions_shipping_tier_check" CHECK ((("shipping_tier" IS NULL) OR (("shipping_tier" >= 1) AND ("shipping_tier" <= 4)))),
+    CONSTRAINT "live_auctions_size_len" CHECK ((("size" IS NULL) OR ("char_length"("size") <= 24))),
     CONSTRAINT "live_auctions_start_price_cents_check" CHECK (("start_price_cents" > 0)),
-    CONSTRAINT "live_auctions_status_check" CHECK (("status" = ANY (ARRAY['scheduled'::"text", 'running'::"text", 'sold'::"text", 'unsold'::"text", 'cancelled'::"text"]))),
+    CONSTRAINT "live_auctions_status_check" CHECK (("status" = ANY (ARRAY['scheduled'::"text", 'running'::"text", 'sold'::"text", 'unsold'::"text", 'cancelled'::"text", 'listed'::"text"]))),
     CONSTRAINT "live_auctions_title_check" CHECK ((("char_length"("btrim"("title")) >= 2) AND ("char_length"("btrim"("title")) <= 140)))
 );
 
@@ -13490,6 +17607,62 @@ ALTER TABLE "public"."live_auctions" OWNER TO "postgres";
 --
 
 COMMENT ON TABLE "public"."live_auctions" IS 'Berkat: eine Auktion = ein Artikel in einem Live-Stream. ends_at ist die Serveruhr.';
+
+
+--
+-- Name: COLUMN "live_auctions"."seller_kind"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."seller_kind" IS 'Anbietertyp zum Zeitpunkt des Einstellens. Wird bei einem Wechsel für offene Angebote nachgezogen, für verkaufte nie — Art. 246d EGBGB verlangt die Angabe vor der Vertragserklärung, und ein geschlossener Kauf behält seinen Stand.';
+
+
+--
+-- Name: COLUMN "live_auctions"."condition"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."condition" IS 'Zustand als Slug. ⚠️ Der Anzeigename gehört NICHT hierher — sobald ein Wert eine gepflegte Liste bekommt, hört er auf, sein eigener Anzeigename zu sein (Übergabe Abschnitt 18, die Kategorie-Leiste zeigte deshalb Slugs).';
+
+
+--
+-- Name: COLUMN "live_auctions"."postal_code"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."postal_code" IS 'Grobe Ortsangabe des ARTIKELS, nicht des Menschen. Bewusst nur PLZ und Ort, keine Straße: Für „ist das in meiner Nähe" reicht das, und eine genaue Adresse in einem öffentlich lesbaren Angebot wäre nicht zu rechtfertigen.';
+
+
+--
+-- Name: COLUMN "live_auctions"."size"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."size" IS 'Größe als Freitext (42, M, 74, One Size). Keine gepflegte Liste — siehe 20260819100000.';
+
+
+--
+-- Name: COLUMN "live_auctions"."planned_for"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."planned_for" IS 'Termin, für den dieser Artikel vorbereitet wurde. Bleibt nach dem Live-Gehen stehen (Herkunft). NULL = Dauerangebot oder ohne Termin vorbereitet.';
+
+
+--
+-- Name: COLUMN "live_auctions"."brand"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."brand" IS 'Marke als Freitext (Nike, Zara, handgemacht). Keine gepflegte Liste — siehe 20260921200000.';
+
+
+--
+-- Name: COLUMN "live_auctions"."color"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."color" IS 'Farbe als Freitext. Die App schlägt dreizehn vor, die Spalte nimmt jeden Text.';
+
+
+--
+-- Name: COLUMN "live_auctions"."material"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."live_auctions"."material" IS 'Material als Freitext (Baumwolle, Leder, 925 Silber).';
 
 
 --
@@ -13966,11 +18139,28 @@ CREATE TABLE IF NOT EXISTS "public"."messages" (
     "reply_to_id" "uuid",
     "image_url" "text",
     "story_media_url" "text",
-    "story_author" "text"
+    "story_author" "text",
+    "listing_id" "uuid",
+    "app" "text",
+    CONSTRAINT "messages_app_check" CHECK ((("app" IS NULL) OR ("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))))
 );
 
 
 ALTER TABLE "public"."messages" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "messages"."listing_id"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."messages"."listing_id" IS 'Berkat: Das Angebot, um das es in dieser Nachricht geht. Nullable und additiv — Serlo schreibt und liest die Spalte nicht. Die Sichtbarkeit des Artikels entscheidet live_auctions_select_standing beim separaten Lesen, nicht diese Spalte.';
+
+
+--
+-- Name: COLUMN "messages"."app"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."messages"."app" IS 'Aus welcher App diese Nachricht geschrieben wurde. Nullable und additiv — Serlo schreibt sie nicht, NULL gilt als serlo. Entscheidet zusammen mit listing_id, in welcher Glocke die Meldung landet (notify_on_dm).';
+
 
 --
 -- Name: moderation_auto_flags; Type: TABLE; Schema: public; Owner: postgres
@@ -14028,7 +18218,7 @@ CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "product_id" "uuid",
     "app" "text" DEFAULT 'serlo'::"text" NOT NULL,
     CONSTRAINT "notifications_app_check" CHECK (("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))),
-    CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['auction_won'::"text", 'order_payment_reminder'::"text", 'scheduled_live_reminder'::"text", 'preorder_interest'::"text", 'support_new'::"text", 'order_review'::"text", 'order_address_updated'::"text", 'order_dispute'::"text", 'new_order'::"text", 'live_invite'::"text", 'order_payment_requested'::"text", 'like'::"text", 'comment'::"text", 'preorder_round_open'::"text", 'guild'::"text", 'order_paid'::"text", 'support_reply'::"text", 'follow_request'::"text", 'follow_request_accepted'::"text", 'gift'::"text", 'repost'::"text", 'dm'::"text", 'order_shipped'::"text", 'order_cancelled'::"text", 'story_reaction'::"text", 'product_saved'::"text", 'follow'::"text", 'mention'::"text", 'comment_like'::"text", 'live'::"text"])))
+    CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['auction_up'::"text", 'auction_won'::"text", 'comment'::"text", 'comment_like'::"text", 'comment_reply'::"text", 'dm'::"text", 'follow'::"text", 'follow_request'::"text", 'follow_request_accepted'::"text", 'gift'::"text", 'guild'::"text", 'like'::"text", 'live'::"text", 'live_invite'::"text", 'mention'::"text", 'new_order'::"text", 'order_address_updated'::"text", 'order_cancelled'::"text", 'order_dispute'::"text", 'order_paid'::"text", 'order_payment_reminder'::"text", 'order_payment_requested'::"text", 'order_review'::"text", 'order_shipped'::"text", 'preorder_interest'::"text", 'preorder_round_open'::"text", 'product_saved'::"text", 'repost'::"text", 'saved_search_hit'::"text", 'scheduled_live_reminder'::"text", 'story_reaction'::"text", 'support_new'::"text", 'support_reply'::"text"])))
 );
 
 
@@ -14050,6 +18240,7 @@ CREATE TABLE IF NOT EXISTS "public"."order_disputes" (
     "resolution" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "resolved_at" timestamp with time zone,
+    "image_url" "text",
     CONSTRAINT "order_disputes_reason_check" CHECK (("reason" = ANY (ARRAY['not_received'::"text", 'damaged'::"text", 'not_as_described'::"text", 'not_paid'::"text", 'fraud'::"text", 'other'::"text"]))),
     CONSTRAINT "order_disputes_reporter_role_check" CHECK (("reporter_role" = ANY (ARRAY['buyer'::"text", 'seller'::"text"]))),
     CONSTRAINT "order_disputes_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'resolved'::"text", 'dismissed'::"text"])))
@@ -14057,6 +18248,13 @@ CREATE TABLE IF NOT EXISTS "public"."order_disputes" (
 
 
 ALTER TABLE "public"."order_disputes" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "order_disputes"."image_url"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."order_disputes"."image_url" IS 'Belegfoto des Melders, hochgeladen über r2-sign (Präfix thumbnails/). NULL = keines mitgeschickt.';
+
 
 --
 -- Name: order_reviews; Type: TABLE; Schema: public; Owner: postgres
@@ -14326,6 +18524,8 @@ CREATE TABLE IF NOT EXISTS "public"."product_orders" (
     "reminded_at" timestamp with time zone,
     "cart_id" "uuid",
     "title" "text",
+    "shipping_cents" integer DEFAULT 0 NOT NULL,
+    "shipping_credit_applied" boolean DEFAULT false NOT NULL,
     CONSTRAINT "product_orders_amount_eur_check" CHECK (("amount_eur" >= (0)::numeric)),
     CONSTRAINT "product_orders_platform_fee_eur_check" CHECK (("platform_fee_eur" >= (0)::numeric)),
     CONSTRAINT "product_orders_quantity_check" CHECK (("quantity" > 0)),
@@ -14429,6 +18629,29 @@ COMMENT ON COLUMN "public"."products"."price_eur" IS 'Echter Euro-Preis (numeric
 
 
 --
+-- Name: push_mutes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS "public"."push_mutes" (
+    "user_id" "uuid" NOT NULL,
+    "app" "text" DEFAULT 'berkat'::"text" NOT NULL,
+    "type" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "push_mutes_app_check" CHECK (("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))),
+    CONSTRAINT "push_mutes_type_check" CHECK (("type" = ANY (ARRAY['scheduled_live_reminder'::"text", 'live'::"text", 'saved_search_hit'::"text", 'auction_up'::"text", 'product_saved'::"text", 'order_review'::"text"])))
+);
+
+
+ALTER TABLE "public"."push_mutes" OWNER TO "postgres";
+
+--
+-- Name: TABLE "push_mutes"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE "public"."push_mutes" IS 'Welche Push-Anlässe ein Nutzer stummgeschaltet hat. Anwesenheit = stumm. Die Meldung selbst entsteht weiterhin und steht in der Glocke.';
+
+
+--
 -- Name: push_tokens; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -14462,11 +18685,37 @@ CREATE TABLE IF NOT EXISTS "public"."r2_delete_queue" (
     "last_error" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "processed_at" timestamp with time zone,
-    CONSTRAINT "r2_delete_queue_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'deleted'::"text", 'error'::"text"])))
+    "prefix" "text",
+    "reason" "text",
+    "next_attempt_at" timestamp with time zone,
+    CONSTRAINT "r2_delete_queue_one_kind" CHECK ((("prefix" IS NULL) OR (("media_url" IS NULL) AND ("thumbnail_url" IS NULL)))),
+    CONSTRAINT "r2_delete_queue_prefix_shape" CHECK ((("prefix" IS NULL) OR ("prefix" ~ '^highlights/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/$'::"text"))),
+    CONSTRAINT "r2_delete_queue_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'retrying'::"text", 'deleted'::"text", 'error'::"text"])))
 );
 
 
 ALTER TABLE "public"."r2_delete_queue" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "r2_delete_queue"."status"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."r2_delete_queue"."status" IS 'pending  = noch nie versucht. retrying = gescheitert, kommt zur Zeit in next_attempt_at wieder. deleted  = erledigt. error    = ENDGÜLTIG aufgegeben, ein Mensch muss hinsehen. Fünf Stellen lesen genau diesen Wert als Alarm (Release-Blocker, Dashboard, Wochenbericht, Admin-Badge, Kostenbericht) — er darf nie für einen vorübergehenden Fehler stehen.';
+
+
+--
+-- Name: COLUMN "r2_delete_queue"."prefix"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."r2_delete_queue"."prefix" IS 'Ganzer Ordner statt Einzeladresse. NUR `highlights/<uuid>/` — der einzige Pfad, der genau einem Nutzer gehört. Für geteilte Pfade (thumbnails, products/images) ist das VERBOTEN: dort liegen Chat-Fotos und Artikelbilder, die im Verlauf bzw. in der Bestellung eines anderen Menschen hängen.';
+
+
+--
+-- Name: COLUMN "r2_delete_queue"."next_attempt_at"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."r2_delete_queue"."next_attempt_at" IS 'Frühester Zeitpunkt des nächsten Versuchs. Nur bei status = retrying gesetzt. Staffelung 5 min / 15 min / 1 h / 6 h, danach gibt r2-delete auf und setzt status = error.';
+
 
 --
 -- Name: reposts; Type: TABLE; Schema: public; Owner: postgres
@@ -14516,6 +18765,9 @@ CREATE TABLE IF NOT EXISTS "public"."scheduled_lives" (
     "reminded_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "app" "text" DEFAULT 'serlo'::"text" NOT NULL,
+    "cover_url" "text",
+    CONSTRAINT "scheduled_lives_app_check" CHECK (("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))),
     CONSTRAINT "scheduled_lives_desc_len" CHECK ((("description" IS NULL) OR ("char_length"("description") <= 500))),
     CONSTRAINT "scheduled_lives_future" CHECK (("scheduled_at" > ("created_at" - '00:01:00'::interval))),
     CONSTRAINT "scheduled_lives_status_check" CHECK (("status" = ANY (ARRAY['scheduled'::"text", 'reminded'::"text", 'live'::"text", 'expired'::"text", 'cancelled'::"text"]))),
@@ -14524,6 +18776,13 @@ CREATE TABLE IF NOT EXISTS "public"."scheduled_lives" (
 
 
 ALTER TABLE "public"."scheduled_lives" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "scheduled_lives"."cover_url"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."scheduled_lives"."cover_url" IS 'Vorschaubild der angekündigten Show. Vom Verkäufer hochgeladen (R2, Präfix thumbnails); wird beim Anlegen aus der letzten eigenen Show übernommen, wenn keins gewählt wurde. Nur Berkat schreibt und liest die Spalte — Serlos Lesepfade nennen sie nicht.';
+
 
 --
 -- Name: scheduled_posts; Type: TABLE; Schema: public; Owner: postgres
@@ -14595,7 +18854,10 @@ CREATE TABLE IF NOT EXISTS "public"."stories" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "interactive" "jsonb",
     "archived" boolean DEFAULT false NOT NULL,
-    "thumbnail_url" "text"
+    "thumbnail_url" "text",
+    "app" "text",
+    "media_purged_at" timestamp with time zone,
+    CONSTRAINT "stories_app_check" CHECK ((("app" IS NULL) OR ("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))))
 );
 
 
@@ -14606,6 +18868,20 @@ ALTER TABLE "public"."stories" OWNER TO "postgres";
 --
 
 COMMENT ON COLUMN "public"."stories"."thumbnail_url" IS 'Explicit preview image used by feeds/admin dashboards. Image stories may reuse media_url; video stories require generated JPEG thumbnails.';
+
+
+--
+-- Name: COLUMN "stories"."app"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."stories"."app" IS 'Aus welcher App diese Story stammt. Nullable und additiv — Serlo schreibt sie nicht, NULL gilt als serlo. Ohne diese Spalte zeigte Berkats Story-Ring Serlos Stories (23.08.2026).';
+
+
+--
+-- Name: COLUMN "stories"."media_purged_at"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."stories"."media_purged_at" IS 'Wann die Medien dieser Story aus R2 entfernt wurden. Gesetzt ausschliesslich von purge_expired_story_media(). Ist die Spalte gesetzt, zeigen media_url und thumbnail_url auf eine Adresse, die es nicht mehr gibt — Lesepfade, die dem Nutzer eigene Stories anbieten, MÜSSEN darauf filtern.';
 
 
 --
@@ -14639,11 +18915,20 @@ CREATE TABLE IF NOT EXISTS "public"."story_highlights" (
     "media_type" "text" DEFAULT 'image'::"text" NOT NULL,
     "post_id" "uuid",
     "thumbnail_url" "text",
-    "items" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL
+    "items" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    "app" "text",
+    CONSTRAINT "story_highlights_app_check" CHECK ((("app" IS NULL) OR ("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))))
 );
 
 
 ALTER TABLE "public"."story_highlights" OWNER TO "postgres";
+
+--
+-- Name: COLUMN "story_highlights"."app"; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN "public"."story_highlights"."app" IS 'Aus welcher App dieses Highlight stammt. Siehe stories.app.';
+
 
 --
 -- Name: story_likes; Type: TABLE; Schema: public; Owner: postgres
@@ -14867,6 +19152,13 @@ CREATE TABLE IF NOT EXISTS "public"."women_only_requests" (
 ALTER TABLE "public"."women_only_requests" OWNER TO "postgres";
 
 --
+-- Name: berkat_night_service_log id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_night_service_log" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."berkat_night_service_log_id_seq"'::"regclass");
+
+
+--
 -- Name: admin_audit_log admin_audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -14968,6 +19260,182 @@ ALTER TABLE ONLY "public"."algo_user_variants"
 
 ALTER TABLE ONLY "public"."auction_carts"
     ADD CONSTRAINT "auction_carts_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_auction_reminders berkat_auction_reminders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_auction_reminders"
+    ADD CONSTRAINT "berkat_auction_reminders_pkey" PRIMARY KEY ("auction_id", "user_id");
+
+
+--
+-- Name: berkat_categories berkat_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_categories"
+    ADD CONSTRAINT "berkat_categories_pkey" PRIMARY KEY ("slug");
+
+
+--
+-- Name: berkat_listing_views berkat_listing_views_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_listing_views"
+    ADD CONSTRAINT "berkat_listing_views_pkey" PRIMARY KEY ("auction_id", "viewer_id");
+
+
+--
+-- Name: berkat_night_service_log berkat_night_service_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_night_service_log"
+    ADD CONSTRAINT "berkat_night_service_log_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_offers berkat_offers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_offers"
+    ADD CONSTRAINT "berkat_offers_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_referral_codes berkat_referral_codes_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_referral_codes"
+    ADD CONSTRAINT "berkat_referral_codes_code_key" UNIQUE ("code");
+
+
+--
+-- Name: berkat_referral_codes berkat_referral_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_referral_codes"
+    ADD CONSTRAINT "berkat_referral_codes_pkey" PRIMARY KEY ("user_id");
+
+
+--
+-- Name: berkat_referrals berkat_referrals_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_referrals"
+    ADD CONSTRAINT "berkat_referrals_pkey" PRIMARY KEY ("invitee_id");
+
+
+--
+-- Name: berkat_reward_policy berkat_reward_policy_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_reward_policy"
+    ADD CONSTRAINT "berkat_reward_policy_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_saved_listings berkat_saved_listings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_saved_listings"
+    ADD CONSTRAINT "berkat_saved_listings_pkey" PRIMARY KEY ("user_id", "auction_id");
+
+
+--
+-- Name: berkat_saved_searches berkat_saved_searches_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_saved_searches"
+    ADD CONSTRAINT "berkat_saved_searches_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_seller_perks berkat_seller_perks_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_seller_perks"
+    ADD CONSTRAINT "berkat_seller_perks_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_seller_stripe berkat_seller_stripe_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_seller_stripe"
+    ADD CONSTRAINT "berkat_seller_stripe_pkey" PRIMARY KEY ("user_id");
+
+
+--
+-- Name: berkat_seller_stripe berkat_seller_stripe_stripe_account_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_seller_stripe"
+    ADD CONSTRAINT "berkat_seller_stripe_stripe_account_id_key" UNIQUE ("stripe_account_id");
+
+
+--
+-- Name: berkat_sellers berkat_sellers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_sellers"
+    ADD CONSTRAINT "berkat_sellers_pkey" PRIMARY KEY ("user_id");
+
+
+--
+-- Name: berkat_shipping_credits berkat_shipping_credits_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_shipping_credits"
+    ADD CONSTRAINT "berkat_shipping_credits_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_shipping_rates berkat_shipping_rates_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_shipping_rates"
+    ADD CONSTRAINT "berkat_shipping_rates_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_show_reminders berkat_show_reminders_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_show_reminders"
+    ADD CONSTRAINT "berkat_show_reminders_pkey" PRIMARY KEY ("schedule_id", "user_id");
+
+
+--
+-- Name: berkat_tips berkat_tips_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_tips"
+    ADD CONSTRAINT "berkat_tips_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: berkat_unpaid_strikes berkat_unpaid_strikes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_unpaid_strikes"
+    ADD CONSTRAINT "berkat_unpaid_strikes_pkey" PRIMARY KEY ("auction_id");
+
+
+--
+-- Name: berkat_vouches berkat_vouches_once; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_vouches"
+    ADD CONSTRAINT "berkat_vouches_once" UNIQUE ("seller_id", "voucher_id");
+
+
+--
+-- Name: berkat_vouches berkat_vouches_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_vouches"
+    ADD CONSTRAINT "berkat_vouches_pkey" PRIMARY KEY ("id");
 
 
 --
@@ -15587,6 +20055,14 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 --
+-- Name: push_mutes push_mutes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."push_mutes"
+    ADD CONSTRAINT "push_mutes_pkey" PRIMARY KEY ("user_id", "app", "type");
+
+
+--
 -- Name: push_tokens push_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -15850,6 +20326,83 @@ CREATE UNIQUE INDEX "auction_carts_one_open" ON "public"."auction_carts" USING "
 
 
 --
+-- Name: berkat_categories_by_parent; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_categories_by_parent" ON "public"."berkat_categories" USING "btree" ("parent_slug", "sort_index") WHERE ("parent_slug" IS NOT NULL);
+
+
+--
+-- Name: berkat_credits_one_per_cart; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX "berkat_credits_one_per_cart" ON "public"."berkat_shipping_credits" USING "btree" ("reserved_cart_id") WHERE ("reserved_cart_id" IS NOT NULL);
+
+
+--
+-- Name: berkat_credits_open; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_credits_open" ON "public"."berkat_shipping_credits" USING "btree" ("user_id", "granted_at") WHERE ("consumed_at" IS NULL);
+
+
+--
+-- Name: berkat_perks_by_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_perks_by_user" ON "public"."berkat_seller_perks" USING "btree" ("user_id", "granted_at" DESC);
+
+
+--
+-- Name: berkat_referrals_by_inviter; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_referrals_by_inviter" ON "public"."berkat_referrals" USING "btree" ("inviter_id", "created_at" DESC);
+
+
+--
+-- Name: berkat_saved_searches_one_per_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX "berkat_saved_searches_one_per_user" ON "public"."berkat_saved_searches" USING "btree" ("user_id", "lower"("btrim"("query")));
+
+
+--
+-- Name: berkat_saved_searches_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_saved_searches_user" ON "public"."berkat_saved_searches" USING "btree" ("user_id", "created_at" DESC);
+
+
+--
+-- Name: berkat_show_reminders_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_show_reminders_user" ON "public"."berkat_show_reminders" USING "btree" ("user_id", "created_at" DESC);
+
+
+--
+-- Name: berkat_tips_recipient_paid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_tips_recipient_paid" ON "public"."berkat_tips" USING "btree" ("recipient_id", "paid_at" DESC) WHERE ("status" = 'paid'::"text");
+
+
+--
+-- Name: berkat_tips_stripe_session; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_tips_stripe_session" ON "public"."berkat_tips" USING "btree" ("stripe_session_id") WHERE ("stripe_session_id" IS NOT NULL);
+
+
+--
+-- Name: berkat_unpaid_strikes_buyer; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "berkat_unpaid_strikes_buyer" ON "public"."berkat_unpaid_strikes" USING "btree" ("buyer_id", "reported_at" DESC);
+
+
+--
 -- Name: comment_likes_user_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -16008,6 +20561,69 @@ CREATE INDEX "idx_battle_history_guest" ON "public"."live_battle_history" USING 
 --
 
 CREATE INDEX "idx_battle_history_host" ON "public"."live_battle_history" USING "btree" ("host_id", "ended_at" DESC);
+
+
+--
+-- Name: idx_berkat_listing_views_auction; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_berkat_listing_views_auction" ON "public"."berkat_listing_views" USING "btree" ("auction_id");
+
+
+--
+-- Name: idx_berkat_night_service_log_sent; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_berkat_night_service_log_sent" ON "public"."berkat_night_service_log" USING "btree" ("sent_at" DESC);
+
+
+--
+-- Name: idx_berkat_offers_buyer; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_berkat_offers_buyer" ON "public"."berkat_offers" USING "btree" ("buyer_id", "created_at" DESC);
+
+
+--
+-- Name: idx_berkat_offers_one_open; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX "idx_berkat_offers_one_open" ON "public"."berkat_offers" USING "btree" ("auction_id", "buyer_id") WHERE ("status" = ANY (ARRAY['pending'::"text", 'countered'::"text"]));
+
+
+--
+-- Name: idx_berkat_offers_seller; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_berkat_offers_seller" ON "public"."berkat_offers" USING "btree" ("seller_id", "status", "created_at" DESC);
+
+
+--
+-- Name: idx_berkat_saved_auction; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_berkat_saved_auction" ON "public"."berkat_saved_listings" USING "btree" ("auction_id");
+
+
+--
+-- Name: idx_berkat_shipping_platform_tier; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX "idx_berkat_shipping_platform_tier" ON "public"."berkat_shipping_rates" USING "btree" ("country", "tier") WHERE ("seller_id" IS NULL);
+
+
+--
+-- Name: idx_berkat_shipping_seller_tier; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX "idx_berkat_shipping_seller_tier" ON "public"."berkat_shipping_rates" USING "btree" ("seller_id", "country", "tier") WHERE ("seller_id" IS NOT NULL);
+
+
+--
+-- Name: idx_berkat_vouches_seller; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_berkat_vouches_seller" ON "public"."berkat_vouches" USING "btree" ("seller_id", "created_at" DESC);
 
 
 --
@@ -16249,6 +20865,13 @@ CREATE INDEX "idx_likes_user_post" ON "public"."likes" USING "btree" ("user_id",
 
 
 --
+-- Name: idx_live_auctions_shelf_postal; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_live_auctions_shelf_postal" ON "public"."live_auctions" USING "btree" ("postal_code" "text_pattern_ops") WHERE (("session_id" IS NULL) AND ("status" = 'listed'::"text"));
+
+
+--
 -- Name: idx_live_cohosts_session; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -16368,6 +20991,13 @@ CREATE INDEX "idx_live_sessions_active_updated" ON "public"."live_sessions" USIN
 
 
 --
+-- Name: idx_live_sessions_app_active_listing; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_live_sessions_app_active_listing" ON "public"."live_sessions" USING "btree" ("app", "viewer_count" DESC, "started_at", "id") WHERE ("status" = 'active'::"text");
+
+
+--
 -- Name: idx_live_sessions_followers_only; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -16435,6 +21065,27 @@ CREATE INDEX "idx_live_stickers_session_active" ON "public"."live_stickers" USIN
 --
 
 CREATE INDEX "idx_live_viewer_welcomes_session" ON "public"."live_viewer_welcomes" USING "btree" ("session_id", "created_at" DESC);
+
+
+--
+-- Name: idx_messages_conv_listing; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_messages_conv_listing" ON "public"."messages" USING "btree" ("conversation_id") WHERE ("listing_id" IS NOT NULL);
+
+
+--
+-- Name: idx_messages_conversation_app; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_messages_conversation_app" ON "public"."messages" USING "btree" ("conversation_id") WHERE ("app" = 'berkat'::"text");
+
+
+--
+-- Name: idx_messages_listing; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_messages_listing" ON "public"."messages" USING "btree" ("listing_id") WHERE ("listing_id" IS NOT NULL);
 
 
 --
@@ -17054,6 +21705,13 @@ CREATE INDEX "idx_r2_delete_queue_pending" ON "public"."r2_delete_queue" USING "
 
 
 --
+-- Name: idx_r2_delete_queue_retrying; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_r2_delete_queue_retrying" ON "public"."r2_delete_queue" USING "btree" ("next_attempt_at") WHERE ("status" = 'retrying'::"text");
+
+
+--
 -- Name: idx_reports_reporter; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -17110,6 +21768,13 @@ CREATE INDEX "idx_saved_products_user" ON "public"."saved_products" USING "btree
 
 
 --
+-- Name: idx_scheduled_lives_app_time; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_scheduled_lives_app_time" ON "public"."scheduled_lives" USING "btree" ("app", "status", "scheduled_at");
+
+
+--
 -- Name: idx_scheduled_lives_host_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -17152,6 +21817,20 @@ CREATE INDEX "idx_shop_banners_active" ON "public"."shop_banners" USING "btree" 
 
 
 --
+-- Name: idx_stories_berkat_recent; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_stories_berkat_recent" ON "public"."stories" USING "btree" ("created_at" DESC) WHERE (("app" = 'berkat'::"text") AND ("archived" = false));
+
+
+--
+-- Name: idx_stories_media_purge_candidates; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_stories_media_purge_candidates" ON "public"."stories" USING "btree" ("created_at") WHERE ("media_purged_at" IS NULL);
+
+
+--
 -- Name: idx_stories_user_archived; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -17166,6 +21845,27 @@ CREATE INDEX "idx_stories_user_created" ON "public"."stories" USING "btree" ("us
 
 
 --
+-- Name: idx_story_highlights_berkat_user; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_story_highlights_berkat_user" ON "public"."story_highlights" USING "btree" ("user_id", "created_at" DESC) WHERE ("app" = 'berkat'::"text");
+
+
+--
+-- Name: idx_story_highlights_items_gin; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_story_highlights_items_gin" ON "public"."story_highlights" USING "gin" ("items");
+
+
+--
+-- Name: idx_story_highlights_media_url; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_story_highlights_media_url" ON "public"."story_highlights" USING "btree" ("media_url") WHERE ("media_url" IS NOT NULL);
+
+
+--
 -- Name: idx_story_highlights_post_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -17177,6 +21877,13 @@ CREATE INDEX "idx_story_highlights_post_id" ON "public"."story_highlights" USING
 --
 
 CREATE INDEX "idx_story_highlights_story_id" ON "public"."story_highlights" USING "btree" ("story_id");
+
+
+--
+-- Name: idx_story_highlights_thumbnail_url; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_story_highlights_thumbnail_url" ON "public"."story_highlights" USING "btree" ("thumbnail_url") WHERE ("thumbnail_url" IS NOT NULL);
 
 
 --
@@ -17250,6 +21957,27 @@ CREATE INDEX "idx_woz_requests_pending" ON "public"."women_only_requests" USING 
 
 
 --
+-- Name: live_auctions_brand_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "live_auctions_brand_idx" ON "public"."live_auctions" USING "btree" ("lower"("brand")) WHERE ("brand" IS NOT NULL);
+
+
+--
+-- Name: live_auctions_category_standing; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "live_auctions_category_standing" ON "public"."live_auctions" USING "btree" ("category", "created_at" DESC) WHERE (("session_id" IS NULL) AND ("status" = 'listed'::"text"));
+
+
+--
+-- Name: live_auctions_color_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "live_auctions_color_idx" ON "public"."live_auctions" USING "btree" ("lower"("color")) WHERE ("color" IS NOT NULL);
+
+
+--
 -- Name: live_auctions_due; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -17257,10 +21985,24 @@ CREATE INDEX "live_auctions_due" ON "public"."live_auctions" USING "btree" ("end
 
 
 --
+-- Name: live_auctions_planned_for; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "live_auctions_planned_for" ON "public"."live_auctions" USING "btree" ("planned_for") WHERE ("planned_for" IS NOT NULL);
+
+
+--
 -- Name: live_auctions_session_order; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX "live_auctions_session_order" ON "public"."live_auctions" USING "btree" ("session_id", "sort_index") WHERE ("status" = ANY (ARRAY['scheduled'::"text", 'running'::"text"]));
+
+
+--
+-- Name: live_auctions_standing; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "live_auctions_standing" ON "public"."live_auctions" USING "btree" ("seller_id", "created_at" DESC) WHERE (("session_id" IS NULL) AND ("status" = 'listed'::"text"));
 
 
 --
@@ -17331,6 +22073,13 @@ CREATE INDEX "msg_conv_idx" ON "public"."messages" USING "btree" ("conversation_
 --
 
 CREATE INDEX "msg_post_idx" ON "public"."messages" USING "btree" ("post_id") WHERE ("post_id" IS NOT NULL);
+
+
+--
+-- Name: notifications_saved_search_recent; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "notifications_saved_search_recent" ON "public"."notifications" USING "btree" ("recipient_id", "created_at" DESC) WHERE ("type" = 'saved_search_hit'::"text");
 
 
 --
@@ -17453,6 +22202,13 @@ CREATE OR REPLACE TRIGGER "enqueue_r2_media_delete_on_post_delete" AFTER DELETE 
 
 
 --
+-- Name: stories enqueue_r2_media_delete_on_story_delete; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "enqueue_r2_media_delete_on_story_delete" AFTER DELETE ON "public"."stories" FOR EACH ROW EXECUTE FUNCTION "public"."enqueue_r2_story_media_delete"();
+
+
+--
 -- Name: comments on_comment_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -17492,13 +22248,6 @@ CREATE OR REPLACE TRIGGER "on_like_insert" AFTER INSERT ON "public"."likes" FOR 
 --
 
 CREATE OR REPLACE TRIGGER "on_like_notif" AFTER INSERT ON "public"."likes" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_like_to_table"();
-
-
---
--- Name: live_sessions on_live_session_active; Type: TRIGGER; Schema: public; Owner: postgres
---
-
-CREATE OR REPLACE TRIGGER "on_live_session_active" AFTER INSERT OR UPDATE OF "status" ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_followers_on_live"();
 
 
 --
@@ -17565,6 +22314,27 @@ CREATE OR REPLACE TRIGGER "trg_admin_support_threads_updated_at" BEFORE UPDATE O
 
 
 --
+-- Name: live_bids trg_adult_bid; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_adult_bid" BEFORE INSERT ON "public"."live_bids" FOR EACH ROW EXECUTE FUNCTION "public"."guard_adult_commitment"('bidder_id');
+
+
+--
+-- Name: berkat_offers trg_adult_offer; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_adult_offer" BEFORE INSERT ON "public"."berkat_offers" FOR EACH ROW EXECUTE FUNCTION "public"."guard_adult_commitment"('buyer_id');
+
+
+--
+-- Name: berkat_tips trg_adult_tip; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_adult_tip" BEFORE INSERT ON "public"."berkat_tips" FOR EACH ROW EXECUTE FUNCTION "public"."guard_adult_commitment"('sender_id');
+
+
+--
 -- Name: product_preorders trg_assign_preorder_round; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -17576,6 +22346,69 @@ CREATE OR REPLACE TRIGGER "trg_assign_preorder_round" BEFORE INSERT OR UPDATE OF
 --
 
 CREATE OR REPLACE TRIGGER "trg_auto_score_post" BEFORE INSERT OR UPDATE OF "tags" ON "public"."posts" FOR EACH ROW EXECUTE FUNCTION "public"."auto_score_post"();
+
+
+--
+-- Name: berkat_categories trg_berkat_categories_two_levels; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_categories_two_levels" BEFORE INSERT OR UPDATE OF "parent_slug", "slug" ON "public"."berkat_categories" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_categories_two_levels"();
+
+
+--
+-- Name: product_orders trg_berkat_pay_out_buyer_referral; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_pay_out_buyer_referral" AFTER UPDATE OF "status" ON "public"."product_orders" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_pay_out_buyer_referral"();
+
+
+--
+-- Name: live_auctions trg_berkat_pay_out_seller_referral; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_pay_out_seller_referral" AFTER UPDATE OF "status" ON "public"."live_auctions" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_pay_out_seller_referral"();
+
+
+--
+-- Name: berkat_seller_stripe trg_berkat_revoke_checkout; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_revoke_checkout" AFTER DELETE ON "public"."berkat_seller_stripe" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_revoke_checkout_enabled"();
+
+
+--
+-- Name: berkat_seller_stripe trg_berkat_seller_stripe_touch; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_seller_stripe_touch" BEFORE UPDATE ON "public"."berkat_seller_stripe" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_seller_stripe_touch"();
+
+
+--
+-- Name: berkat_sellers trg_berkat_sellers_touch; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_sellers_touch" BEFORE UPDATE ON "public"."berkat_sellers" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_sellers_touch"();
+
+
+--
+-- Name: product_orders trg_berkat_settle_shipping_credit; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_settle_shipping_credit" BEFORE UPDATE OF "status" ON "public"."product_orders" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_settle_shipping_credit"();
+
+
+--
+-- Name: berkat_shipping_rates trg_berkat_shipping_touch; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_shipping_touch" BEFORE UPDATE ON "public"."berkat_shipping_rates" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_shipping_rates_touch"();
+
+
+--
+-- Name: berkat_seller_stripe trg_berkat_sync_checkout; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_berkat_sync_checkout" AFTER INSERT OR UPDATE OF "charges_enabled" ON "public"."berkat_seller_stripe" FOR EACH ROW EXECUTE FUNCTION "public"."berkat_sync_checkout_enabled"();
 
 
 --
@@ -17639,6 +22472,20 @@ CREATE OR REPLACE TRIGGER "trg_conversation_not_blocked" BEFORE INSERT ON "publi
 --
 
 CREATE OR REPLACE TRIGGER "trg_follow_not_blocked" BEFORE INSERT ON "public"."follows" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_follow_not_blocked"();
+
+
+--
+-- Name: orders trg_guard_order_money; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_guard_order_money" BEFORE UPDATE ON "public"."orders" FOR EACH ROW EXECUTE FUNCTION "public"."guard_order_money"();
+
+
+--
+-- Name: profiles trg_guard_profile_privileges; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_guard_profile_privileges" BEFORE INSERT OR UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."guard_profile_privileges"();
 
 
 --
@@ -17708,7 +22555,7 @@ CREATE OR REPLACE TRIGGER "trg_notify_auction_won" AFTER UPDATE OF "status" ON "
 -- Name: live_sessions trg_notify_followers_on_go_live; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE TRIGGER "trg_notify_followers_on_go_live" AFTER INSERT ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_followers_on_go_live"();
+CREATE OR REPLACE TRIGGER "trg_notify_followers_on_go_live" AFTER INSERT OR UPDATE OF "status" ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_followers_on_go_live"();
 
 
 --
@@ -17723,6 +22570,13 @@ CREATE OR REPLACE TRIGGER "trg_notify_on_gift" AFTER INSERT ON "public"."gift_tr
 --
 
 CREATE OR REPLACE TRIGGER "trg_notify_order_shipped" AFTER UPDATE OF "status" ON "public"."product_orders" FOR EACH ROW EXECUTE FUNCTION "public"."notify_order_shipped"();
+
+
+--
+-- Name: live_auctions trg_notify_saved_searches; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_notify_saved_searches" AFTER INSERT ON "public"."live_auctions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_saved_searches"();
 
 
 --
@@ -17800,6 +22654,13 @@ CREATE OR REPLACE TRIGGER "trg_purge_live_session_viewers_on_end" AFTER UPDATE O
 --
 
 CREATE OR REPLACE TRIGGER "trg_push_notification" AFTER INSERT ON "public"."notifications" FOR EACH ROW EXECUTE FUNCTION "public"."fn_send_push_on_notification"();
+
+
+--
+-- Name: scheduled_lives trg_release_prepared_on_plan_end; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_release_prepared_on_plan_end" AFTER UPDATE OF "status" ON "public"."scheduled_lives" FOR EACH ROW WHEN ((("new"."status" = ANY (ARRAY['cancelled'::"text", 'expired'::"text"])) AND ("old"."status" IS DISTINCT FROM "new"."status"))) EXECUTE FUNCTION "public"."release_prepared_on_plan_end"();
 
 
 --
@@ -17884,6 +22745,13 @@ CREATE OR REPLACE TRIGGER "trg_touch_live_auction" BEFORE UPDATE ON "public"."li
 --
 
 CREATE OR REPLACE TRIGGER "trg_touch_live_sessions_updated_at" BEFORE UPDATE ON "public"."live_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."touch_live_sessions_updated_at"();
+
+
+--
+-- Name: live_bids trg_unpaid_strikes; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_unpaid_strikes" BEFORE INSERT ON "public"."live_bids" FOR EACH ROW EXECUTE FUNCTION "public"."guard_unpaid_strikes"();
 
 
 --
@@ -18001,6 +22869,254 @@ ALTER TABLE ONLY "public"."auction_carts"
 
 ALTER TABLE ONLY "public"."auction_carts"
     ADD CONSTRAINT "auction_carts_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_auction_reminders berkat_auction_reminders_auction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_auction_reminders"
+    ADD CONSTRAINT "berkat_auction_reminders_auction_id_fkey" FOREIGN KEY ("auction_id") REFERENCES "public"."live_auctions"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_auction_reminders berkat_auction_reminders_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_auction_reminders"
+    ADD CONSTRAINT "berkat_auction_reminders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_categories berkat_categories_parent_slug_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_categories"
+    ADD CONSTRAINT "berkat_categories_parent_slug_fkey" FOREIGN KEY ("parent_slug") REFERENCES "public"."berkat_categories"("slug") ON DELETE SET NULL;
+
+
+--
+-- Name: berkat_listing_views berkat_listing_views_auction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_listing_views"
+    ADD CONSTRAINT "berkat_listing_views_auction_id_fkey" FOREIGN KEY ("auction_id") REFERENCES "public"."live_auctions"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_listing_views berkat_listing_views_viewer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_listing_views"
+    ADD CONSTRAINT "berkat_listing_views_viewer_id_fkey" FOREIGN KEY ("viewer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_offers berkat_offers_auction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_offers"
+    ADD CONSTRAINT "berkat_offers_auction_id_fkey" FOREIGN KEY ("auction_id") REFERENCES "public"."live_auctions"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_offers berkat_offers_buyer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_offers"
+    ADD CONSTRAINT "berkat_offers_buyer_id_fkey" FOREIGN KEY ("buyer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_offers berkat_offers_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_offers"
+    ADD CONSTRAINT "berkat_offers_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_referral_codes berkat_referral_codes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_referral_codes"
+    ADD CONSTRAINT "berkat_referral_codes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_referrals berkat_referrals_invitee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_referrals"
+    ADD CONSTRAINT "berkat_referrals_invitee_id_fkey" FOREIGN KEY ("invitee_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_referrals berkat_referrals_inviter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_referrals"
+    ADD CONSTRAINT "berkat_referrals_inviter_id_fkey" FOREIGN KEY ("inviter_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_saved_listings berkat_saved_listings_auction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_saved_listings"
+    ADD CONSTRAINT "berkat_saved_listings_auction_id_fkey" FOREIGN KEY ("auction_id") REFERENCES "public"."live_auctions"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_saved_listings berkat_saved_listings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_saved_listings"
+    ADD CONSTRAINT "berkat_saved_listings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_saved_searches berkat_saved_searches_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_saved_searches"
+    ADD CONSTRAINT "berkat_saved_searches_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_seller_perks berkat_seller_perks_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_seller_perks"
+    ADD CONSTRAINT "berkat_seller_perks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_seller_stripe berkat_seller_stripe_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_seller_stripe"
+    ADD CONSTRAINT "berkat_seller_stripe_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_sellers berkat_sellers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_sellers"
+    ADD CONSTRAINT "berkat_sellers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_shipping_credits berkat_shipping_credits_consumed_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_shipping_credits"
+    ADD CONSTRAINT "berkat_shipping_credits_consumed_order_id_fkey" FOREIGN KEY ("consumed_order_id") REFERENCES "public"."product_orders"("id") ON DELETE SET NULL;
+
+
+--
+-- Name: berkat_shipping_credits berkat_shipping_credits_reserved_cart_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_shipping_credits"
+    ADD CONSTRAINT "berkat_shipping_credits_reserved_cart_id_fkey" FOREIGN KEY ("reserved_cart_id") REFERENCES "public"."auction_carts"("id") ON DELETE SET NULL;
+
+
+--
+-- Name: berkat_shipping_credits berkat_shipping_credits_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_shipping_credits"
+    ADD CONSTRAINT "berkat_shipping_credits_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_shipping_rates berkat_shipping_rates_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_shipping_rates"
+    ADD CONSTRAINT "berkat_shipping_rates_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_show_reminders berkat_show_reminders_schedule_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_show_reminders"
+    ADD CONSTRAINT "berkat_show_reminders_schedule_id_fkey" FOREIGN KEY ("schedule_id") REFERENCES "public"."scheduled_lives"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_show_reminders berkat_show_reminders_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_show_reminders"
+    ADD CONSTRAINT "berkat_show_reminders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_tips berkat_tips_recipient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_tips"
+    ADD CONSTRAINT "berkat_tips_recipient_id_fkey" FOREIGN KEY ("recipient_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_tips berkat_tips_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_tips"
+    ADD CONSTRAINT "berkat_tips_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_tips berkat_tips_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_tips"
+    ADD CONSTRAINT "berkat_tips_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."live_sessions"("id") ON DELETE SET NULL;
+
+
+--
+-- Name: berkat_unpaid_strikes berkat_unpaid_strikes_auction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_unpaid_strikes"
+    ADD CONSTRAINT "berkat_unpaid_strikes_auction_id_fkey" FOREIGN KEY ("auction_id") REFERENCES "public"."live_auctions"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_unpaid_strikes berkat_unpaid_strikes_buyer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_unpaid_strikes"
+    ADD CONSTRAINT "berkat_unpaid_strikes_buyer_id_fkey" FOREIGN KEY ("buyer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_unpaid_strikes berkat_unpaid_strikes_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_unpaid_strikes"
+    ADD CONSTRAINT "berkat_unpaid_strikes_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_vouches berkat_vouches_seller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_vouches"
+    ADD CONSTRAINT "berkat_vouches_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+--
+-- Name: berkat_vouches berkat_vouches_voucher_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."berkat_vouches"
+    ADD CONSTRAINT "berkat_vouches_voucher_id_fkey" FOREIGN KEY ("voucher_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
@@ -18212,11 +23328,27 @@ ALTER TABLE ONLY "public"."live_auctions"
 
 
 --
+-- Name: live_auctions live_auctions_category_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_category_fkey" FOREIGN KEY ("category") REFERENCES "public"."berkat_categories"("slug") ON DELETE SET NULL;
+
+
+--
 -- Name: live_auctions live_auctions_current_bidder_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY "public"."live_auctions"
     ADD CONSTRAINT "live_auctions_current_bidder_id_fkey" FOREIGN KEY ("current_bidder_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+--
+-- Name: live_auctions live_auctions_planned_for_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."live_auctions"
+    ADD CONSTRAINT "live_auctions_planned_for_fkey" FOREIGN KEY ("planned_for") REFERENCES "public"."scheduled_lives"("id") ON DELETE SET NULL;
 
 
 --
@@ -18700,6 +23832,14 @@ ALTER TABLE ONLY "public"."messages"
 
 
 --
+-- Name: messages messages_listing_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."messages"
+    ADD CONSTRAINT "messages_listing_id_fkey" FOREIGN KEY ("listing_id") REFERENCES "public"."live_auctions"("id") ON DELETE SET NULL;
+
+
+--
 -- Name: messages messages_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -19097,6 +24237,14 @@ ALTER TABLE ONLY "public"."profiles"
 
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_referred_by_fkey" FOREIGN KEY ("referred_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+--
+-- Name: push_mutes push_mutes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY "public"."push_mutes"
+    ADD CONSTRAINT "push_mutes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 --
@@ -19724,6 +24872,304 @@ CREATE POLICY "battle_history_select_all" ON "public"."live_battle_history" FOR 
 
 
 --
+-- Name: berkat_auction_reminders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_auction_reminders" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_categories; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_categories" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_categories berkat_categories_read; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_categories_read" ON "public"."berkat_categories" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+--
+-- Name: berkat_referral_codes berkat_codes_read_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_codes_read_own" ON "public"."berkat_referral_codes" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_shipping_credits berkat_credits_read_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_credits_read_own" ON "public"."berkat_shipping_credits" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_listing_views; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_listing_views" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_night_service_log; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_night_service_log" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_offers; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_offers" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_offers berkat_offers_select_party; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_offers_select_party" ON "public"."berkat_offers" FOR SELECT USING ((("buyer_id" = "auth"."uid"()) OR ("seller_id" = "auth"."uid"())));
+
+
+--
+-- Name: berkat_seller_perks berkat_perks_read_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_perks_read_own" ON "public"."berkat_seller_perks" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_referral_codes; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_referral_codes" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_referrals; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_referrals" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_referrals berkat_referrals_read_mine; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_referrals_read_mine" ON "public"."berkat_referrals" FOR SELECT TO "authenticated" USING ((("invitee_id" = "auth"."uid"()) OR ("inviter_id" = "auth"."uid"())));
+
+
+--
+-- Name: berkat_auction_reminders berkat_reminders_delete_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_reminders_delete_own" ON "public"."berkat_auction_reminders" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+
+--
+-- Name: berkat_auction_reminders berkat_reminders_insert_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_reminders_insert_own" ON "public"."berkat_auction_reminders" FOR INSERT TO "authenticated" WITH CHECK ((("auth"."uid"() = "user_id") AND (EXISTS ( SELECT 1
+   FROM "public"."live_auctions" "a"
+  WHERE (("a"."id" = "berkat_auction_reminders"."auction_id") AND ("a"."session_id" IS NULL) AND ("a"."status" = 'scheduled'::"text") AND ("a"."seller_id" <> "auth"."uid"()) AND (("a"."women_only" = false) OR "public"."is_women_only_verified"()))))));
+
+
+--
+-- Name: berkat_auction_reminders berkat_reminders_select_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_reminders_select_own" ON "public"."berkat_auction_reminders" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+
+--
+-- Name: berkat_reward_policy; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_reward_policy" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_saved_listings berkat_saved_delete_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_saved_delete_own" ON "public"."berkat_saved_listings" FOR DELETE USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_saved_listings berkat_saved_insert_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_saved_insert_own" ON "public"."berkat_saved_listings" FOR INSERT WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_saved_listings; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_saved_listings" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_saved_searches; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_saved_searches" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_saved_searches berkat_saved_searches_delete; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_saved_searches_delete" ON "public"."berkat_saved_searches" FOR DELETE USING (("auth"."uid"() = "user_id"));
+
+
+--
+-- Name: berkat_saved_searches berkat_saved_searches_insert; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_saved_searches_insert" ON "public"."berkat_saved_searches" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+--
+-- Name: berkat_saved_searches berkat_saved_searches_select; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_saved_searches_select" ON "public"."berkat_saved_searches" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+--
+-- Name: berkat_saved_listings berkat_saved_select_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_saved_select_own" ON "public"."berkat_saved_listings" FOR SELECT USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_seller_perks; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_seller_perks" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_seller_stripe; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_seller_stripe" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_seller_stripe berkat_seller_stripe_select_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_seller_stripe_select_own" ON "public"."berkat_seller_stripe" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_sellers; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_sellers" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_sellers berkat_sellers_select; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_sellers_select" ON "public"."berkat_sellers" FOR SELECT USING (true);
+
+
+--
+-- Name: berkat_shipping_credits; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_shipping_credits" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_shipping_rates; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_shipping_rates" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_shipping_rates berkat_shipping_read; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_shipping_read" ON "public"."berkat_shipping_rates" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+--
+-- Name: berkat_shipping_rates berkat_shipping_write_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_shipping_write_own" ON "public"."berkat_shipping_rates" TO "authenticated" USING (("seller_id" = "auth"."uid"())) WITH CHECK (("seller_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_show_reminders; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_show_reminders" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_show_reminders berkat_show_reminders_delete; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_show_reminders_delete" ON "public"."berkat_show_reminders" FOR DELETE USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_show_reminders berkat_show_reminders_insert; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_show_reminders_insert" ON "public"."berkat_show_reminders" FOR INSERT WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_show_reminders berkat_show_reminders_select; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_show_reminders_select" ON "public"."berkat_show_reminders" FOR SELECT USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: berkat_tips; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_tips" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_tips berkat_tips_select; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_tips_select" ON "public"."berkat_tips" FOR SELECT USING ((("auth"."uid"() = "sender_id") OR ("auth"."uid"() = "recipient_id")));
+
+
+--
+-- Name: berkat_unpaid_strikes; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_unpaid_strikes" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_unpaid_strikes berkat_unpaid_strikes_select; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_unpaid_strikes_select" ON "public"."berkat_unpaid_strikes" FOR SELECT USING ((("buyer_id" = "auth"."uid"()) OR ("seller_id" = "auth"."uid"())));
+
+
+--
+-- Name: berkat_vouches; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."berkat_vouches" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: berkat_vouches berkat_vouches_read; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_vouches_read" ON "public"."berkat_vouches" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+--
+-- Name: berkat_vouches berkat_vouches_write_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "berkat_vouches_write_own" ON "public"."berkat_vouches" TO "authenticated" USING (("voucher_id" = "auth"."uid"())) WITH CHECK (("voucher_id" = "auth"."uid"()));
+
+
+--
 -- Name: bookmarks; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
@@ -20111,12 +25557,33 @@ ALTER TABLE "public"."likes" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."live_auctions" ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: live_auctions live_auctions_insert_standing; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "live_auctions_insert_standing" ON "public"."live_auctions" FOR INSERT TO "authenticated" WITH CHECK ((("seller_id" = "auth"."uid"()) AND ("session_id" IS NULL) AND ("status" = 'listed'::"text") AND ("buy_now_cents" > 100)));
+
+
+--
 -- Name: live_auctions live_auctions_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
 CREATE POLICY "live_auctions_select" ON "public"."live_auctions" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."live_sessions" "s"
   WHERE (("s"."id" = "live_auctions"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
+
+
+--
+-- Name: live_auctions live_auctions_select_standing; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "live_auctions_select_standing" ON "public"."live_auctions" FOR SELECT USING ((("session_id" IS NULL) AND (("women_only" = false) OR ("seller_id" = "auth"."uid"()) OR "public"."is_women_only_verified"()) AND (("seller_id" = "auth"."uid"()) OR (NOT "public"."seller_on_vacation"("seller_id")))));
+
+
+--
+-- Name: live_auctions live_auctions_update_standing; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "live_auctions_update_standing" ON "public"."live_auctions" FOR UPDATE TO "authenticated" USING ((("seller_id" = "auth"."uid"()) AND ("session_id" IS NULL) AND ("status" = 'listed'::"text"))) WITH CHECK ((("seller_id" = "auth"."uid"()) AND ("session_id" IS NULL)));
 
 
 --
@@ -20200,7 +25667,9 @@ CREATE POLICY "live_cohosts_insert_host" ON "public"."live_cohosts" FOR INSERT W
 -- Name: live_cohosts live_cohosts_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "live_cohosts_select" ON "public"."live_cohosts" FOR SELECT USING (true);
+CREATE POLICY "live_cohosts_select" ON "public"."live_cohosts" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_cohosts"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
 
 --
@@ -20381,7 +25850,9 @@ CREATE POLICY "live_polls_insert" ON "public"."live_polls" FOR INSERT WITH CHECK
 -- Name: live_polls live_polls_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "live_polls_select" ON "public"."live_polls" FOR SELECT USING (true);
+CREATE POLICY "live_polls_select" ON "public"."live_polls" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_polls"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
 
 --
@@ -20441,7 +25912,9 @@ CREATE POLICY "live_recordings_select_own" ON "public"."live_recordings" FOR SEL
 -- Name: live_recordings live_recordings_select_public; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "live_recordings_select_public" ON "public"."live_recordings" FOR SELECT USING ((("status" = 'ready'::"text") AND ("is_public" = true)));
+CREATE POLICY "live_recordings_select_public" ON "public"."live_recordings" FOR SELECT USING ((("status" = 'ready'::"text") AND ("is_public" = true) AND (EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_recordings"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"()))))));
 
 
 --
@@ -20543,7 +26016,9 @@ ALTER TABLE "public"."live_viewer_welcomes" ENABLE ROW LEVEL SECURITY;
 -- Name: live_viewer_welcomes live_viewer_welcomes_read_all; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "live_viewer_welcomes_read_all" ON "public"."live_viewer_welcomes" FOR SELECT USING (true);
+CREATE POLICY "live_viewer_welcomes_read_all" ON "public"."live_viewer_welcomes" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_viewer_welcomes"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
 
 --
@@ -20624,7 +26099,7 @@ ALTER TABLE "public"."muted_live_hosts" ENABLE ROW LEVEL SECURITY;
 -- Name: notifications notif_insert_own_sender; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "notif_insert_own_sender" ON "public"."notifications" FOR INSERT TO "authenticated" WITH CHECK (("sender_id" = "auth"."uid"()));
+CREATE POLICY "notif_insert_own_sender" ON "public"."notifications" FOR INSERT TO "authenticated" WITH CHECK ((("sender_id" = "auth"."uid"()) AND "public"."may_notify"("type", "recipient_id", "session_id", "comment_id")));
 
 
 --
@@ -20704,7 +26179,7 @@ CREATE POLICY "orders_select_seller" ON "public"."orders" FOR SELECT USING (("se
 -- Name: orders orders_update_seller; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "orders_update_seller" ON "public"."orders" FOR UPDATE USING (("seller_id" = "auth"."uid"()));
+CREATE POLICY "orders_update_seller" ON "public"."orders" FOR UPDATE USING (("seller_id" = "auth"."uid"())) WITH CHECK (("seller_id" = "auth"."uid"()));
 
 
 --
@@ -20760,7 +26235,9 @@ CREATE POLICY "own_ingress_update" ON "public"."user_whip_ingresses" FOR UPDATE 
 -- Name: live_moderators p_live_moderators_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "p_live_moderators_select" ON "public"."live_moderators" FOR SELECT USING (true);
+CREATE POLICY "p_live_moderators_select" ON "public"."live_moderators" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_moderators"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
 
 --
@@ -20847,15 +26324,6 @@ CREATE POLICY "posts_select_own" ON "public"."posts" FOR SELECT USING (("author_
 CREATE POLICY "posts_select_public_friends_private" ON "public"."posts" FOR SELECT USING ((("author_id" = "auth"."uid"()) OR ((COALESCE("privacy", 'public'::"text") = 'public'::"text") AND ((COALESCE("women_only", false) = false) OR "public"."is_women_only_verified"())) OR ((COALESCE("privacy", 'public'::"text") = 'friends'::"text") AND ("auth"."uid"() IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM "public"."follows" "f"
   WHERE (("f"."follower_id" = "auth"."uid"()) AND ("f"."following_id" = "posts"."author_id")))) AND ((COALESCE("women_only", false) = false) OR "public"."is_women_only_verified"()))));
-
-
---
--- Name: posts posts_visibility_policy; Type: POLICY; Schema: public; Owner: postgres
---
-
-CREATE POLICY "posts_visibility_policy" ON "public"."posts" FOR SELECT USING ((("auth"."uid"() = "author_id") OR ("privacy" = 'public'::"text") OR (("privacy" = 'friends'::"text") AND (EXISTS ( SELECT 1
-   FROM "public"."follows"
-  WHERE (("follows"."follower_id" = "auth"."uid"()) AND ("follows"."following_id" = "posts"."author_id")))))));
 
 
 --
@@ -20974,6 +26442,33 @@ CREATE POLICY "products_update" ON "public"."products" FOR UPDATE USING (("selle
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: push_mutes; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."push_mutes" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: push_mutes push_mutes_delete_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "push_mutes_delete_own" ON "public"."push_mutes" FOR DELETE USING (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: push_mutes push_mutes_insert_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "push_mutes_insert_own" ON "public"."push_mutes" FOR INSERT WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+--
+-- Name: push_mutes push_mutes_select_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "push_mutes_select_own" ON "public"."push_mutes" FOR SELECT USING (("user_id" = "auth"."uid"()));
+
+
+--
 -- Name: push_tokens; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
@@ -21000,10 +26495,13 @@ CREATE POLICY "reactions insert own" ON "public"."message_reactions" FOR INSERT 
 
 
 --
--- Name: message_reactions reactions public read; Type: POLICY; Schema: public; Owner: postgres
+-- Name: message_reactions reactions_select_participants; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "reactions public read" ON "public"."message_reactions" FOR SELECT USING (true);
+CREATE POLICY "reactions_select_participants" ON "public"."message_reactions" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM ("public"."messages" "m"
+     JOIN "public"."conversations" "c" ON (("c"."id" = "m"."conversation_id")))
+  WHERE (("m"."id" = "message_reactions"."message_id") AND (("auth"."uid"() = "c"."participant_1") OR ("auth"."uid"() = "c"."participant_2"))))));
 
 
 --
@@ -21121,7 +26619,7 @@ CREATE POLICY "scheduled_lives_select_own" ON "public"."scheduled_lives" FOR SEL
 -- Name: scheduled_lives scheduled_lives_select_public; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "scheduled_lives_select_public" ON "public"."scheduled_lives" FOR SELECT USING (("status" = ANY (ARRAY['scheduled'::"text", 'reminded'::"text", 'live'::"text"])));
+CREATE POLICY "scheduled_lives_select_public" ON "public"."scheduled_lives" FOR SELECT USING ((("status" = ANY (ARRAY['scheduled'::"text", 'reminded'::"text", 'live'::"text"])) AND (("women_only" = false) OR ("host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())));
 
 
 --
@@ -21206,13 +26704,6 @@ CREATE POLICY "stories_insert" ON "public"."stories" FOR INSERT WITH CHECK (("au
 --
 
 CREATE POLICY "stories_own_archived_select" ON "public"."stories" FOR SELECT USING ((("auth"."uid"() = "user_id") OR ("archived" = false)));
-
-
---
--- Name: stories stories_select; Type: POLICY; Schema: public; Owner: postgres
---
-
-CREATE POLICY "stories_select" ON "public"."stories" FOR SELECT USING (true);
 
 
 --
@@ -21310,10 +26801,12 @@ CREATE POLICY "story_views_insert" ON "public"."story_views" FOR INSERT WITH CHE
 
 
 --
--- Name: story_views story_views_select; Type: POLICY; Schema: public; Owner: postgres
+-- Name: story_views story_views_select_owner_or_self; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "story_views_select" ON "public"."story_views" FOR SELECT USING (true);
+CREATE POLICY "story_views_select_owner_or_self" ON "public"."story_views" FOR SELECT USING ((("auth"."uid"() = "user_id") OR (EXISTS ( SELECT 1
+   FROM "public"."stories" "s"
+  WHERE (("s"."id" = "story_views"."story_id") AND ("s"."user_id" = "auth"."uid"()))))));
 
 
 --
@@ -21493,5 +26986,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict 4yzxWcDhtqxaEr4QtAid3mgPYKbpvfBRwLBS1DxLS286jUeAH1NoNilSFPU9G8Y
+-- \unrestrict ZmvOu6Jr02MgxFTXA7o5kTbzehf0ldK1XHwHwSPZyAuVOqwQNNOmf5RZdXFtB7R
 

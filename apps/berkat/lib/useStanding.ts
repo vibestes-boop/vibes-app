@@ -27,6 +27,11 @@ export function standingErrorText(message: string): string {
   if (message.includes('not_women_only_verified'))
     return 'Frauen-Only kannst du erst setzen, wenn dein Zugang freigegeben ist.';
   if (message.includes('seller_cannot_bid')) return 'Das ist dein eigener Artikel. 🙂';
+  // Seit 20260921200000. Der Server nennt die Grenze nicht, weil sie je Feld
+  // eine andere ist — und die Oberfläche begrenzt ohnehin schon per
+  // `maxLength`. Hierher kommt nur, wer einen älteren Client benutzt.
+  if (message.includes('attribute_too_long'))
+    return 'Marke, Farbe oder Material sind zu lang. Kürzer fassen — Einzelheiten gehören in die Beschreibung.';
   // Seit 20260816210000: Wer nicht für die Kasse freigeschaltet ist, verkauft
   // über Kontakt. Das ist kein Fehler des Käufers — der Text sagt deshalb, was
   // als Nächstes zu tun ist, statt was schiefging.
@@ -217,6 +222,39 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
     onSuccess: invalidate,
   });
 
+  /**
+   * Marke, Farbe und Material — ein ZWEITER Ruf, nicht drei Parameter mehr.
+   *
+   * ⚠️ Die Signaturen von `create_standing_listing` und
+   * `update_standing_listing` sind seit App-Fassung 1.0.0 eingefroren (siehe
+   * den Kommentar am Anlegen oben). Drei zusätzliche Parameter — auch mit
+   * Vorgabewert — erzeugen eine ZWEITE Funktion daneben, und PostgREST
+   * antwortet auf eine mehrdeutige Überladung mit HTTP 300. Für ALLE Aufrufer
+   * gleichzeitig, auch die in TestFlight.
+   *
+   * Dieselbe Bauweise wie `set_listing_shipping_tier` und
+   * `move_listing_to_show`: Der zweite Ruf darf scheitern, ohne den ersten
+   * mitzureissen. Dann steht der Artikel ohne Merkmale — und die lassen sich
+   * nachtragen.
+   */
+  const setAttributes = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      brand: string | null;
+      color: string | null;
+      material: string | null;
+    }) => {
+      const { error } = await supabase.rpc('set_listing_attributes', {
+        p_auction_id: input.id,
+        p_brand: input.brand,
+        p_color: input.color,
+        p_material: input.material,
+      });
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
   const cancel = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.rpc('cancel_standing_listing', { p_id: id });
@@ -253,5 +291,5 @@ export function useStandingActions(sellerId: string | undefined, myUserId: strin
     },
   });
 
-  return { create, update, cancel, buy, canSell: Boolean(myUserId && myUserId === sellerId) };
+  return { create, update, setAttributes, cancel, buy, canSell: Boolean(myUserId && myUserId === sellerId) };
 }

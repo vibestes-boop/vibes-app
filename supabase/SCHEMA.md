@@ -1,7 +1,7 @@
 # Live-Datenbankschema (Source of Truth)
 
 > Auto-generiert aus `supabase/schema_live.sql` (pg_dump der Live-DB `llymwqfgujwkoxzqxrlm`).
-> **93 Tabellen.** Vor jeder Code-Spaltenreferenz hier prüfen — verhindert Bugs wie das fehlende `profiles.follower_count`.
+> **113 Tabellen.** Vor jeder Code-Spaltenreferenz hier prüfen — verhindert Bugs wie das fehlende `profiles.follower_count`.
 > Neu generieren: Abzug erneuern (siehe Kopf von `supabase/_ops/schema-md.mjs`), dann `node supabase/_ops/schema-md.mjs`.
 
 ### admin_audit_log (7)
@@ -118,6 +118,162 @@
 - `closes_at timestamp`
 - `created_at timestamp`
 - `reminded_at timestamp`
+
+### berkat_auction_reminders (3)
+- `auction_id uuid`
+- `user_id uuid`
+- `created_at timestamp`
+
+### berkat_categories (6)
+- `slug text`
+- `name text`
+- `sort_index integer`
+- `active boolean`
+- `created_at timestamp`
+- `parent_slug text`
+
+### berkat_listing_views (3)
+- `auction_id uuid`
+- `viewer_id uuid`
+- `seen_at timestamp`
+
+### berkat_night_service_log (4)
+- `id bigint`
+- `request_id bigint`
+- `sweep text`
+- `sent_at timestamp`
+
+### berkat_offers (9)
+- `id uuid`
+- `auction_id uuid`
+- `buyer_id uuid`
+- `seller_id uuid`
+- `amount_cents integer`
+- `counter_cents integer`
+- `status text`
+- `created_at timestamp`
+- `responded_at timestamp`
+
+### berkat_referral_codes (3)
+- `user_id uuid`
+- `code text`
+- `created_at timestamp`
+
+### berkat_referrals (5)
+- `invitee_id uuid`
+- `inviter_id uuid`
+- `created_at timestamp`
+- `buyer_reward_at timestamp`
+- `seller_reward_at timestamp`
+
+### berkat_reward_policy (6)
+- `id integer`
+- `buyer_rewards_enabled boolean`
+- `min_cart_cents integer`
+- `inviter_reward_after integer`
+- `monthly_cap integer`
+- `updated_at timestamp`
+
+### berkat_saved_listings (3)
+- `user_id uuid`
+- `auction_id uuid`
+- `created_at timestamp`
+
+### berkat_saved_searches (5)
+- `id uuid`
+- `user_id uuid`
+- `query text`
+- `created_at timestamp`
+- `last_notified_at timestamp`
+
+### berkat_seller_perks (8)
+- `id uuid`
+- `user_id uuid`
+- `kind text`
+- `days integer`
+- `reason text`
+- `granted_at timestamp`
+- `starts_at timestamp`
+- `ends_at timestamp`
+
+### berkat_seller_stripe (7)
+- `user_id uuid`
+- `stripe_account_id text`
+- `charges_enabled boolean`
+- `details_submitted boolean`
+- `disabled_reason text`
+- `connected_at timestamp`
+- `updated_at timestamp`
+
+### berkat_sellers (15)
+- `user_id uuid`
+- `kind text`
+- `legal_name text`
+- `street text`
+- `postal_code text`
+- `city text`
+- `country text`
+- `contact_email text`
+- `vat_id text`
+- `lucid_id text`
+- `checkout_enabled boolean`
+- `declared_at timestamp`
+- `created_at timestamp`
+- `updated_at timestamp`
+- `vacation_until timestamp`
+
+### berkat_shipping_credits (7)
+- `id uuid`
+- `user_id uuid`
+- `reason text`
+- `granted_at timestamp`
+- `reserved_cart_id uuid`
+- `consumed_at timestamp`
+- `consumed_order_id uuid`
+
+### berkat_shipping_rates (10)
+- `id uuid`
+- `seller_id uuid`
+- `country text`
+- `label text`
+- `cents integer`
+- `free_from_cents integer`
+- `sort_index integer`
+- `created_at timestamp`
+- `updated_at timestamp`
+- `tier smallint`
+
+### berkat_show_reminders (3)
+- `schedule_id uuid`
+- `user_id uuid`
+- `created_at timestamp`
+
+### berkat_tips (11)
+- `id uuid`
+- `sender_id uuid`
+- `recipient_id uuid`
+- `session_id uuid`
+- `amount_cents integer`
+- `currency text`
+- `message text`
+- `status text`
+- `stripe_session_id text`
+- `created_at timestamp`
+- `paid_at timestamp`
+
+### berkat_unpaid_strikes (5)
+- `auction_id uuid`
+- `buyer_id uuid`
+- `seller_id uuid`
+- `reported_at timestamp`
+- `note text`
+
+### berkat_vouches (5)
+- `id uuid`
+- `seller_id uuid`
+- `voucher_id uuid`
+- `note text`
+- `created_at timestamp`
 
 ### bookmarks (4)
 - `id uuid`
@@ -252,7 +408,7 @@
 - `user_id uuid`
 - `created_at timestamp`
 
-### live_auctions (22)
+### live_auctions (37)
 - `id uuid`
 - `session_id uuid`
 - `seller_id uuid`
@@ -275,6 +431,21 @@
 - `cart_id uuid`
 - `created_at timestamp`
 - `updated_at timestamp`
+- `women_only boolean`
+- `category text`
+- `seller_kind text`
+- `description text`
+- `condition text`
+- `postal_code text`
+- `city text`
+- `image_urls text[]`
+- `accepts_offers boolean`
+- `size text`
+- `planned_for uuid`
+- `shipping_tier smallint`
+- `brand text`
+- `color text`
+- `material text`
 
 ### live_auto_bids (4)
 - `auction_id uuid`
@@ -453,7 +624,7 @@
 - `user_id uuid`
 - `joined_at timestamp`
 
-### live_sessions (38)
+### live_sessions (39)
 - `id uuid`
 - `host_id uuid`
 - `title text`
@@ -492,6 +663,7 @@
 - `ingress_stream_key text`
 - `ingress_type text`
 - `followers_only boolean`
+- `app text`
 
 ### live_stickers (11)
 - `id uuid`
@@ -519,7 +691,7 @@
 - `emoji text`
 - `created_at timestamp`
 
-### messages (11)
+### messages (13)
 - `id uuid`
 - `conversation_id uuid`
 - `sender_id uuid`
@@ -531,6 +703,8 @@
 - `image_url text`
 - `story_media_url text`
 - `story_author text`
+- `listing_id uuid`
+- `app text`
 
 ### moderation_auto_flags (7)
 - `id uuid`
@@ -564,7 +738,7 @@
 - `product_id uuid`
 - `app text`
 
-### order_disputes (11)
+### order_disputes (12)
 - `id uuid`
 - `order_id uuid`
 - `reporter_id uuid`
@@ -576,6 +750,7 @@
 - `resolution text`
 - `created_at timestamp`
 - `resolved_at timestamp`
+- `image_url text`
 
 ### order_reviews (9)
 - `id uuid`
@@ -698,7 +873,7 @@
 - `created_at timestamp`
 - `closed_at timestamp`
 
-### product_orders (29)
+### product_orders (31)
 - `id uuid`
 - `buyer_id uuid`
 - `seller_id uuid`
@@ -728,6 +903,8 @@
 - `reminded_at timestamp`
 - `cart_id uuid`
 - `title text`
+- `shipping_cents integer`
+- `shipping_credit_applied boolean`
 
 ### product_preorders (9)
 - `id uuid`
@@ -773,7 +950,7 @@
 - `sale_mode text`
 - `price_eur numeric(10,2)`
 
-### profiles (41)
+### profiles (44)
 - `id uuid`
 - `username text`
 - `bio text`
@@ -815,6 +992,15 @@
 - `nav_slot_4 text`
 - `referred_by uuid`
 - `locale text`
+- `banner_url text`
+- `deleted_at timestamp`
+- `birth_date date`
+
+### push_mutes (4)
+- `user_id uuid`
+- `app text`
+- `type text`
+- `created_at timestamp`
 
 ### push_tokens (7)
 - `id uuid`
@@ -825,7 +1011,7 @@
 - `created_at timestamp`
 - `app text`
 
-### r2_delete_queue (10)
+### r2_delete_queue (13)
 - `id uuid`
 - `post_id uuid`
 - `author_id uuid`
@@ -836,6 +1022,9 @@
 - `last_error text`
 - `created_at timestamp`
 - `processed_at timestamp`
+- `prefix text`
+- `reason text`
+- `next_attempt_at timestamp`
 
 ### reposts (4)
 - `id uuid`
@@ -849,7 +1038,7 @@
 - `product_id uuid`
 - `created_at timestamp`
 
-### scheduled_lives (13)
+### scheduled_lives (15)
 - `id uuid`
 - `host_id uuid`
 - `title text`
@@ -863,6 +1052,8 @@
 - `reminded_at timestamp`
 - `created_at timestamp`
 - `updated_at timestamp`
+- `app text`
+- `cover_url text`
 
 ### scheduled_posts (25)
 - `id uuid`
@@ -920,7 +1111,7 @@
 - `title_ru text`
 - `subtitle_ru text`
 
-### stories (8)
+### stories (10)
 - `id uuid`
 - `user_id uuid`
 - `media_url text`
@@ -929,6 +1120,8 @@
 - `interactive jsonb`
 - `archived boolean`
 - `thumbnail_url text`
+- `app text`
+- `media_purged_at timestamp`
 
 ### story_comments (6)
 - `id uuid`
@@ -938,7 +1131,7 @@
 - `is_emoji boolean`
 - `created_at timestamp`
 
-### story_highlights (10)
+### story_highlights (11)
 - `id uuid`
 - `user_id uuid`
 - `story_id uuid`
@@ -949,6 +1142,7 @@
 - `post_id uuid`
 - `thumbnail_url text`
 - `items jsonb`
+- `app text`
 
 ### story_likes (4)
 - `id uuid`
