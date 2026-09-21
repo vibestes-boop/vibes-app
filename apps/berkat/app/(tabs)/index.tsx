@@ -16,6 +16,7 @@ import { showReasonText } from '../../lib/showDiscovery';
 import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
 import { CategoryRail, categoryRailMetrics, type RailItem } from '../../components/CategoryRail';
+import { CategorySheet } from '../../components/CategorySheet';
 import { HomeAccountActions } from '../../components/HomeAccountActions';
 import { HomeSkeleton } from '../../components/HomeSkeleton';
 import { StoryRail } from '../../components/StoryRail';
@@ -73,6 +74,7 @@ export default function HomeScreen() {
   const reducedMotion = useReducedMotion();
   const isFocused = useIsFocused();
   const [railCompact, setRailCompact] = useState(false);
+  const [catSheet, setCatSheet] = useState(false);
   const { fontScale } = useWindowDimensions();
   const { tall: RAIL_TALL, short: RAIL_SHORT } = categoryRailMetrics(fontScale);
   const insets = useSafeAreaInsets();
@@ -739,6 +741,7 @@ export default function HomeScreen() {
           pointerEvents="box-none"
         >
           <CategoryRail
+            onMore={() => setCatSheet(true)}
             key={fontScale}
             items={categories}
             active={filter}
@@ -750,6 +753,15 @@ export default function HomeScreen() {
         </Animated.View>
       ) : null}
       </View>
+
+      {/* Alle Kategorien. Als Blatt ÜBER der Startseite statt als Sprung in den
+          Reiter: Wer stöbert, wählt und stöbert weiter — die Listenposition
+          bleibt, weil der Bildschirm nie verlassen wird. */}
+      <CategorySheet
+        visible={catSheet}
+        onClose={() => setCatSheet(false)}
+        onSelect={selectCategory}
+      />
     </View>
   );
 }

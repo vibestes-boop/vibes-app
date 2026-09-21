@@ -53,6 +53,8 @@ function fixture() {
     '../../lib/useDirectMessages': { useUnreadMessageCount: () => query(0) },
     '../../lib/useReducedMotion': { useReducedMotion: () => true },
     '../../components/CategoryRail': { CategoryRail: 'CategoryRail', categoryRailMetrics: () => ({ tall: 92, short: 48 }) },
+    // Seit dem 21.09.2026: das Blatt hinter dem Pfeil am Ende der Leiste.
+    '../../components/CategorySheet': { CategorySheet: 'CategorySheet' },
   };
   for (const name of ['BerkatMark', 'HomeLiveCard', 'HomeAccountActions', 'HomeSkeleton', 'StoryRail', 'UpcomingStrip', 'ListingCard', 'PressFeedback']) deps[`../../components/${name}`] = { [name]: name };
   const home = load('app/(tabs)/index.tsx', deps).default;

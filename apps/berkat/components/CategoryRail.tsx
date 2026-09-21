@@ -28,8 +28,9 @@
 // umschalten.**
 import { useEffect, useRef } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
-import { UsersRound } from 'lucide-react-native';
+import { UsersRound, ChevronDown } from 'lucide-react-native';
 import { BerkatMark } from './BerkatMark';
 import { categoryArt } from '../theme/categoryArt';
 import { ui, radius, space } from '../theme/tokens';
@@ -94,9 +95,17 @@ type Props = {
   progress: Animated.AnimatedInterpolation<number>;
   compact: boolean;
   loading?: boolean;
+  /**
+   * Öffnet das Blatt mit allen Kategorien.
+   *
+   * ⚠️ Der Knopf steht FEST am rechten Rand und scrollt nicht mit. Als letzter
+   * Eintrag in der Reihe wäre er genau dort, wo ihn niemand findet — hinter
+   * elf Kacheln. Kleinanzeigen macht es genauso.
+   */
+  onMore?: () => void;
 };
 
-export function CategoryRail({ items, active, onSelect, progress, compact, loading = false }: Props) {
+export function CategoryRail({ items, active, onSelect, progress, compact, loading = false, onMore }: Props) {
   const reducedMotion = useReducedMotion();
   const { fontScale } = useWindowDimensions();
   const metrics = categoryRailMetrics(fontScale);
@@ -206,6 +215,31 @@ export function CategoryRail({ items, active, onSelect, progress, compact, loadi
           })}
         </ScrollView>
       </Animated.View>
+
+      {/* Alle Kategorien. Liegt über beiden Ebenen und bleibt bei jeder
+          Scrollposition an derselben Stelle — die Leiste darunter wischt
+          durch, der Ausgang nicht. Der Farbverlauf links davon ist kein
+          Schmuck: Ohne ihn schneidet eine Kachel hart am Knopf ab und sieht
+          aus wie ein Darstellungsfehler. */}
+      {onMore ? (
+        <View style={styles.moreDock} pointerEvents="box-none">
+          <LinearGradient
+            colors={[ui.bgClear, ui.bg]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.moreFade}
+            pointerEvents="none"
+          />
+          <PressFeedback
+            onPress={onMore}
+            style={styles.moreButton}
+            accessibilityRole="button"
+            accessibilityLabel="Alle Kategorien"
+          >
+            <ChevronDown size={20} color={ui.text} />
+          </PressFeedback>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -213,8 +247,11 @@ export function CategoryRail({ items, active, onSelect, progress, compact, loadi
 const styles = StyleSheet.create({
   wrap: { height: RAIL_TALL, backgroundColor: ui.bg, overflow: 'hidden' },
   pillLayer: { position: 'absolute', left: 0, right: 0, bottom: 0, height: RAIL_SHORT },
-  row: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'flex-start' },
-  rowShort: { gap: space.sm, paddingHorizontal: space.md, alignItems: 'center', height: RAIL_SHORT },
+  row: { gap: space.sm, paddingLeft: space.md, paddingRight: 60, alignItems: 'flex-start' },
+  moreDock: { position: 'absolute', right: 0, top: 0, bottom: 0, justifyContent: 'center', paddingRight: space.sm, flexDirection: 'row', alignItems: 'center' },
+  moreFade: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 64 },
+  moreButton: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.card },
+  rowShort: { gap: space.sm, paddingLeft: space.md, paddingRight: 60, alignItems: 'center', height: RAIL_SHORT },
 
   tile: { width: 80, alignItems: 'center', gap: 4 },
   tileArt: {

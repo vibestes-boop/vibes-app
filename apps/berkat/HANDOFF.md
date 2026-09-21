@@ -16099,3 +16099,70 @@ zweiten Menschen, der ein Angebot öffnet. Der Nullfall-Satz ist dagegen sofort 
   nicht eins zu eins und ist deshalb eine eigene Entscheidung, kein Nachbau.
 - **Verkäufer-Identität später.** Wenn Bewertungen und Verkäufe da sind, ist Punkt 1 richtig — nur
   mit Berkats echten Signalen (Zuschläge, Sendungen, Regal), nicht mit erfundenen Abzeichen.
+
+---
+
+## 110. Der Pfeil am Ende der Kategorie-Leiste (21.09.2026)
+
+Zaur hat aus der Kleinanzeigen-App zwei Muster gezeigt: die **Galerie** als waagerechte Wischreihe
+und den **Pfeil** am Ende der Kategorie-Leiste, hinter dem ein Blatt mit allen Kategorien liegt.
+Gebaut wurde der Pfeil.
+
+### Der Befund
+
+Berkats Leiste zeigt zwölf Oberkategorien waagerecht. Wer die letzte sucht, wischt an elf vorbei
+— und sieht nie, was es überhaupt gibt. Den Kategorien-**Reiter** gibt es, aber er ist ein
+Ortswechsel: Wer gerade stöbert, verliert seinen Platz in der Liste.
+
+`CategoryPicker.tsx` klang nach dem Gesuchten und ist es nicht — das ist das Formular beim
+Einstellen. Ein Zugang aus der Leiste heraus fehlte.
+
+### Gebaut
+
+`components/CategorySheet.tsx` + `onMore` in `CategoryRail.tsx`.
+
+⚠️ **Der Pfeil steht FEST am rechten Rand und scrollt nicht mit.** Als letzter Eintrag in der
+Reihe wäre er genau dort, wo ihn niemand findet — hinter elf Kacheln. Links davon ein
+Farbverlauf: Ohne ihn schneidet eine Kachel hart am Knopf ab und sieht aus wie ein
+Darstellungsfehler. Beide Scrollflächen tragen dafür 60 pt Polster rechts.
+
+**Die Untertitel sind echt, nicht getextet.** Kleinanzeigen schreibt „Wohnungen, Häuser &
+Grundstücke" unter „Immobilien" — das sind deren Unterkategorien. Berkats Baum hat seit
+`20260816150000` zweiundsiebzig Einträge, also Kinder. Ein von Hand gepflegter Untertitel je
+Kategorie wäre eine zweite Wahrheit, die beim nächsten neuen Kind veraltet.
+
+### Drei Fehler, die erst der Simulator gezeigt hat
+
+Alle drei waren im Code unsichtbar und `tsc` grün:
+
+1. **Das Blatt war dunkel.** Im ersten Anlauf `StageSheet` — das ist die Fläche des **Live-Raums**.
+   Über der hellen Startseite sah die Kategorie-Liste aus wie ein Stück aus einer anderen App. Die
+   Bühne ist dunkel, weil dort ein Video läuft; hier läuft keines. Jetzt helles Blatt nach dem
+   Vorbild von `ShelfPickSheet`.
+2. **Drei Kinder passten nicht.** Mit dem Bestand („4 kaufbar") rechts brach jede Zeile ab —
+   „Abaya & Jilbab, Hijab & Tüc…". Ein Untertitel, der immer abschneidet, sieht aus wie ein Fehler
+   statt wie eine Auskunft. Jetzt zwei.
+3. **Das doppelte „&".** Berkats Kinder tragen selbst eines: „Abaya & Jilbab", „Hijab & Tücher".
+   Mit „&" verbunden wurde daraus „Abaya & Jilbab & Hijab & Tücher", und niemand sieht mehr, wo
+   das eine aufhört. Jetzt Komma, sobald ein Name selbst ein „&" enthält.
+
+> ⚠️ **Drei Fehler, kein einziger vom Übersetzer zu sehen.** Falsche Fläche, abgeschnittener Text,
+> unlesbare Verbindung — `tsc` war bei allen dreien grün und die Tests auch. Für Gestaltung ist der
+> Simulator kein Zusatz, sondern die einzige Prüfung, die zählt.
+
+### Testgerüst
+
+Vier Startseiten-Tests fielen mit „Missing dependency ../../components/CategorySheet" — der
+Mock-Auflöser in `home-composition.cjs` muss jede Abhängigkeit kennen. Eingetragen. **417 von 417.**
+
+### Die Galerie: bewusst nicht gebaut
+
+Kleinanzeigen hat **beides** — eine waagerechte „Galerie" und darunter das Raster „Für dich
+empfohlen". Bei 58 Millionen Angeboten sind das verschiedene Artikel.
+
+Berkats „Neu entdecken" zeigt heute alles, was da ist. Eine Wischreihe darüber zöge dieselben
+Artikel ein zweites Mal ins Bild — der Bildschirm sähe voller aus und enthielte weniger.
+
+⚠️ **Das ist eine Frage des Bestands, nicht der Gestaltung.** Sobald mehr Angebote da sind als in
+den sichtbaren Bereich passen, wird die Reihe richtig — dann trägt sie etwas, das im Raster erst
+nach langem Scrollen käme. Entscheidung liegt bei Zaur.
