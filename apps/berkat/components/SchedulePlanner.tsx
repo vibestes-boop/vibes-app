@@ -23,7 +23,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -36,6 +35,7 @@ import { PressFeedback } from './PressFeedback';
 import { FeedbackState } from './FeedbackState';
 import { useSellerDraft } from '../lib/useSellerDraft';
 import { useReducedMotion } from '../lib/useReducedMotion';
+import { FormInput } from './FormInput';
 
 /** Abendplätze. Live-Auktionen laufen, wenn die Leute zu Hause sind. */
 const TIMES = [17, 18, 19, 20, 21, 22];
@@ -257,7 +257,7 @@ export function SchedulePlanner({ bare = false, plans, busy, onPlan, onCancel, o
         </PressFeedback>
 
         <Text key={fontScale} style={s.label}>Titel der Show</Text>
-        <TextInput
+        <FormInput
           editable={!saving}
           allowFontScaling={false}
           accessibilityLabel="Titel der Show"
@@ -524,7 +524,6 @@ const s = StyleSheet.create({
 
   input: {
     marginTop: space.md,
-    backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.md,

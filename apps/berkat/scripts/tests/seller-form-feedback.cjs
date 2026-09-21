@@ -39,6 +39,13 @@ function fixture(file) {
     'react-native': { View: 'View', Text: 'Text', TextInput: 'Input', ScrollView: 'Scroll', Modal: 'Modal', ActivityIndicator: 'Spinner',
       useWindowDimensions: () => ({ fontScale, width: 402 }), StyleSheet: { create: s => s, hairlineWidth: 1 } },
     './PressFeedback': { PressFeedback: 'Button' }, '../lib/useReducedMotion': { useReducedMotion: () => reduced },
+    // `FormInput` ist seit dem 21.09.2026 das gemeinsame Feld (weiss, Haarlinie,
+    // Fokus-Rahmen). Als Attrappe traegt es denselben Knotentyp wie ein nacktes
+    // `TextInput` — so pruefen die bestehenden Zusicherungen weiter das
+    // Verhalten und nicht die Verpackung.
+    './FormInput': { FormInput: 'Input' },
+    '../components/FormInput': { FormInput: 'Input' },
+    '../../components/FormInput': { FormInput: 'Input' },
     '../theme/tokens': { ui: {}, radius: {}, space: { xs: 4, sm: 8, md: 12, lg: 20, xl: 32 } },
     'expo-image': { Image: 'Image' }, 'lucide-react-native': {},
     '../lib/useSchedule': { MAX_WEEKS: 4, formatSlot: value => value, formatUntil: value => value, scheduleErrorText: value => value },

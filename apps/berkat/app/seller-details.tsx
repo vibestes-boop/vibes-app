@@ -27,7 +27,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +40,7 @@ import {
   type SellerKind,
 } from '../lib/useBerkatSeller';
 import { radius, space, ui } from '../theme/tokens';
+import { FormInput } from '../components/FormInput';
 
 /**
  * Die drei Länder, die `berkat_sellers.country` per CHECK zulässt.
@@ -234,7 +234,7 @@ export default function SellerDetailsScreen() {
                     {f.label}
                     {f.required ? <Text style={s.req}> *</Text> : null}
                   </Text>
-                  <TextInput
+                  <FormInput
                     value={eff(f.key)}
                     onChangeText={(v) => set(f.key, v)}
                     placeholder={f.placeholder}
@@ -329,7 +329,6 @@ const s = StyleSheet.create({
   label: { fontSize: 12, color: ui.textMuted, marginTop: space.lg, marginBottom: space.xs },
   req: { color: ui.live },
   input: {
-    backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.md,

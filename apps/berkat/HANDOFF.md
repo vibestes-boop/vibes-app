@@ -16863,3 +16863,60 @@ Andere Bildschirme (Suche, Nachrichten, Profil bearbeiten) setzen `ui.sunken` we
 Feldfläche. Sie sind durch den gewärmten Ton stimmig, haben aber **keine Haarlinie und keinen
 Fokus-Rahmen**. Wer `FormInput` dort nachzieht, macht die App an einem Abend einheitlich; halb
 gemacht wäre es schlechter als gar nicht.
+
+---
+
+## 119. `FormInput` überall — zwanzig Felder, eine Kontur (21.09.2026)
+
+Zaur: *„mach die anderen seiten auch einheitlich"*.
+
+Abschnitt 118 hatte `FormInput` gebaut und im Einstell-Formular eingesetzt; alle anderen
+Bildschirme trugen weiterhin ihre eigenen Feldstile. Der offene Punkt von dort ist erledigt.
+
+### Umgestellt (20 Felder in 17 Dateien)
+
+`rewards` · `seller-details` · `shop` (Preisfilter) · `delete-account` · `login` · `tip` ·
+`(tabs)/sell` · `VouchPanel` · `OfferPanel` · `LineupPreview` · `SchedulePlanner` ·
+`PrepareSheet` · `SellerOrders` · `HighlightSheet` · `ReviewSheet` · `LeftoverShelf` ·
+`ProfileEditSheet` · `DisputeSheet`
+
+Vorgefunden wurden **drei** verschiedene Feldbilder: grau gefüllt (`ui.sunken`), sandfarben mit
+Haarlinie (`ui.bg` + `ui.line`) und weiß mit Rahmen (`ui.card` + `ui.lineStrong`). Keines hatte
+einen Fokus-Zustand. Jetzt tragen alle denselben Grundstil und denselben Rahmen beim Tippen.
+
+⚠️ **`marginTop` ist aus dem Grundstil geflogen.** Er stammte aus dem Einstell-Formular und war
+dort richtig. Von zwanzig Aufrufern geerbt wäre er neunzehnmal eine Vermutung über ein Layout, das
+das Bauteil nicht kennt. Abstand setzt, wer das Feld hinstellt.
+
+### ⚠️ Vier Sorten Feld werden NICHT umgestellt — und das ist die eigentliche Arbeit
+
+| Fläche | Dateien | Warum |
+|---|---|---|
+| **Bühne** (dunkel) | `MaxBidSheet`, `LiveChatPanel`, `ShowItemsSheet`, `live/[id]` | `stage.ink` statt `ui.card`. Ein weißes Feld auf der dunklen Bühne wäre ein Loch. |
+| **Suchleisten** | `search`, `(tabs)/categories`, `shop` (Suche) | Das Feld sitzt IN einer Pille, die Rahmen und Fläche schon trägt. Ein zweiter Kasten darin ist ein Kasten im Kasten. |
+| **Chat-Leiste** | `messages/[id]` | Ein graues Eingabefeld ist in einem Chat die Plattform-Sprache (iMessage, WhatsApp) — dort heißt Grau nicht „abgeschaltet", sondern „Nachricht". |
+| **Altersfeld** | `AgeGateSheet` | Rechnet seine Farben aus dem Kontext (`c.field`, `c.line`), weil es auf hellem UND dunklem Grund erscheint. |
+
+⚠️ **Beim maschinellen Tausch ist die Suchleiste in `shop.tsx` mit erwischt worden** — sie hätte
+einen weißen Kasten in die Pille gesetzt. Gefunden durch die Gegenprobe „welchen Stil benutzt jede
+getauschte Stelle wirklich", nicht durch `tsc`. Wer so etwas per Suchen-und-Ersetzen macht, muss
+danach jede Fundstelle einzeln ansehen; der Übersetzer sieht einen Kasten im Kasten nicht.
+
+⚠️ **Und `useRef<TextInput>` in `login.tsx` wurde zu `useRef<FormInput>`** — ein Typ, kein Bauteil.
+Das hat `tsc` gefangen (`TS2749: refers to a value, but is being used as a type`). Die
+Ref-Typen bleiben `TextInput`, weil `FormInput` genau das weiterreicht.
+
+### Testgerüst
+
+Vier Gerüste kannten die neue Abhängigkeit nicht. Die Attrappe trägt **denselben Knotentyp wie ein
+nacktes Feld**, damit jede bestehende Zusicherung weiter das Verhalten prüft und nicht die
+Verpackung — in drei Gerüsten heißt der Knoten `'Input'`, in `seller-preparation.cjs` `'TextInput'`.
+Wer das übersieht, bekommt „Cannot read properties of undefined" statt einer Aussage.
+
+**426 von 426.**
+
+### Geprüft
+
+`tsc` 0, **426 von 426**, iPhone-17-Simulator: Verkaufen-Reiter, „Termin ankündigen" und „Show
+vorbereiten" durchgesehen — Felder weiß mit Haarlinie, Kategorie-Zeile in derselben Kontur, ruhige
+Flächen (Cover-Feld) im gewärmten Ton.

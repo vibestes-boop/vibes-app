@@ -30,6 +30,7 @@ import { PressFeedback } from './PressFeedback';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import { ui, radius, space } from '../theme/tokens';
 import { BIO_MAX, NAME_MAX } from '../lib/useProfileEdit';
+import { FormInput } from './FormInput';
 
 type Props = {
   visible: boolean;
@@ -180,7 +181,7 @@ export function ProfileEditSheet({
 
             {/* ── Anzeigename ───────────────────────────────────────────── */}
             <Text key={`copy-6-${fontScale}`} style={s.label}>Anzeigename</Text>
-            <TextInput allowFontScaling={false}
+            <FormInput allowFontScaling={false}
               value={name}
               onChangeText={(text) => setName(text.slice(0, NAME_MAX))}
               placeholder="Mode und Vieles"
@@ -194,7 +195,7 @@ export function ProfileEditSheet({
 
             {/* ── Bio ───────────────────────────────────────────────────── */}
             <Text key={`copy-8-${fontScale}`} style={s.label}>Über dich</Text>
-            <TextInput allowFontScaling={false}
+            <FormInput allowFontScaling={false}
               value={bio}
               onChangeText={(text) => setBio(text.slice(0, BIO_MAX))}
               placeholder="Ich verkaufe Parfüm und Tücher, meist samstags ab 20 Uhr."
@@ -274,10 +275,7 @@ const s = StyleSheet.create({
   removeText: { fontSize: 12, fontWeight: '600', color: ui.live },
 
   input: {
-    backgroundColor: ui.bg,
     borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: ui.line,
     padding: space.md,
     fontSize: 15,
     color: ui.text,

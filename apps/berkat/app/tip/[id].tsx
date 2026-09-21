@@ -32,6 +32,7 @@ import { TIP_MAX_CENTS, TIP_MIN_CENTS, TIP_PRESETS, useSendTip } from '../../lib
 import { goBack } from '../../lib/nav';
 import { Avatar } from '../../components/Avatar';
 import { radius, space, ui } from '../../theme/tokens';
+import { FormInput } from '../../components/FormInput';
 
 export default function TipScreen() {
   const { id: recipientId, session: sessionId } = useLocalSearchParams<{
@@ -137,7 +138,7 @@ export default function TipScreen() {
             })}
           </View>
 
-          <TextInput
+          <FormInput
             value={custom}
             onChangeText={(t) => {
               setCustom(t);
@@ -155,7 +156,7 @@ export default function TipScreen() {
           ) : null}
 
           <Text style={[styles.label, { marginTop: space.lg }]}>Ein Wort dazu? (optional)</Text>
-          <TextInput
+          <FormInput
             value={message}
             onChangeText={setMessage}
             placeholder="Danke für die schöne Show!"
@@ -236,9 +237,6 @@ const styles = StyleSheet.create({
   input: {
     height: 50,
     borderRadius: radius.md,
-    backgroundColor: ui.card,
-    borderWidth: 1,
-    borderColor: ui.line,
     paddingHorizontal: space.md,
     fontSize: 16,
     color: ui.text,

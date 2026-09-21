@@ -21,6 +21,7 @@ import { PressFeedback } from './PressFeedback';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import { RatingStars } from './RatingStars';
 import { ui, radius, space } from '../theme/tokens';
+import { FormInput } from './FormInput';
 
 export const REVIEW_MAX = 280;
 
@@ -71,7 +72,7 @@ export function ReviewSheet({
               <RatingStars value={rating} onChange={setRating} size={34} />
             </View>
 
-            <TextInput allowFontScaling={false}
+            <FormInput allowFontScaling={false}
               value={comment}
               onChangeText={(text) => setComment(text.slice(0, REVIEW_MAX))}
               placeholder="Kam schnell an, alles wie beschrieben. (freiwillig)"
@@ -130,10 +131,7 @@ const s = StyleSheet.create({
 
   input: {
     minHeight: 92,
-    backgroundColor: ui.bg,
     borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: ui.line,
     padding: space.md,
     fontSize: 15,
     color: ui.text,

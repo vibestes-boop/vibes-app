@@ -454,7 +454,7 @@ export function StandingComposer({
           // genau dorthin, wo sie nicht hingehört: in Fließtext, unfilterbar.
           // Seit es das Feld oben gibt, nennt der Platzhalter sie nicht mehr.
           placeholder="Was sollte man wissen? Marke, Mängel, Material …"
-          style={{ minHeight: 90 }}
+          style={{ minHeight: 90, marginTop: space.md }}
           maxLength={2000}
           multiline
         />

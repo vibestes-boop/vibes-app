@@ -86,6 +86,13 @@ function sheet(name) {
  const deps={react:h.react,'react/jsx-runtime':{jsx,jsxs:jsx},'react-native':{...native,Modal:'Modal',TextInput:'Input',ScrollView:'Scroll',Platform:{OS:'ios'},useWindowDimensions:()=>({fontScale:font})},
   'react-native-safe-area-context':{useSafeAreaInsets:()=>({top:59,bottom:34})},'../theme/tokens':{...theme,ui:{}},
   './PressFeedback':{PressFeedback:'Button'},'./SheetHeader':{SheetHeader:'Header'},'./RatingStars':{RatingStars:'Rating'},
+    // `FormInput` ist seit dem 21.09.2026 das gemeinsame Feld (weiss, Haarlinie,
+    // Fokus-Rahmen). Als Attrappe traegt es denselben Knotentyp wie ein nacktes
+    // `TextInput` — so pruefen die bestehenden Zusicherungen weiter das
+    // Verhalten und nicht die Verpackung.
+  './FormInput': { FormInput: 'Input' },
+    '../components/FormInput': { FormInput: 'Input' },
+    '../../components/FormInput': { FormInput: 'Input' },
   '../lib/useReducedMotion':{useReducedMotion:()=>reduced},'../lib/useProfileEdit':{BIO_MAX:300,NAME_MAX:60},'../lib/useAuction':{formatEuro:c=>`${c/100} €`}};
  const lib=load(`components/${name}.tsx`,deps);
  return {setFont:v=>font=v,setReduced:v=>reduced=v,render:props=>h.render(lib[name],props),close:()=>h.close()};

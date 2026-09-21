@@ -56,6 +56,13 @@ function formFixture(kind) {
     onRetry() { retry++; }, onPlan() { calls++; return pending.promise; }, onPrepare() { calls++; return pending.promise; } };
   const component = load(`components/${kind}.tsx`, { react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': rn,
     '../lib/useSellerDraft': hooksModule, '../lib/useStudio': studio, '../lib/useReducedMotion': { useReducedMotion: () => false }, '../lib/keyboardKit': {},
+    // `FormInput` ist seit dem 21.09.2026 das gemeinsame Feld (weiss, Haarlinie,
+    // Fokus-Rahmen). Als Attrappe traegt es denselben Knotentyp wie ein nacktes
+    // `TextInput` — so pruefen die bestehenden Zusicherungen weiter das
+    // Verhalten und nicht die Verpackung.
+    './FormInput': { FormInput: 'TextInput' },
+    '../components/FormInput': { FormInput: 'TextInput' },
+    '../../components/FormInput': { FormInput: 'TextInput' },
     '../lib/useSchedule': { formatSlot: x => x, MAX_WEEKS: 4, scheduleErrorText: () => 'Nicht bestätigt' }, '../lib/usePrepared': { prepareErrorText: () => 'Nicht bestätigt' },
     '../lib/useListings': { tidySize: x => x || null }, '../lib/usePrebid': { usePrebidCounts: () => ({}) }, '../lib/useReminders': { useReminderCounts: () => ({}) },
     '../lib/uploadImage': { pickAndUpload: () => { uploads++; return upload.promise; } }, './PressFeedback': { PressFeedback: 'Button' }, './ActionButton': { ActionButton: 'Action' }, './FeedbackState': { FeedbackState: 'Feedback' }, '../theme/tokens': { ui: {}, radius: {}, space: {} },

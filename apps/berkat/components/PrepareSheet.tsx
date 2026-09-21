@@ -48,6 +48,7 @@ import { ActionButton } from './ActionButton';
 import { useSellerDraft } from '../lib/useSellerDraft';
 import { prepareErrorText } from '../lib/usePrepared';
 import { useReducedMotion } from '../lib/useReducedMotion';
+import { FormInput } from './FormInput';
 
 /** Gespiegelt aus `prepare_live_auction` — dort wirft es `too_many_prepared`. */
 const MAX_PREPARED = 50;
@@ -400,7 +401,7 @@ export function PrepareSheetForm({
                 ) : null}
               </PressFeedback>
 
-              <TextInput
+              <FormInput
                 editable={!saving}
                 allowFontScaling={false}
                 accessibilityLabel="Artikelname"
@@ -417,7 +418,7 @@ export function PrepareSheetForm({
             <View style={[s.priceRow, fontScale > 1.3 && s.priceRowLarge]}>
               <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
                 <Text key={`copy-13-${fontScale}`} style={s.fieldLabel}>Startpreis</Text>
-                <TextInput
+                <FormInput
                 editable={!saving}
                 allowFontScaling={false}
                   accessibilityLabel="Startpreis in Euro"
@@ -431,7 +432,7 @@ export function PrepareSheetForm({
               </View>
               <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
                 <Text key={`copy-14-${fontScale}`} style={s.fieldLabel}>Schritt</Text>
-                <TextInput
+                <FormInput
                 editable={!saving}
                 allowFontScaling={false}
                   accessibilityLabel="Gebotsschritt in Euro"
@@ -445,7 +446,7 @@ export function PrepareSheetForm({
               </View>
               <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
                 <Text key={`copy-15-${fontScale}`} style={s.fieldLabel}>Sofort</Text>
-                <TextInput
+                <FormInput
                 editable={!saving}
                 allowFontScaling={false}
                   accessibilityLabel="Sofortkaufpreis in Euro"
@@ -459,7 +460,7 @@ export function PrepareSheetForm({
               </View>
               <View style={[s.priceField, fontScale > 1.3 && s.priceFieldLarge]}>
                 <Text key={`copy-16-${fontScale}`} style={s.fieldLabel}>Größe</Text>
-                <TextInput
+                <FormInput
                 editable={!saving}
                 allowFontScaling={false}
                   accessibilityLabel="Größe"
@@ -630,7 +631,6 @@ const s = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.md,

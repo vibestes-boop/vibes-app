@@ -14,6 +14,7 @@ import { ChevronDown, ShieldCheck } from 'lucide-react-native';
 import { ui, radius, space } from '../theme/tokens';
 import { VOUCH_NOTE_MAX, type Vouch } from '../lib/useVouch';
 import { Avatar } from './Avatar';
+import { FormInput } from './FormInput';
 
 type Props = {
   vouches: Vouch[];
@@ -128,7 +129,7 @@ export function VouchPanel({
         </Pressable>
       ) : writing ? (
         <View style={s.writeBox}>
-          <TextInput
+          <FormInput
             value={note}
             onChangeText={setNote}
             placeholder="Woher kennst du ihn? (freiwillig)"
@@ -211,7 +212,6 @@ const s = StyleSheet.create({
 
   writeBox: { gap: space.sm },
   input: {
-    backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.md,

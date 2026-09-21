@@ -25,7 +25,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -44,6 +43,7 @@ import { useSession } from '../lib/session';
 import { euroToCents } from '../lib/useStudio';
 import { BerkatMark } from './BerkatMark';
 import { radius, ratio, space, ui } from '../theme/tokens';
+import { FormInput } from './FormInput';
 
 type Props = {
   items: PreparedAuction[];
@@ -311,7 +311,7 @@ function PrebidPanel({ item, when }: { item: PreparedAuction; when: string }) {
       </Text>
 
       <View style={s.prebidRow}>
-        <TextInput
+        <FormInput
           value={amount}
           onChangeText={setAmount}
           placeholder={`ab ${formatEuro(item.start_price_cents)}`}
@@ -461,7 +461,6 @@ const s = StyleSheet.create({
   prebidRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   prebidInput: {
     flex: 1,
-    backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.md,

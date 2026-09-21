@@ -26,6 +26,7 @@ import { formatEuro } from '../lib/useAuction';
 import { euroToCents } from '../lib/useStudio';
 import { shelfBridgeErrorText, useLeftovers, useShelfBridge, type Leftover } from '../lib/useShelfBridge';
 import { radius, space, ui } from '../theme/tokens';
+import { FormInput } from './FormInput';
 
 type Props = {
   userId: string | null | undefined;
@@ -118,7 +119,7 @@ export function LeftoverShelf({ userId, onNotice }: Props) {
 
             {asking ? (
               <View style={s.askRow}>
-                <TextInput
+                <FormInput
                   value={price}
                   onChangeText={setPrice}
                   placeholder="Preis in €"
@@ -187,9 +188,6 @@ const s = StyleSheet.create({
     flex: 1,
     height: 38,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: ui.lineStrong,
-    backgroundColor: ui.bg,
     paddingHorizontal: space.md,
     color: ui.text,
     fontSize: 14,

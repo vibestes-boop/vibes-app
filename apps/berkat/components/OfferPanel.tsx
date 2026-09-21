@@ -17,7 +17,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type TextInputProps,
 } from 'react-native';
@@ -27,6 +26,7 @@ import { formatEuro } from '../lib/useAuction';
 import { euroToCents } from '../lib/useStudio';
 import { isOpen, type Offer } from '../lib/useOffers';
 import { radius, space, ui } from '../theme/tokens';
+import { FormInput } from './FormInput';
 
 type Props = {
   offers: Offer[];
@@ -65,7 +65,7 @@ function PriceInput(props: TextInputProps) {
   const accessoryId = useId();
   return (
     <>
-      <TextInput
+      <FormInput
         {...props}
         inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
       />
@@ -339,7 +339,6 @@ const s = StyleSheet.create({
     flex: 1,
     minWidth: 120,
     minHeight: 48,
-    backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm + 2,

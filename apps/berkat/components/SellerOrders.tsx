@@ -27,6 +27,7 @@ import { formatCents, useShippingCheck } from '../lib/useShipping';
 import { useUsernames } from '../lib/useAuction';
 import { useEvidenceUri } from '../lib/uploadEvidence';
 import { useSession } from '../lib/session';
+import { FormInput } from './FormInput';
 import {
   disputeReasonLabel,
   disputeWhen,
@@ -233,7 +234,7 @@ function DisputeCard({
           Schlichtung — der Server lehnt es ohnehin ab (`not_authorized`). */}
       {isAdmin ? (
         <View style={styles.disputeResolve}>
-          <TextInput
+          <FormInput
             value={note}
             onChangeText={setNote}
             placeholder="Wie wurde es geklärt?"
@@ -394,7 +395,7 @@ function OpenOrder({
         })}
       </View>
 
-      <TextInput
+      <FormInput
         value={tracking}
         onChangeText={setTracking}
         placeholder="Sendungsnummer"
@@ -630,9 +631,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 38,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: ui.line,
-    backgroundColor: ui.bg,
     paddingHorizontal: space.md,
     fontSize: 13,
     color: ui.text,
@@ -726,7 +724,6 @@ const styles = StyleSheet.create({
   carrierTextOn: { color: ui.bg },
 
   input: {
-    backgroundColor: ui.sunken,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: 11,

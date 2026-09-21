@@ -28,6 +28,7 @@ import { PressFeedback } from './PressFeedback';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import { HIGHLIGHT_ITEMS_MAX, HIGHLIGHT_TITLE_MAX, type HighlightItem } from '../lib/useHighlights';
 import { radius, ratio, space, ui } from '../theme/tokens';
+import { FormInput } from './FormInput';
 
 const THUMB = 66;
 
@@ -99,7 +100,7 @@ export function HighlightSheet({
                 Steht zuerst, weil er die Frage beantwortet, die die Auswahl
                 erst sinnvoll macht: WOFÜR sammle ich hier Bilder. */}
             <Text key={`copy-0-${fontScale}`} style={s.label}>Name</Text>
-            <TextInput allowFontScaling={false}
+            <FormInput allowFontScaling={false}
               value={title}
               onChangeText={(text) => setTitle(text.slice(0, HIGHLIGHT_TITLE_MAX))}
               placeholder="z. B. Abayas"
@@ -254,10 +255,7 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, color: ui.textMuted, marginTop: space.lg, marginBottom: 6 },
   input: {
-    backgroundColor: ui.bg,
     borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: ui.line,
     padding: space.md,
     fontSize: 15,
     color: ui.text,

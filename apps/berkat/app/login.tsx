@@ -9,6 +9,7 @@ import { goBack } from '../lib/nav';
 import { BerkatMark } from '../components/BerkatMark';
 import { PressFeedback } from '../components/PressFeedback';
 import { ui, radius, space } from '../theme/tokens';
+import { FormInput } from '../components/FormInput';
 
 function readableAuthError(message: string): string {
   message = message.toLowerCase();
@@ -126,14 +127,14 @@ export default function LoginScreen() {
         <View style={s.form}>
           {registering ? <View style={s.field}>
             <Text key={`name:${fontScale}`} style={s.label}>Profilname</Text>
-            <TextInput value={username} onChangeText={setUsername} editable={!busy}
+            <FormInput value={username} onChangeText={setUsername} editable={!busy}
               accessibilityLabel="Profilname" placeholder="So heißt du bei Berkat" placeholderTextColor={ui.textMuted}
               autoCapitalize="none" autoCorrect={false} autoComplete="username-new" maxLength={24}
               allowFontScaling={false} style={[s.input, inputScale]} returnKeyType="next" onSubmitEditing={() => emailInput.current?.focus()} />
           </View> : null}
           <View style={s.field}>
             <Text key={`email:${fontScale}`} style={s.label}>E-Mail</Text>
-            <TextInput ref={emailInput} value={email} onChangeText={setEmail} editable={!busy}
+            <FormInput ref={emailInput} value={email} onChangeText={setEmail} editable={!busy}
               accessibilityLabel="E-Mail" placeholder="name@beispiel.de" placeholderTextColor={ui.textMuted}
               autoCapitalize="none" autoCorrect={false} autoComplete="email" keyboardType="email-address"
               allowFontScaling={false} style={[s.input, inputScale]} returnKeyType="next" onSubmitEditing={() => passwordInput.current?.focus()} />
@@ -141,7 +142,7 @@ export default function LoginScreen() {
           <View style={s.field}>
             <Text key={`password:${fontScale}`} style={s.label}>Passwort{registering ? ' · mindestens 6 Zeichen' : ''}</Text>
             <View style={s.passwordRow}>
-              <TextInput ref={passwordInput} value={password} onChangeText={setPassword} editable={!busy}
+              <FormInput ref={passwordInput} value={password} onChangeText={setPassword} editable={!busy}
                 accessibilityLabel="Passwort" placeholder="Dein Passwort" placeholderTextColor={ui.textMuted}
                 autoCapitalize="none" autoCorrect={false} autoComplete={registering ? 'new-password' : 'current-password'}
                 secureTextEntry={!showPassword} allowFontScaling={false} style={[s.input, s.passwordInput, inputScale]} onSubmitEditing={() => void submit()} returnKeyType="go" />
@@ -186,8 +187,7 @@ const s = StyleSheet.create({
   form: { gap: space.lg },
   field: { gap: space.sm },
   label: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: ui.text },
-  input: { minHeight: 52, borderRadius: radius.md, borderWidth: 1, borderColor: ui.lineStrong,
-    backgroundColor: ui.card, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: 16, color: ui.text },
+  input: { minHeight: 52, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: 16, color: ui.text },
   passwordRow: { flexDirection: 'row', alignItems: 'stretch', backgroundColor: ui.card, borderRadius: radius.md,
     borderWidth: 1, borderColor: ui.lineStrong },
   passwordInput: { flex: 1, minWidth: 0, borderWidth: 0, backgroundColor: 'transparent' },

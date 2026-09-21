@@ -15,7 +15,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -93,6 +92,7 @@ import { ActionButton } from '../../components/ActionButton';
 import { FeedbackState } from '../../components/FeedbackState';
 import { keyboardKit } from '../../lib/keyboardKit';
 import { useReducedMotion } from '../../lib/useReducedMotion';
+import { FormInput } from '../../components/FormInput';
 
 const DURATIONS = [20, 30, 60];
 const KeyboardBody = keyboardKit?.KeyboardAvoidingView ?? KeyboardAvoidingView;
@@ -663,7 +663,7 @@ function SellScreenContent() {
             <Text key={`show-intro-${fontScale}`} style={styles.cardBody}>
               Richte Titel, Cover und Kategorie ein. Danach prüfst du dein Kamerabild.
             </Text>
-            <TextInput
+            <FormInput
               accessibilityLabel="Titel der Show"
               editable={!creating}
               value={showTitle}
@@ -1143,7 +1143,7 @@ function SellScreenContent() {
                     </PressFeedback>
                   ) : null}
                 </PressFeedback>
-                <TextInput
+                <FormInput
                   value={title}
                   onChangeText={setTitle}
                   placeholder="Seidenschal, handbestickt"
@@ -1155,7 +1155,7 @@ function SellScreenContent() {
               <View style={styles.priceRow}>
                 <View style={styles.priceField}>
                   <Text style={styles.fieldLabel}>Startpreis</Text>
-                  <TextInput
+                  <FormInput
                     value={startPrice}
                     onChangeText={setStartPrice}
                     keyboardType="decimal-pad"
@@ -1166,7 +1166,7 @@ function SellScreenContent() {
                 </View>
                 <View style={styles.priceField}>
                   <Text style={styles.fieldLabel}>Schritt</Text>
-                  <TextInput
+                  <FormInput
                     value={increment}
                     onChangeText={setIncrement}
                     keyboardType="decimal-pad"
@@ -1177,7 +1177,7 @@ function SellScreenContent() {
                 </View>
                 <View style={styles.priceField}>
                   <Text style={styles.fieldLabel}>Sofort</Text>
-                  <TextInput
+                  <FormInput
                     value={buyNow}
                     onChangeText={setBuyNow}
                     keyboardType="decimal-pad"
@@ -1406,10 +1406,7 @@ const styles = StyleSheet.create({
   livePillText: { fontSize: 11, fontWeight: '700', color: ui.liveInk },
 
   input: {
-    backgroundColor: ui.bg,
     borderRadius: radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: ui.lineStrong,
     paddingHorizontal: space.md,
     paddingVertical: 11,
     fontSize: 15,

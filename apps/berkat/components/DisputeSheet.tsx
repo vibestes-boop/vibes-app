@@ -23,6 +23,7 @@ import { useReducedMotion } from '../lib/useReducedMotion';
 import { BUYER_DISPUTE_REASONS, type DisputeReason } from '../lib/useDispute';
 import { pickAndUploadEvidence, useEvidenceUri } from '../lib/uploadEvidence';
 import { radius, ratio, space, ui } from '../theme/tokens';
+import { FormInput } from './FormInput';
 
 type Props = {
   visible: boolean;
@@ -136,7 +137,7 @@ export function DisputeSheet({
           })}
 
           <Text key={`copy-4-${fontScale}`} style={s.label}>Was genau? (freiwillig)</Text>
-          <TextInput allowFontScaling={false}
+          <FormInput allowFontScaling={false}
             value={detail}
             onChangeText={setDetail}
             placeholder="Ein, zwei Sätze reichen."
@@ -253,10 +254,7 @@ const s = StyleSheet.create({
   input: {
     minHeight: 90,
     textAlignVertical: 'top',
-    backgroundColor: ui.card,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: ui.line,
     padding: space.md,
     fontSize: 15,
     color: ui.text,

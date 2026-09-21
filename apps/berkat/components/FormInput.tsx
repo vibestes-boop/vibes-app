@@ -65,8 +65,11 @@ export const FormInput = forwardRef<TextInput, TextInputProps>(function FormInpu
 });
 
 const s = StyleSheet.create({
+  /* ⚠️ KEIN `marginTop`. Der Grundstil wird ab dem 21.09.2026 von zwanzig
+     Aufrufern geteilt; ein Aussenabstand im Bauteil waere an neunzehn davon
+     eine Vermutung ueber ein Layout, das es nicht kennt. Abstand setzt, wer
+     das Feld hinstellt. */
   input: {
-    marginTop: space.md,
     backgroundColor: ui.card,
     borderWidth: 1,
     borderColor: ui.lineStrong,

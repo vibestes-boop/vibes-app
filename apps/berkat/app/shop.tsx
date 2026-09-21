@@ -47,6 +47,7 @@ import { ListingCard } from '../components/ListingCard';
 import { BerkatMark } from '../components/BerkatMark';
 import { radius, space, ui } from '../theme/tokens';
 import { useReducedMotion } from '../lib/useReducedMotion';
+import { FormInput } from '../components/FormInput';
 const COLS = 2;
 const priceSteps = [2500, 5000, 10000, 25000];
 const SORTS: { key: BrowseSort; label: string }[] = [
@@ -464,13 +465,13 @@ export default function ShopScreen() {
             />
             {categories.isError && !categories.data ? <Pressable onPress={() => void categories.refetch({ cancelRefetch: false })} style={styles.clearCta} accessibilityRole="button"><Text style={styles.clearCtaText}>Kategorien erneut laden</Text></Pressable> : null}
             <Text style={styles.groupLabel}>Größe</Text>
-            <TextInput value={size ?? ''} onChangeText={value => setSize(value || null)} maxLength={24}
+            <FormInput value={size ?? ''} onChangeText={value => setSize(value || null)} maxLength={24}
               placeholder="Zum Beispiel M, 38 oder One Size" accessibilityLabel="Nach Größe filtern"
               placeholderTextColor={ui.textMuted} autoCorrect={false} style={styles.filterInput} />
             <FilterGroup label="Zustand" options={CONDITIONS.map(condition => condition.slug)}
               value={cond} onChange={setCond} display={slug => conditionLabel(slug) ?? slug} />
             <Text style={styles.groupLabel}>Ort</Text>
-            <TextInput value={city ?? ''} onChangeText={value => setCity(value || null)} maxLength={80}
+            <FormInput value={city ?? ''} onChangeText={value => setCity(value || null)} maxLength={80}
               placeholder="Stadt eingeben" accessibilityLabel="Nach Ort filtern"
               placeholderTextColor={ui.textMuted} autoCorrect={false} style={styles.filterInput} />
             {priceSteps.length > 0 ? (
@@ -666,7 +667,7 @@ const styles = StyleSheet.create({
   optOn: { backgroundColor: ui.brand },
   optText: { fontSize: 13, fontWeight: '600', color: ui.text },
   optTextOn: { color: ui.bg },
-  filterInput: { minHeight: 48, borderRadius: radius.md, backgroundColor: ui.sunken, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: 15, color: ui.text },
+  filterInput: { minHeight: 48, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: 15, color: ui.text },
   sheetFoot: {
     flexDirection: 'row',
     flexWrap: 'wrap',

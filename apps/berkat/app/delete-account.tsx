@@ -21,7 +21,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -35,6 +34,7 @@ import {
   useDeleteAccount,
 } from '../lib/useDeleteAccount';
 import { radius, space, ui } from '../theme/tokens';
+import { FormInput } from '../components/FormInput';
 
 /** Groß geschrieben, damit es nicht versehentlich beim Tippen entsteht. */
 const CONFIRM_WORD = 'LÖSCHEN';
@@ -134,7 +134,7 @@ export default function DeleteAccountScreen() {
         <Text style={s.confirmLabel}>
           Tipp <Text style={s.confirmWord}>{CONFIRM_WORD}</Text>, um zu bestätigen.
         </Text>
-        <TextInput
+        <FormInput
           value={typed}
           onChangeText={setTyped}
           autoCapitalize="characters"
@@ -212,8 +212,6 @@ const s = StyleSheet.create({
   confirmLabel: { fontSize: 13, color: ui.textMuted, marginTop: space.sm },
   confirmWord: { fontWeight: '700', color: ui.text },
   input: {
-    borderWidth: 1,
-    borderColor: ui.line,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm,

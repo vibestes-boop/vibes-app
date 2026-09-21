@@ -22,7 +22,6 @@ import {
   Share,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +38,7 @@ import {
 } from '../lib/useRewards';
 import { BerkatMark } from '../components/BerkatMark';
 import { radius, space, ui } from '../theme/tokens';
+import { FormInput } from '../components/FormInput';
 
 export default function RewardsScreen() {
   const insets = useSafeAreaInsets();
@@ -256,7 +256,7 @@ export default function RewardsScreen() {
         ) : (
           <View style={styles.card}>
             <View style={styles.entryRow}>
-              <TextInput
+              <FormInput
                 value={entry}
                 onChangeText={(text) => setEntry(text.toUpperCase())}
                 placeholder="CODE"
@@ -415,7 +415,6 @@ const styles = StyleSheet.create({
     height: 46,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
-    backgroundColor: ui.sunken,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 3,

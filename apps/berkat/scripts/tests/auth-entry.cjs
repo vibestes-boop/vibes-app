@@ -28,6 +28,13 @@ function fixture(api = {}) {
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 40, bottom: 30 }) },
     'lucide-react-native': {}, '../components/BerkatMark': { BerkatMark: 'Mark' }, '../components/PressFeedback': { PressFeedback: 'Button' },
     '../theme/tokens': { ui: {}, radius: {}, space: {} }, '../lib/nav': { goBack: () => calls.push(['back']) },
+    // `FormInput` ist seit dem 21.09.2026 das gemeinsame Feld (weiss, Haarlinie,
+    // Fokus-Rahmen). Als Attrappe traegt es denselben Knotentyp wie ein nacktes
+    // `TextInput` — so pruefen die bestehenden Zusicherungen weiter das
+    // Verhalten und nicht die Verpackung.
+    './FormInput': { FormInput: 'Input' },
+    '../components/FormInput': { FormInput: 'Input' },
+    '../../components/FormInput': { FormInput: 'Input' },
     '../lib/supabase': { supabase: { auth: {
       signInWithPassword: args => { calls.push(['login', args]); return (api.login ?? fail)(args); },
       signUp: args => { calls.push(['register', args]); return (api.register ?? fail)(args); },
