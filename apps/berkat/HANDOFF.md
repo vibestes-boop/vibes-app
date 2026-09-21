@@ -17159,3 +17159,14 @@ nennt, den der Nutzer selbst nicht sieht.
 Von der Liste aus Abschnitt 121 bleiben: **Wortweise Suche** („nike schuhe"
 findet nur die genaue Folge), **gespeicherte Suchen merken die Filter nicht**,
 und die **ungenutzten `lower()`-Indizes**.
+
+### Ausgeliefert
+
+Commit `c0998748`, gepusht. OTA `production`, Runtime `1.0.0`, iOS und Android.
+
+- Update-Gruppe: `4a1d7c93-a808-43df-82b7-5aff97787267`
+- iOS-Update: `01a0c5df-1b16-774f-82ee-bef2945d83b6`
+- **Im Konto-Fuss erwartete Kennung: `01a0c5df`**
+
+`package.json` in diesem Commit unberuehrt — kein neues natives Modul, also
+fuer den TestFlight-Build ladbar.
