@@ -158,7 +158,6 @@ function SellScreenContent() {
    */
   const [pendingPrepare, setPendingPrepare] = useState<string | null>(null);
   const [showCategory, setShowCategory] = useState<string | null>(null);
-  const [showCategoryParent, setShowCategoryParent] = useState<string | null>(null);
   const [duration, setDuration] = useState(30);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -712,8 +711,6 @@ function SellScreenContent() {
               value={showCategory}
               hint="Mit einer Kategorie können Zuschauer deine Show leichter entdecken."
               onChange={value => { if (!createLock.current) setShowCategory(value); }}
-              openParent={showCategoryParent}
-              onOpenParent={setShowCategoryParent}
             />
 
             {showNotice ? <FeedbackState title="Show prüfen" body={showNotice} /> : null}

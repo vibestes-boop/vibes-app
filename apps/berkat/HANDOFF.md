@@ -16700,3 +16700,75 @@ Accessoires" klappt zu sechs Kindern auf, das sechste ist „Handyhüllen & Disp
 **Lebensmittel** (Datteln, Honig, Gewürze) wäre in dieser Gemeinschaft naheliegend und ist bei
 Kleinanzeigen sogar weitgehend verboten — steht aber in derselben A8-Zeile (LMIV, Kühlkette).
 Unangetastet.
+
+---
+
+## 117. Drei Kachelwände werden drei Zeilen (21.09.2026)
+
+Zaur: *„bei artikel einstellen sind alle kategorien aufgelistet, kann man die unter kategorie button
+tun so das wenn man es drauf klickt unten eine fenster öffnet zum auswahl aller kategorien und
+unterkategorien, genau das selbe auch mit farben und zustand somit machen wir die seite kürzer"*.
+
+### Was offen im Bild stand
+
+| | vorher | jetzt |
+|---|---|---|
+| Kategorie | 12 Eltern (4 Zeilen) + bis zu 11 Kinder (3 Zeilen) + Hinweis | eine Zeile |
+| Farbe | 13 Kacheln (3 Zeilen) | eine Zeile |
+| Zustand | 6 Kacheln (2 Zeilen) + Maßstab-Satz | eine Zeile + Maßstab |
+
+Rund **370 Punkte** — fast ein ganzer Bildschirm, für drei Entscheidungen, die man je Artikel
+einmal trifft.
+
+⚠️ **Eine Kachelwand ist nicht grundsätzlich falsch.** Sie ist richtig, wo die Auswahl das THEMA
+der Seite ist — die Kategorie-Leiste auf der Startseite bleibt deshalb, was sie ist. In einem
+Formular mit vierzehn Feldern ist sie Ballast: Man scrollt immer daran vorbei und braucht sie
+genau einmal.
+
+### Gebaut
+
+`components/ChoiceSheet.tsx` — **ein** Blatt für alle drei. Zustand, Farbe und Kategorie sind
+dieselbe Handlung („wähl eins aus einer Liste"); drei Abschriften wären der Fehler, für den es
+`ListingCard` gibt. Der einzige Unterschied ist die zweite Ebene, und die trägt `children`.
+
+Dazu `ChoiceField` im selben Modul: der Auslöser. ⚠️ Bewusst dieselbe graue Fläche wie „Titel" und
+„Preis in €", nicht die Kontur einer Navigationszeile — im Formular steht diese Wahl auf einer
+Stufe mit den getippten Feldern.
+
+`CategoryPicker` behält seinen Namen und seine Geschichte, ist aber jetzt Zeile + Blatt. ⚠️ Die
+Zeile nennt **Ober- UND Unterkategorie** („Islamica · Gebetsteppiche"): „Gebetsteppiche" allein
+sagt nicht, unter welchem Elternteil der Artikel liegt — und genau daran entscheidet sich, wo ihn
+jemand findet.
+
+⚠️ **Ein Elternteil schließt das Blatt nicht.** „Mode" ist eine gültige Angabe; wer es genauer
+weiß, verfeinert danach. Ginge das Blatt beim Tipp auf das Elternteil zu, käme man an die
+Unterkategorie nur über ein zweites Öffnen.
+
+⚠️ **Der Maßstab-Satz zum Zustand bleibt im Formular sichtbar**, auch nachdem die Wahl im Blatt
+getroffen wurde. Beim Privatverkauf wird der Verkäufer genau daran gemessen; er darf nicht im
+Blatt zurückbleiben. Im Blatt steht er zusätzlich an jeder Zeile — und dort ist er neu nützlich:
+Bisher musste man raten und las die Erklärung erst NACH der Wahl.
+
+### ⚠️ Der Test hat einen Fehler gefangen, den niemand sehen musste
+
+`seller-form-feedback.cjs` prüfte die alte Kachelwand. Die Umschreibung auf den neuen Vertrag
+brachte einen echten Fund: Der Effekt, der beim Öffnen die Gruppe des gewählten Kindes aufklappt,
+lief bei **jeder Wertänderung**. Ein Tipp auf „Mode" klappte die Kinder auf, der Effekt fand danach
+zu „mode" kein Elternteil (ein Elternteil ist kein Kind) und setzte sofort wieder zu — die
+Unterkategorien blitzten auf und verschwanden.
+
+Behoben mit `wasVisible` als Kante: Der Effekt läuft nur beim Übergang zu → auf.
+
+Aus einem Test wurden zwei: einer an `CategoryPicker` (nennt die Zeile Ober- und Unterkategorie,
+überlebt sie den Schriftwechsel) und einer an `ChoiceSheet` (Elternteil wählt und klappt auf ohne
+zu schließen, Kind wählt und schließt, Gruppe bleibt offen, erneutes Öffnen klappt auf, „Keine
+Angabe" wählt ab). **426 von 426.**
+
+⚠️ Der React-Stub im Test führt Effekte **während** des Renderns aus, React danach. Wo ein Effekt
+den Baum ändert, muss der Test zweimal rendern — sonst prüft er den Stand von vorher.
+
+### Geprüft
+
+`tsc` 0, **426 von 426**, iPhone-17-Simulator: Formular endet zwei Bildschirme früher, Kategorie-
+Blatt mit Aufklappen und „Islamica · Gebetsteppiche" in der Zeile, Zustands-Blatt mit allen sechs
+Maßstäben.

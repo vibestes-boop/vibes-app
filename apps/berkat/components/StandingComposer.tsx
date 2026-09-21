@@ -33,6 +33,7 @@ import { ui, radius, space } from '../theme/tokens';
 import { euroToCents } from '../lib/useStudio';
 import { pickAndUpload } from '../lib/uploadImage';
 import { CategoryPicker } from './CategoryPicker';
+import { ChoiceField, ChoiceSheet } from './ChoiceSheet';
 import { CONDITIONS, type SellerKind } from '../lib/useBerkatSeller';
 import { LISTING_COLORS, tidyAttribute, tidySize } from '../lib/useListings';
 import { SHIPPING_TIERS } from '../lib/useShippingTier';
@@ -151,12 +152,13 @@ export function StandingComposer({
     initial?.acceptsOffers ?? mode === 'create',
   );
   const [category, setCategory] = useState<string | null>(initial?.category ?? null);
-  const [openParent, setOpenParent] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>(initial?.imageUrls ?? []);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [condition, setCondition] = useState<string | null>(initial?.condition ?? null);
+  const [conditionOpen, setConditionOpen] = useState(false);
+  const [colorOpen, setColorOpen] = useState(false);
   const [size, setSize] = useState(initial?.size ?? '');
   const [brand, setBrand] = useState(initial?.brand ?? '');
   const [color, setColor] = useState<string | null>(initial?.color ?? null);
@@ -390,32 +392,23 @@ export function StandingComposer({
 
       {/* Ein Tipp, und rechtlich der Träger: Beim Privatverkauf ist der
           angegebene Zustand das, woran der Verkäufer sich messen lassen muss. */}
+      {/* ⚠️ ZEILE STATT KACHELWAND (21.09.2026, abends).
+          Sechs Kacheln in zwei Zeilen plus Maßstab-Satz standen offen im
+          Formular — für eine Entscheidung, die man je Artikel einmal trifft.
+          Zaur: „somit machen wir die seite kürzer". Die Begründung steht
+          ausführlich im Kopf von `ChoiceSheet`. */}
       <Text style={s.label}>Zustand</Text>
-      {/* ⚠️ UMBRECHEND, nicht waagerecht scrollend (21.09.2026).
-          Im Simulator lief „Gut" halb aus dem Bild und dahinter lag ein
-          fünfter Zustand, von dem nichts zu sehen war — ohne Pfeil, ohne
-          Schatten, ohne Bildlaufleiste. Eine Auswahl, deren Möglichkeiten man
-          nicht sieht, ist keine Auswahl. Fünf Pillen passen in zwei Zeilen. */}
-      <View style={s.chipRow}>
-        {CONDITIONS.map((c) => {
-          const on = condition === c.slug;
-          return (
-            <Pressable
-              key={c.slug}
-              onPress={() => setCondition(on ? null : c.slug)}
-              style={[s.chip, on && s.chipOn]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-            >
-              <Text style={[s.chipText, on && s.chipTextOn]}>{c.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <ChoiceField
+        value={CONDITIONS.find((c) => c.slug === condition)?.label ?? null}
+        placeholder="Zustand wählen"
+        accessibilityLabel="Zustand"
+        onPress={() => setConditionOpen(true)}
+      />
 
-      {/* Der Maßstab zur gewählten Kachel. Ohne ihn heißt „Sehr gut" für jeden
-          Verkäufer etwas anderes — und gemessen wird er beim Privatverkauf
-          genau daran. */}
+      {/* ⚠️ Der Maßstab BLEIBT sichtbar, auch nachdem die Wahl im Blatt
+          getroffen wurde. Ohne ihn heißt „Sehr gut" für jeden Verkäufer etwas
+          anderes — und beim Privatverkauf wird der Verkäufer genau daran
+          gemessen. Er darf deshalb nicht im Blatt zurückbleiben. */}
       {condition ? (
         <Text style={s.photoHint}>
           {CONDITIONS.find((c) => c.slug === condition)?.hint}
@@ -438,26 +431,17 @@ export function StandingComposer({
                 style={[s.input, s.fieldInput]} maxLength={MAX_BRAND_LEN} />
             </View>
           </View>
+          {/* ⚠️ Vorschläge, kein Zwang. Die Spalte `live_auctions.color` nimmt
+              jeden Text an — die Liste sorgt nur dafür, dass „Schwarz" nicht
+              in fünf Schreibweisen zerfällt und ein Filter später etwas
+              findet. „Keine Angabe" steht im Blatt ganz oben. */}
           <Text style={s.label}>Farbe</Text>
-          {/* ⚠️ Vorschläge, kein Zwang. Die Spalte nimmt jeden Text an — die
-              Kacheln sorgen nur dafür, dass „Schwarz" nicht in fünf
-              Schreibweisen zerfällt. Zweiter Tipp wählt ab, wie beim Zustand. */}
-          <View style={s.chipRow}>
-            {LISTING_COLORS.map((c) => {
-              const on = color === c;
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => setColor(on ? null : c)}
-                  style={[s.chip, on && s.chipOn]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                >
-                  <Text style={[s.chipText, on && s.chipTextOn]}>{c}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <ChoiceField
+            value={color}
+            placeholder="Farbe wählen"
+            accessibilityLabel="Farbe"
+            onPress={() => setColorOpen(true)}
+          />
         </>
       ) : (
         <Pressable onPress={() => setDetailsOpen(true)} style={s.descOpener}
@@ -495,12 +479,7 @@ export function StandingComposer({
           Auffindbarkeit entscheidet, freiwillig zu lassen, war die falsche
           Abwägung; Whatnot hat es aus demselben Grund als Pflichtfeld
           (zehnte Analyse). */}
-      <CategoryPicker
-        value={category}
-        onChange={setCategory}
-        openParent={openParent}
-        onOpenParent={setOpenParent}
-      />
+      <CategoryPicker value={category} onChange={setCategory} />
       </View>
 
       {/* ── Für welchen Abend? — Whatnots „Reserve for Live" ────────────────
@@ -705,6 +684,28 @@ export function StandingComposer({
           über 1 € · mindestens ein Foto · Kategorie." — in derselben grauen
           11-pt-Schrift wie die Foto-Tipps darüber. Der einzige Satz, der
           erklärt, warum der Knopf nicht geht, sah aus wie ein Hinweis. */}
+      {/* Die zwei Blätter. Sie liegen am Ende des Formulars, weil ein Modal
+          im Fluss nichts verschiebt — gemountet wird es ohnehin nur, wenn es
+          sichtbar ist. */}
+      <ChoiceSheet
+        visible={conditionOpen}
+        onClose={() => setConditionOpen(false)}
+        title="Zustand"
+        value={condition}
+        onChange={setCondition}
+        options={CONDITIONS.map((c) => ({ key: c.slug, label: c.label, hint: c.hint }))}
+        clearLabel="Keine Angabe"
+      />
+      <ChoiceSheet
+        visible={colorOpen}
+        onClose={() => setColorOpen(false)}
+        title="Farbe"
+        value={color}
+        onChange={setColor}
+        options={LISTING_COLORS.map((c) => ({ key: c, label: c }))}
+        clearLabel="Keine Angabe"
+      />
+
       {missingFields.length > 0 ? (
         <View style={s.missing}>
           <Text style={s.missingHead}>Das fehlt noch:</Text>
@@ -741,7 +742,6 @@ export function StandingComposer({
             setWomenOnly(false);
             setAcceptsOffers(true);
             setCategory(null);
-            setOpenParent(null);
             setImageUrls([]);
             setUploadError(null);
             setCondition(null);

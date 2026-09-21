@@ -26,6 +26,11 @@ function fixture(file) {
     useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial;
       return [slots[i], value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; }]; },
     useMemo(fn) { return fn(); }, useCallback(fn) { return fn; },
+    // ⚠️ SOFORT ausfuehren, nicht verschlucken. `ChoiceSheet` klappt darin die
+    // Gruppe des gewaehlten Kindes auf — ein Stub, der nichts tut, pruefte das
+    // Geruest statt das Verhalten (Uebergabe: „Ein Test, der an einem
+    // fehlenden Hook scheitert, prueft das Geruest").
+    useEffect(fn) { fn(); },
     useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; },
   };
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : ['2026-09-08T12:00:00'])); } static now() { return new Clock().getTime(); } }
@@ -40,6 +45,12 @@ function fixture(file) {
     './FeedbackState': { FeedbackState: 'Feedback' },
     '../lib/uploadImage': { pickAndUpload: () => new Promise(resolve => { finishUpload = resolve; }) },
     '../lib/useCategories': { useCategoryOptions: () => ({ groups: [{ slug: 'mode', name: 'Mode', children: [{ slug: 'kleider', name: 'Kleider' }] }] }) },
+    // Seit dem 21.09.2026 liegt die Auswahl im Blatt, nicht mehr als Kachelwand
+    // im Formular. `CategoryPicker` zeigt nur noch Zeile + Zusammenfassung; das
+    // Verhalten der Liste wird an `ChoiceSheet` selbst geprueft.
+    './SheetHeader': { SheetHeader: 'SheetHeader' },
+    './ChoiceSheet': { ChoiceField: 'ChoiceField', ChoiceSheet: 'ChoiceSheet' },
+    'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 59, bottom: 34 }) },
   };
   const hook = ts.transpileModule(fs.readFileSync(path.join(root, 'lib/useSellerDraft.ts'), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -103,14 +114,79 @@ test('pending cover upload blocks announcement until its result belongs to the d
   assert.equal(byLabel(tree, 'Termin eintragen').props.disabled, false);
   byLabel(tree, 'Termin eintragen').props.onPress(); assert.equal(p.calls.length, 1); assert.equal(p.calls[0].coverUrl, 'https://example.test/cover.jpg');
 });
-test('category refinement, font change and deselection keep their accessible selection', () => {
+// ── Kategorie: Zeile + Blatt (seit 21.09.2026) ──────────────────────────────
+// Vorher stand hier EIN Test ueber eine Kachelwand. Die Wand ist weg; das
+// Verhalten liegt jetzt in zwei Bauteilen und wird in zwei Tests geprueft.
+test('die Kategoriezeile nennt Ober- UND Unterkategorie und ueberlebt den Schriftwechsel', () => {
   const f = fixture('components/CategoryPicker.tsx');
-  const props = { value: null, openParent: null, onChange: value => { props.value = value; }, onOpenParent: value => { props.openParent = value; } };
-  let tree = f.render(props); byLabel(tree, 'Mode').props.onPress(); tree = f.render(props);
+  const props = { value: null, onChange: value => { props.value = value; } };
+
+  // Ohne Wahl: der Platzhalter, nicht ein erfundener Wert.
+  let field = find(f.render(props), 'ChoiceField')[0];
+  assert.ok(field, 'die Zeile fehlt');
+  assert.equal(field.props.value, null);
+  assert.equal(field.props.placeholder, 'Kategorie wählen');
+
+  // ⚠️ Ober- UND Unterkategorie. „Kleider" allein sagt nicht, ob der Artikel
+  // unter Mode oder unter Sammeln liegt — und genau daran entscheidet sich,
+  // wo ihn jemand findet.
+  props.value = 'kleider';
+  f.setFont(1.786);
+  assert.equal(find(f.render(props), 'ChoiceField')[0].props.value, 'Mode · Kleider');
+
+  // Die Oberkategorie allein ist eine gueltige Angabe.
+  props.value = 'mode';
+  assert.equal(find(f.render(props), 'ChoiceField')[0].props.value, 'Mode');
+});
+
+test('das Auswahlblatt verfeinert, klappt vorgewaehlte Gruppen auf und waehlt ab', () => {
+  const f = fixture('components/ChoiceSheet.tsx');
+  let closed = 0;
+  const props = {
+    visible: true, title: 'Kategorie', value: null, clearLabel: 'Keine Kategorie',
+    onClose: () => { closed += 1; },
+    onChange: value => { props.value = value; },
+    options: [{ key: 'mode', label: 'Mode', children: [{ key: 'kleider', label: 'Kleider' }] },
+              { key: 'schuhe', label: 'Schuhe' }],
+  };
+
+  // Ein Elternteil waehlt sich selbst UND klappt auf — es schliesst NICHT.
+  let tree = f.render(props);
+  byLabel(tree, 'Mode').props.onPress();
+  tree = f.render(props);
+  assert.equal(props.value, 'mode');
+  assert.equal(closed, 0, 'ein Elternteil darf das Blatt nicht schliessen');
   assert.equal(byLabel(tree, 'Mode').props.accessibilityState.expanded, true);
-  byLabel(tree, 'Kleider').props.onPress(); f.setFont(1.786); tree = f.render(props);
-  assert.equal(props.value, 'kleider'); assert.equal(byLabel(tree, 'Kleider').props.accessibilityState.selected, true);
-  byLabel(tree, 'Kleider').props.onPress(); tree = f.render(props); assert.equal(props.value, 'mode');
-  byLabel(tree, 'Mode').props.onPress(); tree = f.render(props);
-  assert.equal(props.value, null); assert.equal(props.openParent, null); assert.equal(byLabel(tree, 'Kleider'), undefined);
+  assert.ok(byLabel(tree, 'Mode, Kleider'), 'die Kinder fehlen');
+
+  // Ein Kind waehlt und schliesst.
+  byLabel(tree, 'Mode, Kleider').props.onPress();
+  assert.equal(props.value, 'kleider');
+  assert.equal(closed, 1);
+
+  // ⚠️ Die Gruppe bleibt offen, nachdem ein Kind gewaehlt wurde. Der Effekt
+  // darf NICHT bei jeder Wertaenderung neu zuklappen — genau das tat er im
+  // ersten Anlauf, und die Kinder blitzten beim Tipp auf „Mode" nur auf.
+  tree = f.render(props);
+  assert.ok(byLabel(tree, 'Mode, Kleider'), 'die Gruppe des gewaehlten Kindes bleibt zu');
+  assert.equal(byLabel(tree, 'Mode').props.accessibilityState.selected, true);
+
+  // ⚠️ Und beim erneuten OEFFNEN klappt sie von selbst auf.
+  // Zweimal rendern: Der React-Stub fuehrt Effekte waehrend des Renderns aus,
+  // React danach — der erste Durchlauf liefert also noch den Baum von vorher.
+  props.visible = false; f.render(props);
+  props.visible = true; f.render(props); tree = f.render(props);
+  assert.ok(byLabel(tree, 'Mode, Kleider'), 'beim Oeffnen bleibt die Gruppe des Kindes zu');
+
+  // Ein Blatt ohne Kinder waehlt sofort und schliesst.
+  byLabel(tree, 'Schuhe').props.onPress();
+  assert.equal(props.value, 'schuhe');
+  assert.equal(closed, 2);
+
+  // ⚠️ Abwaehlen braucht eine eigene Zeile. Bei Kacheln waehlte ein zweiter
+  // Tipp ab — in einer Liste erwartet das niemand.
+  tree = f.render(props);
+  byLabel(tree, 'Keine Kategorie').props.onPress();
+  assert.equal(props.value, null);
+  assert.equal(closed, 3);
 });
