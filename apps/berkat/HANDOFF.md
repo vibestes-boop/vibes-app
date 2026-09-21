@@ -16920,3 +16920,49 @@ Wer das übersieht, bekommt „Cannot read properties of undefined" statt einer 
 `tsc` 0, **426 von 426**, iPhone-17-Simulator: Verkaufen-Reiter, „Termin ankündigen" und „Show
 vorbereiten" durchgesehen — Felder weiß mit Haarlinie, Kategorie-Zeile in derselben Kontur, ruhige
 Flächen (Cover-Feld) im gewärmten Ton.
+
+---
+
+## 120. Der Sand war zu gelb — zweite Korrektur am selben Abend (21.09.2026)
+
+Zaur, zwanzig Minuten nach Abschnitt 118: *„die farbe gefällt mir nicht."* Auf die Rückfrage,
+welche der drei Änderungen gemeint sei: *„entscheide selber."*
+
+### Entschieden, indem ich hingesehen habe
+
+Vier Kandidaten als HTML nebeneinander gerendert (headless Chrome, dieselbe Maske viermal) statt
+aus Hex-Zahlen zu schließen:
+
+| | Grund | Urteil |
+|---|---|---|
+| A | `#FAF7F2` (die Fassung von 118) | **zu gelb.** Neben der weißen Karte liest es sich als Creme, fast als altes Papier. |
+| B | `#FBFAF7` | sauber — **aber zu hell.** Zwischen Grund und Karte lagen nur noch zwei Helligkeitsstufen, die Karten verschwanden. |
+| C | `#F7F7F6` | praktisch neutral. Liefert die „Basar"-Absicht gar nicht erst. |
+| D | `#F5F5F5` | das alte Grau. Fällt aus, weil Zaur genau das zwanzig Minuten vorher abgelehnt hatte. |
+| **E** | **`#F7F5F2`** | **gewählt.** |
+
+⚠️ **Die entscheidende Einsicht kam erst durch B: Helligkeit und Ton sind zwei Regler, nicht
+einer.** Der erste Versuch, das Gelb zu dämpfen, machte den Grund heller — und nahm damit den
+weißen Karten ihre Kante. `#F7F5F2` hält deshalb den **Grün-Kanal auf 245**, also exakt die
+Helligkeit des alten reinen Grau; geändert hat sich nur der Ton (R +2, B −3). Karte und Grund
+stehen wieder so weit auseinander wie vor allem hier.
+
+`sunken` entsprechend: `#E7E4DF` → `#E9E7E3`, Grün-Kanal unverändert auf 231.
+
+### Was daraus folgt
+
+⚠️ **Nicht die Wärme war das Problem, sondern ihre Dosis.** Der Wert ist seit Januar dreimal vom
+warmen Sand weggewandert (blau, aubergine, neutral) — und jedes Mal hat jemand das Gelb als
+Fehler gelesen und die ganze Wärme entfernt. Abschnitt 118 hat denselben Fehler in die andere
+Richtung gemacht: den Originalwert zurückgeholt, ohne zu prüfen, ob er je gut war.
+
+> **Ein Farbwert, den vier Anläufe verlassen haben, ist kein vergessener Wert — er ist ein
+> verdächtiger.**
+
+⚠️ **Und: Farbe entscheidet man nicht im Kopf.** Vier Panels zu rendern kostete eine Minute und hat
+die Frage in einem Blick beantwortet, statt in drei Runden „probier mal".
+
+### Geprüft
+
+`tsc` 0, **426 von 426**, iPhone-17-Simulator: Startseite mit warmem, aber nicht gelbem Grund;
+weiße Suchleiste und Karten stehen klar davor.

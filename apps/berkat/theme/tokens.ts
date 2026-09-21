@@ -95,7 +95,8 @@ export const ui = {
    *     #F4F4F6  kühles Blaugrau
    *     #F7F4F8  Aubergine-Stich  ← hier hat Zaur im August reklamiert
    *     #F5F5F5  reines Grau      ← die Korrektur, die zu weit ging
-   *     #FAF7F2  wieder Sand
+   *     #FAF7F2  wieder Sand      ← und der war zu gelb
+   *     #F7F5F2  Sand, gedämpft
    *
    * Zaur am 21.09.: „ich kann mich an das komplett graue nicht gewöhnen."
    * `WHATNOT-ANALYSE.md`, Abschnitt 6, gibt ihm recht — dort steht Sand
@@ -110,13 +111,27 @@ export const ui = {
    * sie über das Ziel hinaus und nahm die einzige Eigenschaft mit, die Berkat
    * optisch von einer beliebigen grauen App unterscheidet.
    *
-   * Der Ton bleibt winzig: Buntheit ~1,8, warm statt neutral. Es ist der
-   * Unterschied zwischen Papier und Beton, nicht zwischen bunt und grau.
+   * Der Ton bleibt winzig: warm statt neutral. Es ist der Unterschied zwischen
+   * Papier und Beton, nicht zwischen bunt und grau.
    * Whatnot ist übrigens GRAUER als Berkat (Weiß + `#F3F3F3`, 57×) — Farbe
    * kommt dort aus der Ware, nicht aus der Oberfläche. Genau deshalb darf der
    * eine warme Ton bleiben und alles andere neutral.
+   *
+   * ⚠️ ZWEITE KORREKTUR AM SELBEN ABEND: `#FAF7F2` war ZU GELB.
+   * Zaur: „die farbe gefällt mir nicht." Vier Kandidaten nebeneinander
+   * gerendert und angesehen — der ursprüngliche Sand las sich neben der weißen
+   * Karte als Creme, fast als altes Papier. Das ist vermutlich auch der Grund,
+   * aus dem der Wert dreimal weggewandert ist: Nicht die Wärme war das
+   * Problem, sondern ihre Dosis.
+   *
+   * ⚠️ UND DIE HELLIGKEIT ENTSCHEIDET MIT. Ein hellerer Grund (`#FBFAF7`) sah
+   * sauber aus, ließ aber die weißen Karten verschwinden — zwischen Grund und
+   * Karte lagen nur noch zwei Helligkeitsstufen. `#F7F5F2` hält deshalb den
+   * Grün-Kanal auf 245, also genau die Helligkeit des alten Grau; geändert hat
+   * sich nur der Ton (R +2, B −3). Karte und Grund stehen wieder so weit
+   * auseinander wie vorher.
    */
-  bg: '#FAF7F2',
+  bg: '#F7F5F2',
   /** Karten und Sheets liegen als Weiß auf dem Grund. */
   card: '#FFFFFF',
   /**
@@ -127,13 +142,16 @@ export const ui = {
    * Fläche plötzlich kalt und schmutzig — im Simulator an der Kategorie-Leiste
    * gesehen, bevor irgendjemand es benennen musste.
    *
-   * ⚠️ Die HELLIGKEIT ist unverändert (231 → 231 im Rot-Kanal, L bleibt ~91 %).
-   * Geändert hat sich nur der Ton, in genau demselben Verhältnis wie bei `bg`
-   * (−3 Grün, −8 Blau). Damit hält jeder Kontrastwert, der vorher hielt — das
-   * ist die Bedingung, unter der man eine Farbe in 49 Dateien gleichzeitig
-   * anfassen darf.
+   * ⚠️ Die HELLIGKEIT ist unverändert: Der Grün-Kanal bleibt auf 231, genau
+   * dort, wo das alte reine Grau lag. Geändert hat sich nur der Ton, im selben
+   * Verhältnis wie bei `bg` (R +2, B −4). Damit hält jeder Kontrastwert, der
+   * vorher hielt — das ist die Bedingung, unter der man eine Farbe in 49
+   * Dateien gleichzeitig anfassen darf.
+   *
+   * ⚠️ Am selben Abend nachgezogen: `#E7E4DF` gehörte zur zu gelben Fassung
+   * und las sich auf den Versand-Kacheln schmutzig.
    */
-  sunken: '#E7E4DF',
+  sunken: '#E9E7E3',
   /**
    * ⚠️ `bg` mit Alpha 0 — für Verläufe, die im Grund verschwinden sollen.
    *
@@ -143,7 +161,7 @@ export const ui = {
    * nur unsichtbar. Vor dem 23.08.2026 stand dieser Wert hartcodiert im
    * Verkäufer-Profil — und wäre beim Farbwechsel still falsch geworden.
    */
-  bgClear: 'rgba(250,247,242,0)',
+  bgClear: 'rgba(247,245,242,0)',
   /**
    * Verdunkelung hinter Blättern und Menüs. Aus dem Anker abgeleitet, nicht
    * Schwarz — sonst wirkt der Hintergrund tot statt zurückgetreten.
