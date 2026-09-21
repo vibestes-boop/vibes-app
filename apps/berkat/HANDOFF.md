@@ -16472,9 +16472,24 @@ wäre der Fehler, für den es `ListingCard` gibt — die vier Ziele und ihre Fal
 `sms:`-Schema je Plattform, Reihenfolge Schließen-dann-Öffnen) stehen weiterhin **einmal** da.
 
 ⚠️ `listing.html` hat jetzt `og:image`, `og:url`, `og:site_name`, `og:locale` und `twitter:card`.
-**Nach dem Ausrollen mit echten Bytes nachmessen** — am 14.09. kam `og-live.png` direkt nach dem
+**Nach dem Ausrollen mit echten Bytes nachgemessen** — am 14.09. kam `og-live.png` direkt nach dem
 Deploy als `text/html` mit Status 200 zurück, weil Cloudflare Pages Unbekanntes mit der Startseite
-beantwortet.
+beantwortet. Diesmal gleich geprüft und sauber:
+
+```
+content-type: image/png
+00000000: 8950 4e47 0d0a 1a0a    .PNG....
+```
+
+Alle elf Meta-Angaben werden ausgeliefert. Ausgerollt am 21.09.2026 (`777da6aa`).
+
+⚠️ **Der Cloudflare-Zugang läuft ab und der Browser-Anmeldeweg ist fehleranfällig.** Der erste
+Versuch scheiterte mit `OAuth error: request_forbidden — No CSRF value available in the session
+cookie`. Die Ursache liegt nicht bei wrangler: Die Freigabeseite verlangt eine **bestehende
+Dashboard-Sitzung im Standardbrowser**. Wer das nächste Mal darüber stolpert: erst
+`npx wrangler logout`, dann im Browser bei `dash.cloudflare.com` anmelden, dann `npx wrangler
+login`. Der Weg ohne Browser ist ein API-Token mit `Cloudflare Pages : Edit` in
+`CLOUDFLARE_API_TOKEN`.
 
 ### 3. „seit Aug. 2026" beim Verkäufer
 
