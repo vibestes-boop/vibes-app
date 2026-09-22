@@ -8796,7 +8796,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | ~~B1~~ | ~~**Der Kaufknopf am Regal-Artikel**~~ — ✅ **27.08.2026 zweimal komplett durchlaufen** (Zaur), nachdem die Kassen-Freigabe eingespielt war: goldener „Kaufen · X €" → Sammelkorb → Stripe → **„Bezahlt · wird gepackt"** bei 29 € und 85 €. Damit ist der letzte nie gegangene Geldweg gegangen. ⚠️ Dabei kam Abschnitt **98** heraus (zweimal Versand beim selben Verkäufer). Offen bleibt nur noch die Verkäufer-Seite: packen, Sendungsnummer, „versendet" | 33, 54, 98 |
 | B16 | 🔴 **Die Regressionsprobe nach dem Connect-Deploy** (99) — die wichtigste der Liste, weil sie einen Weg schützt, der schon läuft: Nach `supabase functions deploy create-checkout-session` **sofort** einen Regal-Artikel kaufen und bezahlen. Solange kein Verkäufer ein Stripe-Konto verbunden hat, muss alles exakt wie am 27.08. laufen — Kasse öffnet, `paid`, „wird gepackt". Weicht irgendetwas ab, **zurückrollen statt weitersuchen** | 99 |
 | ~~B17~~ | ~~**Der Verbinden-Weg von vorne**~~ — ✅ **09.09.2026 am echten iPhone durchgespielt** (Zaur, Build 9): Konto → „Geld empfangen" → Stripes Formular → Rückkehr-Seite `stripe-fertig.html` im In-App-Blatt mit „Fertig" → zurück in der App steht **„bereit"** in Grün. ⚠️ **Bemerkenswert: Der Connect-Webhook war dabei noch NICHT eingerichtet.** Der Zustand kam über die Aktion `refresh` in `stripe-connect-onboard` — das Sicherheitsnetz für genau den Moment nach der Rückkehr hat gegriffen. Von aussen gemessen (öffentliche REST-Abfrage auf `berkat_sellers`): **`zaur · business · true`** — die Freigabe kommt jetzt von Stripe. `brandwerkx1` (Simulator, Onboarding bei „unvollständig" abgebrochen) hat sie **nicht**. ⚠️ Im **Sandbox**-Dashboard stehen deshalb **zwei** verbundene Konten, eins je Verkäufer, der es angestossen hat — das ist richtig, nicht doppelt | 99 |
-| B18 | **Die Direktzahlung selbst** — der eigentliche Zweck: Mit einem **zweiten** Konto bei dem verbundenen Verkäufer kaufen und bezahlen. Das Geld muss im Dashboard **auf dessen Konto** auftauchen, nicht auf dem der Plattform. ⚠️ Und die Bestellung muss trotzdem auf `paid` springen — das ist die Probe für den Connect-Webhook | 99 |
+| B18 | **Die Direktzahlung selbst** — der eigentliche Zweck: Mit einem **zweiten** Konto bei dem verbundenen Verkäufer kaufen und bezahlen. Das Geld muss im Dashboard **auf dessen Konto** auftauchen, nicht auf dem der Plattform. ⚠️ Und die Bestellung muss trotzdem auf `paid` springen — das ist die Probe für den Connect-Webhook | 99 | ⚠️ **22.09.2026: NICHT im Simulator prüfbar.** Stripes Bezahlseite (`checkout.stripe.com`) bleibt im iOS-Simulator **weiss** — dreimal frisch geöffnet, jedes Mal leer, und das In-App-Browserfenster reagiert dort auf gar nichts mehr (auch „Teilen" öffnet sich nicht, der Link ist also nicht herauszuholen). Der Weg DAVOR läuft vollständig: Kaufen → Sammelpaket → „Bezahlen fortsetzen" → Stripe-Sitzung entsteht. Nur der letzte Schritt braucht ein **echtes Gerät**.
 | B15 | **Die Altersabfrage von vorne** (war A33): Mit einem **frischen Konto** kaufen oder bieten → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal, geht durch. App neu starten: Das Blatt darf **nicht** wiederkommen. ⚠️ Zwei Proben gehören dazu: **der 31. Februar** (muss „Diesen Tag gibt es in dem Monat nicht" sagen) und ein Datum vor 17 Jahren (muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder). Die alten A34/A35 gehen darin auf | 90, 97 |
 | B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
 | B3 | **Bewertungen befüllen**: kaufen → versenden → „Ist angekommen" → Sterne → **Text**. Der Bewertungen-Reiter war noch nie mit Inhalt zu sehen | 18 |
@@ -17479,3 +17479,51 @@ Commit `43e2b5c4`, gepusht. OTA `production`, Runtime `1.0.0`.
 Entwicklungs-Build gegen Metro; dort steht „Berkat 1.0.0 (16) · Entwicklung"
 und **nie** eine OTA-Kennung. Wer dort nachsieht und nichts findet, hat nicht
 den Beweis, dass das Update fehlt.
+
+## 126. Der Geldweg — bis zwei Schritte vor dem Ziel (22.09.2026)
+
+**Auslöser.** Zaur hat bestätigt, dass sein iPhone als **zaur** angemeldet ist
+und dort „Geld empfangen: **bereit**" steht. Damit stand zum ersten Mal alles
+für **B18** bereit: ein Verkäufer mit freigegebenem Stripe-Konto (`zaur`) und
+ein zweiter Mensch als Käufer (`brandwerkx1` im Simulator).
+
+⚠️ **Der Grund, warum es so lange gehangen hat, war kein Fehler:** Die
+Konto-Seite im Simulator zeigte rot „unvollständig", obwohl Zaur sagte, er habe
+das längst erledigt. Beides stimmte — **es sind zwei verschiedene Konten.**
+Erst als ich die App direkt bei Stripe nachfragen liess (Blatt öffnen,
+schliessen, `action: 'refresh'`) und die Antwort dieselbe blieb, war klar: Der
+Zustand gehört zu `brandwerkx1`, nicht zu `zaur`. Vorher hatte ich nach einer
+Webhook-Ursache gesucht.
+
+### Was läuft — und das ist mehr als erwartet
+
+1. Bei zaurs Artikel steht **„Kaufen · 5 €"**. Der Trigger aus
+   `20260827100000` hat `checkout_enabled` also wirklich aus Stripes
+   `charges_enabled` gezogen.
+2. Kaufen legt den Artikel ins **Sammelpaket** („zaur · 1 Artikel · 1 Paket ·
+   noch 23 h").
+3. „Bezahlen" schaltet es auf **„Zum Bezahlen vorgemerkt"** und erzeugt eine
+   Stripe-Sitzung; die Seite `checkout.stripe.com` wird geladen.
+
+⚠️ **Ein „Network request failed" beim ersten Tipp war NICHT folgenlos.** Der
+Client verlor die Antwort, der Server hatte die Zeile aber schon geschrieben.
+Ein zweiter Tipp hat trotzdem **kein Duplikat** erzeugt — „1 Artikel, 1 Paket".
+Gut, aber geprüft und nicht angenommen.
+
+### ⚠️ Wo es stehenbleibt: der Simulator kann Stripe nicht
+
+`checkout.stripe.com` bleibt im iOS-Simulator **weiss**. Dreimal frisch
+geöffnet, dreimal leer. Und das In-App-Browserfenster reagiert dort auf gar
+nichts mehr — auch „Teilen" öffnet sich nicht, der Link ist also nicht einmal
+herauszukopieren.
+
+**Damit ist B18 im Simulator grundsätzlich nicht abschliessbar**, egal wie gut
+alles davor läuft. Das gehört in die Prüfliste, damit es niemand ein zweites
+Mal versucht: Der letzte Schritt braucht ein **echtes Gerät**.
+
+Der praktikable Weg ist, das iPhone kurz auf `brandwerkx1` umzumelden — der
+Verkäufer muss dafür nicht online sein, sein Artikel liegt ja schon im Paket.
+
+### Offen
+
+Die Zahlung selbst. Alles davor ist am Gerät gesehen.
