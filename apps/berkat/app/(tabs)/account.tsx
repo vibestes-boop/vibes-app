@@ -42,6 +42,7 @@ import {
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { ui, radius, space } from '../../theme/tokens';
+import { useAccountEmail } from '../../lib/useAccountEmail';
 import { NavigationRow } from '../../components/NavigationRow';
 import { PressFeedback } from '../../components/PressFeedback';
 
@@ -60,6 +61,7 @@ export default function AccountScreen() {
   // Geld empfangen (Connect Standard, Übergabe 96). Der Zustand kommt vom
   // Server; hier wird nur angezeigt und angestossen.
   const { data: stripeState = 'none' } = useStripeConnectState(myUserId);
+  const { data: accountEmail } = useAccountEmail(myUserId);
   const { start: startStripeConnect, isStarting: stripeStarting } =
     useStartStripeConnect(myUserId);
   const sellerAway = onVacation(sellerRow?.vacation_until);
@@ -178,6 +180,20 @@ export default function AccountScreen() {
           <Text numberOfLines={2} style={styles.name}>
             {profile?.username ?? 'Dein Konto'}
           </Text>
+          {/* ⚠️ DIE E-MAIL STEHT HIER, weil der Benutzername keine Kontokennung
+              ist — er ist ein Anzeigename. Am 22.09.2026 hat genau das eine
+              Stunde gekostet: Auf dem iPhone lief Berkat als ein Konto, im
+              Simulator als ein anderes, beide sahen gleich aus, und eine rote
+              Warnung wurde dem falschen zugeordnet. Danach war das zweite Konto
+              nicht wiederzufinden, weil die Nutzerverwaltung nach E-Mail sucht
+              und die App sie nirgends zeigte.
+
+              `selectable`, damit man sie abschreiben kann, ohne sie abzutippen. */}
+          {accountEmail ? (
+            <Text selectable numberOfLines={1} style={styles.accountEmail}>
+              {accountEmail}
+            </Text>
+          ) : null}
           <Text style={styles.profileHint}>Mein Profil ansehen</Text>
           {profile?.women_only_verified ? (
             <View style={styles.wozBadge}>
@@ -439,6 +455,7 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   name: { fontSize: 22, lineHeight: 28, fontWeight: '700', color: ui.text },
+  accountEmail: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: 2 },
   profileHint: { fontSize: 13, lineHeight: 19, color: ui.textMuted, marginTop: 4 },
   wozBadge: {
     flexDirection: 'row',

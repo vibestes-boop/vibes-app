@@ -17527,3 +17527,47 @@ Verkäufer muss dafür nicht online sein, sein Artikel liegt ja schon im Paket.
 ### Offen
 
 Die Zahlung selbst. Alles davor ist am Gerät gesehen.
+
+## 127. Die App sagt jetzt, WER angemeldet ist (22.09.2026)
+
+**Auslöser.** Zaur, nach einer Stunde vergeblicher Fehlersuche:
+
+> *„eigentlich sollte es auf handy sichtbar sein welche infos man hat drin,
+> welche email man benutzt hat und so weiter, in berkat ist das nicht der
+> Fall — und unser einstellungs button gibt es garnicht, alles ist überall
+> verteilt."*
+
+Er hat recht, und es war an diesem Abend **nicht theoretisch, sondern der
+Grund für alles**:
+
+1. Die Konto-Seite zeigte rot „Geld empfangen unvollständig". Ich habe nach
+   einer Webhook-Ursache gesucht — es war ein **anderes Konto**: iPhone =
+   `zaur`, Simulator = `brandwerkx1`. Beide Zustände richtig, beide Seiten
+   **sahen identisch aus**.
+2. Danach brauchten wir das Passwort des zweiten Kontos. Nicht auffindbar —
+   weil die App seine E-Mail nie zeigt, und die Nutzerverwaltung sucht nach
+   E-Mail, nicht nach Benutzernamen.
+
+⚠️ **Der Benutzername ist keine Kontokennung.** Er ist ein Anzeigename, den man
+sich selbst gibt. Die E-Mail ist die einzige Angabe, mit der man ein Konto
+wiederfindet, ein Passwort zurücksetzt oder zwei Geräte auseinanderhält. Eine
+App mit E-Mail-Anmeldung, die sie nirgends anzeigt, lässt den Nutzer über seine
+eigene Identität raten.
+
+### Gebaut
+
+`lib/useAccountEmail.ts` liest sie aus der **Sitzung** (nicht aus `profiles` —
+sie gehört zu `auth.users`, und dort kommt der Client ohnehin nur an seine
+eigene). Sie steht unter dem Benutzernamen auf der Konto-Seite, `selectable`,
+damit man sie kopieren statt abtippen kann.
+
+Sofort belegt: Im Simulator stand darunter `brandwerkx@gmail.com` — die
+Antwort auf die Frage, an der wir eine Stunde hingen.
+
+### Offen, und er hat auch damit recht
+
+**Es gibt keinen Einstellungs-Bildschirm.** Benachrichtigungen, Versand,
+Anbieterangaben, Interessen und Geld empfangen liegen verteilt auf der
+Konto-Seite und anderswo. Die Konto-Seite ist kein Ersatz dafür: Sie mischt
+Navigation (Nachrichten, Käufe) mit Einstellungen. Das ist der nächste
+sinnvolle Umbau — aber ein eigener, kein Anhängsel an diesen hier.
