@@ -8796,7 +8796,7 @@ Das Billigste, und der Großteil davon ist in einer halben Stunde erledigt.
 | ~~B1~~ | ~~**Der Kaufknopf am Regal-Artikel**~~ — ✅ **27.08.2026 zweimal komplett durchlaufen** (Zaur), nachdem die Kassen-Freigabe eingespielt war: goldener „Kaufen · X €" → Sammelkorb → Stripe → **„Bezahlt · wird gepackt"** bei 29 € und 85 €. Damit ist der letzte nie gegangene Geldweg gegangen. ⚠️ Dabei kam Abschnitt **98** heraus (zweimal Versand beim selben Verkäufer). Offen bleibt nur noch die Verkäufer-Seite: packen, Sendungsnummer, „versendet" | 33, 54, 98 |
 | B16 | 🔴 **Die Regressionsprobe nach dem Connect-Deploy** (99) — die wichtigste der Liste, weil sie einen Weg schützt, der schon läuft: Nach `supabase functions deploy create-checkout-session` **sofort** einen Regal-Artikel kaufen und bezahlen. Solange kein Verkäufer ein Stripe-Konto verbunden hat, muss alles exakt wie am 27.08. laufen — Kasse öffnet, `paid`, „wird gepackt". Weicht irgendetwas ab, **zurückrollen statt weitersuchen** | 99 |
 | ~~B17~~ | ~~**Der Verbinden-Weg von vorne**~~ — ✅ **09.09.2026 am echten iPhone durchgespielt** (Zaur, Build 9): Konto → „Geld empfangen" → Stripes Formular → Rückkehr-Seite `stripe-fertig.html` im In-App-Blatt mit „Fertig" → zurück in der App steht **„bereit"** in Grün. ⚠️ **Bemerkenswert: Der Connect-Webhook war dabei noch NICHT eingerichtet.** Der Zustand kam über die Aktion `refresh` in `stripe-connect-onboard` — das Sicherheitsnetz für genau den Moment nach der Rückkehr hat gegriffen. Von aussen gemessen (öffentliche REST-Abfrage auf `berkat_sellers`): **`zaur · business · true`** — die Freigabe kommt jetzt von Stripe. `brandwerkx1` (Simulator, Onboarding bei „unvollständig" abgebrochen) hat sie **nicht**. ⚠️ Im **Sandbox**-Dashboard stehen deshalb **zwei** verbundene Konten, eins je Verkäufer, der es angestossen hat — das ist richtig, nicht doppelt | 99 |
-| B18 | **Die Direktzahlung selbst** — der eigentliche Zweck: Mit einem **zweiten** Konto bei dem verbundenen Verkäufer kaufen und bezahlen. Das Geld muss im Dashboard **auf dessen Konto** auftauchen, nicht auf dem der Plattform. ⚠️ Und die Bestellung muss trotzdem auf `paid` springen — das ist die Probe für den Connect-Webhook | 99 | ⚠️ **22.09.2026: NICHT im Simulator prüfbar.** Stripes Bezahlseite (`checkout.stripe.com`) bleibt im iOS-Simulator **weiss** — dreimal frisch geöffnet, jedes Mal leer, und das In-App-Browserfenster reagiert dort auf gar nichts mehr (auch „Teilen" öffnet sich nicht, der Link ist also nicht herauszuholen). Der Weg DAVOR läuft vollständig: Kaufen → Sammelpaket → „Bezahlen fortsetzen" → Stripe-Sitzung entsteht. Nur der letzte Schritt braucht ein **echtes Gerät**.
+| ~~B18~~ | ✅ **BESTANDEN am 22.09.2026, 13:46.** Der erste Geldweg auf ein **verbundenes** Verkäufer-Konto. `brandwerkx1` kaufte zaurs „Vsvsvd" für 5 €, zahlte auf dem iPhone mit einer Testkarte, und danach steht in „Meine Käufe": **„zaur · 5,00 € · Bezahlt · wird gepackt"**, der Sammelkorb ist geschlossen („Aktuell kein Paket offen"). ⚠️ **Damit ist zugleich Abschnitt 100 belegt** — der Connect-Webhook ist bis heute NICHT eingerichtet; ohne den Nachfrage-Weg wäre die Bestellung auf `payment_requested` hängengeblieben. Offen bleibt nur die Gegenprobe im Stripe-Dashboard, ob die 5 € auf zaurs Guthaben liegen | 96, 99, 100, 130 |
 | B15 | **Die Altersabfrage von vorne** (war A33): Mit einem **frischen Konto** kaufen oder bieten → Blatt kommt → Geburtsdatum eintragen → „Alles klar" → nochmal, geht durch. App neu starten: Das Blatt darf **nicht** wiederkommen. ⚠️ Zwei Proben gehören dazu: **der 31. Februar** (muss „Diesen Tag gibt es in dem Monat nicht" sagen) und ein Datum vor 17 Jahren (muss „Mitbieten geht ab 18" zeigen, ohne Eingabefelder). Die alten A34/A35 gehen darin auf | 90, 97 |
 | B2 | **Preisvorschlag** an einem fremden Angebot: senden, dann als Verkäufer annehmen / kontern / ablehnen, dann einlösen | 24 |
 | B3 | **Bewertungen befüllen**: kaufen → versenden → „Ist angekommen" → Sterne → **Text**. Der Bewertungen-Reiter war noch nie mit Inhalt zu sehen | 18 |
@@ -17678,3 +17678,61 @@ dieser Weg am Mailversand. Der Fehlertext deckt den Fall ab, bewiesen ist er
 nicht.
 
 `tsc` 0, **431 Tests**.
+
+## 130. Der Geldweg ist gelaufen (22.09.2026)
+
+**B18 bestanden** — der Punkt, der seit dem 27.08. offen stand und an dem jede
+Woche „braucht eine zweite Person" hing.
+
+`brandwerkx1` (Simulator, Käufer) kaufte zaurs Artikel „Vsvsvd" für 5 €. Zaur
+bezahlte auf dem **iPhone** mit einer Testkarte. Danach im Simulator unter
+„Meine Käufe":
+
+> **zaur · 5,00 € · Bezahlt · wird gepackt**
+> Deine Pakete: **Aktuell kein Paket offen**
+
+Der Sammelkorb hat sich geschlossen, die Bestellung ist auf „Bezahlt"
+gesprungen, und das Geld ging **direkt an ein verbundenes Konto** — nicht mehr
+über den Betreiber.
+
+### ⚠️ Was damit NEBENBEI bewiesen ist
+
+**Der Connect-Webhook ist bis heute nicht eingerichtet** (Abschnitt 99, seither
+unverändert). Dass die Bestellung trotzdem umgesprungen ist, belegt den
+Nachfrage-Weg aus **Abschnitt 100** — „Berkat wartet nicht mehr auf Stripe, es
+fragt nach". Ohne ihn wäre die Zahlung im Nirgendwo gelandet: Geld beim
+Verkäufer, Bestellung auf `payment_requested`, und nach 48 Stunden hätte der
+Verkäufer den Käufer als Nichtzahler melden dürfen.
+
+Die Entscheidung von damals — *„ein Navigationsproblem in einem fremden
+Dashboard darf nicht der Grund sein, warum Geld nicht ankommt"* — hat sich
+heute ausgezahlt.
+
+### Wie es dazu kam, und was daran lehrreich ist
+
+Der Weg dahin war lang und die Hindernisse hatten nichts mit dem Geldweg zu
+tun:
+
+1. **Zwei Konten, für einen Fehler gehalten** (Abschnitt 127). Die App zeigte
+   nicht, wer angemeldet ist.
+2. **Der Simulator rendert Stripe nicht** (Abschnitt 126). Dreimal probiert,
+   dreimal weiss.
+3. **Kein Passwort für das zweite Konto** — und keine Möglichkeit, eines zu
+   setzen (Abschnitt 129).
+4. **Der rote Geld-Hinweis schickte den Käufer ins Verkäufer-Onboarding.** Zaur
+   stand in Stripes „Bankverbindung / Unternehmensdaten" und fragte, ob er sein
+   **echtes privates Stripe-Konto** nehmen solle. Das ist der gefährlichste
+   Moment des Abends gewesen, und er entstand aus einer Warnung, die ich
+   gestern eingebaut habe.
+
+⚠️ **Der Hinweis ist an einem Konto, das nur kauft, falsch.** „Geld empfangen
+unvollständig" ist für einen Käufer keine Warnung, sondern eine Aufforderung
+ohne Anlass — dieselbe Regel, die bei den Anbieterangaben längst gilt („ein
+Mahnzeichen an einem Privatkonto wäre eine Aufforderung ohne Anlass"). Ich habe
+sie dort befolgt und hier vergessen. **Nächster Schritt: nur zeigen, wer
+verkauft.**
+
+### Offen
+
+Die Gegenprobe im Stripe-Dashboard: liegen die 5 € auf zaurs Guthaben? Die App
+sagt ja; Stripe hat es noch niemand gefragt.
