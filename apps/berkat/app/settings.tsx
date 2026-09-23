@@ -42,6 +42,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  KeyRound,
   Sparkles,
   Truck,
   UserRound,
@@ -103,6 +104,12 @@ export default function SettingsScreen() {
           <Row Icon={UserRound} label="Profil bearbeiten"
             hint="Name, Bild und „Über dich“"
             onPress={() => myUserId && router.push(`/seller/${myUserId}?edit=1`)} />
+          {/* Benutzername, Passwort und E-Mail — die Angaben, mit denen man
+              HINEINKOMMT. Sie gehoeren nicht zu „Profil bearbeiten": Dort geht
+              es darum, wie man nach aussen aussieht. */}
+          <Row Icon={KeyRound} label="Anmeldedaten"
+            hint="Benutzername, Passwort und E-Mail"
+            onPress={() => router.push('/account-login')} />
           <Row Icon={Sparkles} label="Interessen"
             hint="Was dir auf der Startseite vorgeschlagen wird"
             onPress={() => router.push('/interests')} />

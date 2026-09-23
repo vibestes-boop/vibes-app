@@ -17623,3 +17623,58 @@ Es waren nie acht Ziele; es waren vier plus vier.
 
 `tsc` 0, **431 Tests**. Am Gerät: Zahnrad → Einstellungen → „Profil bearbeiten"
 öffnet das Blatt, „Abbrechen" schliesst es und es kommt nicht wieder.
+
+## 129. Anmeldedaten — Benutzername und Passwort ändern (22.09.2026)
+
+**Auslöser.** Zaur: *„in der einstellung sollte auch buttons sein email oder
+passwort zu ändern oder nickname zu ändern."*
+
+Berkat hatte davon **keines**. Anmelden, abmelden — das war alles. Aufgefallen
+ist es an einem echten Fall und nicht an einer Liste: Für den Zahlungstest
+brauchten wir das Passwort eines zweiten Kontos, das im Simulator **angemeldet
+vor uns lag** — und es gab keinen Weg, ein neues zu setzen.
+
+### Gebaut: `app/account-login.tsx`
+
+**Benutzername.** `profiles.username` hat einen eindeutigen Index; `23505`
+bekommt deshalb einen eigenen Satz („Den Namen hat schon jemand"), sonst läse
+der Nutzer eine Postgres-Meldung. Nach dem Speichern zieht der Zustand im Kopf
+der App mit, sonst stünde oben im Konto weiter der alte Name.
+
+⚠️ **Der Name gilt auch in Serlo** — `profiles` gehört beiden Apps, es ist
+dasselbe Konto. Das steht auf dem Bildschirm, nicht in einem Kommentar.
+
+**Passwort.** Zweimal eingeben, **kein „altes Passwort" darüber**: Wer hier
+steht, ist angemeldet — die Sitzung IST der Nachweis. Der Grund für das zweite
+Feld ist ein anderer: Ein Vertipper im einzigen Feld sperrt einen aus dem
+eigenen Konto aus.
+
+### ⚠️ Die E-Mail steht da, lässt sich aber NICHT ändern
+
+Das ist kein Vergessen, sondern das Gegenteil. Eine Adressänderung verschickt
+Supabase als **Bestätigungslink an die neue Adresse**, und Berkats Mailversand
+stellt nichts zu — die Resend-Domain ist unverifiziert, alles ausser der
+Kontoadresse wird mit `550` abgewiesen (Abschnitt 86, seither unrepariert).
+
+**Ein Knopf, der eine Mail verspricht, die nie ankommt, wäre schlimmer als gar
+keiner:** Der Nutzer hielte seine Adresse danach für geändert und käme beim
+nächsten Anmelden nicht mehr hinein. Stattdessen steht dort ein Satz, der sagt,
+woran es liegt. **Erst den Versand reparieren, dann den Knopf.**
+
+Das ist dieselbe Linie wie beim „Käuferschutz" (Strategie, Abschnitt 8):
+Nichts versprechen, was die Mechanik nicht einlöst.
+
+### Geprüft — und was ausdrücklich NICHT
+
+Am Gerät gesehen: Der Bildschirm rendert, die E-Mail steht da, das Namensfeld
+nimmt Eingaben an, der Knopf wird erst gold, wenn sich etwas geändert hat, und
+beide Knöpfe starten ausgegraut.
+
+⚠️ **Nicht geprüft: ob das Passwort-Setzen durchgeht.** Ich tippe keine
+Passwörter, auch keine Testpasswörter — deshalb ist der letzte Schritt Zaurs.
+Der offene Punkt dahinter: Supabase kennt eine Einstellung „Secure password
+change", die eine Bestätigung per Mail verlangt. Ist sie an, scheitert auch
+dieser Weg am Mailversand. Der Fehlertext deckt den Fall ab, bewiesen ist er
+nicht.
+
+`tsc` 0, **431 Tests**.
