@@ -176,7 +176,7 @@ type TabItem = SellerShopRow | SellerReview | ShowRow;
 
 export default function SellerScreen() {
   const reducedMotion = useReducedMotion();
-  const { id, tab: wantedTab } = useLocalSearchParams<{ id: string; tab?: string }>();
+  const { id, tab: wantedTab, edit: wantEdit } = useLocalSearchParams<{ id: string; tab?: string; edit?: string }>();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const focused = useIsFocused();
@@ -242,6 +242,23 @@ export default function SellerScreen() {
 
   const updateProfile = useUpdateProfile(myUserId);
   const [editing, setEditing] = useState(false);
+  /**
+   * ⚠️ `?edit=1` — der Weg aus den Einstellungen (22.09.2026).
+   *
+   * Bis dahin war „Profil bearbeiten" NUR hier erreichbar, und zwar über die
+   * ÖFFENTLICHE Ansicht des eigenen Profils. Wer seinen Anzeigenamen ändern
+   * wollte, musste sich also erst so aufrufen, wie ein Fremder ihn sieht.
+   *
+   * ⚠️ `openedOnce` ist kein Zierrat: Ohne die Kante ginge das Blatt nach
+   * jedem Schliessen sofort wieder auf — der Parameter steht ja weiter in der
+   * Adresse. Dieselbe Falle wie beim Auswahlblatt am 21.09.
+   */
+  const openedOnce = useRef(false);
+  useEffect(() => {
+    if (openedOnce.current || wantEdit !== '1' || !isSelf) return;
+    openedOnce.current = true;
+    setEditing(true);
+  }, [wantEdit, isSelf]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [bioOpen, setBioOpen] = useState(false);
   /**

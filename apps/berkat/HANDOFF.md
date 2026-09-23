@@ -17571,3 +17571,55 @@ Anbieterangaben, Interessen und Geld empfangen liegen verteilt auf der
 Konto-Seite und anderswo. Die Konto-Seite ist kein Ersatz dafür: Sie mischt
 Navigation (Nachrichten, Käufe) mit Einstellungen. Das ist der nächste
 sinnvolle Umbau — aber ein eigener, kein Anhängsel an diesen hier.
+
+## 128. Ein Einstellungen-Bildschirm (22.09.2026)
+
+**Auslöser.** Zaur: *„unser einstellungs button gibt es garnicht, alles ist
+überall verteilt"* — und bestätigt: *„ja alles verstreut, konto und profil
+überall."*
+
+Nachgesehen statt vermutet. Einstellungen lagen an **drei** Orten, zwei davon
+nicht zu erraten:
+
+| Was | Lag wo | Erreichbar über |
+|---|---|---|
+| Name, Bild, „Über dich" | `ProfileEditSheet` | **nur** das eigene ÖFFENTLICHE Profil |
+| Interessen | `/interests` | **nur** Startseite oder „Gefolgt" |
+| Benachrichtigungen, Geld, Anbieterangaben, Versand | Konto-Reiter | ✓ |
+
+⚠️ **Der Anzeigename war der schlimmste Fall:** Wer ihn ändern wollte, musste
+sein eigenes Profil so aufrufen, wie ein Fremder es sieht. Das ist kein
+Suchproblem, sondern ein falsches Modell — der Konto-Reiter zeigte, was man
+HAT, nicht, was man EINSTELLEN kann.
+
+### Die Trennung
+
+**Konto-Reiter** — was man täglich BENUTZT: Nachrichten, Merkliste, Käufe,
+Einladen. Dazu die Identität: Name, **E-Mail** (Abschnitt 127), Profil-Link.
+
+**Einstellungen** (`app/settings.tsx`, Zahnrad oben rechts) — was man einmal
+EINRICHTET: Profil bearbeiten · Interessen · Benachrichtigungen · Geld
+empfangen · Anbieterangaben · Versand · Abmelden · Konto löschen.
+
+⚠️ **„Einladen & Belohnungen" bleibt im Konto.** Es ist kein Schalter, den man
+umlegt, sondern ein Angebot, das man benutzt — wie „Meine Käufe" darüber. Die
+Grenze verläuft nicht zwischen „wichtig" und „unwichtig", sondern zwischen
+**benutzen** und **einrichten**.
+
+⚠️ **`?edit=1` statt eines zweiten Formulars.** „Profil bearbeiten" springt auf
+`/seller/<id>?edit=1` und lässt das vorhandene Blatt aufgehen. Ein eigenes
+Formular daneben wäre die Sorte Abschrift, die auseinanderläuft.
+`openedOnce` verhindert, dass es nach dem Schliessen sofort wiederkommt — der
+Parameter steht ja weiter in der Adresse. Dieselbe Falle wie beim Auswahlblatt
+am 21.09.; am Gerät gegengeprüft.
+
+### Nebenwirkung, und eine erwünschte
+
+**Der Konto-Reiter passt wieder auf einen Bildschirm.** Das war die Zusage aus
+Übergabe 94, die am 27.08. gebrochen wurde und die ich gestern (Abschnitt 125)
+für nicht mehr erreichbar hielt — *„bei acht Zielen ist das nicht mehr das
+Mass"*. Das stimmte, solange Benutzen und Einrichten auf derselben Seite lagen.
+Es waren nie acht Ziele; es waren vier plus vier.
+
+`tsc` 0, **431 Tests**. Am Gerät: Zahnrad → Einstellungen → „Profil bearbeiten"
+öffnet das Blatt, „Abbrechen" schliesst es und es kommt nicht wieder.
