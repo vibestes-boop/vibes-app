@@ -17736,3 +17736,67 @@ verkauft.**
 
 Die Gegenprobe im Stripe-Dashboard: liegen die 5 € auf zaurs Guthaben? Die App
 sagt ja; Stripe hat es noch niemand gefragt.
+
+## 131. „Geld empfangen" wird ein Bildschirm (22.09.2026)
+
+**Auslöser.** Zaur, nach dem geglückten Geldweg: *„ja bau den hinweis um, und
+unter einstellungen in berkat sollte eine fläche sein wo mann stripe account
+speichern kann."*
+
+### Was davor passiert war
+
+Er tippte den roten Hinweis an, landete **direkt in Stripes
+Verkäufer-Anmeldung** (Unternehmenstyp, Angaben zur Person, Bankverbindung) und
+fragte, ob er sein **echtes privates Stripe-Konto** verbinden solle. Davor hatte
+er im Stripe-Dashboard nach dem verbundenen Konto gesucht und es nicht gefunden
+— es liegt in der **Sandbox**, nicht im Hauptkonto (Übergabe 99).
+
+⚠️ **Eine Sache, die man nirgends nachschlagen kann, lädt zum Raten ein.** Beim
+Geld rät niemand gut. Das ist der teuerste Moment dieses Abends gewesen, und er
+entstand aus einer Zeile, die nur ein Zustandswort trug.
+
+### Gebaut
+
+**`20260922120000`** — `get_my_stripe_connect()` gibt jetzt auch
+`account_id` zurück. `20260827100000` hatte sie bewusst zurückgehalten
+(*„der Client braucht sie nirgends"*), und das stimmte für den Client. Für den
+**Menschen davor** stimmte es nicht.
+
+⚠️ `acct_…` ist kein Geheimnis — sie steht in Stripes Adresszeilen und auf
+Belegen. Geheim sind die Schlüssel. Der Zugriff bleibt trotzdem eng: SECURITY
+DEFINER, liest nur `auth.uid()`, kein Parameter, mit dem man nach einer fremden
+fragen könnte. Signatur unverändert, also kein `HTTP 300`.
+
+**`app/stripe-account.tsx`** — die Zeile in den Einstellungen führt jetzt hierher
+statt direkt in Stripes Formular:
+
+* der Zustand als **Bedeutung**, nicht als Wort („An deinen Artikeln steht
+  Kaufen. Das Geld geht direkt auf dieses Konto.")
+* **Stripes eigener Grund** wortwörtlich, wenn es einen gibt — im Simulator
+  steht dort `requirements.past_due`. Nicht übersetzt: Wer ihn bei Stripe
+  sucht, findet ihn nur so wieder.
+* die **Kontokennung**, `selectable` — genau dafür steht sie da
+* **der Satz, der gefehlt hat:** dass das Konto in der Sandbox liegt und die
+  Liste im Hauptkonto leer ist
+
+### ⚠️ Die Gegenprobe hat meine Diagnose halb widerlegt
+
+Ich hatte angekündigt, den roten Hinweis so umzubauen, dass er „bei einem
+Konto, das nur kauft, gar nicht erst erscheint" — und das auch gebaut
+(`useSellerEverStarted`, gemessen an „hat schon mal eingestellt oder
+angekündigt", nicht am aktuellen Regal).
+
+**Am Gerät erschien er weiter.** Zu Recht: `brandwerkx1` hat sechs Artikel im
+Regal, ist also Verkäufer. Meine Erklärung („der Hinweis ist an einem
+Käufer-Konto falsch") war für SEINEN Fall schlicht falsch; er war nie ein
+reiner Käufer.
+
+Die Sperre bleibt trotzdem — für ein echtes Käufer-Konto ist sie richtig. Aber
+sie war **nicht** die Ursache. Die Ursache war, dass die Zeile ohne
+Zwischenschritt in ein fremdes Formular führte. Das behebt der Bildschirm.
+
+⚠️ **Lehre: Eine Erklärung, die zur Geschichte passt, ist noch keine Diagnose.**
+Erst die Gegenprobe am Gerät hat gezeigt, dass die Bedingung, die ich
+verdächtigt hatte, in diesem Fall gar nicht zutraf.
+
+`tsc` 0, **431 Tests**.

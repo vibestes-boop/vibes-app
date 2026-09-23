@@ -31,6 +31,41 @@ export type StripeConnectState = 'none' | 'incomplete' | 'pending' | 'ready';
 
 const KEY = ['berkat', 'stripe-connect'] as const;
 
+/**
+ * Was die App über das verbundene Konto weiss — mehr als nur den Zustand.
+ *
+ * ⚠️ `accountId` ist seit `20260922120000` dabei, und zwar aus einem Grund, der
+ * in einer Nacht entstanden ist: Zaur suchte im Stripe-Dashboard nach seinem
+ * verbundenen Konto, fand es nicht (es liegt in der Sandbox, nicht im
+ * Hauptkonto) und fragte, ob er sein **echtes privates** Konto verbinden solle.
+ * Eine Kennung, nach der man suchen kann, beendet diese Frage.
+ */
+export type StripeConnectInfo = {
+  state: StripeConnectState;
+  accountId: string | null;
+  connectedAt: string | null;
+  disabledReason: string | null;
+};
+
+export function useStripeConnectInfo(userId: string | null) {
+  return useQuery({
+    queryKey: [...KEY, 'info', userId],
+    enabled: Boolean(userId),
+    staleTime: 30_000,
+    queryFn: async (): Promise<StripeConnectInfo> => {
+      const { data, error } = await supabase.rpc('get_my_stripe_connect');
+      if (error) throw error;
+      const row = (data ?? {}) as Record<string, unknown>;
+      return {
+        state: (row.state as StripeConnectState) ?? 'none',
+        accountId: (row.account_id as string | null) ?? null,
+        connectedAt: (row.connected_at as string | null) ?? null,
+        disabledReason: (row.disabled_reason as string | null) ?? null,
+      };
+    },
+  });
+}
+
 export function useStripeConnectState(userId: string | null) {
   return useQuery({
     queryKey: [...KEY, userId],

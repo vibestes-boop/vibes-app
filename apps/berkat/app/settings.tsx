@@ -33,9 +33,9 @@
  * (Abschnitt 125).
  */
 
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { router } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Bell,
@@ -50,17 +50,12 @@ import {
 } from 'lucide-react-native';
 
 import { goBack } from '../lib/nav';
-import { errText } from '../lib/errorText';
 import { useSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 import { buildLabel } from '../lib/buildInfo';
 import { missingBusinessFields, useBerkatSeller } from '../lib/useBerkatSeller';
 import { onVacation } from '../lib/useVacation';
-import {
-  stripeConnectLabel,
-  useStartStripeConnect,
-  useStripeConnectState,
-} from '../lib/useStripeConnect';
+import { stripeConnectLabel, useStripeConnectState } from '../lib/useStripeConnect';
 import { PressFeedback } from '../components/PressFeedback';
 import { radius, space, ui } from '../theme/tokens';
 
@@ -71,15 +66,7 @@ export default function SettingsScreen() {
   const sellerMissing = missingBusinessFields(sellerRow ?? null);
   const sellerAway = onVacation(sellerRow?.vacation_until);
   const { data: stripeState = 'none' } = useStripeConnectState(myUserId);
-  const { start: startStripeConnect, isStarting: stripeStarting } =
-    useStartStripeConnect(myUserId);
   const [signingOut, setSigningOut] = useState(false);
-
-  const openStripe = useCallback(() => {
-    void startStripeConnect().catch((e) =>
-      Alert.alert('Das hat nicht geklappt', errText(e)),
-    );
-  }, [startStripeConnect]);
 
   return (
     <View style={[s.screen, { paddingTop: insets.top }]}>
@@ -126,29 +113,15 @@ export default function SettingsScreen() {
               „Kaufen". Das ist die einzige Einstellung dieser Gruppe, ohne die
               der ganze Rest folgenlos bleibt.
 
-              Der Zustand steht ausgeschrieben da statt als Haken: „Stripe
-              prüft" und „bereit" sind zwei verschiedene Dinge, und wer das
-              verwechselt, sendet einen Abend lang, ohne dass jemand kaufen
-              kann. */}
-          <PressFeedback style={s.row} onPress={openStripe} disabled={stripeStarting}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: stripeStarting, busy: stripeStarting }}
-            accessibilityLabel={`Geld empfangen — ${stripeConnectLabel(stripeState).text}`}>
-            <Wallet size={21} color={ui.brand} />
-            <View style={s.copy}>
-              <Text style={s.label}>Geld empfangen</Text>
-              {stripeStarting ? <ActivityIndicator size="small" color={ui.textMuted} /> : (
-                <Text style={[
-                  s.warn,
-                  stripeConnectLabel(stripeState).tone === 'ok' && { color: ui.success },
-                  stripeConnectLabel(stripeState).tone === 'muted' && { color: ui.textMuted },
-                ]}>
-                  {stripeConnectLabel(stripeState).text}
-                </Text>
-              )}
-            </View>
-            <ChevronRight size={18} color={ui.textMuted} />
-          </PressFeedback>
+              ⚠️ Seit 22.09.2026 fuehrt die Zeile auf einen eigenen Bildschirm
+              statt direkt in Stripes Formular. Der Grund steht dort im Kopf:
+              Vorher war nicht zu sehen, WELCHES Konto verbunden ist. */}
+          <Row Icon={Wallet} label="Geld empfangen"
+            warn={stripeConnectLabel(stripeState).tone === 'warn'
+              ? stripeConnectLabel(stripeState).text : undefined}
+            hint={stripeConnectLabel(stripeState).tone === 'warn'
+              ? undefined : stripeConnectLabel(stripeState).text}
+            onPress={() => router.push('/stripe-account')} />
 
           {/* Die Zeile steht für JEDEN da, nicht nur für Gewerbliche: Auch der
               Wechsel von privat auf gewerblich beginnt hier. Der rote Hinweis

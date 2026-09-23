@@ -39,6 +39,7 @@ import { ui, radius, space } from '../../theme/tokens';
 import { useAccountEmail } from '../../lib/useAccountEmail';
 import { NavigationRow } from '../../components/NavigationRow';
 import { PressFeedback } from '../../components/PressFeedback';
+import { useSellerEverStarted } from '../../components/SellerStart';
 
 export default function AccountScreen() {
   const isFocused = useIsFocused();
@@ -52,6 +53,26 @@ export default function AccountScreen() {
   // Server; hier wird nur angezeigt und angestossen.
   const { data: stripeState = 'none' } = useStripeConnectState(myUserId);
   const { data: accountEmail } = useAccountEmail(myUserId);
+  /**
+   * ⚠️ Der Geld-Hinweis gilt nur fuer VERKAEUFER — seit 22.09.2026.
+   *
+   * Am Tag zuvor stand er an jedem Konto. Zaur, der mit einem reinen
+   * Kaeufer-Konto unterwegs war, tippte ihn an, landete in Stripes
+   * Verkaeufer-Anmeldung (Bankverbindung, Unternehmensdaten) und fragte, ob
+   * er sein **echtes privates Stripe-Konto** verbinden solle.
+   *
+   * „Geld empfangen unvollstaendig" ist fuer jemanden, der nur kauft, keine
+   * Warnung, sondern eine Aufforderung ohne Anlass. Dieselbe Regel gilt bei
+   * den Anbieterangaben seit dem 19.08. („ein Mahnzeichen an einem
+   * Privatkonto waere eine Aufforderung ohne Anlass") — ich habe sie dort
+   * befolgt und hier vergessen.
+   *
+   * ⚠️ Gemessen an „hat schon mal etwas eingestellt oder angekuendigt",
+   * nicht am aktuellen Regal: Wer alles verkauft hat, bleibt Verkaeufer und
+   * muss weiter sehen, wenn seine Auszahlung haengt.
+   */
+  const { everAnnounced, everListed } = useSellerEverStarted(myUserId);
+  const sells = everAnnounced || everListed;
   const { start: startStripeConnect, isStarting: stripeStarting } =
     useStartStripeConnect(myUserId);
   const profile = useSession((s) => s.profile);
@@ -135,7 +156,7 @@ export default function AccountScreen() {
 
           ⚠️ Keine rote FLÄCHE, nur ein rotes Wort: In Berkat ist Rot die
           laufende Uhr, nie der Hintergrund. ───────────────────────────── */}
-      {stripeConnectLabel(stripeState).tone === 'warn' ? (
+      {sells && stripeConnectLabel(stripeState).tone === 'warn' ? (
         <PressFeedback
           kind="card"
           style={styles.moneyNotice}
