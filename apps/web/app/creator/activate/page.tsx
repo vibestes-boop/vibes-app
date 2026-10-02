@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { Gift, ShoppingBag, Video, TrendingUp, Diamond } from 'lucide-react';
 
 import { getProfile } from '@/lib/auth/session';
+import { getSafeReturnPath } from '@/lib/auth/return-path';
 import { CreatorActivateForm } from '@/components/studio/creator-activate-form';
 
 // -----------------------------------------------------------------------------
@@ -37,12 +38,15 @@ const BENEFITS = [
   { icon: Diamond,     label: 'Auszahlung',       desc: 'Ab 50 € auszahlbar' },
 ] as const;
 
-export default async function CreatorActivatePage() {
+export default async function CreatorActivatePage({ searchParams }: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const next = getSafeReturnPath((await searchParams).next, '/studio');
   const profile = await getProfile();
 
   // Bereits Creator → sofort ins Studio
   if (profile && (profile as { is_creator?: boolean }).is_creator) {
-    redirect('/studio' as Route);
+    redirect(next as Route);
   }
 
   return (
@@ -74,7 +78,7 @@ export default async function CreatorActivatePage() {
       </div>
 
       {/* CTA form — client component handles the server action + redirect */}
-      <CreatorActivateForm />
+      <CreatorActivateForm next={next} />
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
         Mit der Aktivierung stimmst du den{' '}

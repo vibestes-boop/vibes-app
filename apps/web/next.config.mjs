@@ -13,6 +13,8 @@ const htmlLimitedBots =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Keep the mobile preview dock clear; the error overlay still reports failures.
+  devIndicators: false,
   htmlLimitedBots,
   // Moved out of experimental in Next.js 15.5+
   // Alle router.push/redirect-Calls wurden auf `as Route` migriert (SW-09).

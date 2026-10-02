@@ -16,7 +16,8 @@ export function ExploreTagChips({
 
   const chip = {
     paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingVertical: 11,
+    minHeight: 44,
     borderRadius: 20,
     backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
     borderWidth: 1,
@@ -48,6 +49,7 @@ export function ExploreTagChips({
     >
       <Pressable
         style={[chip, !activeTag && chipActive]}
+        accessibilityRole="button" accessibilityState={{ selected: !activeTag }}
         onPress={() => onSelectTag(null)}
       >
         <Text style={[chipText, !activeTag && chipTextActive]}>{t('explore.all')}</Text>
@@ -55,6 +57,7 @@ export function ExploreTagChips({
       {tags.map((tag) => (
         <Pressable
           key={tag}
+          accessibilityRole="button" accessibilityState={{ selected: activeTag === tag }}
           style={[chip, activeTag === tag && chipActive]}
           onPress={() => onSelectTag(activeTag === tag ? null : tag)}
         >
@@ -66,9 +69,9 @@ export function ExploreTagChips({
 }
 
 const s = StyleSheet.create({
-  tagScroll: { maxHeight: 44, marginBottom: 8 },
+  tagScroll: { flexGrow: 0, flexShrink: 0, marginBottom: 4 },
   tagScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     gap: 8,
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,8 +1,8 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { ArrowLeft, Mic } from 'lucide-react';
-import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { VoiceSetup } from '@/components/settings/voice-setup';
@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function VoiceSettingsPage() {
   const user = await getUser();
-  if (!user) redirect('/login?next=/settings/voice');
+  if (!user) return <ReturnToRedirect />;
 
   const supabase = await createClient();
   const { data: profile } = await supabase

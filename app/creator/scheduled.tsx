@@ -123,7 +123,7 @@ export default function ScheduledPostsScreen() {
       {isLoading ? (
         <ActivityIndicator color={colors.accent.primary} style={{ marginTop: 60 }} />
       ) : list.length === 0 ? (
-        <EmptyState colors={colors} onCreate={() => router.push('/create' as any)} />
+        <EmptyState colors={colors} onCreate={() => router.push('/create/start' as any)} />
       ) : (
         <FlatList
           data={list}

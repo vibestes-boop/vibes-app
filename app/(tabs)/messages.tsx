@@ -1,23 +1,23 @@
+import { StudioBackdrop } from '@/components/ui/StudioBackdrop';
+import { InboxToolbar } from '@/components/messages/InboxToolbar';
+import { NewMessageModal } from '@/components/messages/NewMessageModal';
 import { Image as ExpoImage } from 'expo-image';
 import { MessagesSkeleton } from '@/components/messages/MessagesSkeleton';
 import { FONT_SIZE,FONT_WEIGHT,RADII,SPACE } from '@/lib/tokens';
-import { useCallback,useEffect,useMemo,useState } from 'react';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
-ActivityIndicator,
 Alert,
-Modal,
 Pressable,
 RefreshControl,
 StyleSheet,
 Text,
-TextInput,TouchableOpacity,
 View,
 } from 'react-native';
 
 
 import { FlashList } from '@shopify/flash-list';
 import { router,useFocusEffect,useLocalSearchParams } from 'expo-router';
-import { Bookmark,MessageCircle,PenSquare,Search,X } from 'lucide-react-native';
+import { AlertCircle,Bookmark,CheckCheck,MessageCircle,PenSquare,SearchX,X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StoriesRow } from '@/components/ui/StoriesRow';
@@ -31,7 +31,7 @@ import { timeAgo } from '@/lib/timeAgo';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useI18n } from '@/lib/i18n';
-import { useQuery,useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 
 function ConvItem({
@@ -61,13 +61,14 @@ function ConvItem({
   const hasStory = !!storyGroup && !isSelfChat;
   const hasUnviewed = storyGroup?.hasUnviewed ?? false;
   const { colors, isDark } = useTheme();
+  const { t } = useI18n();
 
   // Generiere eine konsistente Farbe pro Username-Initial
   const fallbackBg = isDark ? 'rgba(255,255,255,0.14)' : '#E8E8ED';
 
   return (
     <Pressable
-      style={[styles.item, hasUnread && styles.itemUnread]}
+      style={[styles.item, hasUnread && { backgroundColor: colors.bg.elevated }]}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         router.push({ pathname: '/messages/[id]', params: { id: item.id, username: displayUsername ?? '', avatarUrl: displayAvatarUrl ?? '', otherUserId: item.other_user.id ?? '' } });
@@ -75,26 +76,26 @@ function ConvItem({
       onLongPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         Alert.alert(
-          isSelfChat ? 'Notizen löschen' : 'Konversation löschen',
-          isSelfChat ? 'Meine Notizen löschen?' : `Chat mit @${displayUsername ?? '?'} löschen?`,
+          t(isSelfChat ? 'inbox.deleteNotes' : 'inbox.deleteChat'),
+          t('inbox.deleteWarning'),
           [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Löschen', style: 'destructive', onPress: onDelete },
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('inbox.deleteAction'), style: 'destructive', onPress: onDelete },
           ]
         );
       }}
       delayLongPress={500}
       accessibilityRole="button"
-      accessibilityLabel={isSelfChat ? 'Meine Notizen' : `Chat mit @${displayUsername ?? 'Nutzer'} öffnen`}
+      accessibilityLabel={t(isSelfChat ? 'inbox.myNotes' : 'inbox.openChat', { name: displayUsername ?? '?' })}
     >
-      {hasUnread && <View style={styles.unreadDot} />}
+      {hasUnread && <View style={[styles.unreadDot, { backgroundColor: colors.accent.primary }]} />}
 
       {/* Avatar mit Story-Ring + Live-Badge */}
       <Pressable
         style={styles.avatarWrap}
         onPress={(e) => {
           e.stopPropagation();
-          if (isSelfChat) return; // Selbst-Chat: kein Profil-Push
+          if (isSelfChat) { router.push({ pathname: '/messages/[id]', params: { id: item.id, otherUserId: item.other_user.id } }); return; }
           if (onAvatarPress) { onAvatarPress(); return; }
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           if (item.other_user.id) {
@@ -103,13 +104,13 @@ function ConvItem({
         }}
         hitSlop={4}
         accessibilityRole="button"
-        accessibilityLabel={isSelfChat ? 'Meine Notizen' : `@${displayUsername ?? 'Nutzer'} Profil anzeigen`}
+        accessibilityLabel={t(isSelfChat ? 'inbox.myNotes' : hasStory ? 'inbox.openStory' : 'inbox.openProfile', { name: displayUsername ?? '?' })}
       >
         {/* Story-Ring */}
         {hasStory && !isLive && (
           <View style={[
             styles.storyRing,
-            hasUnviewed ? styles.storyRingActive : [styles.storyRingSeen, { borderColor: colors.border.strong }],
+            hasUnviewed ? { borderColor: colors.accent.primary } : [styles.storyRingSeen, { borderColor: colors.border.strong }],
           ]} />
         )}
         {/* Live-Ring */}
@@ -156,9 +157,9 @@ function ConvItem({
       <View style={styles.textWrap}>
         <View style={styles.nameRow}>
           <View style={styles.selfChatLabel}>
-            {isSelfChat && <Bookmark size={13} color="#FFFFFF" strokeWidth={2} style={{ marginRight: 4 }} />}
-          <Text style={[styles.username, hasUnread && styles.usernameUnread, isSelfChat && styles.selfChatUsername, { color: hasUnread ? colors.text.primary : colors.text.secondary }]}>
-              {isSelfChat ? 'Meine Notizen' : `@${displayUsername ?? '?'}`}
+            {isSelfChat && <Bookmark size={13} color={colors.accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />}
+          <Text numberOfLines={1} style={[styles.username, hasUnread && styles.usernameUnread, isSelfChat && styles.selfChatUsername, { color: hasUnread ? colors.text.primary : colors.text.secondary }]}>
+              {isSelfChat ? t('inbox.myNotes') : `@${displayUsername ?? '?'}`}
             </Text>
           </View>
           <Text style={[styles.timeText, { color: colors.text.muted }]}>{timeAgo(item.last_message_at)}</Text>
@@ -167,122 +168,19 @@ function ConvItem({
           style={[styles.preview, hasUnread && styles.previewUnread, { color: hasUnread ? colors.text.secondary : colors.text.muted }]}
           numberOfLines={1}
         >
-          {item.last_message ?? (isSelfChat ? 'Speichere Notizen, Links & Posts…' : 'Konversation starten…')}
+          {item.last_message ?? t(isSelfChat ? 'inbox.notesHint' : 'inbox.startConversation')}
         </Text>
       </View>
 
       {/* Ungelesen-Badge */}
       {hasUnread && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
+        <View style={[styles.badge, { backgroundColor: colors.accent.solid }]}>
+          <Text style={[styles.badgeText, { color: colors.text.onAccent }]}>
             {item.unread_count > 9 ? '9+' : String(item.unread_count)}
           </Text>
         </View>
       )}
     </Pressable>
-  );
-}
-
-type UserResult = { id: string; username: string | null; avatar_url: string | null };
-
-function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { t } = useI18n();
-  const [query, setQuery] = useState('');
-  const currentUserId = useAuthStore((s) => s.profile?.id);
-  const { mutateAsync: openConv, isPending } = useOrCreateConversation();
-  const { colors } = useTheme();
-
-  const { data: results = [], isFetching } = useQuery<UserResult[]>({
-    queryKey: ['user-search-dm', query],
-    queryFn: async () => {
-      if (!query.trim()) return [];
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .ilike('username', `%${query.trim()}%`)
-        .neq('id', currentUserId ?? '')
-        .limit(20);
-      return (data ?? []) as UserResult[];
-    },
-    enabled: query.trim().length > 0,
-    staleTime: 0,
-  });
-
-  const handleSelect = async (user: UserResult) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const convId = await openConv(user.id);
-    onClose();
-    router.push({ pathname: '/messages/[id]', params: { id: convId, username: user.username ?? '', avatarUrl: user.avatar_url ?? '', otherUserId: user.id } });
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[modal.sheet, { backgroundColor: colors.bg.primary }]}>
-        <View style={[modal.handle, { backgroundColor: colors.border.strong }]} />
-        <View style={[modal.header, { borderBottomColor: colors.border.subtle }]}>
-          <Text style={[modal.title, { color: colors.text.primary }]}>{t('messages.newMessage')}</Text>
-          <Pressable onPress={onClose} style={modal.closeBtn} hitSlop={10}>
-            <X size={20} color={colors.icon.muted} strokeWidth={2} />
-          </Pressable>
-        </View>
-
-        {/* Suchfeld */}
-        <View style={[modal.searchBar, { backgroundColor: colors.bg.input, borderColor: colors.border.default }]}>
-          <Search size={16} color={colors.icon.muted} strokeWidth={2} />
-          <TextInput
-            style={[modal.searchInput, { color: colors.text.primary }]}
-            placeholder={t('messages.searchUser')}
-            placeholderTextColor={colors.text.muted}
-            value={query}
-            onChangeText={setQuery}
-            autoFocus
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {query.length > 0 && (
-            <Pressable onPress={() => setQuery('')} hitSlop={8}>
-              <X size={14} color={colors.icon.muted} />
-            </Pressable>
-          )}
-        </View>
-
-        {/* Ergebnisse */}
-        {isFetching || isPending ? (
-          <ActivityIndicator color="#FFFFFF" style={{ marginTop: 32 }} />
-        ) : query.trim().length === 0 ? (
-          <View style={modal.hint}>
-            <Text style={[modal.hintText, { color: colors.text.muted }]}>{t('messages.searchHint')}</Text>
-          </View>
-        ) : results.length === 0 ? (
-          <View style={modal.hint}>
-            <Text style={[modal.hintText, { color: colors.text.muted }]}>{t('messages.noUserFound')}</Text>
-          </View>
-        ) : (
-          <FlashList
-            data={results}
-            keyExtractor={(u) => u.id}
-            estimatedItemSize={56}
-            renderItem={({ item }) => {
-              const initial = (item.username ?? '?')[0].toUpperCase();
-              return (
-                <TouchableOpacity style={modal.userRow} onPress={() => handleSelect(item)} activeOpacity={0.7}>
-                  {item.avatar_url ? (
-                    <ExpoImage source={{ uri: item.avatar_url }} style={modal.avatar} contentFit="cover" cachePolicy="memory-disk" />
-
-                  ) : (
-                    <View style={[modal.avatar, modal.avatarFallback, { backgroundColor: colors.bg.subtle }]}>
-                      <Text style={[modal.avatarInitial, { color: colors.text.secondary }]}>{initial}</Text>
-                    </View>
-                  )}
-                  <Text style={[modal.userName, { color: colors.text.primary }]}>@{item.username ?? '?'}</Text>
-                </TouchableOpacity>
-              );
-            }}
-            contentContainerStyle={{ paddingBottom: 40 }}
-          />
-        )}
-      </View>
-    </Modal>
   );
 }
 
@@ -299,7 +197,13 @@ export default function MessagesScreen() {
   const { colors } = useTheme();
   const { preSelectUserId } = useLocalSearchParams<{ preSelectUserId?: string }>();
   const [showNew, setShowNew] = useState(false);
-  const { data: convs = [], isLoading, refetch, isRefetching } = useConversations();
+  const [query, setQuery] = useState('');
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [actionError, setActionError] = useState(false);
+  const [openError, setOpenError] = useState(false);
+  const [openRetry, setOpenRetry] = useState(0);
+  const deleting = useRef(false);
+  const { data: convs = [], isLoading, isError, refetch, isRefetching } = useConversations();
   const queryClient = useQueryClient();
   const { mutateAsync: openConv } = useOrCreateConversation();
   // Eigene Profildaten für Selbst-Chat-Anzeige
@@ -307,17 +211,10 @@ export default function MessagesScreen() {
   const { profile } = useAuthStore();
   const ownUserId = profile?.id;
   const ownUsername = profile?.username ?? null;
-  const [freshAvatarUrl, setFreshAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null);
-
-  useEffect(() => {
-    if (freshAvatarUrl || !ownUserId) return;
-    // Einmaliger direkter Fetch falls Cache-Profil keine avatar_url hat
-    supabase.from('profiles').select('avatar_url').eq('id', ownUserId).single()
-      .then(({ data }) => { if (data?.avatar_url) setFreshAvatarUrl(data.avatar_url); });
-  }, [ownUserId, freshAvatarUrl]);
-
-  const ownAvatarUrl = freshAvatarUrl;
-
+  const ownAvatarUrl = profile?.avatar_url ?? null;
+  const filtered = useMemo(() => convs.filter(item => (!unreadOnly || item.unread_count > 0) && (!query.trim() || `${item.other_user.id === ownUserId ? t('inbox.myNotes') : item.other_user.username ?? ''} ${item.last_message ?? ''}`.toLocaleLowerCase().includes(query.trim().replace(/^@/, '').toLocaleLowerCase()))), [convs, unreadOnly, query, ownUserId, t]);
+  const unreadCount = convs.filter(item => item.unread_count > 0).length;
+  const recent = useMemo(() => Array.from(new Map(convs.filter(item => item.other_user.id !== ownUserId).map(item => [item.other_user.id, item.other_user])).values()).slice(0, 8), [convs, ownUserId]);
 
   // ── Stories & Live Sessions ──────────────────────────────────────────────
   const { data: storyGroups = [], refetch: refetchStories, isRefetching: isRefetchingStories } = useGuildStories();
@@ -344,29 +241,33 @@ export default function MessagesScreen() {
 
   // DM-Button aus Live Watch: sofort Konversation mit Host öffnen
   useEffect(() => {
-    if (!preSelectUserId) return;
+    if (!preSelectUserId || !ownUserId) return;
+    setOpenError(false);
     let mounted = true; // Memory-Leak Guard: verhindert State-Update nach Unmount
     openConv(preSelectUserId)
       .then((convId) => {
-        if (!mounted) return;
+        if (!mounted || useAuthStore.getState().profile?.id !== ownUserId) return;
+        router.setParams({ preSelectUserId: undefined });
         router.push({ pathname: '/messages/[id]', params: { id: convId } });
       })
-      .catch(() => { });
+      .catch(() => { if (mounted) setOpenError(true); });
     return () => { mounted = false; };
     // openConv ist stabil (useMutation ref), router ist stabil (expo-router)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preSelectUserId]);
+  }, [preSelectUserId, ownUserId, openRetry]);
 
-  // Konversation lokal aus Cache löschen
-  const handleDeleteConv = useCallback((convId: string) => {
-    queryClient.setQueryData<Conversation[]>(['conversations'], (old = []) =>
-      old.filter((c) => c.id !== convId)
-    );
-    // Auch DB-seitig löschen (Cascade-Delete via FK)
-    supabase.from('conversations').delete().eq('id', convId).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    });
-  }, [queryClient]);
+  // Only remove confirmed deletions, from this account's actual query cache.
+  const handleDeleteConv = useCallback(async (convId: string) => {
+    if (deleting.current || !ownUserId) return;
+    deleting.current = true; setActionError(false);
+    try {
+      const { data, error } = await supabase.from('conversations').delete().eq('id', convId).select('id');
+      if (error || !data?.some(item => item.id === convId)) throw error ?? new Error('Deletion was not confirmed');
+      queryClient.setQueryData<Conversation[]>(['conversations', ownUserId], (old = []) => old.filter(item => item.id !== convId));
+      void queryClient.invalidateQueries({ queryKey: ['conversations', ownUserId] });
+    } catch { if (useAuthStore.getState().profile?.id === ownUserId) setActionError(true); }
+    finally { deleting.current = false; }
+  }, [queryClient, ownUserId]);
 
   const renderItem = useCallback(
     ({ item }: { item: Conversation }) => {
@@ -376,7 +277,7 @@ export default function MessagesScreen() {
       return (
         <ConvItem
           item={item}
-          onDelete={() => handleDeleteConv(item.id)}
+          onDelete={() => void handleDeleteConv(item.id)}
           storyGroup={storyGroup}
           isLive={isLive}
           onAvatarPress={storyGroup ? () => handleOpenStory(storyGroup) : undefined}
@@ -397,32 +298,38 @@ export default function MessagesScreen() {
   const isRefreshingAny = isRefetching || isRefetchingStories;
 
   // Stories+Live Row als ListHeader — immer sichtbar (zeigt mindestens eigenen Add-Story-Button)
-  const ListHeader = useMemo(() => (
+  const ListHeader = useMemo(() => !query.trim() && !unreadOnly && (storyGroups.length > 0 || liveSessions.length > 0) ? (
     <StoriesRow
       groups={storyGroups}
       liveSessions={liveSessions}
       onSelectGroup={handleOpenStory}
-      onAddStory={() => router.push('/live/start' as any)}
+      onAddStory={() => router.push('/create-story' as any)}
     />
-  ), [storyGroups, liveSessions, handleOpenStory]);
+  ) : null, [storyGroups, liveSessions, handleOpenStory, query, unreadOnly]);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.secondary }]}>
-      <NewMessageModal visible={showNew} onClose={() => setShowNew(false)} />
+    <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
+      <StudioBackdrop />
+      {showNew && <NewMessageModal onClose={() => setShowNew(false)} recent={recent} />}
       <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
         <Text style={[styles.title, { color: colors.text.primary }]}>{t('tabs.messages')}</Text>
         <Pressable
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
-          style={styles.composeBtn}
+          style={[styles.composeBtn, { backgroundColor: colors.text.primary }]}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Neue Nachricht erstellen"
+          accessibilityLabel={t('nativeUi.newMessage')}
         >
-          <PenSquare size={20} color="#FFFFFF" strokeWidth={2} />
+          <PenSquare size={20} color={colors.bg.primary} strokeWidth={2} />
         </Pressable>
       </View>
 
 
+      <InboxToolbar query={query} onQueryChange={setQuery} unreadOnly={unreadOnly} onFilterChange={setUnreadOnly} unreadCount={unreadCount} />
+      {(actionError || openError || (isError && convs.length > 0)) && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 20, padding: 12, borderRadius: 14, backgroundColor: colors.bg.elevated }}>
+        <Text accessibilityRole="alert" style={{ flex: 1, fontSize: 13, lineHeight: 19, color: colors.text.secondary }}>{t(actionError ? 'inbox.deleteError' : openError ? 'inbox.openError' : 'inbox.refreshError')}</Text>
+        {actionError ? <Pressable onPress={() => setActionError(false)} accessibilityRole="button" accessibilityLabel={t('mobileDesign.close')} style={{ padding: 12 }}><X size={18} color={colors.text.primary} /></Pressable> : <Pressable onPress={() => openError ? setOpenRetry(n => n + 1) : void refetch()} accessibilityRole="button" style={{ padding: 10 }}><Text style={{ color: colors.accent.primary, fontWeight: '600' }}>{t('nativeUi.retry')}</Text></Pressable>}
+      </View>}
       {/* Alles in einer FlashList: Stories als Header + Conversations als Body.
           So deckt Pull-to-Refresh sowohl Stories als auch Nachrichten ab. */}
       {isLoading && convs.length === 0 ? (
@@ -432,25 +339,18 @@ export default function MessagesScreen() {
         </>
       ) : (
         <FlashList
-          data={convs}
+          data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           estimatedItemSize={80}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
             <View style={styles.center}>
-              <MessageCircle size={52} color={colors.icon.muted} strokeWidth={1.2} />
-              <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('messages.emptyTitle')}</Text>
-              <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
-                {t('messages.emptyDesc')}
-              </Text>
-              <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
-                style={[styles.emptyBtn, { borderColor: colors.border.default, backgroundColor: colors.bg.subtle }]}
-                accessibilityRole="button"
-                accessibilityLabel="Nutzer suchen und Nachricht senden"
-              >
-                <Text style={[styles.emptyBtnText, { color: colors.text.primary }]}>{t('messages.searchUsers')}</Text>
+              {isError ? <AlertCircle size={42} color={colors.icon.muted} /> : query.trim() ? <SearchX size={42} color={colors.icon.muted} /> : unreadOnly ? <CheckCheck size={42} color={colors.accent.primary} /> : <MessageCircle size={42} color={colors.icon.muted} />}
+              <Text accessibilityRole={isError ? 'alert' : undefined} style={[styles.emptyTitle, { color: colors.text.primary }]}>{t(isError ? 'inbox.loadError' : query.trim() ? 'inbox.noChats' : unreadOnly ? 'inbox.allRead' : 'messages.emptyTitle')}</Text>
+              <Text style={[styles.emptyDesc, { color: colors.text.secondary }]}>{t(isError ? 'inbox.loadErrorBody' : query.trim() ? 'inbox.noChatsBody' : unreadOnly ? 'inbox.allReadBody' : 'messages.emptyDesc')}</Text>
+              <Pressable onPress={() => { if (isError) void refetch(); else if (query.trim() || unreadOnly) { setQuery(''); setUnreadOnly(false); } else setShowNew(true); }} accessibilityRole="button" style={[styles.emptyBtn, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}>
+                <Text style={[styles.emptyBtnText, { color: colors.accent.primary }]}>{t(isError ? 'nativeUi.retry' : query.trim() || unreadOnly ? 'inbox.showAll' : 'messages.newMessage')}</Text>
               </Pressable>
             </View>
           }
@@ -463,7 +363,7 @@ export default function MessagesScreen() {
             <RefreshControl
               refreshing={isRefreshingAny}
               onRefresh={handleRefresh}
-              tintColor="#FFFFFF"
+              tintColor={colors.accent.primary}
             />
           }
         />
@@ -483,9 +383,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     // borderBottomColor via inline
   },
-  title: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, letterSpacing: -0.5, flex: 1 }, // color via inline
-  composeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACE.md, paddingBottom: 60 },
+  title: { fontSize: 25, fontFamily: 'Inter_700Bold', fontWeight: FONT_WEIGHT.bold, letterSpacing: -0.5, flex: 1 }, // color via inline
+  composeBtn: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACE.md, paddingHorizontal: 24, paddingTop: 48, paddingBottom: 60 },
   emptyTitle: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, marginTop: SPACE.sm }, // color via inline
   emptyDesc: { fontSize: FONT_SIZE.sm, textAlign: 'center', maxWidth: 240, lineHeight: 20 }, // color via inline
   item: {
@@ -531,16 +431,16 @@ const styles = StyleSheet.create({
   liveBadgeText: { color: '#fff', fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold, letterSpacing: 0.5 },
   // Selbst-Chat "Meine Notizen"
   avatarSelf: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.18)' },
-  selfChatLabel: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  selfChatLabel: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: 10 },
   selfChatUsername: { color: '#FFFFFF', fontWeight: '700' },
   onlineDot: {
     position: 'absolute', bottom: 1, right: 1,
     width: 13, height: 13, borderRadius: 6.5,
     backgroundColor: '#34D399', borderWidth: 2, borderColor: '#050508',
   },
-  textWrap: { flex: 1, gap: 3 },
+  textWrap: { flex: 1, minWidth: 0, gap: 5 },
   nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  username: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, letterSpacing: -0.1 },
+  username: { flexShrink: 1, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, letterSpacing: -0.1 },
   usernameUnread: { fontWeight: FONT_WEIGHT.bold },
   preview: { fontSize: 13.5, lineHeight: 18 },
   previewUnread: { fontWeight: FONT_WEIGHT.medium },
@@ -562,33 +462,4 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   emptyBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-});
-
-const modal = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: '#0A0A0F', paddingTop: 12 },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 12 },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)',
-  },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
-  closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    margin: 16, paddingHorizontal: 14, paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-  },
-  searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15 },
-  hint: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
-  hintText: { color: 'rgba(255,255,255,0.3)', fontSize: 14 },
-  userRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 20, paddingVertical: 13,
-  },
-  avatar: { width: 52, height: 52, borderRadius: 26 },
-  avatarFallback: { backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#FFFFFF', fontSize: 19, fontWeight: '700' },
-  userName: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
 });

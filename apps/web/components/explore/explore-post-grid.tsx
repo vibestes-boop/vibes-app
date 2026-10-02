@@ -52,10 +52,49 @@ export function ExplorePostGrid({
   const [fetching, setFetching] = useState(false);
   const offsetRef               = useRef(initialPosts.length);
   const sentinelRef             = useRef<HTMLDivElement | null>(null);
-  // Track current sort in a ref so loadMore always reads latest value
-  const sortRef                 = useRef<SortMode>('forYou');
+  const sortRef = useRef<SortMode>('forYou');
+  const requestRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
+  const busyRef = useRef(false);
+  const [failed, setFailed] = useState(false);
 
-  // ── Switch sort tab ─────────────────────────────────────────────────────────
+  useEffect(() => () => {
+    generationRef.current += 1;
+    requestRef.current?.abort();
+  }, []);
+
+  const requestPage = useCallback(async (mode: SortMode, offset: number) => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const generation = ++generationRef.current;
+    busyRef.current = true;
+    setFetching(true);
+    setFailed(false);
+    try {
+      const res = await fetch(`/api/feed/explore?offset=${offset}&limit=${PAGE}&sort=${mode}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error('Explore request failed');
+      const { posts: next, hasMore: more } = await res.json() as ExplorePageResponse;
+      // Some responses may already be decoded when a new tab aborts them.
+      if (generation !== generationRef.current) return;
+      setPosts(previous => {
+        if (offset === 0) return next;
+        const seen = new Set(previous.map(post => post.id));
+        return [...previous, ...next.filter(post => !seen.has(post.id))];
+      });
+      offsetRef.current = offset + next.length;
+      setHasMore(more && next.length > 0);
+    } catch {
+      if (generation === generationRef.current && !controller.signal.aborted) setFailed(true);
+    } finally {
+      if (generation === generationRef.current) {
+        busyRef.current = false;
+        setFetching(false);
+      }
+    }
+  }, []);
 
   const switchSort = useCallback(async (next: SortMode) => {
     if (next === sortRef.current) return;
@@ -63,72 +102,37 @@ export function ExplorePostGrid({
     setSort(next);
     setPosts([]);
     setHasMore(true);
-    setFetching(true);
     offsetRef.current = 0;
-    try {
-      const res = await fetch(`/api/feed/explore?offset=0&limit=${PAGE}&sort=${next}`);
-      if (!res.ok) { setHasMore(false); return; }
-      const { posts: first, hasMore: more } = (await res.json()) as ExplorePageResponse;
-      setPosts(first);
-      offsetRef.current = first.length;
-      setHasMore(more);
-    } catch {
-      setHasMore(false);
-    } finally {
-      setFetching(false);
-    }
-  }, []);
+    await requestPage(next, 0);
+  }, [requestPage]);
 
-  // ── Infinite-scroll loadMore ─────────────────────────────────────────────────
-
-  const loadMore = useCallback(async () => {
-    if (fetching || !hasMore) return;
-    setFetching(true);
-    const currentSort = sortRef.current;
-    try {
-      const res = await fetch(
-        `/api/feed/explore?offset=${offsetRef.current}&limit=${PAGE}&sort=${currentSort}`,
-      );
-      if (!res.ok) return;
-      const { posts: next, hasMore: more } = (await res.json()) as ExplorePageResponse;
-      if (next.length === 0) { setHasMore(false); return; }
-      setPosts((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const fresh = next.filter((p) => !seen.has(p.id));
-        return [...prev, ...fresh];
-      });
-      offsetRef.current += next.length;
-      setHasMore(more);
-    } catch {
-      // silent
-    } finally {
-      setFetching(false);
-    }
-  }, [fetching, hasMore]);
-
-  // ── IntersectionObserver ─────────────────────────────────────────────────────
+  const loadMore = useCallback(() => {
+    if (busyRef.current || !hasMore || failed) return;
+    void requestPage(sortRef.current, offsetRef.current);
+  }, [hasMore, failed, requestPage]);
 
   useEffect(() => {
-    if (!hasMore) return;
     const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => { if (entries[0]?.isIntersecting) void loadMore(); },
+    if (!el || !hasMore || fetching || failed) return;
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0]?.isIntersecting) loadMore(); },
       { rootMargin: '400px' },
     );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hasMore, loadMore]);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, fetching, failed, loadMore]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <>
       {/* Sort tab pills */}
-      <div className="mb-4 flex gap-2">
+      <div className="discover-sort" aria-label={t('explore.sortLabel')}>
         {SORT_MODES.map((mode) => (
           <button
             key={mode}
+            type="button"
+            aria-pressed={sort === mode}
             onClick={() => void switchSort(mode)}
             className={cn(
               'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
@@ -143,13 +147,14 @@ export function ExplorePostGrid({
       </div>
 
       {/* Grid */}
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <ul className="discover-grid">
         {posts.map((p) => {
           const fallbackInitial =
             (p.author.display_name ?? p.author.username).slice(0, 1).toUpperCase() || '•';
           return (
             <li key={p.id}>
               <ExploreVideoCard
+                discovery
                 id={p.id}
                 videoUrl={p.video_url}
                 thumbnailUrl={p.thumbnail_url}
@@ -167,31 +172,24 @@ export function ExplorePostGrid({
         })}
       </ul>
 
-      {/* Sentinel + skeleton row while fetching */}
-      {hasMore && (
-        <div ref={sentinelRef} className="mt-3">
-          {fetching && (
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              {[...Array(6)].map((_, i) => (
-                <li key={i}>
-                  <Skeleton className="aspect-[9/16] w-full rounded-lg" />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Initial loading skeleton when grid is empty (tab switch) */}
-      {posts.length === 0 && fetching && (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {[...Array(12)].map((_, i) => (
-            <li key={i}>
-              <Skeleton className="aspect-[9/16] w-full rounded-lg" />
-            </li>
+      {hasMore && <div ref={sentinelRef} className="mt-3" />}
+      {fetching && (
+        <ul className="discover-grid" aria-label={t('common.loading')} aria-busy="true">
+          {Array.from({ length: posts.length ? 3 : 6 }, (_, i) => (
+            <li key={i}><Skeleton className="aspect-[4/5] w-full rounded-2xl" /></li>
           ))}
         </ul>
       )}
+      {failed && (
+        <div className="discover-feed-state" role="status">
+          <p>{t('explore.loadError')}</p>
+          <button type="button" onClick={() => void requestPage(sortRef.current, offsetRef.current)}>{t('common.retry')}</button>
+        </div>
+      )}
+      {!fetching && !failed && posts.length === 0 && (
+        <p className="discover-feed-state" role="status">{t('explore.noPosts')}</p>
+      )}
+
     </>
   );
 }

@@ -1,50 +1,41 @@
+@import "./studio-glass.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/**
- * CSS-Variablen als HSL-Tripels (shadcn/ui-Standard).
- * Werte korrespondieren zu shared/theme/colors.ts:
- *   Light: bg.primary=#F5F5F5 → 0 0% 96%
- *   Dark:  bg.primary=#050508 → 240 20% 3%
- *
- * Brand-Farben (gold/success/...) direkt gemappt auf die Native-Accent-Werte.
- */
+/* HSL tokens shared by standard controls and the neutral studio surfaces. */
 
 @layer base {
   :root {
-    /*
-     * Light-Palette: warme Stone-Töne statt blaustichiger Slate-Grays
-     * (TikTok-Look). muted-foreground bewusst dunkler (38% statt 46%),
-     * damit Sidebar-Icons/-Labels nicht blass-grau wirken.
-     */
-    --background:           30 14% 97%;         /* warmes Off-White */
-    --foreground:           24 10% 10%;         /* warmes Near-Black (Stone-950) */
+    /* Neutral silver surfaces; colors in photos and semantic states stay intact. */
+    --background:           220 10% 97%;
+    --foreground:           220 8% 12%;
 
-    --card:                 40 20% 99%;         /* warmes Weiß */
-    --card-foreground:      24 10% 10%;
+    --card:                 0 0% 100%;
+    --card-foreground:      220 8% 12%;
 
-    --popover:              40 20% 99%;
-    --popover-foreground:   24 10% 10%;
+    --popover:              0 0% 100%;
+    --popover-foreground:   220 8% 12%;
 
-    --primary:              0 0% 0%;            /* Schwarz auf Weiß (TikTok-Stil) */
+    --primary:              0 0% 0%;            /* Graphite on white */
     --primary-foreground:   0 0% 100%;
 
-    --secondary:            30 8% 94%;
-    --secondary-foreground: 24 10% 10%;
+    --secondary:            220 9% 94%;
+    --secondary-foreground: 220 8% 12%;
 
-    --muted:                30 8% 94%;
-    --muted-foreground:     28 8% 38%;
+    --muted:                220 9% 94%;
+    --muted-foreground:     220 5% 40%;
 
-    --accent:               30 8% 94%;
-    --accent-foreground:    24 10% 10%;
+    --accent:               220 9% 94%;
+    --accent-foreground:    220 8% 12%;
 
     --destructive:          0 72% 51%;          /* DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --border:               30 8% 89%;
-    --input:                30 12% 96%;
-    --ring:                 24 10% 10%;
+    --border:               220 9% 86%;
+    --input:                220 10% 96%;
+    --ring:                 220 8% 12%;
 
     --radius: 0.625rem;
 
@@ -61,10 +52,10 @@
   }
 
   .dark {
-    --background:           240 20% 3%;         /* 050508 */
+    --background:           220 10% 7%;
     --foreground:           0 0% 100%;          /* FFFFFF */
 
-    --card:                 0 0% 5%;            /* 0D0D0D */
+    --card:                 220 8% 10%;
     --card-foreground:      0 0% 100%;
 
     --popover:              0 0% 10%;           /* 1A1A1A */

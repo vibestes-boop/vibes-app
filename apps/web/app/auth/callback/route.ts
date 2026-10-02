@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { getSafeReturnPath } from '@/lib/auth/return-path';
 
 /**
  * Auth Callback — handles Magic-Link, OAuth (Google/Apple) and Password-Reset flows.
@@ -74,16 +75,16 @@ export async function GET(request: NextRequest) {
   const redirectTo = searchParams.get('redirect_to');
   const errorParam = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
-  const next = searchParams.get('next') ?? '/';
+  const next = getSafeReturnPath(searchParams.get('next'));
 
   // OAuth/Magic-Link failure from the provider — bounce back to /login with a message.
   if (errorParam) {
     const msg = errorDescription ?? errorParam;
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(msg)}`);
+    return NextResponse.redirect(`${origin}/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent(msg)}`);
   }
 
   if (!code && !tokenHash) {
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('Fehlender Auth-Code.')}`);
+    return NextResponse.redirect(`${origin}/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent('Fehlender Auth-Code.')}`);
   }
 
   const supabase = await createClient();
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
     const otpType = OTP_TYPES.find((t) => t === type);
     if (!otpType) {
       return NextResponse.redirect(
-        `${origin}/login?error=${encodeURIComponent('Dieser Link ist unvollständig. Fordere ihn neu an.')}`,
+        `${origin}/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent('Dieser Link ist unvollständig. Fordere ihn neu an.')}`,
       );
     }
     ({ error: authError } = await supabase.auth.verifyOtp({
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest) {
     const msg = expired
       ? 'Dieser Link ist abgelaufen oder wurde schon benutzt. Fordere einen neuen an.'
       : authError.message;
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(msg)}`);
+    return NextResponse.redirect(`${origin}/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent(msg)}`);
   }
 
   // ── Rücksprung in die App ─────────────────────────────────────────────────
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     if (!session) {
       return NextResponse.redirect(
-        `${origin}/login?error=${encodeURIComponent('Session konnte nicht erstellt werden.')}`,
+        `${origin}/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent('Session konnte nicht erstellt werden.')}`,
       );
     }
 
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('Session konnte nicht erstellt werden.')}`);
+    return NextResponse.redirect(`${origin}/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent('Session konnte nicht erstellt werden.')}`);
   }
 
   const { data: profile } = await supabase
@@ -177,7 +178,5 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Defense against open-redirect: only allow same-origin relative `next`.
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  return NextResponse.redirect(`${origin}${next}`);
 }

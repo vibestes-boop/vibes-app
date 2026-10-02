@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Video hochladen — Serlo',
@@ -30,9 +32,11 @@ interface PageProps {
 export default async function CreatePage({ searchParams }: PageProps) {
   const hasAuthCookie = await hasSupabaseAuthCookie();
   const user = hasAuthCookie ? await getUser() : null;
-  if (!user) redirect('/login?next=/create');
-
   const { draftId } = await searchParams;
+  if (!user) {
+    const next = draftId ? `/create?${new URLSearchParams({ draftId })}` : '/create';
+    redirect(`/login?next=${encodeURIComponent(next)}`);
+  }
   const [draft, myProducts] = await Promise.all([
     draftId ? getDraft(draftId) : Promise.resolve(null),
     getMyProducts().catch(() => []),
@@ -43,8 +47,9 @@ export default async function CreatePage({ searchParams }: PageProps) {
     .map((p) => ({ id: p.id, title: p.title, cover_url: p.cover_url ?? null }));
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pb-20 pt-6 lg:px-6">
-      <header className="mb-6 flex items-center justify-between">
+    <div className="serlo-create-page mx-auto w-full max-w-5xl px-4 pb-12 pt-6 lg:px-6">
+      <header className="mb-6 flex items-start gap-3">
+        <Link href="/explore" aria-label="Zurück zu Entdecken" className="serlo-glass-button grid h-11 w-11 shrink-0 place-items-center rounded-full"><ArrowLeft size={20} /></Link>
         <div>
           <h1 className="text-2xl font-semibold">Post erstellen</h1>
           <p className="mt-1 text-sm text-muted-foreground">

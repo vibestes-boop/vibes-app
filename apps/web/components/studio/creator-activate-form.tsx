@@ -13,9 +13,9 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles } from 'lucide-react';
 import { activateCreator } from '@/app/actions/creator';
 
-export function CreatorActivateForm() {
+export function CreatorActivateForm({ next = '/studio' }: { next?: string }) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -25,10 +25,10 @@ export function CreatorActivateForm() {
       const res = await activateCreator();
       if (res.ok) {
         setSuccess(true);
-        router.push('/studio' as Route);
+        router.push(next as Route);
         router.refresh();
       } else if (res.error === 'not_authenticated') {
-        router.push('/login?next=/studio/activate' as Route);
+        router.push(`/login?next=${encodeURIComponent(`/creator/activate?next=${encodeURIComponent(next)}`)}` as Route);
       } else {
         setError(res.error ?? 'Aktivierung fehlgeschlagen. Bitte versuche es nochmal.');
       }
@@ -40,15 +40,15 @@ export function CreatorActivateForm() {
       <button
         type="button"
         onClick={handleActivate}
-        disabled={success}
+        disabled={pending || success}
         className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
       >
-        {success ? (
+        {pending || success ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Sparkles className="h-4 w-4" />
         )}
-        {success ? 'Wird aktiviert…' : 'Jetzt Creator werden — kostenlos'}
+        {pending || success ? 'Wird aktiviert…' : 'Jetzt Creator werden — kostenlos'}
       </button>
 
       {error && (

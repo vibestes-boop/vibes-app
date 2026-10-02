@@ -6,33 +6,16 @@
  * In Production/Dev Build: vollständige AR-Kamera
  */
 
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet,Text,TouchableOpacity,View } from 'react-native';
+import React, { useMemo } from 'react';
+import { NativeModules,StyleSheet,Text,TouchableOpacity,View } from 'react-native';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
-// ─── Expo Go Detection ────────────────────────────────────────────────────────
-const isExpoGo = Constants.appOwnership === 'expo';
-
-// ─── Dynamischer Import — nur wenn NICHT Expo Go ──────────────────────────────
-// Verhindert VisionCamera crash in Expo Go beim Routen-Laden
 type ARScreenProps = {
   onMediaCaptured: (uri: string, type: 'photo' | 'video') => void;
   onClose: () => void;
 };
-
-let ARCameraScreen: React.ComponentType<ARScreenProps> | null = null;
-
-if (!isExpoGo) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    ARCameraScreen = require('@/components/camera/ARCameraScreen').ARCameraScreen;
-  } catch {
-    ARCameraScreen = null;
-  }
-}
 
 // ─── Expo Go Placeholder ──────────────────────────────────────────────────────
 function ExpoGoPlaceholder({ onBack }: { onBack: () => void }) {
@@ -66,6 +49,15 @@ function ExpoGoPlaceholder({ onBack }: { onBack: () => void }) {
 export default function ARCameraRoute() {
   useThemedStatusBar('light');
   const router = useRouter();
+  // Expo Router evaluates routes before they are visited. Defer native camera
+  // imports until this screen opens, and only when its native module exists.
+  const ARCameraScreen = useMemo<React.ComponentType<ARScreenProps> | null>(() => {
+    if (!NativeModules.CameraView) return null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      return require('@/components/camera/ARCameraScreen').ARCameraScreen;
+    } catch { return null; }
+  }, []);
 
   const handleClose = () => router.back();
 

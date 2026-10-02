@@ -1,9 +1,10 @@
 'use client';
 
 import type { Route } from 'next';
+import { ScheduleDialog } from './schedule-dialog';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import {
   UploadCloud,
   Image as ImageIcon,
@@ -138,6 +139,7 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
 
   // ---------- Draft / Schedule ----------
   const [draftId, setDraftId] = useState<string | null>(initialDraft?.id ?? null);
+  const scheduleTriggerRef = useRef<HTMLButtonElement>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleAt, setScheduleAt] = useState<Date>(() => nextQuarterHour(new Date()));
 
@@ -148,14 +150,15 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
   // ---------- Global Feedback ----------
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   useEffect(() => {
-    if (!toast) return;
+    if (!toast || toast.kind === 'err') return;
     const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
 
   // ---------- Derived ----------
   const hasMedia = !!(file || remoteMediaUrl);
-  const canPublish = hasMedia && !uploadProgress && !isPending;
+  const isBusy = uploadProgress !== null || isPending;
+  const canPublish = hasMedia && !isBusy;
   const captionLen = caption.length;
 
   // ---------- Preview URL Cleanup ----------
@@ -390,36 +393,41 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
       return;
     }
 
+    setToast(null);
     startTransition(async () => {
-      const res = await publishPost({
-        caption,
-        tags,
-        mediaUrl: mUrl!,
-        mediaType: mType!,
-        thumbnailUrl: mThumb,
-        privacy,
-        allowComments,
-        allowDuet,
-        allowDownload,
-        womenOnly,
-        audioUrl,
-        coverTimeMs,
-        draftId,
-        aspectRatio,
-        productId: linkedProductId,
-      });
-      if (!res.ok) {
-        setToast({ kind: 'err', msg: res.error });
-        return;
+      try {
+        const res = await publishPost({
+          caption,
+          tags,
+          mediaUrl: mUrl!,
+          mediaType: mType!,
+          thumbnailUrl: mThumb,
+          privacy,
+          allowComments,
+          allowDuet,
+          allowDownload,
+          womenOnly,
+          audioUrl,
+          coverTimeMs,
+          draftId,
+          aspectRatio,
+          productId: linkedProductId,
+        });
+        if (!res.ok) {
+          setToast({ kind: 'err', msg: res.error });
+          return;
+        }
+        setToast({ kind: 'ok', msg: 'Post ist live.' });
+        // Nach kurzer Verzögerung zur Post-URL
+        setTimeout(() => router.push(`/p/${res.data.id}` as Route), 700);
+      } catch {
+        setToast({ kind: 'err', msg: 'Die Aktion konnte nicht abgeschlossen werden. Deine Eingaben sind weiterhin vorhanden. Bitte erneut versuchen.' });
       }
-      setToast({ kind: 'ok', msg: 'Post ist live.' });
-      // Nach kurzer Verzögerung zur Post-URL
-      setTimeout(() => router.push(`/p/${res.data.id}` as Route), 700);
     });
   };
 
   // ---------- Schedule ----------
-  const handleSchedule = async () => {
+  const handleSchedule = async (publishAt: Date) => {
     let mUrl = remoteMediaUrl;
     let mThumb = remoteThumbnailUrl;
     let mType = mediaType;
@@ -439,31 +447,36 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
       return;
     }
 
+    setToast(null);
     startTransition(async () => {
-      const res = await schedulePost({
-        caption,
-        tags,
-        mediaUrl: mUrl!,
-        mediaType: mType!,
-        thumbnailUrl: mThumb,
-        privacy,
-        allowComments,
-        allowDuet,
-        allowDownload,
-        womenOnly,
-        audioUrl,
-        coverTimeMs,
-        publishAt: scheduleAt.toISOString(),
-        draftId,
-        aspectRatio,
-      });
-      if (!res.ok) {
-        setToast({ kind: 'err', msg: res.error });
-        return;
+      try {
+        const res = await schedulePost({
+          caption,
+          tags,
+          mediaUrl: mUrl!,
+          mediaType: mType!,
+          thumbnailUrl: mThumb,
+          privacy,
+          allowComments,
+          allowDuet,
+          allowDownload,
+          womenOnly,
+          audioUrl,
+          coverTimeMs,
+          publishAt: publishAt.toISOString(),
+          draftId,
+          aspectRatio,
+        });
+        if (!res.ok) {
+          setToast({ kind: 'err', msg: res.error });
+          return;
+        }
+        setToast({ kind: 'ok', msg: 'Geplant.' });
+        setScheduleOpen(false);
+        setTimeout(() => router.push('/create/scheduled'), 500);
+      } catch {
+        setToast({ kind: 'err', msg: 'Die Aktion konnte nicht abgeschlossen werden. Deine Eingaben sind weiterhin vorhanden. Bitte erneut versuchen.' });
       }
-      setToast({ kind: 'ok', msg: 'Geplant.' });
-      setScheduleOpen(false);
-      setTimeout(() => router.push('/create/scheduled'), 500);
     });
   };
 
@@ -481,29 +494,34 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
       setRemoteThumbnailUrl(up.thumbnailUrl);
     }
 
+    setToast(null);
     startTransition(async () => {
-      const res = await saveDraft({
-        id: draftId,
-        caption,
-        tags,
-        mediaType: mediaType,
-        mediaUrl: mUrl,
-        thumbnailUrl: mThumb,
-        settings: {
-          privacy,
-          allowComments,
-          allowDuet,
-          allowDownload,
-          womenOnly,
-          coverTimeMs,
-        },
-      });
-      if (!res.ok) {
-        setToast({ kind: 'err', msg: res.error });
-        return;
+      try {
+        const res = await saveDraft({
+          id: draftId,
+          caption,
+          tags,
+          mediaType: mediaType,
+          mediaUrl: mUrl,
+          thumbnailUrl: mThumb,
+          settings: {
+            privacy,
+            allowComments,
+            allowDuet,
+            allowDownload,
+            womenOnly,
+            coverTimeMs,
+          },
+        });
+        if (!res.ok) {
+          setToast({ kind: 'err', msg: res.error });
+          return;
+        }
+        setDraftId(res.data.id);
+        setToast({ kind: 'ok', msg: 'Entwurf gespeichert.' });
+      } catch {
+        setToast({ kind: 'err', msg: 'Die Aktion konnte nicht abgeschlossen werden. Deine Eingaben sind weiterhin vorhanden. Bitte erneut versuchen.' });
       }
-      setDraftId(res.data.id);
-      setToast({ kind: 'ok', msg: 'Entwurf gespeichert.' });
     });
   };
 
@@ -764,6 +782,8 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
           </button>
         </div>
 
+        {!scheduleOpen && <EditorFeedback feedback={toast} />}
+
         {/* Action-Buttons */}
         <div className="mt-2 flex flex-col gap-2">
           <button
@@ -785,8 +805,9 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setScheduleOpen(true)}
-              disabled={!hasMedia || isPending}
+              ref={scheduleTriggerRef}
+              onClick={() => { setToast(null); setScheduleOpen(true); }}
+              disabled={!hasMedia || isBusy}
               className="flex h-11 items-center justify-center gap-2 rounded-xl border bg-background text-sm transition-colors hover:bg-muted disabled:opacity-50"
             >
               <Clock className="h-4 w-4" />
@@ -795,7 +816,7 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
             <button
               type="button"
               onClick={handleSaveDraft}
-              disabled={(!hasMedia && !caption) || isPending}
+              disabled={(!hasMedia && !caption) || isBusy}
               className="flex h-11 items-center justify-center gap-2 rounded-xl border bg-background text-sm transition-colors hover:bg-muted disabled:opacity-50"
             >
               <FileText className="h-4 w-4" />
@@ -806,7 +827,7 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
 
         {draftId && (
           <p className="text-center text-xs text-muted-foreground">
-            Automatisch gespeichert als Entwurf ·{' '}
+            Änderungen mit „Entwurf“ speichern. ·{' '}
             <a href="/create/drafts" className="underline hover:text-foreground">
               Alle Entwürfe
             </a>
@@ -824,35 +845,15 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
 
       {/* Scheduler Modal */}
       {scheduleOpen && (
-        <ScheduleModal
+        <ScheduleDialog
+          returnFocusRef={scheduleTriggerRef}
           value={scheduleAt}
           onChange={setScheduleAt}
           onClose={() => setScheduleOpen(false)}
           onConfirm={handleSchedule}
-          busy={isPending}
+          busy={isBusy}
+          feedback={<EditorFeedback feedback={toast} />}
         />
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div
-          className={cn(
-            'fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm shadow-lg',
-            toast.kind === 'ok'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-red-600 text-white',
-          )}
-        >
-          {toast.kind === 'ok' ? (
-            <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> {toast.msg}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5">
-              <AlertCircle className="h-4 w-4" /> {toast.msg}
-            </span>
-          )}
-        </div>
       )}
 
       {/* v1.28.0: AI-Image-Sheet — Parität mit Native-Create-Flow */}
@@ -877,6 +878,20 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
 // =============================================================================
 // Sub-Components
 // =============================================================================
+
+function EditorFeedback({ feedback }: { feedback: { kind: 'ok' | 'err'; msg: string } | null }) {
+  if (!feedback) return null;
+  const Icon = feedback.kind === 'err' ? AlertCircle : CheckCircle2;
+  return (
+    <div role={feedback.kind === 'err' ? 'alert' : 'status'} className={cn(
+      'flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm',
+      feedback.kind === 'err' ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-border bg-muted/50 text-foreground',
+    )}>
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>{feedback.msg}</p>
+    </div>
+  );
+}
 
 function MediaPreview({
   localPreviewUrl,
@@ -1359,7 +1374,7 @@ function PrivacyPanel({
     sub: string;
   }> = [
     { v: 'public', label: 'Öffentlich', icon: Globe, sub: 'Alle können sehen' },
-    { v: 'friends', label: 'Freunde', icon: UsersIcon, sub: 'Nur Follower' },
+    { v: 'friends', label: 'Follower', icon: UsersIcon, sub: 'Wer dir folgt' },
     { v: 'private', label: 'Privat', icon: Lock, sub: 'Nur du' },
   ];
 
@@ -1424,172 +1439,14 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between text-sm">
+    <div className="flex min-h-11 items-center justify-between gap-3 text-sm">
       <span>{label}</span>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={cn(
-          'inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0',
-          checked ? 'bg-emerald-500' : 'bg-zinc-600',
-        )}
-        aria-pressed={checked}
-      >
-        <span
-          className={cn(
-            'h-[18px] w-[18px] rounded-full bg-white shadow transition-transform',
-            checked ? 'translate-x-[25px]' : 'translate-x-[3px]',
-          )}
-        />
+      <button type="button" role="switch" aria-label={label} aria-checked={checked}
+        onClick={() => onChange(!checked)} className="inline-flex h-11 w-11 shrink-0 items-center">
+        <span className={cn('inline-flex h-6 w-11 items-center rounded-full border border-border/50 transition-colors', checked ? 'bg-primary' : 'bg-muted-foreground/30')}>
+          <span className={cn('h-[18px] w-[18px] rounded-full shadow transition-transform', checked ? 'translate-x-[22px] bg-primary-foreground' : 'translate-x-[2px] bg-card')} />
+        </span>
       </button>
-    </label>
-  );
-}
-
-function ScheduleModal({
-  value,
-  onChange,
-  onClose,
-  onConfirm,
-  busy,
-}: {
-  value: Date;
-  onChange: (d: Date) => void;
-  onClose: () => void;
-  onConfirm: () => void;
-  busy: boolean;
-}) {
-  // 60-Tage-Future-Cap (Native-Constraint)
-  const maxDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 60);
-    return d;
-  }, []);
-
-  const presets = useMemo(() => {
-    const now = new Date();
-    return [
-      { label: 'In 1h', d: addMin(now, 60) },
-      { label: 'In 3h', d: addMin(now, 180) },
-      { label: 'Heute 20:00', d: atTime(now, 20, 0) },
-      { label: 'Morgen 09:00', d: atTime(addDays(now, 1), 9, 0) },
-      { label: 'Morgen 18:00', d: atTime(addDays(now, 1), 18, 0) },
-      { label: 'In 3 Tagen', d: addDays(now, 3) },
-    ];
-  }, []);
-
-  const futureOk = value.getTime() > Date.now() + 60_000; // ≥1min future
-  const notTooFar = value.getTime() < maxDate.getTime();
-  const canConfirm = futureOk && notTooFar && !busy;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-background p-5 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Zeitpunkt wählen</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="mb-4 rounded-xl bg-muted/50 p-4 text-center">
-          <div className="text-2xl font-semibold tabular-nums">
-            {formatDE(value)}
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            {relativeFuture(value)}
-          </div>
-        </div>
-
-        {/* Preset-Chips */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          {presets.map((p, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onChange(p.d)}
-              disabled={p.d.getTime() < Date.now() + 60_000}
-              className="rounded-full border px-3 py-1.5 text-xs transition-colors hover:bg-muted disabled:opacity-40"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Datum + Zeit Inputs */}
-        <div className="mb-4 grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Datum</label>
-            <input
-              type="date"
-              value={toDateInput(value)}
-              min={toDateInput(new Date())}
-              max={toDateInput(maxDate)}
-              onChange={(e) => {
-                const [y, m, d] = e.target.value.split('-').map(Number);
-                const next = new Date(value);
-                next.setFullYear(y, m - 1, d);
-                onChange(next);
-              }}
-              className="w-full rounded-lg border bg-background px-2 py-1.5 text-sm"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Uhrzeit</label>
-            <input
-              type="time"
-              value={toTimeInput(value)}
-              onChange={(e) => {
-                const [h, m] = e.target.value.split(':').map(Number);
-                const next = new Date(value);
-                next.setHours(h, m, 0, 0);
-                onChange(next);
-              }}
-              className="w-full rounded-lg border bg-background px-2 py-1.5 text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-11 flex-1 rounded-xl border bg-background text-sm hover:bg-muted"
-          >
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={!canConfirm}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Clock className="h-4 w-4" /> Planen
-              </>
-            )}
-          </button>
-        </div>
-
-        {!futureOk && (
-          <p className="mt-2 text-center text-xs text-red-500">
-            Zeitpunkt muss mindestens 1 Minute in der Zukunft liegen.
-          </p>
-        )}
-        {!notTooFar && (
-          <p className="mt-2 text-center text-xs text-red-500">
-            Max. 60 Tage in der Zukunft.
-          </p>
-        )}
-      </div>
     </div>
   );
 }
@@ -1661,46 +1518,4 @@ function nextQuarterHour(d: Date): Date {
   const extra = 15 - (r.getMinutes() % 15);
   r.setMinutes(r.getMinutes() + (extra === 0 ? 15 : extra));
   return r;
-}
-function addMin(d: Date, m: number): Date {
-  return new Date(d.getTime() + m * 60_000);
-}
-function addDays(d: Date, days: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + days);
-  return r;
-}
-function atTime(d: Date, h: number, m: number): Date {
-  const r = new Date(d);
-  r.setHours(h, m, 0, 0);
-  return r;
-}
-function toDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-function toTimeInput(d: Date): string {
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-}
-function formatDE(d: Date): string {
-  const day = String(d.getDate()).padStart(2, '0');
-  const mon = String(d.getMonth() + 1).padStart(2, '0');
-  const y = d.getFullYear();
-  const h = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${day}.${mon}.${y} · ${h}:${mi}`;
-}
-function relativeFuture(d: Date): string {
-  const diff = d.getTime() - Date.now();
-  if (diff <= 0) return 'Vergangen';
-  const mins = Math.round(diff / 60_000);
-  if (mins < 60) return `in ${mins} Min.`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `in ${hrs} Std.`;
-  const days = Math.round(hrs / 24);
-  return `in ${days} Tagen`;
 }

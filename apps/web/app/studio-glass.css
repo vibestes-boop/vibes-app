@@ -1,0 +1,89 @@
+/* Shared web chrome. Opaque content surfaces preserve contrast; only navigation
+   and controls use transparency. No image filters are applied to people's posts. */
+:root {
+  --studio-glass: linear-gradient(145deg, #ffffffed, #ffffff9e 46%, #e4e6e9ad);
+  --studio-edge: #ffffff;
+  --studio-shadow: 0 12px 36px #252a3510, 0 2px 5px #252a3508, inset 0 1px 0 #fff;
+  --studio-active: linear-gradient(145deg, #ffffff, #e7e9ed);
+}
+.dark {
+  --studio-glass: linear-gradient(145deg, #3b3d42e8, #24262bd6 46%, #17191fe8);
+  --studio-edge: #ffffff24;
+  --studio-shadow: 0 12px 36px #00000030, 0 2px 5px #00000020, inset 0 1px 0 #ffffff20;
+  --studio-active: linear-gradient(145deg, #44474e, #292c33);
+}
+.serlo-sidebar-frame { border-right: 1px solid hsl(var(--border) / .65); }
+.serlo-navigation {
+  background: linear-gradient(150deg, hsl(var(--card) / .9), hsl(var(--background) / .85));
+  padding: 24px 16px; gap: 16px;
+}
+.serlo-wordmark { display: block; padding: 0 12px 8px; width: fit-content; font-size: 38px; line-height: 1.2; font-weight: 800; letter-spacing: -.075em; color: hsl(var(--foreground)); }
+.serlo-wordmark > span { color: hsl(var(--muted-foreground)); }
+.serlo-navigation > form input { height: 44px; border: 1px solid hsl(var(--border) / .6); border-radius: 16px; background: var(--studio-glass); box-shadow: inset 0 1px 0 var(--studio-edge); }
+.serlo-navigation [data-create-action] { min-height: 48px; background: linear-gradient(150deg, #45474e, #17191e); border: 1px solid #ffffff29; color: #fff; border-radius: 16px; box-shadow: 0 5px 12px #13161e18, inset 0 1px 0 #ffffff30; }
+.serlo-navigation [data-create-action]:hover { background: #393c44; }
+.serlo-navigation [data-create-action] > span:first-child { background: transparent; color: inherit; box-shadow: none; }
+.dark .serlo-navigation [data-create-action] { background: linear-gradient(145deg, #fff, #ccd0d6); color: #16181d; }
+.serlo-navigation nav > a, .serlo-navigation nav > button { min-height: 44px; font-size: 14px; border-radius: 14px; }
+.serlo-navigation nav svg { stroke-width: 1.7; }
+.serlo-navigation [aria-current='page'] { background: var(--studio-active); box-shadow: inset 0 1px 0 var(--studio-edge), 0 2px 5px #00000006; }
+.serlo-navigation [aria-current='page'] > span[aria-hidden='true']:first-child { display: none; }
+.serlo-navigation [aria-current='page'] svg { stroke-width: 2.2; }
+.serlo-navigation nav + div { margin-top: 4px; }
+
+.serlo-mobile-dock {
+  position: fixed; z-index: 40; left: 10px; right: 10px;
+  bottom: max(10px, env(safe-area-inset-bottom)); max-width: 560px; margin-inline: auto;
+  padding: 5px; border: 1px solid var(--studio-edge); border-radius: 32px;
+  background: var(--studio-glass); box-shadow: var(--studio-shadow);
+  backdrop-filter: blur(28px) saturate(1.25); -webkit-backdrop-filter: blur(28px) saturate(1.25);
+}
+.serlo-mobile-dock ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; }
+.serlo-mobile-dock li { min-width: 0; }
+.serlo-mobile-dock a { display: flex; min-height: 62px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 25px; color: hsl(var(--muted-foreground)); transition: background .18s, color .18s; }
+.serlo-mobile-dock a[aria-current='page'] { color: hsl(var(--foreground)); background: var(--studio-active); box-shadow: inset 0 1px 0 var(--studio-edge); }
+.serlo-mobile-dock a:hover { color: hsl(var(--foreground)); }
+.serlo-dock-icon, .serlo-dock-create { display: grid; place-items: center; width: 40px; height: 32px; }
+.serlo-dock-create { color: #fff; border-radius: 18px; background: linear-gradient(150deg, #50535b, #191b21); box-shadow: inset 0 1px 0 #ffffff40; }
+.dark .serlo-dock-create { color: #191b21; background: linear-gradient(145deg, #fff, #c9cdd5); }
+.serlo-dock-label { font-size: 10px; line-height: 1.2; font-weight: 600; letter-spacing: -.02em; }
+@media (min-width: 1280px) { .serlo-mobile-dock { display: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .serlo-mobile-dock { background: hsl(var(--card)); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .serlo-mobile-dock *, .serlo-navigation { transition: none; }
+}
+
+.serlo-account-actions > a { min-height: 44px; padding: 0 16px; font-size: 12px; box-shadow: inset 0 1px 0 #ffffff33, 0 3px 7px #2228330a; }
+.serlo-account-actions a[href='/login'] { background: var(--studio-glass); border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); --tw-ring-color: transparent; }
+.serlo-account-actions a[href='/signup'] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+/* Account controls stay individually reachable by touch and keyboard. */
+.serlo-account-actions > .group { gap: 8px; }
+.serlo-account-actions > .group > * { margin-right: 0; }
+.serlo-account-actions > .group > a, .serlo-account-actions > .group > button, .serlo-account-actions > .group > span > * { min-width: 44px; height: 44px; transform: none !important; background: var(--studio-glass); color: hsl(var(--foreground)); --tw-ring-color: hsl(var(--border)); }
+.serlo-account-actions > .group > button span { color: hsl(var(--foreground)); }
+
+:root { --serlo-dock-space: calc(86px + max(10px, env(safe-area-inset-bottom, 0px))); }
+.serlo-safe-bottom { padding-bottom: calc(var(--serlo-dock-space) + 24px); }
+.serlo-account-actions { gap: 8px; }
+.serlo-glass-button, .serlo-message-header { background: var(--studio-glass); border: 1px solid hsl(var(--border) / .6); box-shadow: inset 0 1px 0 var(--studio-edge); }
+.serlo-message-header { border-width: 0 0 1px; }
+.serlo-messages-viewport { display: flex; min-height: 0; width: 100%; overflow: hidden; height: var(--messages-height, 100dvh); }
+.serlo-messages-viewport[data-inbox='true'] { padding-bottom: var(--serlo-dock-space); }
+.serlo-message-composer { flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: hsl(var(--card)); }
+.serlo-message-composer textarea { min-width: 0; min-height: 44px; font-size: 16px; }
+.serlo-message-composer > div:last-child > button { width: 44px; height: 44px; }
+.serlo-auth-page { background: radial-gradient(ellipse at 20% 5%, hsl(var(--card)), transparent 65%), hsl(var(--background)); }
+.serlo-auth-card { padding: 32px; border: 1px solid var(--studio-edge); border-radius: 32px; background: var(--studio-glass); box-shadow: var(--studio-shadow); }
+.serlo-auth-card .serlo-wordmark { padding: 0; font-size: 38px; }
+.serlo-auth-card h1 { font-size: 32px; }
+.serlo-auth-card input { min-height: 48px; border-radius: 16px; border-color: hsl(var(--border)); background: hsl(var(--card) / .65); }
+.serlo-auth-card button { min-height: 48px; border-radius: 16px; }
+.serlo-auth-card button[type='submit'] { box-shadow: inset 0 1px 0 #ffffff30, 0 5px 12px #11172212; }
+.serlo-create-page > header { padding: 18px; border-radius: 24px; border: 1px solid var(--studio-edge); background: var(--studio-glass); box-shadow: var(--studio-shadow); }
+.serlo-message-failure { margin-top: 6px; max-width: 100%; font-size: 12px; color: hsl(var(--destructive)); }
+.serlo-message-failure button { min-height: 44px; padding: 8px 14px; margin-top: 5px; border: 1px solid hsl(var(--border)); border-radius: 22px; color: hsl(var(--foreground)); background: var(--studio-glass); font-weight: 600; }
+@media (min-width: 1280px) { :root { --serlo-dock-space: 0px; } }
+@media (max-width: 639px) { .serlo-account-actions > a { padding: 0 12px; font-size: 11px; } .serlo-account-actions > .group > a { display: none; } }
+@media (max-width: 359px) { .serlo-auth-card { padding: 24px 20px; } .serlo-message-composer > div:last-child { gap: 4px; } }

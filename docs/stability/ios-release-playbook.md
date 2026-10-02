@@ -19,13 +19,23 @@ Do not build from:
 The Desktop checkout produced the invalid `1.26.4 (270)` TestFlight incident
 and is quarantined for App Store work.
 
-## Current Safe State
+## Verified State — 2 October 2026
 
-- TestFlight fallback: `1.26.3 (268)`
-- Bad invalidated build: `1.26.4 (270)`
-- Current App Store Connect candidate: `1.26.6 (279)`
-- Current fixed source commit: `f177a4c Fill public legal launch details`
-- Required local source: `/Users/zaurhatuev/vibes-app`
+- Public App Store version: `1.31.0`, released 12 July 2026 (Apple lookup).
+- Last completed production iOS build: `1.31.0 (292)`, 11 July 2026,
+  commit `ed125a09952556ec5678768e077bb6765267c0db` (EAS history).
+- Next local candidate: `1.31.1 (293)`. This is **not built, submitted or live**.
+- Release prepared on `codex/serlo-release-1.31.1` from `origin/main`
+  (`9a2b50ab`); unrelated Berkat changes are excluded.
+  Integrate the reviewed release on a clean local `main` before production builds.
+- New `expo-glass-effect` requires a new native binary for native Liquid Glass;
+  older binaries have a guarded frosted-glass fallback.
+- Required source: `/Users/zaurhatuev/vibes-app`.
+- Historical invalid build: `1.26.4 (270)`; never use it as a fallback.
+
+See the dated release-preparation section at the top of `handoff.md` for
+verification results and remaining database/device checks. Store and EAS
+history must be checked again immediately before the actual release.
 
 Check recent EAS history before deciding which build to install or submit:
 
@@ -81,7 +91,8 @@ npm run native:build:production
 ```
 
 The production build command is guarded and will fail while `app.json` is still
-below `1.26.6 (279)`.
+below `1.31.1 (293)`, differs from the version pinned in the npm command,
+or the working tree is dirty or not on `main`.
 
 4. Submit only after confirming the EAS build was produced from the expected
 commit and build number:
@@ -107,7 +118,7 @@ Stop immediately if any of these happen:
 - Git remote is not `vibestes-boop/vibes-app`.
 - EAS project id is not `02ab536a-5836-4560-a5ec-2dfd6e059f90`.
 - Bundle id is not `com.vibesapp.vibes`.
-- Production version/build is lower than `1.26.6 (279)`.
+- Production version/build is lower than `1.31.1 (293)` or differs from the intended release.
 - Working tree is dirty before a production build.
 - The latest EAS build points at `/Users/zaurhatuev/Desktop/vibes-app`,
   `MyxcuH2025/vibes-app`, or a stale commit.

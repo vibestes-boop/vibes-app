@@ -5,7 +5,7 @@ import { useI18n } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
-import { exploreStyles as styles } from './exploreStyles';
+import { getExploreStyles } from './exploreStyles';
 
 export function ExploreUserRow({
   user,
@@ -20,6 +20,7 @@ export function ExploreUserRow({
   const initials = user.username?.[0]?.toUpperCase() ?? '?';
   const { isFollowing, toggle, isLoading, isOwnProfile } = useFollow(user.id);
   const { colors } = useTheme();
+  const styles = getExploreStyles(colors);
 
   // Kompakte vertikale Karte für horizontales Scrollen (Discover-Sektion)
   if (compact) {
@@ -42,20 +43,21 @@ export function ExploreUserRow({
         {!isOwnProfile && (
           <Pressable
             onPress={(e) => { e.stopPropagation(); toggle(); }}
+            accessibilityRole="button" accessibilityLabel={t(isFollowing ? 'explore.following' : 'explore.follow')}
             disabled={isLoading}
             style={[
               compactStyles.followBtn,
-              { borderColor: isFollowing ? 'rgba(255,255,255,0.28)' : colors.border.default },
-              isFollowing && compactStyles.followBtnActive,
+              { borderColor: isFollowing ? colors.accent.primary : colors.border.default },
+              isFollowing && { backgroundColor: colors.bg.subtle },
             ]}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.accent.primary} />
             ) : (
               <Text style={[
                 compactStyles.followBtnText,
-                { color: isFollowing ? '#FFFFFF' : colors.text.secondary },
-                isFollowing && compactStyles.followBtnTextActive,
+                { color: isFollowing ? colors.accent.primary : colors.text.secondary },
+                isFollowing && { color: colors.accent.primary },
               ]}>
                 {isFollowing ? t('explore.following') : t('explore.follow')}
               </Text>
@@ -89,22 +91,24 @@ export function ExploreUserRow({
       {!isOwnProfile && (
         <Pressable
           onPress={(e) => { e.stopPropagation(); toggle(); }}
+          accessibilityRole="button" accessibilityLabel={t(isFollowing ? 'explore.following' : 'explore.follow')}
           disabled={isLoading}
           style={{
             paddingHorizontal: 14,
-            paddingVertical: 6,
+            paddingVertical: 12,
+            minHeight: 44,
             borderRadius: 14,
             borderWidth: 1.5,
-            borderColor: isFollowing ? 'rgba(255,255,255,0.28)' : colors.border.default,
-            backgroundColor: isFollowing ? 'rgba(255,255,255,0.08)' : 'transparent',
+            borderColor: isFollowing ? colors.accent.primary : colors.border.default,
+            backgroundColor: isFollowing ? colors.bg.subtle : 'transparent',
           }}
           hitSlop={6}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={colors.accent.primary} />
           ) : (
             <Text style={{
-              color: isFollowing ? '#FFFFFF' : colors.text.secondary,
+              color: isFollowing ? colors.accent.primary : colors.text.secondary,
               fontSize: 12,
               fontWeight: '700',
             }}>
@@ -120,7 +124,7 @@ export function ExploreUserRow({
 // ── Compact-Card Styles (für Discover-Sektion) ───────────────────────────
 const compactStyles = StyleSheet.create({
   card: {
-    width: 110,
+    width: 156,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 16,
     padding: 12,
@@ -146,18 +150,19 @@ const compactStyles = StyleSheet.create({
   },
   username: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
   },
   reason: {
     color: 'rgba(255,255,255,0.4)',
-    fontSize: 10,
+    fontSize: 11,
     textAlign: 'center',
   },
   followBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 10,
+    minHeight: 44,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.25)',
@@ -169,7 +174,7 @@ const compactStyles = StyleSheet.create({
   },
   followBtnText: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   followBtnTextActive: {

@@ -46,11 +46,19 @@ export function useFollow(targetUserId: string | null, batchIsFollowing?: boolea
   const countsKey   = ['follow-counts', targetUserId];
   const engageKey   = ['feed-engagement', currentUserId];
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: followKey });
-    queryClient.invalidateQueries({ queryKey: countsKey });
-    queryClient.invalidateQueries({ queryKey: engageKey });
-  };
+  // Refresh dependent screens after the request settles, including slow networks.
+  // Returning the promise keeps the button pending until the refreshed state is ready.
+  const invalidate = () => Promise.all([
+    followKey,
+    countsKey,
+    engageKey,
+    ['follow-counts', currentUserId],
+    ['following-feed', currentUserId],
+    ['following', currentUserId],
+    ['followers', targetUserId],
+    ['discover-people', currentUserId],
+  ].map(queryKey => queryClient.invalidateQueries({ queryKey })));
+
 
   const follow = useMutation({
     onMutate: async () => {

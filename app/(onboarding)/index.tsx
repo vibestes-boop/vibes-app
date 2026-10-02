@@ -1,266 +1,56 @@
-import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Heart,SlidersHorizontal,Users } from 'lucide-react-native';
-import { useEffect } from 'react';
-import { Pressable,StyleSheet,Text,View } from 'react-native';
-import {
-useAnimatedStyle,
-useSharedValue,
-withDelay,
-withTiming,
-} from 'react-native-reanimated';
+import { MapPin, MessageCircle, Radio, Images } from 'lucide-react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useI18n } from '@/lib/i18n';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
-
-// labelKey-Muster: Konstanten tragen nur Keys, t() läuft am Renderpunkt.
-const FEATURES = [
-  {
-    icon: SlidersHorizontal,
-    color: '#FFFFFF',
-    titleKey: 'onboarding.feat1Title',
-    descKey: 'onboarding.feat1Desc',
-  },
-  {
-    icon: Users,
-    color: '#34D399',
-    titleKey: 'onboarding.feat2Title',
-    descKey: 'onboarding.feat2Desc',
-  },
-  {
-    icon: Heart,
-    color: '#F472B6',
-    titleKey: 'onboarding.feat3Title',
-    descKey: 'onboarding.feat3Desc',
-  },
-] as const;
-
-function FeatureCard({
-  feature,
-  index,
-}: {
-  feature: (typeof FEATURES)[number];
-  index: number;
-}) {
-  const Icon = feature.icon;
-  const { t } = useI18n();
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(30);
-
-  // Reanimated: einmalige Entry-Animation pro Karte (Shared Values, nur Mount)
-  useEffect(() => {
-    opacity.value = withDelay(400 + index * 150, withTiming(1, { duration: 500 }));
-    translateY.value = withDelay(400 + index * 150, withTiming(0, { duration: 150 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- index + Shared Values absichtlich nicht in deps
-  }, []);
-
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  return (
-    <Animated.View style={[styles.card, animStyle]}>
-      <BlurView intensity={30} tint="dark" style={styles.cardBlur}>
-        <View style={[styles.cardIcon, { backgroundColor: `${feature.color}20` }]}>
-          <Icon size={22} color={feature.color} strokeWidth={1.8} />
-        </View>
-        <View style={styles.cardText}>
-          <Text style={styles.cardTitle}>{t(feature.titleKey)}</Text>
-          <Text style={styles.cardDesc}>{t(feature.descKey)}</Text>
-        </View>
-      </BlurView>
-    </Animated.View>
-  );
-}
+import { SerloWordmark } from '@/components/brand/SerloWordmark';
+import { OnboardingButton } from '@/components/onboarding/OnboardingShell';
 
 export default function OnboardingWelcome() {
   useThemedStatusBar('light');
   const { t } = useI18n();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-
-  const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.8);
-  const btnOpacity = useSharedValue(0);
-  const btnTranslate = useSharedValue(20);
-
-  // Reanimated: Welcome-Screen nur beim ersten Mount
-  useEffect(() => {
-    logoOpacity.value = withTiming(1, { duration: 700 });
-    logoScale.value = withTiming(1, { duration: 200 });
-    btnOpacity.value = withDelay(900, withTiming(1, { duration: 500 }));
-    btnTranslate.value = withDelay(900, withTiming(0, { duration: 150 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Shared Values, nur Mount
-  }, []);
-
-  const logoStyle = useAnimatedStyle(() => ({
-    opacity: logoOpacity.value,
-    transform: [{ scale: logoScale.value }],
-  }));
-
-  const btnStyle = useAnimatedStyle(() => ({
-    opacity: btnOpacity.value,
-    transform: [{ translateY: btnTranslate.value }],
-  }));
-
-  return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#0A0A0A', '#0d0520', '#0A0A0A']}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0.3, y: 0 }}
-        end={{ x: 0.7, y: 1 }}
-      />
-
-      {/* Decorative glow */}
-      <View style={styles.glow} />
-
-      <View style={[styles.inner, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 32 }]}>
-        {/* Logo */}
-        <Animated.View style={[styles.logoWrap, logoStyle]}>
-          <Text style={styles.logo}>Serlo</Text>
-          <View style={styles.logoDot} />
-          <Text style={styles.tagline}>{t('onboarding.welcomeTagline')}</Text>
-        </Animated.View>
-
-        {/* Feature Cards */}
-        <View style={styles.cards}>
-          {FEATURES.map((f, i) => (
-            <FeatureCard key={f.titleKey} feature={f} index={i} />
-          ))}
-        </View>
-
-        {/* CTA Button */}
-        <Animated.View style={[styles.btnWrap, btnStyle]}>
-          <Pressable
-            style={styles.btn}
-            onPress={() => router.push('/(onboarding)/username')}
-          >
-            <LinearGradient
-              colors={['#CCCCCC', '#FFFFFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.btnGradient}
-            >
-              <Text style={styles.btnText}>{t('onboarding.letsGo')}</Text>
-            </LinearGradient>
-          </Pressable>
-          <Text style={styles.hint}>{t('onboarding.setupHint')}</Text>
-        </Animated.View>
+  const { height } = useWindowDimensions();
+  return <View style={[s.root, { backgroundColor: colors.bg.primary }]}>
+    <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={[s.hero, { height: Math.max(300, Math.min(420, height * 0.47)) }]}>
+        <Image source={require('../../assets/discover/sharoy.jpg')} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="cover" contentPosition="center" accessibilityLabel={t('mobileDesign.sharoyPhoto')} />
+        <LinearGradient colors={['rgba(0,0,0,0.54)', 'rgba(0,0,0,0.02)', 'rgba(0,0,0,0.68)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+        <View style={[s.heroHeader, { paddingTop: insets.top + 14 }]}><SerloWordmark size={35} inverse /><View style={s.communityPill}><Text style={s.communityText}>COMMUNITY</Text></View></View>
+        <View style={s.place}><MapPin size={12} color="#FFFFFF" /><Text style={s.placeText}>{t('mobileDesign.sharoyPlace')}</Text></View>
       </View>
-    </View>
-  );
+      <View style={[s.sheet, { backgroundColor: colors.bg.primary }]}>
+        <View style={[s.line, { backgroundColor: colors.accent.primary }]} />
+        <Text style={[s.eyebrow, { color: colors.accent.primary }]}>{t('mobileDesign.welcomeEyebrow')}</Text>
+        <Text accessibilityRole="header" style={[s.title, { color: colors.text.primary }]}>{t('mobileDesign.welcomeTitle')}</Text>
+        <Text style={[s.description, { color: colors.text.secondary }]}>{t('mobileDesign.welcomeBody')}</Text>
+        <View style={[s.features, { borderColor: colors.border.default }]}>
+          {[{ Icon: Images, key: 'mobileDesign.share' }, { Icon: MessageCircle, key: 'tabs.messages' }, { Icon: Radio, key: 'tabs.live' }].map(({ Icon, key }) => <View key={key} style={s.feature}><Icon size={19} strokeWidth={1.6} color={colors.accent.primary} /><Text style={[s.featureLabel, { color: colors.text.secondary }]}>{t(key as Parameters<typeof t>[0])}</Text></View>)}
+        </View>
+        <View style={{ flex: 1, minHeight: 22 }} />
+        <OnboardingButton label={t('mobileDesign.setupProfile')} onPress={() => router.push('/(onboarding)/username')} />
+        <Pressable onPress={() => void Linking.openURL('https://commons.wikimedia.org/wiki/File:Шарой_сверху.jpg')} accessibilityRole="link" accessibilityLabel={t('nativeUi.photoCredit')} style={[s.credit, { paddingBottom: Math.max(insets.bottom, 12) }]}><Text style={[s.creditText, { color: colors.text.muted }]}>Sharoy · © Serpuhovichok · CC BY-SA 3.0</Text></Pressable>
+      </View>
+    </ScrollView>
+  </View>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A0A0A',
-  },
-  glow: {
-    position: 'absolute',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: '#CCCCCC',
-    opacity: 0.12,
-    top: -80,
-    alignSelf: 'center',
-  },
-  inner: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'space-between',
-  },
-  logoWrap: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  logo: {
-    fontSize: 52,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: -2,
-  },
-  logoDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-    marginTop: -16,
-    marginLeft: 4,
-    alignSelf: 'center',
-  },
-  tagline: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 8,
-    textAlign: 'center',
-    letterSpacing: 0.2,
-  },
-  cards: {
-    gap: 12,
-  },
-  card: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  cardBlur: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 14,
-  },
-  cardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  cardText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 3,
-  },
-  cardDesc: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-    lineHeight: 17,
-  },
-  btnWrap: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  btn: {
-    width: '100%',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  btnGradient: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  hint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-  },
+const s = StyleSheet.create({
+  root: { flex: 1 }, hero: { backgroundColor: '#18181B' },
+  heroHeader: { paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  communityPill: { borderRadius: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.38)', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(0,0,0,0.24)' },
+  communityText: { color: '#FFFFFF', fontSize: 9, fontFamily: 'Inter_600SemiBold', letterSpacing: 1.8 },
+  place: { position: 'absolute', bottom: 46, left: 25, flexDirection: 'row', alignItems: 'center', gap: 6 }, placeText: { color: '#FFFFFF', fontSize: 11, letterSpacing: 0.2 },
+  sheet: { marginTop: -25, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 26, paddingTop: 23, flex: 1 },
+  line: { width: 28, height: 3, borderRadius: 2, marginBottom: 21 },
+  eyebrow: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.3, textTransform: 'uppercase', marginBottom: 10 },
+  title: { fontSize: 39, lineHeight: 43, fontFamily: 'Inter_700Bold', letterSpacing: -1.8 },
+  description: { fontSize: 14, lineHeight: 22, marginTop: 14, maxWidth: 390 },
+  features: { flexDirection: 'row', paddingTop: 18, paddingBottom: 18, marginTop: 24, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
+  feature: { flex: 1, alignItems: 'center', gap: 8, paddingHorizontal: 3 }, featureLabel: { fontSize: 11, fontWeight: '500', textAlign: 'center' },
+  credit: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingTop: 14 }, creditText: { fontSize: 9 },
 });

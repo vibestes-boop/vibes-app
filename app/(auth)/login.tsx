@@ -1,3 +1,6 @@
+import { useTheme } from '@/lib/useTheme';
+import type { ThemeColors } from '@/lib/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoogleGlyph } from '@/components/ui/GoogleGlyph';
 import { supabase } from '@/lib/supabase';
 import { appleSignIn } from '@/lib/useAppleSignIn';
@@ -5,7 +8,7 @@ import { ENABLE_GOOGLE_LOGIN,googleSignIn } from '@/lib/useGoogleSignIn';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
-import { Lock,Mail,Zap } from 'lucide-react-native';
+import { Lock,Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import {
 ActivityIndicator,
@@ -13,6 +16,7 @@ Alert,
 KeyboardAvoidingView,
 Platform,
 Pressable,
+ScrollView,
 StyleSheet,
 Text,
 TextInput,
@@ -31,7 +35,10 @@ const _animMod = require('react-native-reanimated') as any; const _animNS = _ani
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 export default function LoginScreen() {
-  useThemedStatusBar('light');
+  useThemedStatusBar('auto');
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(colors);
   const { t, locale, setLocale } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,10 +91,12 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LinearGradient
-        colors={['#000000', '#0d0016', '#000000']}
+        colors={[colors.bg.primary, colors.bg.primary]}
         style={StyleSheet.absoluteFill}
       />
 
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
       {/* ── Sprach-Toggle (vor dem Login erreichbar — Neulinge!) ── */}
       <View style={styles.langSwitch}>
         {(['de', 'ru', 'en', 'ce'] as const).map((loc) => {
@@ -110,19 +119,21 @@ export default function LoginScreen() {
 
       {/* ── Logo ── */}
       <Animated.View entering={FadeInDown.delay(60).duration(500)} style={styles.logoArea}>
-        <Zap size={36} stroke="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
-        <Text style={styles.logoText}>Serlo</Text>
-        <Text style={styles.tagline}>{t('auth.tagline')}</Text>
+
+        <Text style={styles.logoText}>serlo.</Text>
+        <Text style={styles.tagline}>{t('nativeUi.community')}</Text>
       </Animated.View>
 
       {/* ── Form ── */}
       <Animated.View entering={FadeInDown.delay(120).duration(500)} style={styles.form}>
         <View style={styles.inputWrapper}>
-          <Mail size={18} stroke="#4B5563" strokeWidth={1.8} />
+          <Mail size={18} stroke={colors.icon.muted} strokeWidth={1.8} />
           <TextInput
             style={styles.input}
+            accessibilityLabel={t('auth.emailPlaceholder')}
+            textContentType="emailAddress"
             placeholder={t('auth.emailPlaceholder')}
-            placeholderTextColor="#4B5563"
+            placeholderTextColor={colors.text.muted}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -132,13 +143,15 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.inputWrapper}>
-          <Lock size={18} stroke="#4B5563" strokeWidth={1.8} />
+          <Lock size={18} stroke={colors.icon.muted} strokeWidth={1.8} />
           <TextInput
             style={styles.input}
             placeholder={t('auth.passwordPlaceholder')}
-            placeholderTextColor="#4B5563"
+            placeholderTextColor={colors.text.muted}
             value={password}
             onChangeText={setPassword}
+            textContentType="password"
+            accessibilityLabel={t('auth.passwordPlaceholder')}
             secureTextEntry
           />
         </View>
@@ -156,13 +169,13 @@ export default function LoginScreen() {
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
-              colors={['#CCCCCC', '#FFFFFF']}
+              colors={[colors.accent.primary, colors.accent.primary]}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             />
             {loading
-              ? <ActivityIndicator color="#fff" />
+              ? <ActivityIndicator color={colors.bg.primary} />
               : <Text style={styles.loginBtnText}>{t('auth.login')}</Text>
             }
           </Pressable>
@@ -197,7 +210,7 @@ export default function LoginScreen() {
         {Platform.OS === 'ios' && (
           <AppleAuthentication.AppleAuthenticationButton
             buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+            buttonStyle={isDark ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
             cornerRadius={16}
             style={styles.appleBtn}
             onPress={appleSignIn}
@@ -233,32 +246,33 @@ export default function LoginScreen() {
           </Pressable>
         </Link>
       </Animated.View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
+    backgroundColor: c.bg.primary,
   },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 },
   logoArea: {
     alignItems: 'center',
-    marginBottom: 52,
+    marginBottom: 32,
     gap: 8,
   },
   logoText: {
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontSize: 42,
     fontWeight: '600',
     letterSpacing: -2,
   },
   tagline: {
-    color: '#4B5563',
+    color: c.text.muted,
     fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
   },
   form: {
     gap: 14,
@@ -266,17 +280,17 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D0D0D',
+    backgroundColor: c.bg.secondary,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: c.border.default,
   },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontSize: 16,
     fontWeight: '400',
   },
@@ -288,7 +302,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   loginBtnText: {
-    color: '#FFFFFF',
+    color: c.bg.primary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
@@ -303,10 +317,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: c.border.strong,
   },
   dividerText: {
-    color: 'rgba(255,255,255,0.25)',
+    color: c.text.muted,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -320,14 +334,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 54,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.text.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
   },
   googleBtnText: {
-    color: '#111114',
+    color: c.bg.primary,
     fontSize: 17,
     fontWeight: '600',
   },
@@ -336,19 +350,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   registerText: {
-    color: '#4B5563',
+    color: c.text.muted,
     fontSize: 14,
   },
   registerHighlight: {
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontWeight: '600',
   },
   forgotBtn: {
+    minHeight: 44, justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 4,
   },
   forgotText: {
-    color: '#6B7280',
+    color: c.text.muted,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -368,31 +383,31 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   langSwitch: {
-    position: 'absolute',
-    top: 64,
-    right: 24,
+    alignSelf: 'flex-end',
+    marginBottom: 28,
     flexDirection: 'row',
     gap: 6,
     zIndex: 10,
   },
   langBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 12,
+    minHeight: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: c.bg.subtle,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: c.border.default,
   },
   langBtnActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
+    backgroundColor: c.text.primary,
+    borderColor: c.text.primary,
   },
   langTxt: {
-    color: 'rgba(255,255,255,0.55)',
+    color: c.text.secondary,
     fontSize: 12,
     fontWeight: '600',
   },
   langTxtActive: {
-    color: '#000000',
+    color: c.bg.primary,
   },
 });

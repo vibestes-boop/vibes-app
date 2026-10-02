@@ -1,3 +1,163 @@
+# Release-Fortsetzung — 2. Oktober 2026, später am Abend
+
+Dieser Abschnitt ersetzt die offenen Statusangaben des vorherigen Checks.
+Zaur hat die Umsetzung der offenen Schritte beauftragt und die
+Produktionsmigration `20261002220000_create_post_with_product.sql` für
+Supabase-Projekt `llymwqfgujwkoxzqxrlm` ausdrücklich freigegeben.
+
+- **Genau diese Serlo-Migration ist angewendet.** Funktionsdefinition und
+  Ausführungsrechte live verifiziert: authenticated erlaubt, anon gesperrt.
+  Authentifizierter Aufruf mit einer nicht existierenden Produkt-ID lehnt ab,
+  bevor ein Post entsteht. Anschließender dry-run: Datenbank aktuell.
+- **Fünf neue Berkat-Migrationen ausgeschlossen.** Sie ändern die separate
+  Auktions-App (Details, Vorabgebote, Trinkgeld, Gebühren, Verkäuferalter).
+  Release-Basis ist `origin/main` (`9a2b50ab`), Branch
+  `codex/serlo-release-1.31.1`. Die 139 zusätzlichen Berkat-Commits werden
+  nicht mit Serlos UI-Release übernommen.
+- **17 schon live angewendete Migrationen nachgeführt.** main fehlte deren
+  Historie; exakte Dateien vom Berkat-Stand übernommen und mit der remote
+  Migrationsliste verglichen. Dadurch verlangt der Release keine historischen
+  Neu-Ausführungen und überspringt keine unbekannten SQL-Änderungen.
+- Sicherung des Ausgangsstands: `_backups/serlo-release-20261002/` enthält
+  tracked Binary-Patch, HEAD und 324 untracked Quelldateien als Archiv.
+  Die eigenständige Berg-/Heritage-Vorschau bleibt lokal in
+  `apps/heritage-preview` und ist aus dem Produktionsrepository/Native-Archiv
+  ausgeschlossen. Der ursprüngliche Branch `berkat` bleibt erhalten.
+- **Testkonto vorhanden:** `STABILITY_AUTH_EMAIL/PASSWORD` war bereits in der
+  lokalen Web-Umgebung konfiguriert. Passwort-Login, serververifizierte Sitzung
+  und eigenes Profil bestanden. Acht weitere Browserchecks im lokalen Web-
+  Produktionsbuild mit echten Testkonto-Cookies: /messages, /create, /settings,
+  /explore bei 390 und 1440 px, Light Mode; keine Überläufe/JS-Ausnahmen.
+  Keine Beiträge, Nachrichten oder Follow-Benachrichtigungen erzeugt. Google-
+  und Apple-OAuth sowie Push auf einem echten iPhone sind weiterhin offen.
+- **Native Kompilierung:** Expo prebuild + CocoaPods mit ExpoGlassEffect 0.1.10
+  durchgeführt. Xcode 27 beanstandete alte Mindestversionen einzelner Pod-
+  Ressourcen (iOS 9–13). Neues Config-Plugin `withPodDeploymentTarget` hebt nur
+  veraltete Pod-Ziele auf die bereits konfigurierte App-Mindestversion iOS 16;
+  nach Pod-Installation im Xcode-Projekt geprüft. Release-Simulatorbuild läuft.
+- `.easignore` schließt andere Web-/Berkat-/Konzept-Apps aus dem nativen Archiv
+  aus. `.gitignore` hält die separate Heritage-Vorschau lokal.
+- Öffentliche Web-/Store-Veröffentlichung noch nicht erfolgt. Änderungen
+  zuerst als Release-Commit/Review bereitstellen, nativen Build abschließen,
+  Gerätetest durchführen. Keine Store-Freigabe aus einem JS-Build ableiten.
+- Arbeitslogs: `/private/tmp/serlo-release-prep/`; frühere Tests/Produktions-
+  Webbuild unter `/private/tmp/serlo-release-review/`. Temporäre Dateien können
+  nach einem Sitzungswechsel fehlen.
+
+---
+
+# Handoff — aktueller Release-Check, 2. Oktober 2026
+
+Dieser Abschnitt hat Vorrang vor den historischen Juli-Ständen weiter unten.
+
+## Auftrag und Veröffentlichungsgrenze
+
+Web und Handy-App mit Glossy White/Graphit/Glas verbessern und die Release-Reife
+prüfen. Die Heritage-/Berg-Startseite bleibt erhalten. Die neuen Änderungen
+wurden **nicht veröffentlicht**. Die ursprünglich gewünschte lokale Vorschau
+ist keine Freigabe zum Ersetzen von serlo.ch, für Produktionsmigrationen,
+Store-Einreichung, OTA-Publish oder Push nach main. Keine echten Nachrichten
+versendet; angemeldete Interaktionen bisher mit isolierten Testdaten geprüft.
+
+## Verifizierter Live-Stand
+
+- `https://serlo.ch/` antwortet mit Weiterleitung auf `https://www.serlo.ch/`
+  und HTTP 200; die neue lokale UI ist dort nicht nachgewiesen. In dieser
+  Session kein Web-Deployment. Vercel-CLI hat keine aktive Anmeldung; der
+  gestartete Login wurde nicht abgeschlossen.
+- Apple-Lookup für App-ID `6760790424`, Land CH: **1.31.0**, veröffentlicht
+  **12.07.2026, 19:05 UTC**. Öffentliche App: https://apps.apple.com/ch/app/serlo/id6760790424
+- EAS: letzte fertige Produktions-iOS-Version **1.31.0 (292)** vom 11.07.,
+  Commit `ed125a09952556ec5678768e077bb6765267c0db`.
+- EAS: Android **1.31.0 (48)**, fertiger Produktionsbuild vom 30.07.,
+  Commit `9626ca0f702dd5bc4cffa2cba63ef897891cbe6d`. Play-Store-Veröffentlichung
+  nicht verifiziert; ein fertiger Build belegt sie nicht.
+- Produktions-OTA zuletzt mit Runtime 1.31.0 und Story-Archiv-Korrektur
+  (`fe400af1-b246-433e-a0cb-b88320505eb5`); die neuen UI-Änderungen wurden
+  hier nicht als OTA veröffentlicht.
+
+## Vorbereitete Änderungen dieser Release-Prüfung
+
+- `publishPost` in `apps/web/app/actions/posts.ts` verwendet für Produktbeiträge
+  jetzt `create_post_with_product`. Vorher wurde der Beitrag erstellt und das
+  Produkt anschließend per direktem, best-effort UPDATE verknüpft. Eine
+  fehlgeschlagene Verknüpfung konnte einen unvollständigen Beitrag hinterlassen.
+- Neue Migration `20261002220000_create_post_with_product.sql`: atomarer
+  SECURITY-INVOKER-Wrapper um den bestehenden `create_post`; aktives eigenes
+  Produkt, authentifizierter Nutzer und erfolgreiche Verknüpfung erforderlich.
+  Bestehende normale `create_post`-Aufrufe bleiben kompatibel. Entwurf wird erst
+  nach erfolgreichem RPC entfernt. **Migration muss vor dem Web-Release live sein.**
+- Drei Action-Regressionstests ergänzt. Echter SQL-Test in
+  `supabase/tests/create_post_with_product.sql`, ausschließlich für eine leere
+  Wegwerf-Datenbank: Rollen, RLS, Eigentümer, inaktive/fremde/fehlende Produkte,
+  fehlende Identität, anon-Ausführung und Rollback nach Update-Fehler geprüft.
+  Das ist kein vollständiger Test aller Produktions-Trigger/Policies.
+- Nächster lokaler App-Kandidat: **1.31.1, iOS Build 293** in `app.json`.
+  Veraltete npm-Build-Pins und Guard-Untergrenze 1.26.6/279 korrigiert;
+  `docs/stability/ios-release-playbook.md` aktualisiert. Android-Code bleibt 48;
+  Produktionsprofil erhöht ihn beim zukünftigen Build automatisch.
+- `expo-glass-effect` kam seit dem letzten iOS-Binary als native Abhängigkeit
+  hinzu. Echtes natives Liquid Glass braucht einen neuen App-Build; ein
+  JavaScript-Export oder OTA allein belegt das nicht. Die Komponente hat einen
+  Fallback für ältere Binaries.
+
+## Prüfungen am 2. Oktober
+
+- **363 Web-Tests (31 Suites) bestanden**, einschließlich 26 Posts-Action-Tests.
+- **225 Native-Tests (25 Suites) bestanden**, Exit 0. Jest meldete verzögertes
+  Beenden durch offene asynchrone Arbeit, beendete sich anschließend selbst.
+- Web- und Native-TypeScript: bestanden. Web-Lint: 0 Fehler, 7 bestehende
+  Warnungen zu ungenutzten Symbolen. Post-Mutation-Audit jetzt bestanden.
+- Isolierter Next-Produktionsbuild: erfolgreich, 30 statische Seiten generiert.
+  Laufende Dev-Vorschau wurde nicht durch `.next`-Buildartefakte überschrieben.
+  Sentry-Upload deaktiviert; es bleibt eine bestehende OpenTelemetry-Bundler-
+  Warnung sowie eine veraltete Browserslist-Datenbank.
+- iOS- und Android-Hermes-Produktionsbundles mit `EAS_BUILD=1`: erfolgreich.
+  Das prüft JS/Assets, nicht Xcode/Gradle-Kompilierung oder Store-Signierung.
+- Lokaler Produktionsbuild: 20 Browserchecks in Chromium/WebKit,
+  320/390/1440 px, hell/dunkel, Entdecken/Login/Registrierung und Login-Rückkehr
+  für Nachrichten und Erstellen inklusive Entwurfs-ID. Keine horizontalen
+  Überläufe oder JS-Ausnahmen. Mobile Hell-/Dunkel-Screenshots visuell geprüft.
+- Lokale PostgreSQL-Transaktionstests bestanden; Instanz danach gestoppt.
+  Keine Änderungen an der Live-Datenbank.
+- Logs/isolierter Build: `/private/tmp/serlo-release-review/` (temporär;
+  kann beim Sitzungswechsel verschwinden). Review-Server Port 4371.
+
+## Noch vor einer Veröffentlichung erforderlich
+
+1. **Release-Umfang sauber übernehmen.** Quelle ist
+   `/Users/zaurhatuev/vibes-app`, Branch `berkat`, HEAD `e21e455f`; mehr als 200
+   uncommittete UI-/Berkat-/andere Änderungen. Nicht pauschal committen oder
+   nach main pushen: main löst das Web-Deployment aus. Ein sauberer geprüfter
+   main-Stand ist Bedingung des nativen Produktionsguards.
+2. **Datenbankmigrationen prüfen und freigeben.** `release-gate --phase pre`
+   besteht die Code-Prüfungen, scheitert aktuell ausschließlich an sechs
+   ausstehenden Migrationen (per `supabase db push --dry-run` verifiziert):
+   `20260930120000_berkat_show_item_details.sql`,
+   `20260930140000_berkat_prebid_freeze.sql`,
+   `20260930150000_berkat_tip_needs_stripe.sql`,
+   `20260930160000_berkat_platform_fee.sql`,
+   `20260930170000_berkat_sellers_adult.sql`,
+   `20261002220000_create_post_with_product.sql`.
+   Nicht die fünf Berkat-Migrationen ungeprüft als Nebenwirkung eines UI-Releases
+   anwenden. SQL-Ausführung/Produktion zunächst mit Zaur abstimmen.
+3. **Neuen nativen Build und echte Geräte testen.** Google-/Apple-Anmeldung,
+   Session nach Neustart, Upload, Folgen, Nachrichten, Push und natives Glas
+   in 1.31.1 prüfen. Kein separates Testkonto bekannt (Zaur: „weiß ich nicht“).
+   Fixture-Tests sind kein Beleg für diese Produktionsabläufe.
+4. Erst nach Freigabe: Deployment-Zugang, Migrationen, sauberer Release-Commit,
+   Web-Deployment/neuer App-Build; interner Gerätetest, dann Store-Einreichung.
+   Abschließend das Post-Deployment-Gate und Live-Versionen erneut prüfen.
+
+Nächste sichere Prüfkommandos (keine Veröffentlichung):
+`npm run native:build:production:check` und
+`node scripts/release-gate.mjs --phase pre --step-timeout-ms 120000`.
+Der native Guard muss derzeit weiter wegen `berkat`/dirty fehlschlagen;
+keine Checks abschwächen. Technische Builds grün bedeutet noch keine
+vollständige Produktionsfreigabe.
+
+---
+
 # Handoff — Serlo/Vibes (Stand 17. Juli 2026 · Session 13)
 
 > ## 🆕 Session 13 (12.–17. Juli) — Kurzfassung

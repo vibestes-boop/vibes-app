@@ -1,3 +1,4 @@
+import { useTheme } from '@/lib/useTheme';
 import { useEffect } from 'react';
 import { StyleSheet,View } from 'react-native';
 import {
@@ -16,6 +17,8 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 /** Einzelne Skeleton-Karte im Feed-Format (Vollbild) */
 function SkeletonCard({ delay }: { delay: number }) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const placeholder = { backgroundColor: colors.border.strong };
   const shimmer = useSharedValue(0);
 
   useEffect(() => {
@@ -35,29 +38,29 @@ function SkeletonCard({ delay }: { delay: number }) {
   void delay;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.bg.primary }]}>
       {/* Hintergrund-Placeholder */}
-      <Animated.View style={[styles.bg, shimmerStyle]} />
+      <Animated.View style={[styles.bg, placeholder, shimmerStyle]} />
 
       {/* Avatar + Name oben links */}
       <View style={styles.authorRow}>
-        <Animated.View style={[styles.avatar, shimmerStyle]} />
+        <Animated.View style={[styles.avatar, placeholder, shimmerStyle]} />
         <View style={styles.authorText}>
-          <Animated.View style={[styles.nameLine, shimmerStyle]} />
-          <Animated.View style={[styles.tagLine, shimmerStyle]} />
+          <Animated.View style={[styles.nameLine, placeholder, shimmerStyle]} />
+          <Animated.View style={[styles.tagLine, placeholder, shimmerStyle]} />
         </View>
       </View>
 
       {/* Caption unten */}
       <View style={styles.captionBlock}>
-        <Animated.View style={[styles.captionLine, { width: '85%' }, shimmerStyle]} />
-        <Animated.View style={[styles.captionLine, { width: '60%' }, shimmerStyle]} />
+        <Animated.View style={[styles.captionLine, placeholder, { width: '85%' }, shimmerStyle]} />
+        <Animated.View style={[styles.captionLine, placeholder, { width: '60%' }, shimmerStyle]} />
       </View>
 
       {/* Action-Buttons rechts */}
       <View style={[styles.actions, { bottom: insets.bottom + 80 }]}>
         {[0, 1, 2].map((i) => (
-          <Animated.View key={i} style={[styles.actionBtn, shimmerStyle]} />
+          <Animated.View key={i} style={[styles.actionBtn, placeholder, shimmerStyle]} />
         ))}
       </View>
     </View>
@@ -66,31 +69,27 @@ function SkeletonCard({ delay }: { delay: number }) {
 
 /** Zeigt 2 Skeleton-Karten während der Feed lädt */
 export function FeedSkeleton() {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={[styles.container, { backgroundColor: colors.bg.primary }]} pointerEvents="none">
       <SkeletonCard delay={0} />
     </View>
   );
 }
 
-const BASE = '#1a1a1a';
-
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
-    backgroundColor: '#000',
   },
   card: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-    backgroundColor: '#000',
     justifyContent: 'flex-end',
     padding: 20,
   },
   bg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: BASE,
     borderRadius: 0,
   },
   authorRow: {
@@ -105,7 +104,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: BASE,
   },
   authorText: {
     gap: 6,
@@ -114,13 +112,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 12,
     borderRadius: 6,
-    backgroundColor: BASE,
   },
   tagLine: {
     width: 60,
     height: 10,
     borderRadius: 5,
-    backgroundColor: BASE,
   },
   captionBlock: {
     gap: 8,
@@ -130,7 +126,6 @@ const styles = StyleSheet.create({
   captionLine: {
     height: 12,
     borderRadius: 6,
-    backgroundColor: BASE,
   },
   actions: {
     position: 'absolute',
@@ -143,6 +138,5 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: BASE,
   },
 });

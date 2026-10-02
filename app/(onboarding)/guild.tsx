@@ -1,330 +1,53 @@
+import { useState } from 'react';
+import { Image } from 'expo-image';
+import { Check, HeartHandshake, ShieldCheck } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { ChevronRight,Sparkles,Users } from 'lucide-react-native';
-import { useEffect,useState } from 'react';
-import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
-import {
-Easing,
-useAnimatedStyle,
-useSharedValue,
-withDelay,
-withRepeat,
-withSequence,
-withTiming,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
-import { useI18n } from '@/lib/i18n';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { useTheme } from '@/lib/useTheme';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
+import { OnboardingButton, OnboardingShell, onboardingStyles as shared } from '@/components/onboarding/OnboardingShell';
 
-const GUILD_COLORS: Record<string, [string, string]> = {
-  'Pod Alpha': ['#CCCCCC', '#FFFFFF'],
-  'Pod Beta': ['#0EA5E9', '#38BDF8'],
-  'Pod Gamma': ['#059669', '#34D399'],
-  'Pod Delta': ['#D97706', '#FBBF24'],
-  'Pod Epsilon': ['#DC2626', '#F87171'],
-};
-
-export default function OnboardingGuild() {
-  useThemedStatusBar('light');
+export default function OnboardingComplete() {
   const { t } = useI18n();
-  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { profile, fetchProfile } = useAuthStore();
-  const [guildName, setGuildName] = useState<string | null>(null);
-  const [guildDesc, setGuildDesc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const scale = useSharedValue(0);
-  const opacity = useSharedValue(0);
-  const glow = useSharedValue(0.3);
-  const textOpacity = useSharedValue(0);
-  const btnOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    if (!profile?.guild_id) return;
-
-    supabase
-      .from('guilds')
-      .select('name, description')
-      .eq('id', profile.guild_id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setGuildName(data.name);
-          setGuildDesc(data.description);
-
-          // Entry animations
-          scale.value = withDelay(100, withTiming(1, { duration: 200 }));
-          opacity.value = withDelay(100, withTiming(1, { duration: 600 }));
-          glow.value = withRepeat(
-            withSequence(
-              withTiming(0.6, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-              withTiming(0.3, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-            ),
-            -1,
-            false
-          );
-          textOpacity.value = withDelay(500, withTiming(1, { duration: 600 }));
-          btnOpacity.value = withDelay(900, withTiming(1, { duration: 500 }));
-        }
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Reanimated Shared Values; Trigger nur guild_id
-  }, [profile?.guild_id]);
-
-  const badgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glow.value,
-  }));
-
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.value,
-    transform: [{ translateY: (1 - textOpacity.value) * 20 }],
-  }));
-
-  const btnStyle = useAnimatedStyle(() => ({
-    opacity: btnOpacity.value,
-    transform: [{ translateY: (1 - btnOpacity.value) * 16 }],
-  }));
-
-  const colors = guildName ? (GUILD_COLORS[guildName] ?? ['#CCCCCC', '#FFFFFF']) : ['#CCCCCC', '#FFFFFF'];
-
+  const [error, setError] = useState(false);
   const handleFinish = async () => {
-    if (!profile?.id) return;
-    setLoading(true);
-
-    await supabase
-      .from('profiles')
-      .update({ onboarding_complete: true })
-      .eq('id', profile.id);
-
-    await fetchProfile(profile.id);
-    router.replace('/(tabs)');
+    if (!profile?.id || loading) return;
+    setLoading(true); setError(false);
+    try {
+      const { error: saveError } = await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', profile.id);
+      if (saveError) throw saveError;
+      await fetchProfile(profile.id);
+      const confirmed = useAuthStore.getState().profile;
+      if (confirmed?.id !== profile.id || !confirmed.onboarding_complete) throw new Error('Profile completion was not confirmed');
+      router.replace('/(tabs)');
+    } catch { setError(true); }
+    finally { setLoading(false); }
   };
-
-  return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#0A0A0A', '#0d0520', '#0A0A0A']}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Animated glow */}
-      <Animated.View style={[styles.glowCircle, { backgroundColor: colors[0] }, glowStyle]} />
-
-      <View style={[styles.inner, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }]}>
-
-        {/* Step indicator — 4 Schritte */}
-        <View style={styles.stepRow}>
-          <View style={[styles.step, styles.stepDone]} />
-          <View style={[styles.step, styles.stepDone]} />
-          <View style={[styles.step, styles.stepDone]} />
-          <View style={[styles.step, styles.stepActive]} />
-        </View>
-
-        <Text style={styles.title}>{t('onboarding.guildTitle')}</Text>
-
-        {/* Guild Badge */}
-        <Animated.View style={[styles.badgeWrap, badgeStyle]}>
-          <BlurView intensity={40} tint="dark" style={styles.badgeBlur}>
-            <LinearGradient
-              colors={[`${colors[0]}30`, `${colors[1]}10`]}
-              style={StyleSheet.absoluteFill}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <View style={[styles.guildIcon, { backgroundColor: `${colors[0]}25` }]}>
-              <Users size={36} color={colors[1]} strokeWidth={1.5} />
-            </View>
-            <Text style={[styles.guildName, { color: colors[1] }]}>
-              {guildName ?? '...'}
-            </Text>
-            <View style={styles.sparkleRow}>
-              <Sparkles size={12} color={colors[1]} strokeWidth={1.5} />
-              <Text style={[styles.guildTag, { color: `${colors[1]}99` }]}>
-                {t('onboarding.microPod')}
-              </Text>
-              <Sparkles size={12} color={colors[1]} strokeWidth={1.5} />
-            </View>
-          </BlurView>
-        </Animated.View>
-
-        {/* Description */}
-        <Animated.View style={[styles.descWrap, textStyle]}>
-          <Text style={styles.descTitle}>
-            {t('onboarding.welcomeCommunity')}
-          </Text>
-          <Text style={styles.descText}>
-            {guildDesc
-              ? t('onboarding.guildDescText', { name: guildName ?? '', desc: guildDesc })
-              : t('onboarding.guildAssigned')}
-          </Text>
-
-          <View style={styles.factRow}>
-            <View style={styles.fact}>
-              <Text style={[styles.factNum, { color: colors[1] }]}>150</Text>
-              <Text style={styles.factLabel}>{t('onboarding.members')}</Text>
-            </View>
-            <View style={styles.factDivider} />
-            <View style={styles.fact}>
-              <Text style={[styles.factNum, { color: colors[1] }]}>100%</Text>
-              <Text style={styles.factLabel}>{t('onboarding.visibility')}</Text>
-            </View>
-            <View style={styles.factDivider} />
-            <View style={styles.fact}>
-              <Text style={[styles.factNum, { color: colors[1] }]}>{t('onboarding.noAlgoValue')}</Text>
-              <Text style={styles.factLabel}>{t('onboarding.noAlgoLabel')}</Text>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* CTA */}
-        <Animated.View style={btnStyle}>
-          <Pressable style={styles.btn} onPress={handleFinish} disabled={loading}>
-            <LinearGradient
-              colors={loading ? ['#4B5563', '#4B5563'] : [colors[0], colors[1]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.btnGradient}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.btnText}>{t('onboarding.discover')}</Text>
-                  <ChevronRight size={20} color="#fff" strokeWidth={2.5} />
-                </>
-              )}
-            </LinearGradient>
-          </Pressable>
-        </Animated.View>
-      </View>
+  return <OnboardingShell step={4} eyebrow={t('mobileDesign.readyEyebrow')} title={t('mobileDesign.readyTitle')} description={t('mobileDesign.readyBody')}
+    footer={<>{error && <Text accessibilityRole="alert" style={[shared.error, { color: colors.accent.danger }]}>{t('onboarding.networkError')}</Text>}<OnboardingButton label={t('mobileDesign.enterCommunity')} onPress={handleFinish} loading={loading} /></>}>
+    <View style={[s.profileCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.default }]}>
+      <View style={[s.avatar, { backgroundColor: colors.bg.elevated }]}>{profile?.avatar_url ? <Image source={{ uri: profile.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Text style={[s.initial, { color: colors.accent.primary }]}>{profile?.username?.[0]?.toUpperCase() ?? 'S'}</Text>}</View>
+      <Text numberOfLines={2} style={[s.name, { color: colors.text.primary }]}>@{profile?.username}</Text>
+      <View style={s.success}><Check size={13} color={colors.accent.primary} /><Text style={{ color: colors.accent.primary, fontSize: 12 }}>{t('mobileDesign.profileReady')}</Text></View>
+      <View style={s.tags}>{profile?.preferred_tags?.map(tag => <View key={tag} style={[s.tag, { backgroundColor: colors.bg.elevated }]}><Text style={[s.tagText, { color: colors.text.secondary }]}>{t(`onboarding.interests.${tag}` as TranslationKey)}</Text></View>)}</View>
     </View>
-  );
+    {[{ Icon: HeartHandshake, title: 'mobileDesign.connectionTitle', body: 'mobileDesign.connectionBody' }, { Icon: ShieldCheck, title: 'mobileDesign.yourChoiceTitle', body: 'mobileDesign.yourChoiceBody' }].map(({ Icon, title, body }) => <View key={title} style={s.row}>
+      <View style={[s.icon, { backgroundColor: colors.bg.elevated }]}><Icon size={22} color={colors.accent.primary} strokeWidth={1.5} /></View>
+      <View style={{ flex: 1 }}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t(title as TranslationKey)}</Text><Text style={[s.rowBody, { color: colors.text.secondary }]}>{t(body as TranslationKey)}</Text></View>
+    </View>)}
+  </OnboardingShell>;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
-  glowCircle: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    top: -120,
-    alignSelf: 'center',
-  },
-  inner: {
-    flex: 1,
-    paddingHorizontal: 24,
-    gap: 24,
-    justifyContent: 'space-between',
-  },
-  stepRow: {
-    flexDirection: 'row',
-    gap: 6,
-    alignSelf: 'center',
-  },
-  step: {
-    width: 28,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  stepDone: { backgroundColor: '#FFFFFF' },
-  stepActive: { backgroundColor: '#CCCCCC' },
-  title: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: -0.8,
-    lineHeight: 40,
-  },
-  badgeWrap: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  badgeBlur: {
-    padding: 32,
-    alignItems: 'center',
-    gap: 12,
-  },
-  guildIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  guildName: {
-    fontSize: 28,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
-  sparkleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  guildTag: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  descWrap: { gap: 16 },
-  descTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  descText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.55)',
-    lineHeight: 22,
-  },
-  factRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  fact: { alignItems: 'center', gap: 2 },
-  factNum: { fontSize: 18, fontWeight: '600' },
-  factLabel: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: '500' },
-  factDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  btn: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  btnGradient: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  btnText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
+const s = StyleSheet.create({
+  profileCard: { padding: 26, borderRadius: 25, borderWidth: 1, alignItems: 'center', marginBottom: 24 },
+  avatar: { width: 82, height: 82, borderRadius: 28, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 14 },
+  initial: { fontFamily: 'Inter_600SemiBold', fontSize: 34 }, name: { fontFamily: 'Inter_700Bold', fontSize: 22, letterSpacing: -0.6, textAlign: 'center' },
+  success: { flexDirection: 'row', gap: 5, alignItems: 'center', marginTop: 9 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 7, marginTop: 22 }, tag: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 }, tagText: { fontSize: 11 },
+  row: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', marginBottom: 22 }, icon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  rowTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold', marginBottom: 5 }, rowBody: { fontSize: 13, lineHeight: 20 },
 });

@@ -140,9 +140,8 @@ export function BuyBar({
         className={cn(
           isInline
             ? "rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30"
-            : // bottom-Offset: schwebt über der MobileBottomNav (h-14 + Safe-Area);
-              // ab md ist die Nav weg → bottom-0.
-              "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md md:bottom-0 lg:px-6",
+            : // Shared dock spacing includes its floating margin and safe area.
+              "sticky bottom-[var(--serlo-dock-space)] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md xl:bottom-0 lg:px-6",
           className,
         )}
       >
@@ -253,7 +252,7 @@ export function BuyBar({
           isInline
             ? "rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30"
             : // bottom-Offset: siehe Preorder-Variante oben (MobileBottomNav-Höhe).
-              "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md md:bottom-0 lg:px-6",
+              "sticky bottom-[var(--serlo-dock-space)] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md xl:bottom-0 lg:px-6",
           className,
         )}
       >

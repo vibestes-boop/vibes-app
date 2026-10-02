@@ -3,21 +3,18 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Star,Swords } from 'lucide-react-native';
+import { ArrowLeft,BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Star,Swords,X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Dimensions,Linking,Modal,Pressable,ScrollView,Text,View } from 'react-native';
+import { Linking,Modal,Pressable,ScrollView,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Fixe Tab-Breite: 5 Tabs füllen die Zeile, weitere scrollen horizontal —
-// skaliert für die wachsende Tab-Zahl (Parität durch Ergänzen).
-const TAB_WIDTH = Dimensions.get('window').width / 5;
 
 import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
 import { useBattleStats } from '@/lib/useBattleStats';
 import { useOrderRating } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
-import { useI18n } from '@/lib/i18n';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { ProfileHighlightsRow } from './ProfileHighlightsRow';
 import { getProfileStyles } from './profileStyles';
 import type { ProfileTab } from './types';
@@ -36,6 +33,7 @@ function MenuRow({
   const { icon: Icon, label, sub, onPress } = item;
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
       style={({ pressed }) => [
         msx.menuRow,
@@ -73,157 +71,51 @@ function ToolSection({
   );
 }
 
-function ProfileActionRow({
-  profile, colors,
-  onEditProfile, onBuyCoins, onMyShop,
-  onSavedProducts, onMyOrders, onCreatorStudio, onCreatorStats,
-}: {
-  profile: Profile | null; colors: any;
-  onEditProfile: () => void; onBuyCoins?: () => void;
-  onMyShop?: () => void; onSavedProducts?: () => void;
-  onMyOrders?: () => void; onCreatorStudio?: () => void; onCreatorStats?: () => void;
+function ProfileActionRow({ profile, colors, onEditProfile, onBuyCoins, onMyShop, onSavedProducts, onMyOrders, onCreatorStudio, onCreatorStats, onTabChange, showBattles }: {
+  profile: Profile | null; colors: any; onEditProfile: () => void; onBuyCoins?: () => void;
+  onMyShop?: () => void; onSavedProducts?: () => void; onMyOrders?: () => void;
+  onCreatorStudio?: () => void; onCreatorStats?: () => void; onTabChange: (tab: ProfileTab) => void; showBattles: boolean;
 }) {
-  const { t } = useI18n();
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const insets = useSafeAreaInsets();
-  const hasShopTools = !!(onMyShop || onSavedProducts || onMyOrders);
-  const hasCreatorTools = !!(onCreatorStudio || onCreatorStats);
-  const hasTools = hasShopTools || hasCreatorTools;
-
-  return (
-    <>
-      {/* ── 3 Primär-Buttons + Tools-Button ─────────────────────────── */}
-      <View style={msx.row}>
-        {/* Edit — gefüllter Primär-Button (Theme-invertiert: dunkel→hell/hell→dunkel) */}
-        <Pressable
-          style={({ pressed }) => [msx.primaryBtn, { backgroundColor: colors.text.primary, borderColor: 'transparent' }, pressed && { opacity: 0.8 }]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEditProfile(); }}
-        >
-          <Edit3 size={14} color={colors.bg.primary} strokeWidth={2.5} />
-          <Text
-            style={[msx.primaryText, { color: colors.bg.primary, flexShrink: 1 }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.85}
-          >
-            {t('profile.editProfile')}
-          </Text>
-        </Pressable>
-
-        {/* Teilen — Outline */}
-        <Pressable
-          style={({ pressed }) => [msx.secondaryBtn, { backgroundColor: 'transparent', borderColor: colors.border.strong }, pressed && { opacity: 0.75 }]}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShareOpen(true);
-          }}
-        >
-          <Share2 size={14} color={colors.text.primary} strokeWidth={2} />
-          <Text
-            style={[msx.secondaryText, { color: colors.text.primary, flexShrink: 1 }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.85}
-          >
-            {t('profile.share')}
-          </Text>
-        </Pressable>
-
-        {/* ProfileShareSheet für eigenes Profil */}
-        {profile?.id && (
-          <ProfileShareSheet
-            visible={shareOpen}
-            onClose={() => setShareOpen(false)}
-            userId={profile.id}
-            username={profile.username}
-            avatarUrl={profile.avatar_url}
-            isOwnProfile
-          />
-        )}
-
-        {/* Coins — randlos, damit die Münze größer wirkt (wie im Shop-Header) */}
-        {onBuyCoins && (
-          <Pressable
-            style={({ pressed }) => [msx.iconBtn, pressed && { opacity: 0.6 }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onBuyCoins(); }}
-            accessibilityLabel="Coins kaufen"
-          >
-            <Image source={require('@/assets/serlo-coin.png')} style={{ width: 32, height: 32 }} contentFit="contain" />
-          </Pressable>
-        )}
-
-        {/* ⋯ Tools — nur anzeigen wenn sekundäre Aktionen vorhanden */}
-        {hasTools && (
-          <Pressable
-            style={({ pressed }) => [msx.iconBtn, pressed && { opacity: 0.6 },
-              { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, borderRadius: 14 }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setToolsOpen(true); }}
-            accessibilityLabel="Weitere Tools"
-          >
-            <MoreHorizontal size={20} color={colors.text.primary} />
-          </Pressable>
-        )}
-      </View>
-
-      {/* ── Bottom-Sheet Modal ──────────────────────────────────────── */}
-      <Modal
-        visible={toolsOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setToolsOpen(false)}
-      >
-        <Pressable style={msx.backdrop} onPress={() => setToolsOpen(false)} />
-        <View style={[
-          msx.sheet,
-          { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle, paddingBottom: insets.bottom + 12 },
-        ]}>
+  const { t } = useI18n(); const insets = useSafeAreaInsets();
+  const [toolsOpen, setToolsOpen] = useState(false); const [shareOpen, setShareOpen] = useState(false);
+  const openTab = (tab: ProfileTab) => { setToolsOpen(false); onTabChange(tab); };
+  return <>
+    <View style={msx.row}>
+      <Pressable accessibilityRole="button" style={[msx.primaryBtn, { backgroundColor: colors.text.primary }]} onPress={onEditProfile}><Edit3 size={15} color={colors.bg.primary} /><Text style={[msx.primaryText, { color: colors.bg.primary, flexShrink: 1 }]}>{t('profile.editProfile')}</Text></Pressable>
+      <Pressable accessibilityRole="button" style={[msx.secondaryBtn, { borderColor: colors.border.strong }]} onPress={() => setShareOpen(true)}><Share2 size={15} color={colors.text.primary} /><Text style={[msx.secondaryText, { color: colors.text.primary, flexShrink: 1 }]}>{t('profile.share')}</Text></Pressable>
+    </View>
+    <Pressable accessibilityRole="button" onPress={() => setToolsOpen(true)} style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 6, minHeight: 48, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.bg.elevated, borderRadius: 14, borderWidth: 1, borderColor: colors.border.default }}>
+      <Sparkles size={18} color={colors.accent.primary} /><Text style={{ flex: 1, color: colors.text.primary, fontSize: 14, fontWeight: '600' }}>{t('ux.studioTools')}</Text><ChevronRight size={18} color={colors.icon.muted} />
+    </Pressable>
+    {profile?.id && <ProfileShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} userId={profile.id} username={profile.username} avatarUrl={profile.avatar_url} isOwnProfile />}
+    <Modal visible={toolsOpen} transparent animationType="slide" onRequestClose={() => setToolsOpen(false)}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
+        <Pressable style={{ position: 'absolute', inset: 0 }} onPress={() => setToolsOpen(false)} accessibilityRole="button" accessibilityLabel={t('mobileDesign.close')} />
+        <View accessibilityViewIsModal style={[msx.sheet, { maxHeight: '85%', backgroundColor: colors.bg.secondary, borderColor: colors.border.strong, paddingBottom: Math.max(insets.bottom, 16) }]}>
           <View style={[msx.handle, { backgroundColor: colors.border.strong }]} />
-          <Text style={[msx.sheetTitle, { color: colors.text.primary }]}>{t('profile.tools')}</Text>
-
-          <ToolSection
-            title="Shop"
-            colors={colors}
-            items={[
-              onMyShop && {
-                icon: Package, tint: colors.accent.secondary,
-                label: t('profile.myShop'), sub: t('profile.myShopSub'),
-                onPress: () => { setToolsOpen(false); onMyShop(); },
-              },
-              onSavedProducts && {
-                icon: Bookmark, tint: '#1D9BF0',
-                label: t('profile.savedProducts'), sub: t('profile.savedProductsSub'),
-                onPress: () => { setToolsOpen(false); onSavedProducts(); },
-              },
-              onMyOrders && {
-                icon: ShoppingBag, tint: colors.accent.warning,
-                label: t('profile.ordersSales'), sub: t('profile.ordersSalesSub'),
-                onPress: () => { setToolsOpen(false); onMyOrders(); },
-              },
-            ].filter(Boolean) as ToolItem[]}
-          />
-
-          <ToolSection
-            title="Creator"
-            colors={colors}
-            style={hasShopTools ? { marginTop: 18 } : undefined}
-            items={[
-              onCreatorStudio && {
-                icon: Sparkles, tint: colors.accent.secondary,
-                label: t('profile.creatorStudio'), sub: t('profile.creatorStudioSub'),
-                onPress: () => { setToolsOpen(false); onCreatorStudio(); },
-              },
-              onCreatorStats && {
-                icon: BarChart, tint: colors.accent.success,
-                label: t('profile.creatorDashboard'), sub: t('profile.creatorDashboardSub'),
-                onPress: () => { setToolsOpen(false); onCreatorStats(); },
-              },
-            ].filter(Boolean) as ToolItem[]}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}><Text style={[msx.sheetTitle, { color: colors.text.primary, flex: 1, marginBottom: 0 }]}>{t('ux.studioTools')}</Text><Pressable onPress={() => setToolsOpen(false)} accessibilityRole="button" accessibilityLabel={t('mobileDesign.close')} style={{ padding: 12 }}><X size={22} color={colors.text.primary} /></Pressable></View>
+          <ScrollView contentContainerStyle={{ gap: 18, paddingBottom: 12 }}>
+            <ToolSection title={t('ux.yourActivity')} colors={colors} items={[
+              { icon: Heart, tint: '', label: t('nativeUi.likes'), onPress: () => openTab('likes') },
+              { icon: FileText, tint: '', label: t('nativeUi.drafts'), onPress: () => openTab('drafts') },
+              { icon: BarChart2, tint: '', label: t('nativeUi.analytics'), onPress: () => openTab('analytics') },
+              ...(showBattles ? [{ icon: Swords, tint: '', label: t('nativeUi.battles'), onPress: () => openTab('battles') }] : []),
+            ]} />
+            <ToolSection title={t('tabs.shop')} colors={colors} items={[
+              onMyShop && { icon: Package, tint: '', label: t('profile.myShop'), onPress: () => { setToolsOpen(false); onMyShop(); } },
+              onSavedProducts && { icon: Bookmark, tint: '', label: t('profile.savedProducts'), onPress: () => { setToolsOpen(false); onSavedProducts(); } },
+              onMyOrders && { icon: ShoppingBag, tint: '', label: t('profile.ordersSales'), onPress: () => { setToolsOpen(false); onMyOrders(); } },
+              onBuyCoins && { icon: Star, tint: '', label: t('ux.buyCoins'), onPress: () => { setToolsOpen(false); onBuyCoins(); } },
+            ].filter(Boolean) as ToolItem[]} />
+            <ToolSection title={t('profile.creatorStudio')} colors={colors} items={[
+              onCreatorStudio && { icon: Sparkles, tint: '', label: t('profile.creatorStudio'), onPress: () => { setToolsOpen(false); onCreatorStudio(); } },
+              onCreatorStats && { icon: BarChart, tint: '', label: t('profile.creatorDashboard'), onPress: () => { setToolsOpen(false); onCreatorStats(); } },
+            ].filter(Boolean) as ToolItem[]} />
+          </ScrollView>
         </View>
-      </Modal>
-    </>
-  );
+      </View>
+    </Modal>
+  </>;
 }
 
 const msx = {
@@ -234,7 +126,7 @@ const msx = {
   primaryBtn: {
     flex: 1, flexDirection: 'row' as const, alignItems: 'center' as const,
     justifyContent: 'center' as const, gap: 6,
-    height: 38, borderRadius: 12,
+    minHeight: 44, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
@@ -242,7 +134,7 @@ const msx = {
   secondaryBtn: {
     flex: 1, flexDirection: 'row' as const, alignItems: 'center' as const,
     justifyContent: 'center' as const, gap: 6,
-    height: 38, borderRadius: 12,
+    minHeight: 44, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
@@ -382,7 +274,7 @@ export function ProfileListHeader({
           <LinearGradient
             colors={
               hasStories && hasUnviewedStories
-                ? ['#F472B6', '#A855F7']                          // Pink → Lila (ungesehen) — sichtbar auf hell + dunkel
+                ? [colors.accent.primary, colors.accent.secondary]   // Silver ring marks unseen stories.
                 : hasStories
                   ? ['#9CA3AF', '#6B7280']                        // Grau (gesehen) — sichtbar auf hell + dunkel
                   : ['rgba(120,120,120,0.15)', 'rgba(120,120,120,0.05)'] // fast unsichtbar (keine Stories)
@@ -395,7 +287,7 @@ export function ProfileListHeader({
               {profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={s.avatarImg} />
               ) : (
-                <LinearGradient colors={['#0e4a58', '#083344']} style={s.avatarFallback}>
+                <LinearGradient colors={[colors.bg.elevated, colors.bg.input]} style={s.avatarFallback}>
                   <Text style={s.avatarInitial}>{avatarInitial}</Text>
                 </LinearGradient>
               )}
@@ -547,53 +439,26 @@ export function ProfileListHeader({
         onMyOrders={onMyOrders}
         onCreatorStudio={onCreatorStudio}
         onCreatorStats={onCreatorStats}
+        onTabChange={onTabChange}
+        showBattles={showBattleTab}
       />
 
       {/* ── Story Highlights ── */}
       <ProfileHighlightsRow userId={profile?.id ?? null} isOwn />
 
-      {/* ── Tab-Bar (horizontal scrollbar — skaliert mit wachsender Tab-Zahl) ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={s.tabRow}
-        contentContainerStyle={{ flexGrow: 1 }}
-      >
-        {((showBattleTab
-            ? ['vibes', 'likes', 'saved', 'shop', 'analytics', 'drafts', 'reposts', 'battles']
-            : ['vibes', 'likes', 'saved', 'shop', 'analytics', 'drafts', 'reposts']) as ProfileTab[]
-        ).map((tab) => {
-          const active = activeTab === tab;
-          return (
-            <Pressable
-              key={tab}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onTabChange(tab);
-              }}
-              style={[s.tabBtn, { width: TAB_WIDTH }, active && s.tabBtnActive]}
-            >
-              {tab === 'vibes' ? (
-                <Grid3X3 size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
-              ) : tab === 'likes' ? (
-                <Heart size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} fill={active ? colors.accent.primary : 'transparent'} />
-              ) : tab === 'saved' ? (
-                <Bookmark size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} fill={active ? colors.accent.primary : 'transparent'} />
-              ) : tab === 'analytics' ? (
-                <BarChart2 size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
-              ) : tab === 'drafts' ? (
-                <FileText size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
-              ) : tab === 'reposts' ? (
-                <Repeat2 size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
-              ) : tab === 'shop' ? (
-                <ShoppingBag size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
-              ) : (
-                <Swords size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
-              )}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <View style={[s.tabRow, { flexDirection: 'row' }]}>
+        {([{ tab: 'vibes', Icon: Grid3X3, label: t('nativeUi.posts') }, { tab: 'reposts', Icon: Repeat2, label: t('nativeUi.reposts') }, { tab: 'saved', Icon: Bookmark, label: t('nativeUi.saved') }, { tab: 'shop', Icon: ShoppingBag, label: t('tabs.shop') }] as const).map(({ tab, Icon, label }) =>
+          <Pressable key={tab} onPress={() => onTabChange(tab)} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }} accessibilityLabel={label}
+            style={[s.tabBtn, { flex: 1, minWidth: 0, paddingHorizontal: 2 }, activeTab === tab && s.tabBtnActive]}>
+            <Icon size={22} color={activeTab === tab ? colors.accent.primary : colors.icon.inactive} />
+            <Text numberOfLines={2} style={[s.tabLabel, { color: activeTab === tab ? colors.accent.primary : colors.text.secondary, textAlign: 'center' }]}>{label}</Text>
+          </Pressable>)}
+      </View>
+      {!['vibes', 'reposts', 'saved', 'shop'].includes(activeTab) && <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12, backgroundColor: colors.bg.elevated }}>
+        <Pressable onPress={() => onTabChange('vibes')} accessibilityRole="button" accessibilityLabel={t('ux.backToPosts')} style={{ minHeight: 52, justifyContent: 'center', paddingRight: 12 }}><ArrowLeft size={22} color={colors.accent.primary} /></Pressable>
+        <Text accessibilityRole="header" style={{ color: colors.text.primary, fontSize: 17, fontWeight: '600', flex: 1 }}>{t(`nativeUi.${activeTab}` as TranslationKey)}</Text>
+      </View>}
+
     </>
   );
 }

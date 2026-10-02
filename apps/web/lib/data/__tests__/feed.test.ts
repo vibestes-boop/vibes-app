@@ -829,6 +829,7 @@ describe('searchAll', () => {
               avatar_url: null,
               verified: true,
               created_at: '2026-04-20',
+              followers: [{ count: 27 }],
             },
           ],
           error: null,
@@ -853,7 +854,7 @@ describe('searchAll', () => {
 
     const result = await searchAll('alice', 12);
     expect(result.users).toHaveLength(1);
-    expect(result.users[0]).toMatchObject({ id: 'u1', follower_count: 0, verified: true });
+    expect(result.users[0]).toMatchObject({ id: 'u1', follower_count: 27, verified: true });
     expect(result.posts).toHaveLength(1);
     // Hashtag-Substring-Match: 'alice' in 'alice-fan' → enthält, 'bob-fan' → nicht.
     expect(result.hashtags).toEqual([
@@ -907,6 +908,7 @@ describe('searchPaginated', () => {
             display_name: null,
             avatar_url: null,
             verified: null,
+            followers: [{ count: i + 3 }],
           })),
           error: null,
         },
@@ -920,7 +922,7 @@ describe('searchPaginated', () => {
     expect(result.users![0]).toMatchObject({
       id: 'u0',
       username: 'user0',
-      follower_count: 0,
+      follower_count: 3,
       verified: false,
     });
     // 20 >= SEARCH_PAGE_LIMIT (20) → hasMore: true

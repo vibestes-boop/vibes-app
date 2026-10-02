@@ -1,3 +1,4 @@
+import { darkColors } from '@/lib/theme';
 /**
  * app/create/camera.tsx
  * Vibes Creator Studio — eigene Identität, kein Short-Video-Klon.
@@ -19,14 +20,18 @@ import { CameraType,CameraView,FlashMode,useCameraPermissions,useMicrophonePermi
 import * as Haptics from 'expo-haptics';
 import { launchImageLibraryAsync,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { AlignCenter,ChevronRight,Crop,FileText,ImageIcon,Music2,Palette,Radio,RotateCcw,Smile,Sparkles,Timer,Type,Video,X,Zap,ZapOff } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AlignLeft,AlignRight,AlignCenter,ChevronRight,Crop,FileText,ImageIcon,Music2,Palette,Radio,RotateCcw,Smile,Sparkles,Timer,Type,Video,X,Zap,ZapOff } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
+ActivityIndicator,
 Alert,
 Dimensions,
 Keyboard,
+Linking,
+Platform,
 Pressable,
+ScrollView,
 StatusBar,
 StyleSheet,
 Text,
@@ -74,7 +79,7 @@ const CAPTURE_MODES: { key: CaptureMode; label?: string; labelKey?: string }[] =
 
 // Hintergrund-Farben für Text-Posts (TikTok-Stil)
 const TEXT_BG_COLORS: string[] = [
-  '#1D1D26', '#A78BFA', '#F472B6', '#FB7185', '#FBBF24', '#34D399', '#38BDF8', '#000000', '#FFFFFF',
+  '#18181B', '#A78BFA', '#F472B6', '#FB7185', '#FBBF24', '#34D399', '#38BDF8', '#000000', '#FFFFFF',
 ];
 
 // Kuratierte Gradient-Paare (sehen besser aus als Zufalls-Hex). Der Kreis-Button würfelt.
@@ -394,7 +399,8 @@ export default function CreateCameraScreen() {
 
   const [cameraFacing, setCameraFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<FlashMode>('off');
-  const [captureMode, setCaptureMode] = useState<CaptureMode>('15s');
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const [captureMode, setCaptureMode] = useState<CaptureMode>(mode === 'text' ? 'text' : 'foto');
   const [studioMode, setStudioMode] = useState<StudioMode>('vibe');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [isRecording, setIsRecording] = useState(false);
@@ -418,6 +424,11 @@ export default function CreateCameraScreen() {
 
   // ── Text-Modus (Text-auf-Farbe-Post) ──────────────────────────────────
   const [textContent, setTextContent] = useState('');
+  const [textEditing, setTextEditing] = useState(false);
+  const [textCapturing, setTextCapturing] = useState(false);
+  const textCapturingRef = useRef(false);
+  const textMounted = useRef(true);
+  useEffect(() => { textMounted.current = true; return () => { textMounted.current = false; }; }, []);
   const [textBgIndex, setTextBgIndex] = useState(0);
   const [textGradient, setTextGradient] = useState<[string, string] | null>(null);  // null = Einzelfarbe
   const [alignIdx, setAlignIdx] = useState(0);   // 0 Mitte / 1 Links / 2 Rechts
@@ -426,9 +437,12 @@ export default function CreateCameraScreen() {
   const textInputRef = useRef<TextInput>(null);
   const textBg = TEXT_BG_COLORS[textBgIndex];
   // Bei Gradient immer weißer Text; sonst heller BG → dunkler Text
-  const textColor = textGradient ? '#FFFFFF' : (textBg === '#FFFFFF' || textBg === '#FBBF24') ? '#111111' : '#FFFFFF';
+  const textColor = textGradient ? '#FFFFFF' : ['#18181B', '#000000'].includes(textBg) ? '#FFFFFF' : '#18181B';
   const textAlignMode = TEXT_ALIGNS[alignIdx];
   const textStyle = TEXT_STYLES[styleIdx];
+  const TextAlignIcon = textAlignMode === 'left' ? AlignLeft : textAlignMode === 'right' ? AlignRight : AlignCenter;
+  const canContinueText = !!textContent.trim() && !textCapturing;
+  const toggleTextEditing = () => { if (textEditing) { textInputRef.current?.blur(); Keyboard.dismiss(); } else textInputRef.current?.focus(); };
 
   // Kreis-Button: würfelt einen neuen Gradient (anders als der aktuelle)
   const rollGradient = useCallback(() => {
@@ -449,59 +463,40 @@ export default function CreateCameraScreen() {
     const show = Keyboard.addListener('keyboardWillShow', (e) => setKbHeight(e.endCoordinates?.height ?? 0));
     const showD = Keyboard.addListener('keyboardDidShow', (e) => setKbHeight(e.endCoordinates?.height ?? 0));
     const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
-    return () => { show.remove(); showD.remove(); hide.remove(); };
+    const hideD = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
+    return () => { show.remove(); showD.remove(); hide.remove(); hideD.remove(); };
   }, []);
 
-  const handleTextDone = useCallback(async () => {
-    if (!textContent.trim()) { Alert.alert(tr('create.writeSomething'), tr('create.typeYourText')); return; }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const continueText = useCallback(async (destination: 'post' | 'story') => {
+    if (!textContent.trim() || textCapturingRef.current) return;
+    textCapturingRef.current = true;
+    setTextCapturing(true);
+    textInputRef.current?.blur();
     Keyboard.dismiss();
-    await new Promise((r) => setTimeout(r, 380));   // Tastatur einfahren lassen, sonst landet sie im Bild
+    await new Promise(resolve => setTimeout(resolve, 380));
     try {
+      if (!textMounted.current) return;
       const uri = await textShotRef.current?.capture?.();
-      if (uri) {
-        // view-shot liefert nackten Pfad ohne file://-Schema → ergänzen, sonst „Invalid URL"
-        const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
-        router.replace({ pathname: '/create', params: { mediaUri: fileUri, mediaType: 'image' } });
-      } else {
-        Alert.alert(tr('create.tooBad'), tr('create.textPostFailed'));
-      }
+      if (!uri) throw new Error('capture failed');
+      if (!textMounted.current) return;
+      const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+      const params = { mediaUri: fileUri, mediaType: 'image' };
+      if (destination === 'story') router.push({ pathname: '/create-story', params });
+      else router.replace({ pathname: '/create', params });
     } catch {
-      Alert.alert(tr('create.tooBad'), tr('create.textPostFailed'));
+      if (textMounted.current) Alert.alert(tr('create.tooBad'), tr('create.textPostFailed'));
+    } finally {
+      textCapturingRef.current = false;
+      if (textMounted.current) setTextCapturing(false);
     }
-  }, [textContent, router]);
+  }, [textContent, router, tr]);
 
-  // Text als Story posten → Capture → vorhandener Story-Screen (mit Bild vorbefüllt)
-  const handleTextStory = useCallback(async () => {
-    if (!textContent.trim()) { Alert.alert(tr('create.writeSomething'), tr('create.typeYourText')); return; }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Keyboard.dismiss();
-    await new Promise((r) => setTimeout(r, 380));
-    try {
-      const uri = await textShotRef.current?.capture?.();
-      if (uri) {
-        const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
-        router.push({ pathname: '/create-story', params: { mediaUri: fileUri, mediaType: 'image' } });
-      } else {
-        Alert.alert(tr('create.tooBad'), tr('create.storyFailed'));
-      }
-    } catch {
-      Alert.alert(tr('create.tooBad'), tr('create.storyFailed'));
-    }
-  }, [textContent, router]);
-
-  // Berechtigungen GENAU EINMAL anfragen. Vorher hing der Effekt an den
-  // Permission-Objekten selbst: bei Ablehnung änderte sich das Objekt, der Effekt
-  // lief erneut, fragte erneut → Endlosschleife. Auf Android löst der Request bei
-  // canAskAgain=false sofort auf, ohne Dialog — die Schleife lief dann heiß.
   const permissionAskedRef = useRef(false);
   useEffect(() => {
-    if (permissionAskedRef.current) return;
-    if (!cameraPermission || !micPermission) return;   // noch am Laden
+    if (captureMode === 'text' || permissionAskedRef.current || !cameraPermission) return;
     permissionAskedRef.current = true;
-    if (!cameraPermission.granted && cameraPermission.canAskAgain) requestCameraPermission();
-    if (!micPermission.granted && micPermission.canAskAgain) requestMicPermission();
-  }, [cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
+    if (!cameraPermission.granted && cameraPermission.canAskAgain) void requestCameraPermission();
+  }, [captureMode, cameraPermission, requestCameraPermission]);
 
 
   const flipCamera = useCallback(() => {
@@ -547,7 +542,7 @@ export default function CreateCameraScreen() {
       __DEV__ && console.warn('[openGallery]', e);
       Alert.alert(tr('create.oops'), tr('create.galleryFailed'));
     }
-  }, [captureMode, router, studioMode, aspectRatio, selectedTrack, audioVolume]);
+  }, [captureMode, router, studioMode, aspectRatio, selectedTrack, audioVolume, tr]);
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -558,10 +553,22 @@ export default function CreateCameraScreen() {
     } catch {
       Alert.alert(tr('create.oops'), tr('create.photoFailed'));
     }
-  }, [router, selectedTrack, audioVolume]);
+  }, [router, selectedTrack, audioVolume, tr]);
 
   const startRecording = useCallback(async () => {
     if (!cameraRef.current || isRecording || countdown > 0) return;
+    if (!micPermission?.granted) {
+      if (micPermission?.canAskAgain === false) {
+        Alert.alert(tr('create.permission'), tr('ux.microphoneBody'), [
+          { text: tr('common.cancel'), style: 'cancel' },
+          { text: tr('nativeUi.settings'), onPress: () => { void Linking.openSettings(); } },
+        ]);
+        return;
+      }
+      await requestMicPermission();
+      // A system prompt interrupts the hold gesture. The next press starts recording.
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     // Timer-Countdown ausführen wenn gesetzt
@@ -595,7 +602,7 @@ export default function CreateCameraScreen() {
     if (recIntervalRef.current) clearInterval(recIntervalRef.current);
     setIsRecording(false);
     setRecSeconds(0);
-  }, [isRecording, countdown, captureMode, router, timerSec, selectedTrack?.url, selectedTrack?.title, audioVolume]);
+  }, [isRecording, countdown, captureMode, router, timerSec, selectedTrack?.url, selectedTrack?.title, audioVolume, micPermission, requestMicPermission, tr]);
 
   const stopRecording = useCallback(() => {
     if (!isRecording) return;
@@ -626,11 +633,11 @@ export default function CreateCameraScreen() {
   const isText = captureMode === 'text';
 
   // Permission Screen
-  if (!cameraPermission?.granted) {
+  if (!cameraPermission?.granted && !isText) {
     return (
       <View style={s.permScreen}>
         <StatusBar barStyle="light-content" />
-        <LinearGradient colors={['#0D0D1A', '#050508']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={[darkColors.bg.secondary, darkColors.bg.primary]} style={StyleSheet.absoluteFill} />
         <LinearGradient
           colors={['rgba(255,255,255,0.10)', 'transparent']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 300 }}
@@ -640,11 +647,11 @@ export default function CreateCameraScreen() {
         </View>
         <Text style={s.permTitle}>{tr('create.cameraAccess')}</Text>
         <Text style={s.permSub}>
-          Serlo braucht Kamera und Mikrofon um{'\n'}Videos, Stories und Live-Streams zu erstellen.
+          {tr('ux.cameraPermissionBody')}
         </Text>
-        <Pressable onPress={requestCameraPermission} style={s.permBtn}>
+        <Pressable onPress={() => { if (cameraPermission?.canAskAgain === false) void Linking.openSettings(); else void requestCameraPermission(); }} style={s.permBtn}>
           <View style={s.permBtnGrad}>
-            <Text style={s.permBtnText}>{tr('create.allowCamera')}</Text>
+            <Text style={s.permBtnText}>{tr(cameraPermission?.canAskAgain === false ? 'nativeUi.settings' : 'create.allowCamera')}</Text>
           </View>
         </Pressable>
         <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
@@ -661,13 +668,14 @@ export default function CreateCameraScreen() {
 
       {/* ── Kamera: nur wenn Screen fokussiert ── */}
       {/* useIsFocused: CameraView released/remounted bei Tab-Switch → kein schwarzes Bild */}
-      {isFocused && (
+      {isFocused && !isText && (
         <CameraView
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
           facing={cameraFacing}
           flash={flash}
           mode={isPhoto ? 'picture' : 'video'}
+          mute={!micPermission?.granted}
           // 720p statt 1080p: im vertikalen Handy-Feed praktisch nicht
           // unterscheidbar, aber ~2× kleinere Dateien → schnelleres Laden
           // (vor allem im Mobilfunknetz) und weniger R2-Storage. Reine
@@ -685,8 +693,8 @@ export default function CreateCameraScreen() {
           <ViewShot ref={textShotRef} style={StyleSheet.absoluteFill} options={{ format: 'jpg', quality: 0.95, result: 'tmpfile' }}>
             {/* Hintergrund tippbar: Tastatur offen → zu; geschlossen → wieder fokussieren (weiter bearbeiten) */}
             <Pressable
-              onPress={() => { if (kbHeight > 0) Keyboard.dismiss(); else textInputRef.current?.focus(); }}
-              style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }]}
+              onPress={toggleTextEditing}
+              style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? kbHeight : 0 }]}
             >
               {/* Hintergrund (Gradient oder Einzelfarbe) hinter dem Text */}
               {textGradient ? (
@@ -698,8 +706,14 @@ export default function CreateCameraScreen() {
                 ref={textInputRef}
                 value={textContent}
                 onChangeText={setTextContent}
-                
-                placeholderTextColor={textColor === '#FFFFFF' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)'}
+                onFocus={() => setTextEditing(true)}
+                onBlur={() => setTextEditing(false)}
+                editable={!textCapturing}
+                caretHidden={textCapturing}
+                selectionColor={darkColors.accent.primary}
+                placeholder={tr('ux.textPlaceholder')}
+                accessibilityLabel={tr('ux.writeText')}
+                placeholderTextColor={textColor === '#FFFFFF' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'}
                 multiline
                 autoFocus
                 maxLength={400}
@@ -714,11 +728,12 @@ export default function CreateCameraScreen() {
         </View>
       )}
 
-      {/* Hintergrundfarben — NUR bei offener Tastatur, direkt darüber (außerhalb ViewShot → nicht im Bild) */}
-      {isText && kbHeight > 0 && (
-        <View style={[s.textSwatchRow, { bottom: kbHeight + 12, zIndex: 11 }]}>
+      {/* Colors remain accessible with a hardware keyboard or a dismissed keyboard. */}
+      {isText && (
+        <View style={[s.textPalette, { bottom: kbHeight > 0 ? (Platform.OS === 'ios' ? kbHeight : 0) + 8 : insets.bottom + 116, zIndex: 11 }]}><View style={s.textPaletteHeading}><Text style={s.textPaletteLabel}>{tr('editorUx.background')}</Text><Text style={s.textPaletteLabel}>{textContent.length} / 400</Text></View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={s.textSwatchRow}>
           {/* Kreis-Button → zufälliger Gradient-Hintergrund */}
-          <Pressable onPress={rollGradient} style={[s.textSwatch, { overflow: 'hidden' }, textGradient && s.textSwatchActive]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('editorUx.gradient')} disabled={textCapturing} onPress={rollGradient} style={[s.textSwatch, { overflow: 'hidden' }, textGradient && s.textSwatchActive]}>
             <LinearGradient
               colors={textGradient ?? ['#FF6B6B', '#6A82FB']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -728,11 +743,12 @@ export default function CreateCameraScreen() {
           {TEXT_BG_COLORS.map((c, i) => (
             <Pressable
               key={c}
+              accessibilityRole="button" accessibilityLabel={tr('editorUx.colorNumber', { number: i + 1 })} accessibilityState={{ selected: !textGradient && i === textBgIndex, disabled: textCapturing }} disabled={textCapturing}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTextGradient(null); setTextBgIndex(i); }}
               style={[s.textSwatch, { backgroundColor: c }, !textGradient && i === textBgIndex && s.textSwatchActive]}
             />
           ))}
-        </View>
+        </ScrollView></View>
       )}
 
       {/* ── Countdown-Overlay ── */}
@@ -755,28 +771,28 @@ export default function CreateCameraScreen() {
 
 
       {/* ── Top Bar ── */}
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }, isText && s.textTopBar]}>
         {/* Schließen */}
-        <Pressable onPress={() => router.back()} style={s.topBtn} hitSlop={12}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr('mobileDesign.close')} disabled={textCapturing} onPress={() => router.back()} style={s.topBtn} hitSlop={12}>
           <View style={s.topBtnBg}>
             <X size={20} color="#fff" strokeWidth={2.5} />
           </View>
         </Pressable>
 
         {/* Vibes branded dot */}
-        <View style={s.topTitleWrap}>
+        <View style={[s.topTitleWrap, isText && { flex: 1, justifyContent: 'center' }]}>{isText ? <Text numberOfLines={1} style={[s.topTitle, { fontSize: 15 }]}>{tr('editorUx.textTitle')}</Text> : <>
           <View style={s.cyanDot} />
           <Text style={s.topTitle}>Serlo</Text>
           <Text style={s.topTitleSep}> · </Text>
           <Text style={s.topTitleMode}>
             {studioMode === 'vibe' ? tr('create.recording') : studioMode === 'studio' ? 'Studio' : tr('create.live')}
-          </Text>
+          </Text></>}
         </View>
 
         {/* Rechts: im Text-Modus mit offener Tastatur „Fertig" (Tastatur zu), sonst Sound */}
-        {isText && kbHeight > 0 ? (
-          <Pressable style={s.topBtn} hitSlop={10} onPress={() => Keyboard.dismiss()}>
-            <Text style={s.doneText}>{tr('create.done')}</Text>
+        {isText ? (
+          <Pressable accessibilityRole="button" disabled={textCapturing} style={s.textEditButton} hitSlop={10} onPress={toggleTextEditing}>
+            <Text numberOfLines={1} style={[s.doneText, { fontSize: 13 }]}>{tr(textEditing ? 'create.done' : 'ux.editText')}</Text>
           </Pressable>
         ) : (
           <Pressable
@@ -855,20 +871,20 @@ export default function CreateCameraScreen() {
 
       {/* ── Text-Modus: rechte Tool-Leiste (Schrift + Ausrichtung) ── */}
       {isText && (
-        <View style={[s.tools, { top: insets.top + 72, zIndex: 11 }]}>
-          <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStyleIdx((i) => (i + 1) % TEXT_STYLES.length); }}>
+        <View style={[s.tools, s.textTools, { top: insets.top + 72, zIndex: 11 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('editorUx.fontStyle')} disabled={textCapturing} style={s.textToolButton} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStyleIdx((i) => (i + 1) % TEXT_STYLES.length); }}>
             <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>Aa</Text>
-            <Text style={s.toolLabel}>{textStyle.labelKey ? tr(textStyle.labelKey as any) : textStyle.label}</Text>
+            <Text numberOfLines={1} style={s.toolLabel}>{textStyle.labelKey ? tr(textStyle.labelKey as any) : textStyle.label}</Text>
           </Pressable>
-          <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAlignIdx((i) => (i + 1) % TEXT_ALIGNS.length); }}>
-            <AlignCenter size={24} color="#fff" strokeWidth={1.8} />
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('editorUx.alignment')} disabled={textCapturing} style={s.textToolButton} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAlignIdx((i) => (i + 1) % TEXT_ALIGNS.length); }}>
+            <TextAlignIcon size={24} color="#fff" strokeWidth={1.8} />
             <Text style={s.toolLabel}>{tr(ALIGN_LABEL[textAlignMode] as any)}</Text>
           </Pressable>
         </View>
       )}
 
       {/* ── Unterer Bereich ── */}
-      <View style={[s.bottom, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={[s.bottom, { paddingBottom: insets.bottom + 12 }, isText && kbHeight > 0 && { display: 'none' }]}>
 
         {studioMode === 'studio' ? (
           /* ── STUDIO HUB: zwei Wege + Format + Editor-Tiefe + Entwürfe ── */
@@ -942,17 +958,16 @@ export default function CreateCameraScreen() {
           /* ──────────────── VIBE MODE ──────────────── */
           <>
             {/* Capture Mode Switcher als Pill */}
-            <CaptureSwitcher modes={CAPTURE_MODES} active={captureMode} onChange={setCaptureMode} />
+            {mode !== 'text' && <CaptureSwitcher modes={CAPTURE_MODES} active={captureMode} onChange={setCaptureMode} />}
 
             {isText ? (
               /* ── Text-Modus: „Deine Story" + „Weiter" (TikTok-Stil) statt Kamera-Aufnahme ── */
               <View style={s.textPostRow}>
-                <Pressable onPress={handleTextStory} style={s.textStoryBtn}>
-                  <Text style={s.textStoryBtnText}>{tr('create.yourStory')}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={tr('editorUx.storyPreview')} accessibilityState={{ disabled: !canContinueText, busy: textCapturing }} disabled={!canContinueText} onPress={() => void continueText('story')} style={[s.textStoryBtn, !canContinueText && { opacity: 0.4 }]}>
+                  <Text style={s.textStoryBtnText}>{tr('create.story')}</Text>
                 </Pressable>
-                <Pressable onPress={handleTextDone} style={s.textPostBtn}>
-                  <Text style={s.textPostBtnText}>{tr('create.next')}</Text>
-                  <ChevronRight size={18} color="#000" strokeWidth={2.5} />
+                <Pressable accessibilityRole="button" accessibilityLabel={tr('create.next')} accessibilityState={{ disabled: !canContinueText, busy: textCapturing }} disabled={!canContinueText} onPress={() => void continueText('post')} style={[s.textPostBtn, { backgroundColor: darkColors.accent.solid }, !canContinueText && { opacity: 0.4 }]}>
+                  {textCapturing ? <ActivityIndicator color={darkColors.text.onAccent} /> : <><Text style={[s.textPostBtnText, { color: darkColors.text.onAccent }]}>{tr('create.next')}</Text><ChevronRight size={18} color={darkColors.text.onAccent} strokeWidth={2.5} /></>}
                 </Pressable>
               </View>
             ) : (
@@ -964,7 +979,7 @@ export default function CreateCameraScreen() {
                     <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>{tr('create.galleryTab')}</Text>
                   </View>
                   <LinearGradient
-                    colors={['rgba(255,255,255,0.18)', 'rgba(168,85,247,0.3)']}
+                    colors={['rgba(255,255,255,0.18)', 'rgba(220,229,241,0.3)']}
                     style={[StyleSheet.absoluteFill, { borderRadius: 14 }]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     pointerEvents="none"
@@ -988,13 +1003,13 @@ export default function CreateCameraScreen() {
         )}
 
         {/* ── Studio Mode Pill Selector ── */}
-        <View style={{ marginTop: studioMode === 'studio' ? 16 : 24, marginBottom: 8 }}>
+        {mode !== 'text' && <View style={{ marginTop: studioMode === 'studio' ? 16 : 24, marginBottom: 8 }}>
           <StudioModePill
             modes={STUDIO_MODES}
             active={studioMode}
             onChange={handleStudioModeChange}
           />
-        </View>
+        </View>}
       </View>
     </View>
   );
@@ -1157,6 +1172,7 @@ const s = StyleSheet.create({
     minHeight: 90,
   },
   textStoryBtn: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(12,12,14,0.88)',
     paddingVertical: 14,
     paddingHorizontal: 22,
     borderRadius: 30,
@@ -1165,12 +1181,13 @@ const s = StyleSheet.create({
   },
   textStoryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   textPostBtn: {
+    flex: 1, justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#fff',
     paddingVertical: 14,
-    paddingHorizontal: 34,
+    paddingHorizontal: 18,
     borderRadius: 30,
   },
   textPostBtnText: { color: '#000', fontSize: 16, fontWeight: '600' },
@@ -1189,16 +1206,14 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Text-Modus: Hintergrundfarb-Swatches
-  textSwatchRow: {
-    position: 'absolute',
-    left: 0, right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-    paddingHorizontal: 24,
-  },
+  textTopBar: { backgroundColor: 'rgba(12,12,14,0.88)', paddingBottom: 12, gap: 8 },
+  textEditButton: { minHeight: 44, minWidth: 84, maxWidth: 110, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.08)' },
+  textTools: { width: 88, paddingVertical: 8, gap: 8, borderRadius: 22, backgroundColor: 'rgba(12,12,14,0.88)' },
+  textToolButton: { width: 82, minHeight: 58, alignItems: 'center', justifyContent: 'center' },
+  textPalette: { position: 'absolute', left: 16, right: 16, borderRadius: 20, backgroundColor: 'rgba(12,12,14,0.94)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' },
+  textPaletteHeading: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12 },
+  textPaletteLabel: { color: '#D4D4D8', fontSize: 11, fontWeight: '600' },
+  textSwatchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 16 },
   textSwatch: {
     width: 28, height: 28, borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)',

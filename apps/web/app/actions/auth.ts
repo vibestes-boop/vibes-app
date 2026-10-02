@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getSafeReturnPath } from '@/lib/auth/return-path';
 import { usernameSchema } from '@shared/schemas';
 
 // -----------------------------------------------------------------------------
@@ -49,7 +50,7 @@ export async function signInWithMagicLink(formData: FormData): Promise<ActionRes
     options: {
       // After clicking the link, Supabase redirects here with ?code=... which
       // our /auth/callback route exchanges for a session.
-      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent('/')}`,
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(getSafeReturnPath(formData.get('next')))}`,
       // Create the user if they don't exist yet — magic-link doubles as signup.
       shouldCreateUser: true,
     },
@@ -86,6 +87,7 @@ function mapOtpError(error: { message: string; status?: number; code?: string })
 // -----------------------------------------------------------------------------
 
 export async function signInWithOAuth(provider: 'google' | 'apple', next = '/'): Promise<never> {
+  next = getSafeReturnPath(next);
   const origin = await getOrigin();
   const supabase = await createClient();
 
@@ -99,7 +101,7 @@ export async function signInWithOAuth(provider: 'google' | 'apple', next = '/'):
   if (error || !data?.url) {
     // Fall back to login page with error param — the server action contract
     // requires `never` return (we redirect), so we throw-redirect here.
-    redirect(`/login?error=${encodeURIComponent(error?.message ?? 'OAuth-Start fehlgeschlagen')}`);
+    redirect(`/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent(error?.message ?? 'OAuth-Start fehlgeschlagen')}`);
   }
 
   // data.url ist eine externe OAuth-Provider-URL (accounts.google.com/…),

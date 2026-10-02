@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import type { Route } from 'next';
 import { BadgeCheck, Hash, SearchX, User2, Video } from 'lucide-react';
 
@@ -41,7 +42,19 @@ function formatCount(n: number): string {
 }
 
 export function SearchResultsTabs({ q, results, viewerId, followingSet, initialTab }: Props) {
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const requestedTab = params ? (params.get('tab') ?? 'all') : initialTab;
+  const tab: Tab = ['all', 'users', 'posts', 'hashtags'].includes(requestedTab) ? requestedTab as Tab : 'all';
+
+  function setTab(nextTab: Tab) {
+    if (nextTab === tab) return;
+    const next = new URLSearchParams(params?.toString());
+    if (nextTab === 'all') next.delete('tab');
+    else next.set('tab', nextTab);
+    // Next synchronizes native history with useSearchParams without refetching results.
+    window.history.pushState(null, '', `${pathname}?${next.toString()}`);
+  }
 
   // ── Paginated state per category ───────────────────────────────────────────
   const [users,    setUsers]    = useState(results.users);

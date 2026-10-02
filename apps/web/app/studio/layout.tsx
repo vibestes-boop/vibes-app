@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { ReactNode } from 'react';
-import type { Route } from 'next';
 import { getUser, getProfile } from '@/lib/auth/session';
 import { StudioSubNav } from '@/components/studio/studio-sub-nav';
 import { FeedSidebarLayout } from '@/components/feed/feed-sidebar-layout';
@@ -27,13 +26,13 @@ import { FeedSidebarLayout } from '@/components/feed/feed-sidebar-layout';
 
 export default async function StudioLayout({ children }: { children: ReactNode }) {
   const user = await getUser();
-  if (!user) redirect('/login?next=/studio' as Route);
+  if (!user) return <ReturnToRedirect />;
 
   // v1.w.UI.163: Creator-Gate. getProfile() is cached per-request, no extra DB hit.
   const profile = await getProfile();
   const isCreator = profile && (profile as unknown as { is_creator?: boolean }).is_creator;
   if (!isCreator) {
-    redirect('/creator/activate' as Route);
+    return <ReturnToRedirect destination="/creator/activate" />;
   }
 
   // Schmale Serlo-Rail (xl+, klappt per Hover auf) links neben der Studio-Sub-Nav

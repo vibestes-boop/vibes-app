@@ -1,24 +1,13 @@
-/**
- * CreateGlass — geteilte, theme-aware Glas-Oberfläche für Erstellen / Studio / Live.
- *
- * EINE Quelle für Panel, Scrim, Border, Typo, Chips, Segment-Control und CTA —
- * damit Studio, Editor und Live-Setup exakt gleich aussehen und beide Themes
- * korrekt bedienen:
- *   - Darkmode  → dunkles Frosted-Glass (Blur dark + dunkler Scrim, weißer Text)
- *   - Lightmode → helles Frosted-Glass  (Blur light + heller Scrim, dunkler Text)
- *
- * Die Kamera/der Hintergrund scheint durch den Blur durch, der Scrim hält alles
- * lesbar. Marken-Lila (accent.primary) ist der Akzent; Rot bleibt LIVE vorbehalten.
- */
+/** Shared glass controls for creation, studio and live setup. */
 import { useTheme } from '@/lib/useTheme';
-import { BlurView } from 'expo-blur';
+import { GlassSurface } from '@/components/ui/GlassSurface';
 import { useMemo } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
-// Brand-Lila-Tint für Akzent-Icon-Flächen — funktioniert auf hell + dunkel.
-export const ACCENT_TINT = 'rgba(168,85,247,0.18)';
+// Silberner Tint für Akzent-Icon-Flächen — funktioniert auf hell + dunkel.
+export const ACCENT_TINT = 'rgba(124,139,160,0.10)';
 
-/** Frosted-Glass-Panel: Blur + theme-abhängiger Scrim + Hairline-Border. */
+/** Native glass where available, with a glossy fallback and theme-aware text. */
 export function GlassPanel({
   children,
   style,
@@ -30,26 +19,9 @@ export function GlassPanel({
   radius?: number;
   padding?: number;
 }) {
-  const { colors, isDark } = useTheme();
-  return (
-    <View
-      style={[
-        { borderRadius: radius, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border.subtle },
-        style as ViewStyle,
-      ]}
-    >
-      <BlurView intensity={55} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          // Kräftigerer, leicht heller Scrim → das Panel liest sich als klare
-          // Fläche (nicht murkig-dunkel über der dunklen Kamera).
-          { backgroundColor: isDark ? 'rgba(30,30,38,0.86)' : 'rgba(252,252,253,0.86)' },
-        ]}
-      />
-      <View style={{ padding }}>{children}</View>
-    </View>
-  );
+  return <GlassSurface radius={radius} style={style}>
+    <View style={{ padding }}>{children}</View>
+  </GlassSurface>;
 }
 
 /** Theme-aware Style-Tokens für die Create/Studio/Live-Oberflächen. */
@@ -85,9 +57,9 @@ export function useCreateGlass() {
         backgroundColor: fill, borderRadius: 12, padding: 4,
       } as ViewStyle,
       segBtn:        { flex: 1, alignItems: 'center' as const, paddingVertical: 8, borderRadius: 9 } as ViewStyle,
-      segBtnActive:  { backgroundColor: colors.accent.primary } as ViewStyle,
+      segBtnActive:  { backgroundColor: colors.accent.solid } as ViewStyle,
       segLabel:       { color: colors.text.secondary, fontSize: 12, fontWeight: '600' as const },
-      segLabelActive: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' as const },
+      segLabelActive: { color: colors.text.onAccent, fontSize: 12, fontWeight: '700' as const },
 
       // Chip (Editor-Werkzeuge)
       chip: {

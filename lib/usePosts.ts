@@ -219,11 +219,12 @@ export function useFollowingFeed(options: { enabled?: boolean } = {}) {
       const excludeIds = pageParam as string[];
 
       // Schritt 1: Folge-Liste holen
-      const { data: followData } = await supabase
+      const { data: followData, error: followError } = await supabase
         .from('follows')
         .select('following_id')
         .eq('follower_id', userId);
 
+      if (followError) throw followError;
       const followingIds = (followData ?? []).map((f: any) => f.following_id as string);
       if (followingIds.length === 0) return [];
 

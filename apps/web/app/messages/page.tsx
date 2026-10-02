@@ -1,7 +1,7 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { redirect } from 'next/navigation';
 import type { Route } from 'next';
 import { BadgeCheck, Bookmark, MessageCircle, Search } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
@@ -64,7 +64,7 @@ function initials(name: string | null): string {
 export default async function MessagesPage() {
   const user = await getUser();
   if (!user) {
-    redirect('/login?next=/messages');
+    return <ReturnToRedirect />;
   }
 
   // Parallel fetch: Konversationen + Story-Groups + Live-Sessions
@@ -84,8 +84,8 @@ export default async function MessagesPage() {
   return (
     <>
       {/* Mobile: vollständige Konversationsliste (md: hidden da Panel übernimmt) */}
-      <div className="flex min-h-dvh flex-col md:hidden">
-        <header className="mb-4 flex items-center justify-between px-4 py-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain md:hidden">
+        <header className="serlo-message-header mb-4 flex shrink-0 items-center justify-between px-4 py-4">
           <h1 className="flex items-center gap-2 text-xl font-semibold">
             <MessageCircle className="h-5 w-5 text-primary" />
             {t('messages.title')}

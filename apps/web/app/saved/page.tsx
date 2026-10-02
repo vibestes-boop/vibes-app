@@ -19,7 +19,7 @@ import { PostGrid } from '@/components/profile/post-grid';
 // -----------------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: 'Gespeichert — Serlo',
+  title: 'Gespeicherte Beiträge',
   robots: { index: false },
 };
 
@@ -35,12 +35,12 @@ export default async function SavedPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
       <header className="mb-6 flex items-center gap-2">
         <Bookmark className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-semibold tracking-tight">Gespeichert</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Gespeicherte Beiträge</h1>
       </header>
 
       <PostGrid
         posts={posts}
-        emptyTitle="Noch nichts gespeichert"
+        emptyTitle="Noch keine Beiträge gespeichert"
         emptyDescription="Tippe auf das Lesezeichen-Symbol bei einem Video, um es hier zu speichern."
         emptyIcon={<Bookmark className="h-7 w-7" strokeWidth={1.75} />}
         fetchMoreUrl="/api/saved"

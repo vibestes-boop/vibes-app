@@ -1,5 +1,5 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Boxes, ArrowLeft } from 'lucide-react';
@@ -53,7 +53,7 @@ type Interest = {
 
 export default async function PreordersPage() {
   const user = await getUser();
-  if (!user) redirect('/login?next=/studio/shop/preorders');
+  if (!user) return <ReturnToRedirect />;
 
   // Vorbestellungen sind eine reine Admin-Funktion (einmalige Sammelbestell-
   // Aktion, z.B. Parfüm). Normale Verkäufer haben keine Vorbestell-Verwaltung →
