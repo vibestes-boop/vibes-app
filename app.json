@@ -138,6 +138,7 @@
       ],
       "./plugins/withFmtConstevalFix",
       "./plugins/withPodDeploymentTarget",
+      "./plugins/withRevenueCatSwiftFix",
       "./plugins/withRootViewBackground",
       "@livekit/react-native-expo-plugin",
       "expo-font",
