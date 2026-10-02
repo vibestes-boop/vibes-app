@@ -24,10 +24,22 @@ and is quarantined for App Store work.
 - Public App Store version: `1.31.0`, released 12 July 2026 (Apple lookup).
 - Last completed production iOS build: `1.31.0 (292)`, 11 July 2026,
   commit `ed125a09952556ec5678768e077bb6765267c0db` (EAS history).
-- Next local candidate: `1.31.1 (293)`. This is **not built, submitted or live**.
+- Candidate: `1.31.1 (293)`. Local Xcode 27 Release compilation succeeded for
+  the x86_64 simulator, including ExpoGlassEffect and RevenueCat. It has **not
+  been built/signed by EAS, submitted or published**.
+- Native launch remains unverified: GoogleMLKit 8.0.0 excludes arm64 simulator
+  builds, while every installed iOS runtime supports only arm64. The compiled
+  x86_64 app cannot install in these runtimes. Do not count this as a passed
+  device test or remove camera functionality to mask it. Use the approved
+  signed build on a physical device or a compatible simulator runtime.
 - Release prepared on `codex/serlo-release-1.31.1` from `origin/main`
   (`9a2b50ab`); unrelated Berkat changes are excluded.
-  Integrate the reviewed release on a clean local `main` before production builds.
+  Local `main` has been fast-forwarded to these release commits and is clean.
+  The native source guard and full pre-release gate pass. Nothing is pushed.
+- Explicit approval for the EAS source upload/signed build and for the GitHub
+  release-branch upload/draft PR is still pending. Production DB migration
+  `20261002220000_create_post_with_product.sql` was separately approved and applied.
+  That database approval does not authorize EAS or public publication.
 - New `expo-glass-effect` requires a new native binary for native Liquid Glass;
   older binaries have a guarded frosted-glass fallback.
 - Required source: `/Users/zaurhatuev/vibes-app`.

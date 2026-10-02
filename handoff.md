@@ -34,12 +34,48 @@ Supabase-Projekt `llymwqfgujwkoxzqxrlm` ausdrücklich freigegeben.
   durchgeführt. Xcode 27 beanstandete alte Mindestversionen einzelner Pod-
   Ressourcen (iOS 9–13). Neues Config-Plugin `withPodDeploymentTarget` hebt nur
   veraltete Pod-Ziele auf die bereits konfigurierte App-Mindestversion iOS 16;
-  nach Pod-Installation im Xcode-Projekt geprüft. Release-Simulatorbuild läuft.
+  nach Pod-Installation im Xcode-Projekt geprüft. `withRevenueCatSwiftFix`
+  verschiebt den bestehenden öffentlichen PaywallColor-Initializer in die
+  Struct-Deklaration, um eine Kollision mit Swift 6.4 zu vermeiden. API und
+  Initializer-Implementierung bleiben unverändert.
+- **Nativer Release-Simulatorbuild bestanden:** Xcode 27, Konfiguration Release,
+  x86_64, Version 1.31.1 (293); ExpoGlassEffect und RevenueCat wurden kompiliert.
+  Artefakt: `/private/tmp/serlo-release-prep/ios-simulator-build/Build/Products/Release-iphonesimulator/Serlo.app`.
+  **Installation/Start nicht bestanden:** Das bestehende GoogleMLKit 8.0.0
+  schließt arm64 für Simulatoren aus. Alle installierten iOS-Laufzeiten
+  (26.3.1, 26.4, 26.5, 27.0) unterstützen ausschließlich arm64. simctl lehnt
+  deshalb das x86_64-Artefakt wegen inkompatibler Architektur ab. Dies belegt
+  keinen Fehler auf einem echten ARM-iPhone, aber auch keinen erfolgreichen
+  Gerätetest. Keine Kamera-Funktion entfernt oder Simulatorprüfung umgangen.
+  Der eigene QA-Simulator `BD1397C5-6263-4F37-BED0-A0427E0603D3` wurde wieder
+  heruntergefahren. Native Anmeldung, Light/Dark und Sitzungsneustart bleiben
+  für diesen Kandidaten unbestätigt; die bestandenen Webchecks ersetzen sie nicht.
+- **Release-Code lokal sauber auf main:** Commits `1368ae15` (bereits angewandte
+  Migrationen), `50600e42` (Serlo UI/Funktionskorrekturen), `c050109b` (Swift-Fix).
+  Lokaler Release-Branch `codex/serlo-release-1.31.1` zeigt auf denselben Stand;
+  nichts gepusht. Vollständiges Pre-Release-Gate bestanden (18 s, DB aktuell),
+  `native:build:production:check` auf sauberem main ebenfalls bestanden.
+- **Zwei Freigaben stehen noch aus:** Upload des Quellcodes zum bestehenden EAS-
+  Projekt `@zaurhat/vibes` (`02ab536a-5836-4560-a5ec-2dfd6e059f90`) für einen
+  signierten iOS-Produktionsbuild 1.31.1 (293), sowie Push des Release-Branches
+  nach `vibestes-boop/vibes-app` mit Entwurfs-PR. Die automatische Freigabeprüfung
+  hat den EAS-Build vor Ausführung wegen fehlender ausdrücklicher Zustimmung
+  zum Quellcode-Upload/signierten Produktionsartefakt abgelehnt. Beide konkreten
+  Fragen wurden gestellt; bisher liegt nur die separate DB-Freigabe vor.
+  EAS nicht erneut starten, bis die passende Antwort vorliegt. Kein Upload
+  oder Cloud-Build wurde durch diese abgelehnte Aktion ausgeführt.
 - `.easignore` schließt andere Web-/Berkat-/Konzept-Apps aus dem nativen Archiv
   aus. `.gitignore` hält die separate Heritage-Vorschau lokal.
 - Öffentliche Web-/Store-Veröffentlichung noch nicht erfolgt. Änderungen
-  zuerst als Release-Commit/Review bereitstellen, nativen Build abschließen,
-  Gerätetest durchführen. Keine Store-Freigabe aus einem JS-Build ableiten.
+  sind lokal committed und für ein Review vorbereitet. Nach den ausstehenden
+  Freigaben: `npm run native:build:production -- -- --non-interactive --no-wait --json`
+  aus sauberem main; Release-Branch separat pushen und Entwurfs-PR erstellen
+  (vorbereitet: `/private/tmp/serlo-release-prep/pr-body.txt`). Eine dabei erzeugte
+  PR immer mit dem Codex-Artefakt-Tool anhängen. Weder main-Push noch öffentliche
+  Website-/Store-Veröffentlichung sind dadurch freigegeben. Danach echten
+  iPhone-Test für Google/Apple-Anmeldung, Session, Kamera und Push durchführen;
+  das angeschlossene iPhone war gesperrt. Keine Store-Freigabe aus erfolgreicher
+  Kompilierung ableiten.
 - Arbeitslogs: `/private/tmp/serlo-release-prep/`; frühere Tests/Produktions-
   Webbuild unter `/private/tmp/serlo-release-review/`. Temporäre Dateien können
   nach einem Sitzungswechsel fehlen.
