@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Route } from 'next';
@@ -9,6 +8,7 @@ import { MagicLinkForm } from '@/components/auth/magic-link-form';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
 import { HashSessionRescue } from '@/components/auth/hash-session-rescue';
 import { getUser } from '@/lib/auth/session';
+import { getSafeReturnPath } from '@/lib/auth/return-path';
 import { getT } from '@/lib/i18n/server';
 
 // Metadata muss statisch pro Route sein — Next.js unterstützt zwar async
@@ -25,31 +25,23 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const params = await searchParams;
+  const next = getSafeReturnPath(params.next);
 
   // Already logged in? Skip the form and go directly to destination.
   const user = await getUser();
   if (user) {
-    redirect((params.next && params.next.startsWith('/') ? params.next : '/') as Route);
+    redirect(next as Route);
   }
 
-  const next = params.next && params.next.startsWith('/') && !params.next.startsWith('//') ? params.next : '/';
   const t = await getT();
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-16">
+    <main className="serlo-auth-page flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:py-12">
       <HashSessionRescue />
-      <div className="w-full max-w-[300px] space-y-8 sm:max-w-sm">
+      <div className="serlo-auth-card w-full max-w-[420px] space-y-7">
         <div className="space-y-4 text-center">
-          <Link href="/" className="mx-auto flex w-fit items-center gap-3 rounded-full border border-border bg-card px-3 py-2 shadow-sm">
-            <Image
-              src="/icon.svg"
-              alt="Serlo"
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-xl"
-              priority
-            />
-            <span className="pr-1 text-sm font-semibold tracking-tight">Serlo</span>
+          <Link href="/" className="serlo-wordmark mx-auto">
+            serlo<span>.</span>
           </Link>
           <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight">{t('auth.loginTitle')}</h1>
@@ -64,7 +56,7 @@ export default async function LoginPage({
           </div>
         ) : null}
 
-        <MagicLinkForm mode="login" />
+        <MagicLinkForm mode="login" next={next} />
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -91,7 +83,7 @@ export default async function LoginPage({
         <p className="text-center text-sm text-muted-foreground">
           {t('auth.noAccount')}{' '}
           <Link
-            href="/signup"
+            href={`/signup?next=${encodeURIComponent(next)}` as Route}
             className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
           >
             {t('auth.createNow')}

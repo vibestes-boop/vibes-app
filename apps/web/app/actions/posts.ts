@@ -137,7 +137,7 @@ export interface PublishInput {
 }
 
 // -----------------------------------------------------------------------------
-// publishPost — direkter Post in die `posts`-Tabelle. RLS prüft author_id.
+// publishPost — canonical RPCs enforce ownership; product links are atomic.
 // -----------------------------------------------------------------------------
 
 export async function publishPost(
@@ -163,7 +163,8 @@ export async function publishPost(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc('create_post', {
+  const { data, error } = await supabase.rpc(input.productId ? 'create_post_with_product' : 'create_post', {
+    ...(input.productId ? { p_product_id: input.productId } : {}),
     p_caption: caption.length > 0 ? caption : null,
     p_tags: mergeTags(input.tags, caption),
     p_media_url: input.mediaUrl,
@@ -184,19 +185,6 @@ export async function publishPost(
 
   if (error || !data) {
     return { ok: false, error: error?.message ?? 'Post fehlgeschlagen.' };
-  }
-
-  // Shoppable Posts (#2): verknüpftes Produkt nachtragen (best-effort, separat
-  // von der create_post-RPC, die product_id nicht kennt). RLS erlaubt dem Autor,
-  // den eigenen Post zu updaten. Schlägt es fehl, bleibt der Post trotzdem live.
-  if (input.productId) {
-    const { error: linkErr } = await supabase
-      .from('posts')
-      .update({ product_id: input.productId })
-      .eq('id', String(data));
-    if (linkErr && process.env.NODE_ENV !== 'production') {
-      console.warn('[publishPost] product link failed:', linkErr.message);
-    }
   }
 
   // Draft nach erfolgreichem Publish entfernen (wenn aus Draft gepostet).

@@ -1,3 +1,4 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -21,7 +22,7 @@ interface PageProps {
 export default async function EditProductPage({ params }: PageProps) {
   const { id } = await params;
   const user = await getUser();
-  if (!user) redirect(`/login?next=/studio/shop/${id}/edit`);
+  if (!user) return <ReturnToRedirect />;
 
   const product = await getProduct(id);
   if (!product) notFound();

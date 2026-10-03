@@ -456,13 +456,13 @@ export function FeedCard({
     : 'object-cover xl:object-contain';
 
   // v1.w.UI.250 — Hochformat-Vollbild reicht auf Mobile hinter die fixed
-  // Bottom-Nav. Caption + Abspielbalken um Nav-Höhe (h-14 + Safe-Area) anheben,
-  // damit sie nicht verdeckt werden; ab md (Nav weg) zurück auf bottom-0.
+  // Bottom-Nav. Caption + Abspielbalken um den gemeinsamen Dock-Abstand anheben,
+  // damit sie nicht verdeckt werden; ab xl (Nav weg) zurück auf bottom-0.
   // Querformat ist zentriert (Karte = nicht volle Höhe) → keine Nav-Kollision →
   // bleibt bottom-0.
   const overlayBottom = isWiderThanPortrait
     ? 'bottom-0'
-    : 'bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0';
+    : 'bottom-[var(--serlo-dock-space)] xl:bottom-0';
 
   // Auto-Play / Pause je nach `isActive` — nur für Videos relevant.
   useEffect(() => {
@@ -1239,7 +1239,7 @@ export function FeedCard({
         Avatar-Border + Plus-Ring nutzen `border-background`/`ring-background`
         damit der Avatar visuell vom Rail-Hintergrund abgesetzt ist (nicht
         auf einer dunklen Video-Letterbox wie zuvor). */}
-    <aside className="pointer-events-auto absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] right-2 z-30 flex shrink-0 flex-col items-center gap-4 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] md:bottom-4 xl:static xl:bottom-auto xl:right-auto xl:z-auto xl:gap-5 xl:pb-2 xl:text-foreground xl:drop-shadow-none">
+    <aside className="pointer-events-auto absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] right-2 z-30 flex shrink-0 flex-col items-center gap-4 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] xl:static xl:bottom-auto xl:right-auto xl:z-auto xl:gap-5 xl:pb-2 xl:text-foreground xl:drop-shadow-none">
       {/* Avatar mit optionalem Follow-Plus (Short-Video-Signature-Slot). */}
       <Link
         href={`/u/${post.author.username}` as Route}

@@ -72,3 +72,6 @@ apps/remotion/out/*
 _backups/
 *.pt
 *.pt
+
+# Standalone local heritage concept; preserved separately from the app release.
+/apps/heritage-preview/

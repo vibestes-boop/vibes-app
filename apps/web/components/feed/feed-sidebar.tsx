@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 import {
-  Home,
+  Zap,
   Compass,
   Users,
   Radio,
@@ -29,45 +29,31 @@ import { useI18n } from '@/lib/i18n/client';
 import type { TranslationKey } from '@/lib/i18n/translate';
 import { useRouter } from 'next/navigation';
 
-// -----------------------------------------------------------------------------
-// FeedSidebar — linke Navigation auf Desktop-Feed-Seiten.
-//
-// v1.w.UI.10 Layout-Reset: Von 17 Einträgen auf 5 Primary + 3 Secondary
-// runterkompaktiert. Power-User-Items (Entwürfe, Geplant, Mein Shop,
-// Live-Studio, Gemerkt, Coin-Shop, Bezahlungen) leben jetzt im Avatar-
-// Dropdown im SiteHeader, nicht mehr permanent hier.
-//
-// Prominenter „Posten"-CTA sitzt oben im Sidebar-Stack als Primary-Action-Pill
-// (entspricht Short-Videos „+ Upload" auf Desktop). Damit fällt die DesktopNav
-// Pill-Row im SiteHeader weg — keine Doppel-Navigation mehr.
-//
-// v1.w.UI.Short-Video-Mehr: Clicking "Mehr" collapses sidebar to icon-only mode
-// and slides in a settings panel beside the icon strip.
-// -----------------------------------------------------------------------------
+// Desktop counterpart of the app tabs, with secondary community destinations.
+// The rail remains collapsible for the shop and the More panel.
 
 interface NavItem {
   /** i18n-Key — wird am Renderpunkt via t() aufgelöst (Modul-Konstante kann nicht selbst übersetzen). */
   labelKey: TranslationKey;
   href: Route;
-  icon: typeof Home;
+  icon: typeof Zap;
   requiresAuth?: boolean;
 }
 
 const PRIMARY_NAV: NavItem[] = [
-  { labelKey: 'feed.forYou', href: '/' as Route, icon: Home },
-  { labelKey: 'feed.followingTab', href: '/following' as Route, icon: UserRound, requiresAuth: true },
-  { labelKey: 'feed.friends', href: '/friends' as Route, icon: Users, requiresAuth: true },
-  { labelKey: 'nav.explore', href: '/explore' as Route, icon: Compass },
-  { labelKey: 'nav.live', href: '/live' as Route, icon: Radio },
-  { labelKey: 'nav.messages', href: '/messages' as Route, icon: MessageCircle, requiresAuth: true },
-  // Benachrichtigungen wird als Drawer-Button gerendert (kein href)
+  { labelKey: 'nav.feed', href: '/', icon: Zap },
+  { labelKey: 'nav.explore', href: '/explore', icon: Compass },
+  { labelKey: 'nav.messages', href: '/messages', icon: MessageCircle, requiresAuth: true },
 ];
 
 const SECONDARY_NAV: NavItem[] = [
-  { labelKey: 'nav.shop', href: '/shop' as Route, icon: ShoppingBag },
-  { labelKey: 'sidebar.pods', href: '/guilds' as Route, icon: Users },
-  { labelKey: 'sidebar.womenOnlyZone', href: '/woz' as Route, icon: ShieldCheck, requiresAuth: true },
-  { labelKey: 'nav.studio', href: '/studio' as Route, icon: BarChart3, requiresAuth: true },
+  { labelKey: 'nav.live', href: '/live', icon: Radio },
+  { labelKey: 'nav.shop', href: '/shop', icon: ShoppingBag },
+  { labelKey: 'nav.guilds', href: '/guilds', icon: Users },
+  { labelKey: 'feed.followingTab', href: '/following', icon: UserRound, requiresAuth: true },
+  { labelKey: 'feed.friends', href: '/friends', icon: Users, requiresAuth: true },
+  { labelKey: 'sidebar.womenOnlyZone', href: '/woz', icon: ShieldCheck, requiresAuth: true },
+  { labelKey: 'nav.studio', href: '/studio', icon: BarChart3, requiresAuth: true },
 ];
 
 export type SidebarViewerProfile = {
@@ -103,7 +89,8 @@ export function FeedSidebar({
   const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
-  const isActive = (href: Route) => pathname === href;
+  const isActive = (href: Route) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+  const profileActive = pathname === '/profile' || !!(viewerProfile?.username && (pathname === `/u/${viewerProfile.username}` || pathname.startsWith(`/u/${viewerProfile.username}/`)));
   const [hovered, setHovered] = useState(false);
 
   const { data: unreadCounts } = useUnreadShellCounts(viewerId);
@@ -127,6 +114,7 @@ export function FeedSidebar({
       // Icon-Strip-Modus: Sidebar wird w-20 (80px) schmal, behält aber p-4 + px-3
       // der Items bei — Icons bleiben EXAKT an derselben Position (kein Springen).
       'sticky top-0 flex h-[100dvh] flex-col gap-2 overflow-y-auto p-4 transition-all duration-200',
+      'serlo-navigation',
       // Schmale-Rail-Modus (Shop): feste Breiten + Overlay (z-40, bg, border),
       // damit das Aufklappen den Content NICHT verschiebt. Sonst: nur Mehr-Panel.
       railCollapsible
@@ -141,9 +129,9 @@ export function FeedSidebar({
       <Link
         href={'/' as Route}
         aria-label={t('sidebar.homeAria')}
-        className="px-3 pt-1 font-serif text-2xl font-medium tracking-tight text-foreground hover:text-foreground/80"
+        className="serlo-wordmark"
       >
-        {iconOnly ? 'S' : 'Serlo'}
+        {iconOnly ? 's' : 'serlo'}<span>.</span>
       </Link>
 
       {/* Suchfeld — im Icon-Strip-Modus nur das Lupen-Icon an identischer
@@ -172,6 +160,7 @@ export function FeedSidebar({
           <input
             name="q"
             type="search"
+            aria-label={t('sidebar.searchAria')}
             placeholder={t('sidebar.searchPlaceholder')}
             defaultValue=""
             className="h-9 w-full rounded-lg bg-muted/60 pl-12 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:bg-muted focus:outline-none focus:ring-1 focus:ring-ring"
@@ -182,24 +171,24 @@ export function FeedSidebar({
       {/* Upload-CTA — schwarzes Plus-Quadrat (identisch in beiden Modi),
           daneben „Posten" als Label statt durchgezogener Button (Short-Video-Stil) */}
       <Link
-        href={'/create' as Route}
-        aria-disabled={!viewerId}
+        href={(!viewerId ? '/login?next=%2Fcreate' : '/create') as Route}
+        data-create-action=""
         aria-label={t('sidebar.newPostAria')}
         className={cn(
           'flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] font-semibold text-foreground transition-colors hover:bg-muted/60',
-          !viewerId && 'pointer-events-none opacity-40',
+
         )}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-elevation-1">
           <Plus className="h-4 w-4" strokeWidth={2.5} />
         </span>
-        {!iconOnly && <span>{t('sidebar.post')}</span>}
+        {!iconOnly && <span>{t('nav.create')}</span>}
       </Link>
 
       {/* Primary Nav — inkl. Benachrichtigungen (Drawer) + Profil (Avatar) */}
       <nav className="flex flex-col gap-0.5" aria-label={t('nav.main')}>
         {PRIMARY_NAV.map((item) => {
-          const disabled = item.requiresAuth && !viewerId;
+          const gated = item.requiresAuth && !viewerId;
           const active = isActive(item.href);
           const Icon = item.icon;
           const isMessages = item.href === '/messages';
@@ -209,8 +198,7 @@ export function FeedSidebar({
           return (
             <Link
               key={`${item.labelKey}-${item.href}`}
-              href={item.href}
-              aria-disabled={disabled}
+              href={(gated ? `/login?next=${encodeURIComponent(item.href)}` : item.href) as Route}
               aria-current={active ? 'page' : undefined}
               aria-label={
                 badgeCount > 0
@@ -219,15 +207,14 @@ export function FeedSidebar({
               }
               className={cn(
                 'relative flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors',
-                // Short-Video-Stil: Items schwarz, aktives Item in Brand-Farbe
+                // The active row is highlighted by the shared glass surface.
                 active
-                  ? 'font-semibold text-brand-purple'
+                  ? 'font-semibold text-foreground'
                   : 'text-foreground hover:bg-muted/60',
-                disabled && 'pointer-events-none opacity-40',
               )}
             >
               {active && !iconOnly && (
-                <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-brand-purple" />
+                <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-foreground" />
               )}
               {/* w-8-Icon-Slot: alle Icons (verschiedene Größen) auf einer Mittelachse */}
               <span className="flex w-8 shrink-0 justify-center">
@@ -237,7 +224,7 @@ export function FeedSidebar({
               {!iconOnly && badgeCount > 0 && (
                 <span
                   aria-hidden="true"
-                  className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-purple px-1.5 text-[11px] font-semibold leading-none text-white"
+                  className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-foreground px-1.5 text-[11px] font-semibold leading-none text-background"
                 >
                   {badgeLabel}
                 </span>
@@ -255,12 +242,12 @@ export function FeedSidebar({
             className={cn(
               'relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors',
               notifDrawerOpen
-                ? 'font-semibold text-brand-purple'
+                ? 'font-semibold text-foreground'
                 : 'text-foreground hover:bg-muted/60',
             )}
           >
             {notifDrawerOpen && !iconOnly && (
-              <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-brand-purple" />
+              <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-foreground" />
             )}
             <span className="flex w-8 shrink-0 justify-center">
               <Bell className="h-6 w-6" />
@@ -269,7 +256,7 @@ export function FeedSidebar({
             {!iconOnly && unreadNotifs > 0 && (
               <span
                 aria-hidden="true"
-                className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-purple px-1.5 text-[11px] font-semibold leading-none text-white"
+                className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-foreground px-1.5 text-[11px] font-semibold leading-none text-background"
               >
                 {unreadNotifs > 99 ? '99+' : unreadNotifs}
               </span>
@@ -278,19 +265,19 @@ export function FeedSidebar({
         )}
 
         {/* Profil-Button mit Avatar */}
-        {viewerId && (
-          <Link
-            href={viewerProfile?.username ? `/u/${viewerProfile.username}` as Route : '/onboarding' as Route}
-            aria-current={pathname.startsWith('/u/') || pathname === '/profile' ? 'page' : undefined}
+        <Link
+            aria-label={t('nav.profile')}
+            href={(!viewerId ? '/login?next=%2Fprofile' : viewerProfile?.username ? `/u/${viewerProfile.username}` : '/onboarding') as Route}
+            aria-current={profileActive ? 'page' : undefined}
             className={cn(
               'relative flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors',
-              pathname.startsWith('/u/') || pathname === '/profile'
-                ? 'font-semibold text-brand-purple'
+              profileActive
+                ? 'font-semibold text-foreground'
                 : 'text-foreground hover:bg-muted/60',
             )}
           >
-            {(pathname.startsWith('/u/') || pathname === '/profile') && !iconOnly && (
-              <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-brand-purple" />
+            {profileActive && !iconOnly && (
+              <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-foreground" />
             )}
             <span className="flex w-8 shrink-0 justify-center">
               {viewerProfile?.avatar_url ? (
@@ -302,13 +289,12 @@ export function FeedSidebar({
                 />
               ) : (
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[12px] font-bold text-muted-foreground ring-1 ring-border">
-                  {(viewerProfile?.display_name ?? viewerProfile?.username ?? '?').slice(0, 1).toUpperCase()}
+                  {viewerProfile?.username ? (viewerProfile.display_name ?? viewerProfile.username).slice(0, 1).toUpperCase() : <UserRound className="h-5 w-5" />}
                 </span>
               )}
             </span>
             {!iconOnly && <span className="flex-1 truncate">{t('nav.profile')}</span>}
           </Link>
-        )}
 
         {/* Mehr-Button — direkt unter Profil */}
         {viewerId && (
@@ -327,23 +313,21 @@ export function FeedSidebar({
         </h2>
         <nav className="flex flex-col gap-0.5" aria-label={t('sidebar.moreAreasAria')}>
           {SECONDARY_NAV.map((item) => {
-            const disabled = item.requiresAuth && !viewerId;
-            const active = isActive(item.href);
+            const gated = item.requiresAuth && !viewerId;
+              const active = isActive(item.href);
             const Icon = item.icon;
             return (
               <Link
                 key={`${item.labelKey}-${item.href}`}
-                href={item.href}
-                aria-disabled={disabled}
-                aria-current={active ? 'page' : undefined}
+                href={(gated ? `/login?next=${encodeURIComponent(item.href)}` : item.href) as Route}
+                  aria-current={active ? 'page' : undefined}
                 aria-label={t(item.labelKey)}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                   active
-                    ? 'font-semibold text-brand-purple'
+                    ? 'font-semibold text-foreground'
                     : 'text-foreground hover:bg-muted',
-                  disabled && 'pointer-events-none opacity-40',
-                )}
+                  )}
               >
                 <span className="flex w-8 shrink-0 justify-center">
                   <Icon className="h-5 w-5" />

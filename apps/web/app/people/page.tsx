@@ -31,9 +31,9 @@ export default async function PeoplePage() {
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pb-6 pt-16 sm:pt-6 md:px-6">
+    <div className="serlo-safe-bottom mx-auto w-full max-w-5xl px-4 pb-6 pt-20 md:px-6">
       <header className="mb-6 flex items-center gap-2">
-        <Users className="h-6 w-6 text-brand-gold" />
+        <Users className="h-6 w-6 text-foreground" />
         <h1 className="text-2xl font-semibold tracking-tight">Accounts entdecken</h1>
       </header>
 

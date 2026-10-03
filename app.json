@@ -2,7 +2,7 @@
   "expo": {
     "name": "Serlo",
     "slug": "vibes",
-    "version": "1.31.0",
+    "version": "1.31.1",
     "scheme": "vibes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -69,7 +69,7 @@
           "Default"
         ]
       },
-      "buildNumber": "292"
+      "buildNumber": "293"
     },
     "android": {
       "package": "app.serlo.social",
@@ -137,6 +137,8 @@
         }
       ],
       "./plugins/withFmtConstevalFix",
+      "./plugins/withPodDeploymentTarget",
+      "./plugins/withRevenueCatSwiftFix",
       "./plugins/withRootViewBackground",
       "@livekit/react-native-expo-plugin",
       "expo-font",

@@ -1,348 +1,88 @@
 import { useAuthStore } from '@/lib/authStore';
+import { PROFILE_SELECT } from '@/lib/profileSelect';
 import { uploadAvatar } from '@/lib/uploadMedia';
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { launchImageLibraryAsync } from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Camera,User } from 'lucide-react-native';
+import { Camera, Check, UserRound } from 'lucide-react-native';
 import { useState } from 'react';
-import {
-ActivityIndicator,KeyboardAvoidingView,Platform,
-Pressable,
-ScrollView,
-StyleSheet,
-Text,
-TextInput,
-View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useTheme } from '@/lib/useTheme';
 import { useI18n } from '@/lib/i18n';
+import { OnboardingButton, OnboardingShell, onboardingStyles as shared } from '@/components/onboarding/OnboardingShell';
 
 export default function OnboardingUsername() {
-  useThemedStatusBar('light');
   const { t } = useI18n();
-  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { profile, session } = useAuthStore();
-
   const [username, setUsername] = useState(profile?.username ?? '');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const valid = username.trim().length >= 3 && /^[a-z0-9_]+$/i.test(username.trim());
+  const avatar = avatarUri ?? profile?.avatar_url;
 
   const pickAvatar = async () => {
-    const result = await launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setAvatarUri(result.assets[0].uri);
-    }
+    try {
+      const result = await launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+      if (!result.canceled && result.assets[0]) setAvatarUri(result.assets[0].uri);
+    } catch { setError(t('mobileDesign.photoError')); }
   };
-
   const handleContinue = async () => {
     const trimmed = username.trim();
-    if (!trimmed || trimmed.length < 3) {
-      setError(t('onboarding.usernameMin'));
-      return;
-    }
-    if (!/^[a-z0-9_]+$/i.test(trimmed)) {
-      setError(t('onboarding.usernameChars'));
-      return;
-    }
-
-    const userId = profile?.id ?? session?.user?.id;
-    const accessToken = session?.access_token;
-
-    __DEV__ && console.log('[Username] userId:', userId ?? 'NULL');
-    __DEV__ && console.log('[Username] token:', accessToken ? accessToken.substring(0, 20) + '...' : 'FEHLT');
-
-    if (!userId || !accessToken) {
-      setError(t('onboarding.sessionExpired'));
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
+    if (trimmed.length < 3) { setError(t('onboarding.usernameMin')); return; }
+    if (!/^[a-z0-9_]+$/i.test(trimmed)) { setError(t('onboarding.usernameChars')); return; }
+    const userId = session?.user.id;
+    if (!userId || !session?.access_token) { setError(t('onboarding.sessionExpired')); return; }
+    setLoading(true); setError('');
     try {
-      let avatarUrl = profile?.avatar_url ?? null;
-      if (avatarUri) {
-        avatarUrl = (await uploadAvatar(userId, avatarUri)).url;
-      }
-
-      // Direkter REST-Aufruf — umgeht den Supabase-Client-Proxy komplett
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-
-      __DEV__ && console.log('[Username] direct fetch to:', supabaseUrl + '/rest/v1/profiles');
-
-      const res = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${accessToken}`,
-          'Prefer': 'resolution=merge-duplicates,return=representation',
+      const avatarUrl = avatarUri ? (await uploadAvatar(userId, avatarUri)).url : profile?.avatar_url ?? null;
+      const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=${PROFILE_SELECT}`, {
+        method: 'POST', headers: {
+          'Content-Type': 'application/json', apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${session.access_token}`, Prefer: 'resolution=merge-duplicates,return=representation',
         },
-        body: JSON.stringify({ id: userId, username: trimmed, avatar_url: avatarUrl, onboarding_complete: true }),
-
+        body: JSON.stringify({ id: userId, username: trimmed, avatar_url: avatarUrl, onboarding_complete: false }),
       });
-
-      const resText = await res.text();
-      __DEV__ && console.log('[Username] fetch status:', res.status, resText.substring(0, 200));
-
-      if (!res.ok) {
-        if (resText.includes('23505') || resText.includes('unique')) {
-          setError(t('onboarding.usernameTaken'));
-        } else {
-          setError(`Fehler ${res.status}: ${resText.substring(0, 100)}`);
-        }
-        return;
-      }
-
-      // Profil direkt aus der Response parsen — kein Supabase-Client-Call nötig
-      try {
-        const parsed = JSON.parse(resText);
-        const profileData = Array.isArray(parsed) ? parsed[0] : parsed;
-        if (profileData?.id) {
-          const { setProfile } = useAuthStore.getState();
-          setProfile(profileData);
-          __DEV__ && console.log('[Username] profile set from response:', profileData.username);
-        }
-      } catch {
-        // Parsing-Fehler ignorieren — Navigation trotzdem fortsetzen
-      }
-
-      __DEV__ && console.log('[Username] navigate to interests');
+      const body = await response.json();
+      if (!response.ok) { setError(body?.code === '23505' ? t('onboarding.usernameTaken') : t('onboarding.networkError')); return; }
+      if (!Array.isArray(body) || body[0]?.id !== userId) throw new Error('Invalid profile response');
+      if (useAuthStore.getState().session?.user.id !== userId) return;
+      useAuthStore.getState().setProfile(body[0]);
       router.push('/(onboarding)/interests');
-
-    } catch (e: any) {
-      __DEV__ && console.error('[Username] catch:', e?.message ?? e);
-      setError(e?.message ?? t('onboarding.networkError'));
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError(t('onboarding.networkError')); }
+    finally { setLoading(false); }
   };
-
-
-
-  const initials = username ? username[0].toUpperCase() : '?';
-
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={[
-          styles.inner,
-          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <LinearGradient
-          colors={['#0A0A0A', '#0d0520', '#0A0A0A']}
-          style={StyleSheet.absoluteFill}
-        />
-
-        {/* Step indicator – jetzt 4 Schritte */}
-        <View style={styles.stepRow}>
-          <View style={[styles.step, styles.stepDone]} />
-          <View style={[styles.step, styles.stepActive]} />
-          <View style={styles.step} />
-          <View style={styles.step} />
+  return <OnboardingShell step={2} eyebrow={t('mobileDesign.profileEyebrow')} title={t('mobileDesign.profileTitle')} description={t('mobileDesign.profileBody')}
+    footer={<><Text style={[shared.hint, { color: colors.text.muted }]}>{t('mobileDesign.profileHint')}</Text><OnboardingButton label={t('onboarding.continueBtn')} onPress={handleContinue} loading={loading} /></>}>
+    <View style={[s.identity, { backgroundColor: colors.bg.secondary, borderColor: colors.border.default }]}>
+      <View style={[s.decoration, { backgroundColor: colors.bg.elevated }]} />
+      <Pressable onPress={pickAvatar} disabled={loading} accessibilityRole="button" accessibilityLabel={t('mobileDesign.addPhoto')} style={s.avatarControl}>
+        <View style={[s.avatar, { backgroundColor: colors.bg.elevated, borderColor: colors.bg.secondary }]}>
+          {avatar ? <Image source={{ uri: avatar }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <UserRound size={42} color={colors.accent.primary} strokeWidth={1.2} />}
         </View>
-
-        <Text style={styles.title}>{t('onboarding.usernameTitle')}</Text>
-        <Text style={styles.sub}>{t('onboarding.usernameSub')}</Text>
-
-        {/* Avatar Picker */}
-        <Pressable style={styles.avatarWrap} onPress={pickAvatar}>
-          {avatarUri || profile?.avatar_url ? (
-            <Image
-              source={{ uri: avatarUri ?? profile?.avatar_url ?? '' }}
-              style={styles.avatar}
-              contentFit="cover"
-            />
-          ) : (
-            <BlurView intensity={30} tint="dark" style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitials}>{initials}</Text>
-            </BlurView>
-          )}
-          <View style={styles.avatarBadge}>
-            <Camera size={14} color="#fff" strokeWidth={2} />
-          </View>
-        </Pressable>
-
-        {/* Username Input */}
-        <View style={styles.inputWrap}>
-          <View style={styles.inputPrefix}>
-            <User size={16} color="rgba(255,255,255,0.4)" strokeWidth={1.8} />
-            <Text style={styles.atSign}>@</Text>
-          </View>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={(t) => { setUsername(t); setError(''); }}
-            placeholder={t('onboarding.usernamePlaceholder')}
-            placeholderTextColor="rgba(255,255,255,0.25)"
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={30}
-          />
-        </View>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Text style={styles.inputHint}>
-          {t('onboarding.usernamePublicHint')}
-        </Text>
-
-        {/* CTA */}
-        <Pressable style={styles.btn} onPress={handleContinue} disabled={loading}>
-          <LinearGradient
-            colors={loading ? ['#4B5563', '#4B5563'] : ['#CCCCCC', '#FFFFFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.btnGradient}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>{t('onboarding.next')}</Text>
-            }
-          </LinearGradient>
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+        <View style={[s.camera, { backgroundColor: colors.accent.solid, borderColor: colors.bg.secondary }]}><Camera size={17} color={colors.text.onAccent} /></View>
+      </Pressable>
+      <Pressable onPress={pickAvatar} disabled={loading} accessibilityRole="button" style={s.photoLabel}><Text style={[s.photoText, { color: colors.text.primary }]}>{t('mobileDesign.addPhoto')}</Text></Pressable>
+      <Text style={[s.optional, { color: colors.text.muted }]}>{t('mobileDesign.photoOptional')}</Text>
+    </View>
+    <Text style={[s.label, { color: colors.text.primary }]}>{t('mobileDesign.usernameLabel')}</Text>
+    <View style={[s.inputWrap, { backgroundColor: colors.bg.secondary, borderColor: error ? colors.accent.danger : colors.border.strong }]}>
+      <Text style={[s.at, { color: colors.text.muted }]}>@</Text>
+      <TextInput accessibilityLabel={t('mobileDesign.usernameLabel')} autoCapitalize="none" autoCorrect={false} autoComplete="username" textContentType="username" editable={!loading} value={username} onChangeText={value => { setUsername(value); setError(''); }} placeholder={t('mobileDesign.usernamePlaceholder')} placeholderTextColor={colors.text.muted} returnKeyType="done" onSubmitEditing={handleContinue} style={[s.input, { color: colors.text.primary }]} />
+      {valid && <Check size={18} color={colors.accent.primary} accessibilityLabel={t('mobileDesign.validFormat')} />}
+    </View>
+    <Text style={[s.inputHint, { color: colors.text.muted }]}>{t('mobileDesign.usernameHint')}</Text>
+    {!!error && <Text accessibilityRole="alert" style={[shared.error, { color: colors.accent.danger }]}>{error}</Text>}
+  </OnboardingShell>;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
-  inner: { paddingHorizontal: 24, gap: 20 },
-  stepRow: {
-    flexDirection: 'row',
-    gap: 6,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  step: {
-    width: 28,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  stepDone: { backgroundColor: '#FFFFFF' },
-  stepActive: { backgroundColor: '#CCCCCC' },
-  title: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: -0.8,
-    lineHeight: 40,
-  },
-  sub: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.5)',
-    lineHeight: 22,
-    marginTop: -8,
-  },
-  avatarWrap: {
-    alignSelf: 'center',
-    marginVertical: 8,
-  },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  avatarPlaceholder: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.28)',
-  },
-  avatarInitials: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#CCCCCC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#0A0A0A',
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 16,
-    height: 56,
-  },
-  inputPrefix: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginRight: 8,
-  },
-  atSign: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.4)',
-    fontWeight: '600',
-  },
-  input: {
-    flex: 1,
-    fontSize: 17,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  error: {
-    fontSize: 13,
-    color: '#F87171',
-    marginTop: -8,
-  },
-  inputHint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-    lineHeight: 18,
-    marginTop: -8,
-  },
-  btn: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginTop: 8,
-  },
-  btnGradient: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
+const s = StyleSheet.create({
+  identity: { alignItems: 'center', overflow: 'hidden', borderRadius: 24, paddingTop: 22, paddingBottom: 22, marginBottom: 27, borderWidth: 1 },
+  decoration: { position: 'absolute', left: 0, right: 0, top: 0, height: 78 },
+  avatarControl: { width: 110, height: 110 }, avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 5, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  camera: { position: 'absolute', right: 1, bottom: 2, width: 35, height: 35, borderRadius: 18, borderWidth: 3, justifyContent: 'center', alignItems: 'center' },
+  photoLabel: { minHeight: 44, justifyContent: 'center' }, photoText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' }, optional: { fontSize: 11 },
+  label: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginBottom: 10 },
+  inputWrap: { minHeight: 58, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 9 },
+  at: { fontSize: 19 }, input: { flex: 1, minWidth: 0, paddingVertical: 16, fontSize: 16 }, inputHint: { fontSize: 12, lineHeight: 19, marginTop: 10, marginBottom: 16 },
 });

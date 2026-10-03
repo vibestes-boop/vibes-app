@@ -9,7 +9,7 @@ import { getUser } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 
 export const metadata: Metadata = {
-  title: 'Gemerkt — Shop',
+  title: 'Gemerkte Produkte — Shop',
   description: 'Produkte die du gemerkt hast.',
 };
 
@@ -33,19 +33,19 @@ export default async function SavedProductsPage() {
 
       <h1 className="flex items-center gap-2 text-2xl font-semibold">
         <Bookmark className="h-6 w-6 text-primary" />
-        Gemerkt
+        Gemerkte Produkte
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {products.length > 0
           ? `${products.length} Produkt${products.length === 1 ? '' : 'e'} gespeichert.`
-          : 'Du hast noch nichts gemerkt.'}
+          : 'Du hast noch keine Produkte gemerkt.'}
       </p>
 
       <div className="mt-8">
         {products.length === 0 ? (
           <EmptyState
             icon={<Bookmark className="h-8 w-8" strokeWidth={1.75} />}
-            title="Noch nichts gemerkt"
+            title="Noch keine Produkte gemerkt"
             description="Klick auf das Lesezeichen-Symbol bei Produkten die dich interessieren — sie erscheinen dann hier."
             size="md"
             bordered

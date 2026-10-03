@@ -1,5 +1,6 @@
+import { MessagesViewport } from '@/components/messages/messages-viewport';
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { ReactNode } from 'react';
-import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/auth/session';
 import { getConversations } from '@/lib/data/messages';
 import { getActiveStoryGroups } from '@/lib/data/stories';
@@ -22,7 +23,7 @@ import { ConversationListPanel } from '@/components/messages/conversation-list-p
 
 export default async function MessagesLayout({ children }: { children: ReactNode }) {
   const user = await getUser();
-  if (!user) redirect('/login?next=/messages');
+  if (!user) return <ReturnToRedirect />;
 
   const [conversations, storyGroups, liveSessions, followedAccounts, profileRow] =
     await Promise.all([
@@ -48,7 +49,7 @@ export default async function MessagesLayout({ children }: { children: ReactNode
   const liveByUserId = new Map(liveSessions.map((s) => [s.host_id, s.id]));
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden">
+    <MessagesViewport>
       {/* Panel 1: FeedSidebar — globale Nav, nur auf xl+ */}
       <aside className="hidden w-[260px] shrink-0 border-r border-border xl:flex xl:flex-col">
         <FeedSidebar
@@ -69,9 +70,9 @@ export default async function MessagesLayout({ children }: { children: ReactNode
       </aside>
 
       {/* Panel 3: Thread / Empty-State */}
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         {children}
       </main>
-    </div>
+    </MessagesViewport>
   );
 }

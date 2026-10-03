@@ -4,7 +4,7 @@ import { useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Compass } from 'lucide-react';
+import { Compass, Play, ImageIcon, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOptionalI18n } from '@/lib/i18n/client';
 
@@ -39,6 +39,7 @@ export function ExploreVideoCard({
   viewCount,
   fallbackInitial,
   womenOnly = false,
+  discovery = false,
 }: {
   id: string;
   videoUrl: string;
@@ -52,6 +53,7 @@ export function ExploreVideoCard({
   fallbackInitial: string;
   /** v1.w.UI.170 — show 🌸 badge on Women-Only Zone posts */
   womenOnly?: boolean;
+  discovery?: boolean;
 }) {
   const i18n = useOptionalI18n();
   const viewsLabel = i18n?.t('explore.views') ?? 'Views';
@@ -67,7 +69,7 @@ export function ExploreVideoCard({
   const canPreviewVideo = !inferredImage && videoUrl.length > 0;
 
   const handleMouseEnter = useCallback(() => {
-    if (!canPreviewVideo) return;
+    if (!canPreviewVideo || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const v = videoRef.current;
     if (!v) return;
     v.currentTime = 0;
@@ -75,7 +77,7 @@ export function ExploreVideoCard({
   }, [canPreviewVideo]);
 
   const handleMouseLeave = useCallback(() => {
-    if (!canPreviewVideo) return;
+    if (!canPreviewVideo || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const v = videoRef.current;
     if (!v) return;
     v.pause();
@@ -105,12 +107,12 @@ export function ExploreVideoCard({
   const authorInitial = (authorDisplayName ?? authorUsername).slice(0, 1).toUpperCase() || '•';
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn("flex flex-col gap-2", discovery && "discover-card")}>
       {/* Video thumbnail card */}
       <Link
         href={`/p/${id}` as Route}
         prefetch={false}
-        className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
+        className={cn("group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black", discovery && "discover-card-media")}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -120,7 +122,7 @@ export function ExploreVideoCard({
             src={previewImageUrl}
             alt={caption ?? 'Post'}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 220px"
+            sizes={discovery ? "(max-width: 639px) 50vw, (max-width: 1000px) 45vw, (max-width: 1499px) 30vw, 350px" : "(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 220px"}
             className={cn(
               'h-full w-full object-cover transition-opacity duration-300',
               canPreviewVideo && videoReady ? 'opacity-0' : 'opacity-100',
@@ -162,12 +164,15 @@ export function ExploreVideoCard({
           />
         )}
 
-        {/* View count + WOZ badge overlay (top of card) */}
+        {discovery && <span className="discover-card-badge" aria-hidden="true">{inferredImage ? <ImageIcon size={12} /> : <Play size={11} fill="currentColor" />}</span>}
+
+        {/* View count and WOZ badge */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-6">
           {womenOnly && (
             <span className="text-xs leading-none" aria-label="Women Only" title="Women-Only Zone">🌸</span>
           )}
-          <div className="text-[11px] text-white/80">
+          <div className={discovery ? "discover-card-views" : "text-[11px] text-white/80"}>
+            {discovery && <Eye size={12} />}
             {formatCount(viewCount)} {viewsLabel}
           </div>
         </div>
@@ -177,7 +182,7 @@ export function ExploreVideoCard({
       <Link
         href={`/u/${authorUsername}` as Route}
         prefetch={false}
-        className="flex items-center gap-2 px-0.5 hover:opacity-80"
+        className={cn("flex items-center gap-2 px-0.5 hover:opacity-80", discovery && "discover-card-author")}
       >
         {/* Avatar */}
         <span className="shrink-0">
@@ -185,7 +190,7 @@ export function ExploreVideoCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={authorAvatarUrl}
-              alt={authorDisplayName ?? authorUsername}
+              alt=""
               className="h-7 w-7 rounded-full object-cover"
               loading="lazy"
             />
@@ -200,8 +205,10 @@ export function ExploreVideoCard({
           <span className="block truncate text-[12px] font-semibold leading-tight text-foreground">
             {authorDisplayName ?? authorUsername}
           </span>
+          {discovery && <small>@{authorUsername}</small>}
         </span>
       </Link>
+      {discovery && caption && <Link href={`/p/${id}` as Route} className="discover-card-caption">{caption}</Link>}
     </div>
   );
 }

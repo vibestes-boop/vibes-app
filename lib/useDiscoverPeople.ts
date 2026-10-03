@@ -11,6 +11,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
+import { getBlockedIdSet } from './useBlock';
 
 export type DiscoverUser = {
   id: string;
@@ -26,9 +27,12 @@ export function useDiscoverPeople() {
   const guildId  = profile?.guild_id;
 
   return useQuery<DiscoverUser[]>({
-    queryKey: ['discover-people', userId],
+    queryKey: ['discover-people', userId, guildId, 'visibility-v2'],
     queryFn: async (): Promise<DiscoverUser[]> => {
       if (!userId) return [];
+
+      const blocked = await getBlockedIdSet({ userId, strict: true });
+      const blockedFilter = `(${[...blocked].join(',')})`;
 
       // ── Wer wird bereits gefolgt? ─────────────────────────────────────────
       const { data: followingRows } = await supabase
@@ -44,7 +48,7 @@ export function useDiscoverPeople() {
       const seen = new Set<string>();
 
       const addUser = (u: { id: string; username: string; avatar_url: string | null; bio: string | null }, reason: DiscoverUser['reason']) => {
-        if (!seen.has(u.id) && !alreadyFollowing.has(u.id)) {
+        if (!seen.has(u.id) && !alreadyFollowing.has(u.id) && !blocked.has(u.id)) {
           seen.add(u.id);
           results.push({ ...u, reason });
         }
@@ -52,12 +56,15 @@ export function useDiscoverPeople() {
 
       // ── 1. Gleiche Guild ──────────────────────────────────────────────────
       if (guildId) {
-        const { data: guildUsers } = await supabase
+        let guildRequest = supabase
           .from('profiles')
           .select('id, username, avatar_url, bio')
           .eq('guild_id', guildId)
           .neq('id', userId)
           .limit(8);
+        if (blocked.size) guildRequest = guildRequest.not('id', 'in', blockedFilter);
+        const { data: guildUsers, error } = await guildRequest;
+        if (error) throw error;
         (guildUsers ?? []).forEach((u) => addUser(u, 'guild'));
       }
 
@@ -76,12 +83,15 @@ export function useDiscoverPeople() {
       const topTags = [...tagFreq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
 
       if (topTags.length > 0) {
-        const { data: tagPosts } = await supabase
+        let interestRequest = supabase
           .from('posts')
           .select('author_id, profiles!inner(id, username, avatar_url, bio)')
           .contains('tags', topTags.slice(0, 1))
           .neq('author_id', userId)
           .limit(20);
+        if (blocked.size) interestRequest = interestRequest.not('author_id', 'in', blockedFilter);
+        const { data: tagPosts, error } = await interestRequest;
+        if (error) throw error;
 
         (tagPosts ?? []).forEach((p) => {
           const u = p.profiles as unknown as { id: string; username: string; avatar_url: string | null; bio: string | null };
@@ -93,12 +103,15 @@ export function useDiscoverPeople() {
       // Breiter Pool (50), damit auch bei vielen schon-gefolgten Accounts noch
       // ungefolgte Kandidaten übrig bleiben — addUser filtert Self + Following raus.
       if (results.length < 5) {
-        const { data: newUsers } = await supabase
+        let newRequest = supabase
           .from('profiles')
           .select('id, username, avatar_url, bio')
           .neq('id', userId)
           .order('created_at', { ascending: false })
           .limit(50);
+        if (blocked.size) newRequest = newRequest.not('id', 'in', blockedFilter);
+        const { data: newUsers, error } = await newRequest;
+        if (error) throw error;
         (newUsers ?? []).forEach((u) => addUser(u, 'new'));
       }
 

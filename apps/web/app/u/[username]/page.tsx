@@ -234,14 +234,14 @@ export default async function ProfilePage({
   };
 
   return (
-    <main className="mx-auto max-w-3xl">
+    <main className="serlo-safe-bottom mx-auto max-w-3xl">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
       {/* ───── Hero ───── */}
-      <section className="px-4 pb-4 pt-3 sm:px-6 sm:pt-6">
+      <section className="px-4 pb-4 pt-16 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           {/* v1.w.UI.16: Avatar mit Gradient-Ring + LIVE-Badge wenn der User
               aktuell eine Session hostet (Daten kommen via getPublicProfile
@@ -553,6 +553,11 @@ export default async function ProfilePage({
               icon="shop"
               title={t('profile.panelShopTitle')}
               hint={isSelf ? t('profile.shopHintSelf') : t('profile.panelShopHint')}
+              cta={isSelf ? (
+                <Link href="/studio/shop/new" className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  {t('profile.createFirstProduct')}
+                </Link>
+              ) : undefined}
             />
           )
         )}
@@ -662,10 +667,12 @@ function EmptyPanelInfo({
   icon,
   title,
   hint,
+  cta,
 }: {
   icon: EmptyIcon;
   title: string;
   hint: string;
+  cta?: React.ReactNode;
 }) {
   const { Icon } = EMPTY_ICON_MAP[icon];
   return (
@@ -679,6 +686,7 @@ function EmptyPanelInfo({
         <p className="text-base font-semibold">{title}</p>
         <p className="mt-1.5 text-sm text-muted-foreground">{hint}</p>
       </div>
+      {cta}
     </div>
   );
 }

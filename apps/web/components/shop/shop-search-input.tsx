@@ -17,6 +17,8 @@ export function ShopSearchInput({ initialQuery = '' }: { initialQuery?: string }
   const [value, setValue] = useState(initialQuery);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => { setValue(initialQuery); }, [initialQuery]);
+
   // 300ms Debounce
   useEffect(() => {
     const t = setTimeout(() => {
@@ -31,8 +33,7 @@ export function ShopSearchInput({ initialQuery = '' }: { initialQuery?: string }
       startTransition(() => router.replace(url));
     }, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, params, pathname, router]);
 
   return (
     <div className="relative flex items-center">

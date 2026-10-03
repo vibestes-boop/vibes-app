@@ -1,3 +1,4 @@
+import { productDisplayPrice } from '@/lib/productDisplayPrice';
 import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 /**
  * app/shop/[id].tsx — Short-Video Shop-style Produkt-Detailseite
@@ -431,10 +432,11 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
   // Geteilt wird der HTTPS-Web-Link (nicht serlo://), damit WhatsApp/Telegram/
   // Insta eine echte Vorschau (Bild + Titel + Kurzbeschreibung) unfurlen — ein
   // serlo://-Deep-Link kann von keinem Messenger als Vorschau gerendert werden.
-  const isPreorderShare = product.sale_mode === 'preorder';
-  const priceLabel  = isPreorderShare
-    ? (formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · ${t('shop.preorderBadge')}` : t('shop.preorderBadge'))
-    : `🪙 ${product.price_coins.toLocaleString('de-DE')} Coins`;
+  const sharePrice = productDisplayPrice(product);
+  const isEuroShare = sharePrice.currency === 'eur';
+  const priceLabel = isEuroShare
+    ? (formatEur(sharePrice.amount) ?? t('nativeUi.askPrice'))
+    : `🪙 ${(sharePrice.amount ?? 0).toLocaleString()} Coins`;
   const productUrl  = webProductUrl(product.id);
   const shareText   = `${product.title} — ${priceLabel}\n${productUrl}`;
 
@@ -535,14 +537,14 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
             <ProductCoverImage uri={product.cover_url} category={product.category} style={ss.previewImg} iconSize={18} />
             <View style={{ flex: 1 }}>
               <Text style={ss.previewTitle} numberOfLines={2}>{product.title}</Text>
-              {isPreorderShare ? (
+              {isEuroShare ? (
                 <Text style={[ss.previewPrice, { color: '#FBBF24' }]}>
-                  {formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · ${t('shop.preorderBadge')}` : t('shop.preorderBadge')}
+                  {priceLabel}
                 </Text>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                   <CoinIcon size={13} />
-                  <Text style={ss.previewPrice}>{product.price_coins.toLocaleString('de-DE')} Coins</Text>
+                  <Text style={ss.previewPrice}>{(sharePrice.amount ?? 0).toLocaleString()} Coins</Text>
                 </View>
               )}
             </View>
@@ -746,7 +748,9 @@ export default function ProductDetailScreen() {
   // = unbegrenzt). Wird unten in buyProduct(… , quantity) eingesetzt.
   const [quantity, setQuantity] = useState(1);
 
-  const isPreorder   = product?.sale_mode === 'preorder';
+  const isPreorder = product?.sale_mode === 'preorder';
+  const isCash = product?.sale_mode === 'cash';
+  const displayPrice = product ? productDisplayPrice(product) : null;
   // Eigenes Produkt → statt Kauf-/Vormerk-Aktion ein „Bearbeiten" (öffnet die
   // vorhandene Edit-UI in my-shop via ?edit=<id>). Greift überall, wo man auf
   // sein eigenes Produkt kommt (Profil-Shop, Shop-Liste, geteilter Link).
@@ -797,7 +801,7 @@ export default function ProductDetailScreen() {
   }, [product, currentUserId, isChatOpening, openConversation, router]);
 
   const handleBuy = useCallback(async () => {
-    if (!product) return;
+    if (!product || product.sale_mode === 'cash' || product.sale_mode === 'preorder') return;
     setShowConfirm(false);
     const result = await buyProduct(product.id, quantity);
     if (result.success) {
@@ -879,7 +883,7 @@ export default function ProductDetailScreen() {
 
   // Qty-Stepper-Zeile wird nur gerendert wenn maxQty > 1 und stock != 0 —
   // reservier entsprechend Scroll-Padding, damit Sticky-Bar nichts verdeckt.
-  const hasQtyRow = !isOwner && (isPreorder || (product.stock !== 0 && maxQty > 1));
+  const hasQtyRow = !isOwner && !isCash && (isPreorder || (product.stock !== 0 && maxQty > 1));
   const buyBarH   = Math.max(insets.bottom, 14) + 80 + (hasQtyRow ? 52 : 0);
 
   // v1.26.6: Short-Video-Look — komplette Detailseite auf weißem Untergrund
@@ -987,17 +991,11 @@ export default function ProductDetailScreen() {
         {/* 3. Preis (monochrom): Coin + Preis + durchgestrichener Alt-Preis + −%.
             Bei Vorbestellung: kein Coin-Preis (zahlbar bei Lieferung). */}
         <View style={s.priceSection}>
-          {isPreorder ? (
-            formatEur(product.price_eur) ? (
-              <View style={s.priceRow2}>
-                <Text style={[s.priceNow, { color: colors.text.primary }]}>{formatEur(product.price_eur)}</Text>
-                <Text style={[s.priceOff, { color: '#B45309' }]}>{t('shop.preorderPayOnArrival')}</Text>
-              </View>
-            ) : (
-              <Text style={[s.priceNow, { color: colors.text.primary, fontSize: 17 }]}>
-                🤎 Vorbestellung · Preis siehe Beschreibung
-              </Text>
-            )
+          {displayPrice?.currency === 'eur' ? (
+            <View style={s.priceRow2}>
+              <Text style={[s.priceNow, { color: colors.text.primary }]}>{formatEur(displayPrice.amount) ?? t('nativeUi.askPrice')}</Text>
+              {isPreorder && <Text style={[s.priceOff, { color: colors.accent.primary }]}>{t('shop.preorderPayOnArrival')}</Text>}
+            </View>
           ) : (
             <View style={s.priceRow2}>
               <CoinIcon size={18} />
@@ -1186,7 +1184,11 @@ export default function ProductDetailScreen() {
             />
           </Pressable>
 
-          {isPreorder ? (
+          {isCash ? (
+            <Pressable style={[s.buyBtn, { backgroundColor: colors.text.primary }]} accessibilityRole="button" onPress={handleChatSeller} disabled={isChatOpening}>
+              {isChatOpening ? <ActivityIndicator color={colors.bg.primary} /> : <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>{t('nativeUi.contactSeller')}</Text>}
+            </Pressable>
+          ) : isPreorder ? (
             <Pressable
               style={[s.buyBtn, { backgroundColor: (preordered || preorderDone) ? bgAccent : colors.text.primary }]}
               onPress={(preordered || preorderDone) ? handleCancelPreorder : handleVormerken}

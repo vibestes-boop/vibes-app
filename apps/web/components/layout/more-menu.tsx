@@ -58,7 +58,7 @@ export function MoreMenu({
   const items: Item[] = [
     { label: 'Einstellungen',     href: '/settings' as Route,        icon: <Settings className="h-5 w-5" /> },
     { label: 'Coins',             href: '/coin-shop' as Route,       icon: <CoinIcon className="h-5 w-5" /> },
-    { label: 'Gespeichert',       href: '/saved' as Route,           icon: <Bookmark className="h-5 w-5" /> },
+    { label: 'Gespeicherte Beiträge',       href: '/saved' as Route,           icon: <Bookmark className="h-5 w-5" /> },
     { label: 'Profil bearbeiten', href: '/settings/profile' as Route, icon: <User className="h-5 w-5" /> },
     {
       label: isDark ? 'Hellmodus' : 'Dunkelmodus',

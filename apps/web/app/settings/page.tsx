@@ -128,7 +128,7 @@ export default async function SettingsOverviewPage() {
 
       {/* Sektion 1b — Women-Only Zone 🌸 (v1.w.UI.189) */}
       {/* Shown to all logged-in users (activation is opt-in). For guests the
-          /women-only page handles the redirect-to-login guard. */}
+          /woz page handles the redirect-to-login guard. */}
       <Section label={t('settings.sectionWoz')}>
         <SettingsRow
           icon={HeartFlower}

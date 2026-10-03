@@ -99,7 +99,7 @@ export function ConsentBanner() {
       className={cn(
         'fixed z-50 rounded-2xl border border-border bg-card/95 shadow-2xl backdrop-blur-lg',
         compactImmersiveBanner
-          ? 'inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] p-2.5 md:inset-x-auto md:bottom-4 md:left-4 md:max-w-[360px] xl:bottom-5 xl:left-5'
+          ? 'inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] p-2.5 md:inset-x-auto md:left-4 md:max-w-[360px] xl:bottom-5 xl:left-5'
           : 'inset-x-3 bottom-3 mx-auto max-h-[42dvh] max-w-2xl overflow-y-auto p-3 sm:inset-x-4 sm:max-h-none sm:p-5',
       )}
     >

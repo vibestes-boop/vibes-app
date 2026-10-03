@@ -14,7 +14,7 @@ import { signInWithMagicLink } from '@/app/actions/auth';
 import { useI18n } from '@/lib/i18n/client';
 import { trans } from '@/lib/i18n/rich';
 
-export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
+export function MagicLinkForm({ mode = 'login', next = '/' }: { mode?: 'login' | 'signup'; next?: string }) {
   const { t } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -40,6 +40,7 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
     startTransition(async () => {
       const fd = new FormData();
       fd.set('email', values.email);
+      fd.set('next', next);
       const result = await signInWithMagicLink(fd);
       if (!result.ok) {
         if (result.field === 'email') {

@@ -95,15 +95,15 @@ function MutedRow({
         disabled={isBusy}
         style={({ pressed }) => [
           styles.unmuteBtn,
-          { backgroundColor: colors.accent.primary, opacity: isBusy || pressed ? 0.7 : 1 },
+          { backgroundColor: colors.accent.solid, opacity: isBusy || pressed ? 0.7 : 1 },
         ]}
       >
         {isBusy ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={colors.text.onAccent} />
         ) : (
           <>
-            <Undo2 size={14} color="#fff" strokeWidth={2.2} />
-            <Text style={styles.unmuteText}>{t('settings.mlhUnmute')}</Text>
+            <Undo2 size={14} color={colors.text.onAccent} strokeWidth={2.2} />
+            <Text style={[styles.unmuteText, { color: colors.text.onAccent }]}>{t('settings.mlhUnmute')}</Text>
           </>
         )}
       </Pressable>

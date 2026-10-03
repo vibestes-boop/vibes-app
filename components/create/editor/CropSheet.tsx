@@ -11,7 +11,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { Check, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Image as SvgImage } from 'react-native-svg';
+import { ActivityIndicator, Alert, Image as RNImage, Modal, PanResponder, PixelRatio, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Skia, SKIA_READY, useSkiaImage } from '@/lib/skiaLoader';
@@ -72,9 +73,20 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
   const [applying, setApplying] = useState(false);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [crop, setCrop] = useState<Rect | null>(null);
+  const [rasterSize, setRasterSize] = useState({ width: 0, height: 0 });
+  const exportRef = useRef<Svg>(null);
+  const [exportReady, setExportReady] = useState(false);
+  useEffect(() => {
+    if (!visible) return;
+    let active = true;
+    setExportReady(false);
+    setRasterSize({ width: 0, height: 0 });
+    RNImage.getSize(uri, (width, height) => { if (active) setRasterSize({ width, height }); }, () => {});
+    return () => { active = false; };
+  }, [visible, uri]);
 
-  const imgW = skImage?.width?.() ?? 0;
-  const imgH = skImage?.height?.() ?? 0;
+  const imgW = skImage?.width?.() ?? rasterSize.width;
+  const imgH = skImage?.height?.() ?? rasterSize.height;
 
   // Bild-Display-Rect (contain) innerhalb der Preview-Box.
   const disp = useMemo<Rect | null>(() => {
@@ -149,7 +161,7 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
   const apply = async () => {
     if (applying) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!crop || !disp || !skImage || !imgW || !imgH) { onDone(uri); return; }
+    if (!crop || !disp || !imgW || !imgH) { Alert.alert(tr('create.tooBad'), tr('create.cropFailed')); return; }
     const scale = disp.w / imgW;
     const cx = clamp((crop.x - disp.x) / scale, 0, imgW);
     const cy = clamp((crop.y - disp.y) / scale, 0, imgH);
@@ -157,7 +169,16 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
     const ch = Math.min(crop.h / scale, imgH - cy);
     setApplying(true);
     try {
-      const out = await cropSkImageToFile(skImage, { x: cx, y: cy, w: cw, h: ch });
+      let out: string | null = null;
+      if (SKIA_READY && skImage) out = await cropSkImageToFile(skImage, { x: cx, y: cy, w: cw, h: ch });
+      else if (exportReady && exportRef.current) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('crop export timeout')), 8000);
+          exportRef.current!.toDataURL(data => { clearTimeout(timeout); if (data) resolve(data); else reject(new Error('empty crop')); });
+        });
+        out = `${FileSystem.cacheDirectory}crop-${Date.now()}.png`;
+        await FileSystem.writeAsStringAsync(out, base64, { encoding: FileSystem.EncodingType.Base64 });
+      }
       if (out) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onDone(out); }
       else Alert.alert(tr('create.tooBad'), tr('create.cropFailed'));
     } catch {
@@ -167,23 +188,28 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
     }
   };
 
+  const pixelCrop = crop && disp && imgW ? { x: (crop.x - disp.x) * imgW / disp.w, y: (crop.y - disp.y) * imgH / disp.h, w: crop.w * imgW / disp.w, h: crop.h * imgH / disp.h } : null;
+  const exportScale = pixelCrop ? Math.min(1, 2048 / Math.max(pixelCrop.w, pixelCrop.h)) / PixelRatio.get() : 1;
   if (!visible) return null;
 
   return (
     <Modal visible transparent={false} animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={s.root}>
+        {!SKIA_READY && pixelCrop && <Svg ref={exportRef} width={Math.max(1, Math.round(pixelCrop.w * exportScale))} height={Math.max(1, Math.round(pixelCrop.h * exportScale))} style={{ position: 'absolute', left: -10000, top: 0 }} viewBox={`${pixelCrop.x} ${pixelCrop.y} ${pixelCrop.w} ${pixelCrop.h}`}>
+          <SvgImage href={{ uri }} x={0} y={0} width={imgW} height={imgH} onLoad={() => setExportReady(true)} />
+        </Svg>}
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={onClose} hitSlop={12} style={s.headerBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('common.cancel')} disabled={applying} onPress={onClose} hitSlop={12} style={s.headerBtn}>
             <X size={24} color="#fff" strokeWidth={2.2} />
           </Pressable>
           <Text style={s.headerTitle}>{tr('create.crop')}</Text>
-          <Pressable onPress={apply} hitSlop={12} style={s.headerBtn} disabled={applying}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('create.apply')} onPress={apply} hitSlop={12} style={[s.headerBtn, (!crop || (!SKIA_READY && !exportReady)) && { opacity: 0.4 }]} disabled={applying || !crop || (!SKIA_READY && !exportReady)}>
             {applying ? <ActivityIndicator color="#fff" /> : <Check size={24} color="#fff" strokeWidth={2.4} />}
           </Pressable>
         </View>
 
         <View style={s.preview} onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
-          <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" />
+          <Image source={{ uri }} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="contain" />
 
           {/* Interaktions-Layer (fängt Touches) + visueller Rahmen */}
           <View style={StyleSheet.absoluteFill} {...responder.panHandlers}>
@@ -211,16 +237,16 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
           </View>
         </View>
 
-        <View style={[s.aspectRow, { paddingBottom: insets.bottom + 18 }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={[s.aspectRow, { paddingBottom: insets.bottom + 18 }]}>
           {ASPECTS.map((a) => {
             const active = a.key === aspect;
             return (
-              <Pressable key={a.key} onPress={() => pickAspect(a.key, a.ratio)} style={[s.aspectBtn, active && s.aspectBtnActive]}>
+              <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} disabled={applying} key={a.key} onPress={() => pickAspect(a.key, a.ratio)} style={[s.aspectBtn, active && s.aspectBtnActive]}>
                 <Text style={[s.aspectLabel, active && s.aspectLabelActive]}>{a.labelKey ? tr(a.labelKey as any) : a.label}</Text>
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   );

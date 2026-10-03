@@ -79,10 +79,10 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
   return (
     // pt-14 mobile: Platz für die fixed Auth-/Account-Pills oben rechts —
     // sonst verdecken sie die „Filter & Sortierung"-Leiste (erste Zeile).
-    <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 pt-14 lg:grid-cols-[260px_1fr] lg:pt-0">
+    <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 pt-16 lg:grid-cols-[260px_1fr] lg:pt-20">
       <ShopFilters />
 
-      <main className="min-w-0 px-2 pb-6 pt-4 sm:px-4 sm:pt-6 lg:px-8">
+      <main className="serlo-safe-bottom min-w-0 px-2 pb-6 pt-4 sm:px-4 sm:pt-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

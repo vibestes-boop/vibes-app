@@ -49,6 +49,17 @@ export function SearchBox({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listboxId = useId();
+  const requestSeq = useRef(0);
+
+  useEffect(() => {
+    requestSeq.current += 1;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setValue(initialQuery);
+    setResults(null);
+    setDropdownOpen(false);
+    setActiveIdx(-1);
+    setIsFetching(false);
+  }, [initialQuery]);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -58,24 +69,28 @@ export function SearchBox({
       setDropdownOpen(false);
       return;
     }
+    const seq = ++requestSeq.current;
     setIsFetching(true);
     try {
       const res = await fetch(`/api/search/quick?q=${encodeURIComponent(q.trim())}`);
       if (!res.ok) return;
       const data: QuickSearchResult = await res.json();
+      if (seq !== requestSeq.current) return;
       setResults(data);
       setDropdownOpen(data.users.length > 0 || data.hashtags.length > 0);
       setActiveIdx(-1);
     } catch {
       // silent — fall back to form submit
     } finally {
-      setIsFetching(false);
+      if (seq === requestSeq.current) setIsFetching(false);
     }
   }, []);
 
   // ── Debounced onChange ────────────────────────────────────────────────────
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    requestSeq.current += 1;
+    setIsFetching(false);
     const v = e.target.value;
     setValue(v);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -176,6 +191,9 @@ export function SearchBox({
   };
 
   const clearInput = () => {
+    requestSeq.current += 1;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setIsFetching(false);
     setValue('');
     setResults(null);
     setDropdownOpen(false);
