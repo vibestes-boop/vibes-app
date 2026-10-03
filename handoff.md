@@ -9,14 +9,19 @@ anschließenden iPhone-Test. Diese Einreichung ist damit freigegeben und erfolgt
   **6760790424** angenommen und hochgeladen.
   Submission: https://expo.dev/accounts/zaurhat/projects/vibes/submissions/5f2f0c25-1435-48c4-8dcd-7f5e015f6f61
   TestFlight: https://appstoreconnect.apple.com/apps/6760790424/testflight/ios
-  Apple verarbeitet den Upload; bisher noch kein verfügbarer Build-Datensatz.
-  **Nicht erneut hochladen**, solange nur Apples Verarbeitung aussteht.
+  **Apple-Verarbeitung abgeschlossen und intern verfügbar**, direkt per API am
+  03.10.2026 um 09:23 UTC geprüft: Build-ID
+  `858a7acd-5445-4bf2-9fdb-0599dbfad738`, Version 1.31.1 / 293,
+  `processingState: VALID`, `internalBuildState: IN_BETA_TESTING`, nicht abgelaufen.
+  Der Build ist der internen Gruppe zugeordnet. **Nicht erneut hochladen.**
 - Der erste Versuch mit optionalem `--what-to-test` wurde vor Scheduling vom
   EAS-Server abgelehnt, weil diese Zusatzfunktion einen Enterprise-Tarif verlangt.
   Reguläre Einreichung ohne dieses optionale Metadatum ist erfolgreich. Kein
   Tarifwechsel oder neuer Build. Bestehender App-Store-API-Zugang verwendet.
 - App Store Connect direkt gelesen: interne Gruppe **Team (Expo)**,
   `d3cfa729-f2eb-48ca-9cc2-53c031f52e09`, `hasAccessToAllBuilds: true`.
+  Drei bestehende interne Tester vorhanden. Deren allgemeiner INSTALLED-Status
+  belegt nicht, dass das neue Build 293 schon auf ihren Geräten installiert ist.
   Die separate externe Gruppe `test` wurde nicht geändert. Keine externen
   Tester eingeladen, keine Beta-/Store-Prüfung angefordert, kein Public Release.
   API-Schlüssel/JWT wurden nur zur Authentifizierung im Speicher verwendet,
@@ -34,6 +39,8 @@ anschließenden iPhone-Test. Diese Einreichung ist damit freigegeben und erfolgt
   `node /private/tmp/serlo-release-prep/check-testflight.cjs` prüfen.
   Das Script verwendet den vorhandenen EAS-Login/App-Store-Schlüssel nur im
   Speicher und liest Build/Gruppe; es veröffentlicht nichts.
+  Der Nutzer wurde konkret gebeten, in TestFlight → Serlo auf 1.31.1 (293)
+  zu aktualisieren und die Installation zu bestätigen; Antwort steht noch aus.
   Danach tatsächlichen iPhone-Test für Google/Apple, Session, Light/Dark,
   Kamera, Benachrichtigungen durchführen. Kein abgeschlossener Gerätetest.
 - Remote main, öffentliche Website, OTA und öffentlicher App Store bleiben

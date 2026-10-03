@@ -27,7 +27,10 @@ and is quarantined for App Store work.
 - Candidate: `1.31.1 (293)`. Local Xcode 27 Release compilation succeeded for
   the x86_64 simulator, including ExpoGlassEffect and RevenueCat. The signed
   iPhone IPA has now been **uploaded to App Store Connect for internal TestFlight**
-  after explicit user approval. Apple processing is pending; no public release.
+  after explicit user approval. Apple processing is complete: VALID and
+  IN_BETA_TESTING; assigned to the internal "Team (Expo)" group. No public release.
+  Apple build ID: `858a7acd-5445-4bf2-9fdb-0599dbfad738`. Awaiting the user's
+  confirmation that build 293 is installed on their iPhone before device checks.
   Submission: https://expo.dev/accounts/zaurhat/projects/vibes/submissions/5f2f0c25-1435-48c4-8dcd-7f5e015f6f61
   EAS production build completed successfully:
   https://expo.dev/accounts/zaurhat/projects/vibes/builds/ac555de6-f570-47be-8c82-a37f665b8f48
