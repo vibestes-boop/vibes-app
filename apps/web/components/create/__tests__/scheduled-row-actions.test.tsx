@@ -10,13 +10,18 @@ function setup() { render(<ScheduledRowActions scheduledId="qa-scheduled" curren
 
 test('cancelling requires an explicit choice and a failed request stays visible for retry', async () => {
   jest.mocked(cancelScheduledPost).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ ok: true, data: null });
-  setup(); fireEvent.click(screen.getByRole('button', { name: 'Planung abbrechen' }));
+  const user = userEvent.setup();
+  setup(); await user.click(screen.getByRole('button', { name: 'Planung abbrechen' }));
   expect(cancelScheduledPost).not.toHaveBeenCalled();
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Planung abbrechen' }));
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Planung abbrechen' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('nicht gespeichert');
   expect(mockRefresh).not.toHaveBeenCalled();
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Planung abbrechen' }));
+  const retryButton = within(screen.getByRole('dialog')).getByRole('button', { name: 'Planung abbrechen' });
+  // Error feedback can render before React finishes the pending transition.
+  await waitFor(() => expect(retryButton).toBeEnabled());
+  await user.click(retryButton);
   await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+  expect(cancelScheduledPost).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 

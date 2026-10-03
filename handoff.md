@@ -1,3 +1,46 @@
+# TestFlight — 3. Oktober 2026
+
+Der Nutzer hat nach dem fertigen signierten Build ausdrücklich **„leg los“**
+gesagt; bezogen auf die zuvor genannte interne TestFlight-Einreichung und den
+anschließenden iPhone-Test. Diese Einreichung ist damit freigegeben und erfolgt.
+
+- **Upload bei Apple erfolgreich:** EAS Submit hat den geprüften Build
+  `ac555de6-f570-47be-8c82-a37f665b8f48`, **1.31.1 (293)**, für App Store Connect
+  **6760790424** angenommen und hochgeladen.
+  Submission: https://expo.dev/accounts/zaurhat/projects/vibes/submissions/5f2f0c25-1435-48c4-8dcd-7f5e015f6f61
+  TestFlight: https://appstoreconnect.apple.com/apps/6760790424/testflight/ios
+  Apple verarbeitet den Upload; bisher noch kein verfügbarer Build-Datensatz.
+  **Nicht erneut hochladen**, solange nur Apples Verarbeitung aussteht.
+- Der erste Versuch mit optionalem `--what-to-test` wurde vor Scheduling vom
+  EAS-Server abgelehnt, weil diese Zusatzfunktion einen Enterprise-Tarif verlangt.
+  Reguläre Einreichung ohne dieses optionale Metadatum ist erfolgreich. Kein
+  Tarifwechsel oder neuer Build. Bestehender App-Store-API-Zugang verwendet.
+- App Store Connect direkt gelesen: interne Gruppe **Team (Expo)**,
+  `d3cfa729-f2eb-48ca-9cc2-53c031f52e09`, `hasAccessToAllBuilds: true`.
+  Die separate externe Gruppe `test` wurde nicht geändert. Keine externen
+  Tester eingeladen, keine Beta-/Store-Prüfung angefordert, kein Public Release.
+  API-Schlüssel/JWT wurden nur zur Authentifizierung im Speicher verwendet,
+  nie als Datei oder im Log gespeichert. Status ohne Credentials:
+  `/private/tmp/serlo-release-prep/apple-testflight-status.json`.
+- **Weiteren Web-Testlauf stabilisiert:** Der CI-Fehler in
+  `scheduled-row-actions.test.tsx` kam von einem erneuten fireEvent-Klick,
+  bevor React die laufende Transition und den deaktivierten Button freigab.
+  Der Test benutzt jetzt echte User-Event-Sequenzen, wartet auf den aktiven
+  Wiederholungsbutton und prüft beide Action-Aufrufe. Produktionscode unverändert.
+  Alle **363 Web-Tests und Coverage-Gates bestanden**, der betroffene Testsatz
+  außerdem **achtmal hintereinander**. Logs: `web-testflight-tests.log` und
+  `schedule-test-repeat.log` unter `/private/tmp/serlo-release-prep/`.
+- Nächster Schritt: Apples Verarbeitungsstatus mit
+  `node /private/tmp/serlo-release-prep/check-testflight.cjs` prüfen.
+  Das Script verwendet den vorhandenen EAS-Login/App-Store-Schlüssel nur im
+  Speicher und liest Build/Gruppe; es veröffentlicht nichts.
+  Danach tatsächlichen iPhone-Test für Google/Apple, Session, Light/Dark,
+  Kamera, Benachrichtigungen durchführen. Kein abgeschlossener Gerätetest.
+- Remote main, öffentliche Website, OTA und öffentlicher App Store bleiben
+  unverändert. PR https://github.com/vibestes-boop/vibes-app/pull/84 bleibt Draft.
+
+---
+
 # Release-Fortsetzung — 3. Oktober 2026
 
 Dieser Abschnitt ersetzt die Freigabe-/Upload-Angaben vom 2. Oktober.

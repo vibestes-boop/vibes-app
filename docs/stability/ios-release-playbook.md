@@ -25,14 +25,17 @@ and is quarantined for App Store work.
 - Latest completed production iOS build: **`1.31.1 (293)`**, 3 October 2026,
   commit `14e5e553c097d19268aaee40e93b5d4883e3ee8b` (EAS build and downloaded IPA verified).
 - Candidate: `1.31.1 (293)`. Local Xcode 27 Release compilation succeeded for
-  the x86_64 simulator, including ExpoGlassEffect and RevenueCat. It has **not
-  been submitted or published**. EAS production build completed successfully:
+  the x86_64 simulator, including ExpoGlassEffect and RevenueCat. The signed
+  iPhone IPA has now been **uploaded to App Store Connect for internal TestFlight**
+  after explicit user approval. Apple processing is pending; no public release.
+  Submission: https://expo.dev/accounts/zaurhat/projects/vibes/submissions/5f2f0c25-1435-48c4-8dcd-7f5e015f6f61
+  EAS production build completed successfully:
   https://expo.dev/accounts/zaurhat/projects/vibes/builds/ac555de6-f570-47be-8c82-a37f665b8f48
   Native source commit: `14e5e553c097d19268aaee40e93b5d4883e3ee8b`.
   Downloaded IPA: ARM64, expected bundle/version/build, strict code-signature
   verification passed, production APNs entitlement, no debugger entitlement.
   This verifies packaging/signing, not successful push delivery or device behavior.
-  Later commits affect only the web Jest resolver and release documentation.
+  Later commits affect only web test configuration/tests and release documentation.
 - Native launch remains unverified: GoogleMLKit 8.0.0 excludes arm64 simulator
   builds, while every installed iOS runtime supports only arm64. The compiled
   x86_64 app cannot install in these runtimes. Do not count this as a passed
@@ -47,7 +50,9 @@ and is quarantined for App Store work.
 - Explicit approval for the EAS source upload/signed build and for the GitHub
   release-branch upload/draft PR was granted on 3 October. Production DB migration
   `20261002220000_create_post_with_product.sql` was separately approved and applied.
-  Public publication and TestFlight submission remain separate from these approvals.
+  Internal TestFlight submission was separately approved on 3 October and uploaded.
+  The existing internal group "Team (Expo)" has access to all builds. Do not
+  assign this untested candidate to the external group or release it publicly.
 - New `expo-glass-effect` requires a new native binary for native Liquid Glass;
   older binaries have a guarded frosted-glass fallback.
 - Required source: `/Users/zaurhatuev/vibes-app`.
