@@ -19,14 +19,20 @@ Do not build from:
 The Desktop checkout produced the invalid `1.26.4 (270)` TestFlight incident
 and is quarantined for App Store work.
 
-## Verified State — 2 October 2026
+## Verified State — 3 October 2026
 
 - Public App Store version: `1.31.0`, released 12 July 2026 (Apple lookup).
-- Last completed production iOS build: `1.31.0 (292)`, 11 July 2026,
-  commit `ed125a09952556ec5678768e077bb6765267c0db` (EAS history).
+- Latest completed production iOS build: **`1.31.1 (293)`**, 3 October 2026,
+  commit `14e5e553c097d19268aaee40e93b5d4883e3ee8b` (EAS build and downloaded IPA verified).
 - Candidate: `1.31.1 (293)`. Local Xcode 27 Release compilation succeeded for
   the x86_64 simulator, including ExpoGlassEffect and RevenueCat. It has **not
-  been built/signed by EAS, submitted or published**.
+  been submitted or published**. EAS production build completed successfully:
+  https://expo.dev/accounts/zaurhat/projects/vibes/builds/ac555de6-f570-47be-8c82-a37f665b8f48
+  Native source commit: `14e5e553c097d19268aaee40e93b5d4883e3ee8b`.
+  Downloaded IPA: ARM64, expected bundle/version/build, strict code-signature
+  verification passed, production APNs entitlement, no debugger entitlement.
+  This verifies packaging/signing, not successful push delivery or device behavior.
+  Later commits affect only the web Jest resolver and release documentation.
 - Native launch remains unverified: GoogleMLKit 8.0.0 excludes arm64 simulator
   builds, while every installed iOS runtime supports only arm64. The compiled
   x86_64 app cannot install in these runtimes. Do not count this as a passed
@@ -35,11 +41,13 @@ and is quarantined for App Store work.
 - Release prepared on `codex/serlo-release-1.31.1` from `origin/main`
   (`9a2b50ab`); unrelated Berkat changes are excluded.
   Local `main` has been fast-forwarded to these release commits and is clean.
-  The native source guard and full pre-release gate pass. Nothing is pushed.
+  The native source guard and full pre-release gate passed before upload.
+  Release branch is pushed with draft PR https://github.com/vibestes-boop/vibes-app/pull/84.
+  Remote main is unchanged.
 - Explicit approval for the EAS source upload/signed build and for the GitHub
-  release-branch upload/draft PR is still pending. Production DB migration
+  release-branch upload/draft PR was granted on 3 October. Production DB migration
   `20261002220000_create_post_with_product.sql` was separately approved and applied.
-  That database approval does not authorize EAS or public publication.
+  Public publication and TestFlight submission remain separate from these approvals.
 - New `expo-glass-effect` requires a new native binary for native Liquid Glass;
   older binaries have a guarded frosted-glass fallback.
 - Required source: `/Users/zaurhatuev/vibes-app`.

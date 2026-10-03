@@ -1,3 +1,70 @@
+# Release-Fortsetzung — 3. Oktober 2026
+
+Dieser Abschnitt ersetzt die Freigabe-/Upload-Angaben vom 2. Oktober.
+Der Nutzer hat auf die konkrete Frage nach EAS-Produktionsbuild und GitHub-
+Release-Branch mit Entwurfs-PR mit **„mach das“** geantwortet. Beide Aktionen
+sind damit freigegeben; die vorherige EAS-Ablehnung ist erledigt.
+
+- **Release-Branch gepusht, Entwurfs-PR erstellt:**
+  https://github.com/vibestes-boop/vibes-app/pull/84
+  `codex/serlo-release-1.31.1` → `main`; PR bleibt ausdrücklich Draft.
+  Das aktive GitHub-Konto `ZaurHa` konnte keinen PR erstellen; mit dem bereits
+  angemeldeten Eigentümerkonto `vibestes-boop` war die Erstellung erfolgreich.
+  Kein Wechsel der globalen GitHub-Anmeldung. PR ist am Codex-Task angehängt.
+- **EAS-Produktionsbuild erfolgreich abgeschlossen:**
+  https://expo.dev/accounts/zaurhat/projects/vibes/builds/ac555de6-f570-47be-8c82-a37f665b8f48
+  Projekt `@zaurhat/vibes`, Bundle `com.vibesapp.vibes`, Version **1.31.1 (293)**,
+  Runtime 1.31.1, Distribution STORE, echter iPhone-Build (kein Simulator).
+  Quellcommit **`14e5e553c097d19268aaee40e93b5d4883e3ee8b`**. Vor Upload waren
+  main und Arbeitsbaum sauber und der Produktions-Source-Guard bestanden.
+  Abgeschlossen 03.10.2026 um 09:13:02 UTC. IPA heruntergeladen und unabhängig
+  geprüft: ARM64, Bundle/Version/Build stimmen, `codesign --verify --deep --strict`
+  erfolgreich, Application-Identifier `Z56MCG424R.com.vibesapp.vibes`, Debugger
+  deaktiviert, APNs-Entitlement production. Profil gültig bis 25.02.2027.
+  SHA-256: `e92ebd411bea641447b8909ebd0d8acc63373e333e12c5224d7c4ca14a529f5c`.
+  IPA: `/private/tmp/serlo-release-prep/Serlo-1.31.1-293.ipa`, Prüfbericht:
+  `/private/tmp/serlo-release-prep/signed-ios-verification.json`.
+  Vorhandene EAS-Signierdaten verwendet; keine Store-Einreichung gestartet.
+- **CI-Fehler gefunden und behoben:** Der frische Web-Testjob konnte Zod aus
+  `shared/schemas` nicht auflösen, weil nur `apps/web/node_modules` installiert
+  wird. `apps/web/jest.config.js` bildet Zod jetzt auf dieselbe App-Abhängigkeit
+  wie tsconfig ab. Reproduziert in einem temporären Checkout ohne Root-Deps,
+  danach alle **363 Web-Tests (31 Suites) plus Coverage-Gates bestanden**.
+  Fix-Commit `a9ec0f72` ist im PR. Er ändert nur die Web-Testkonfiguration und
+  damit keine Quelle des nativen Builds. Die erneuten GitHub-Tests (Native/Web)
+  und Typprüfungen (Native/Web/Berkat) sowie read-only Produktionsprüfungen
+  sind auf diesem Commit erfolgreich. Vercels Branch-Vorschau läuft separat;
+  ihre URL leitet auf die bestehende Vercel-SSO-Anmeldung weiter:
+  https://serlo-web-git-codex-serlo-release-1311-vibestes-2950s-projects.vercel.app
+- Der automatisch ausgelöste GitHub-Job für authentifizierte Interaktionen
+  wurde mangels `STABILITY_AUTH_EMAIL/PASSWORD` **übersprungen**, obwohl sein
+  Jobstatus grün ist. Nicht als erfolgreicher Interaktionstest zählen. Das
+  bestehende Script würde sonst auf öffentlichen fremden Posts kommentieren;
+  keine GitHub-Testzugänge setzen oder es manuell ausführen, solange es nicht
+  auf explizite isolierte Testdaten begrenzt ist. Die acht lokalen authentifizierten
+  Browserchecks vom 2. Oktober haben keine Nachrichten/Kommentare erzeugt.
+- Die Serlo-Produkt-RPC-Migration ist weiterhin angewendet; fünf Berkat-
+  Migrationen bleiben ausgeschlossen. Keine erneute DB-Mutation nötig.
+- **Veröffentlichungsgrenze:** Kein Push nach remote main, kein Merge,
+  kein Produktions-Web-Deployment, kein OTA und keine App-Store-/TestFlight-
+  Einreichung. GitHub/Vercel dürfen die übliche Branch-Vorschau erstellen.
+  Nach fertigem signiertem Build folgen physischer iPhone-Test und ggf. eine
+  gesondert freigegebene interne TestFlight-Einreichung. Ein STORE-IPA lässt
+  sich nicht wie ein Ad-hoc-/Development-Build direkt per simctl installieren.
+- Native Anmeldung, Session-Neustart, Hell/Dunkel, Kamera und Push bleiben
+  auf dem neuen iPhone-Binary ungetestet. Der x86_64-/arm64-Simulator-Konflikt
+  vom 2. Oktober ist dokumentiert und wurde nicht durch Weglassen der
+  Gesichtserkennung kaschiert.
+- Aktuelle Logs/Metadaten: `/private/tmp/serlo-release-prep/eas-current.json`,
+  `eas-approved-build.log`, `web-ci-isolated-coverage.log`, `pr-current.json`.
+  Nächster Schritt ist eine ausdrücklich freigegebene interne TestFlight-
+  Einreichung dieses konkreten Builds und anschließend der iPhone-Test.
+  Nicht erneut bauen: `npx eas build:view ac555de6-f570-47be-8c82-a37f665b8f48 --json`
+  zeigt das bereits fertige Artefakt. Keine öffentliche Veröffentlichung
+  oder automatische Freigabe zur Store-Prüfung aus dem Build-Erfolg ableiten.
+
+---
+
 # Release-Fortsetzung — 2. Oktober 2026, später am Abend
 
 Dieser Abschnitt ersetzt die offenen Statusangaben des vorherigen Checks.
