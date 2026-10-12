@@ -139,6 +139,14 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Bilder und Videos der Landing (public/landing): eine Woche frisch, danach
+        // im Hintergrund erneuern. Dateien bei Änderungen umbenennen.
+        source: '/landing/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=2592000' },
+        ],
+      },
+      {
         source: '/manifest.webmanifest',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },

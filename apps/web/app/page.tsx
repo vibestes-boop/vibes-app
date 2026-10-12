@@ -1,19 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
 import { safeJsonLd } from '@/lib/seo/json-ld';
-import { LandingPage } from '@/components/landing-page';
+import { LandingV13 } from '@/components/landing-v13/Landing';
+import { getLocale } from '@/lib/i18n/server';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';
 import {
-  getPublicForYouFeed,
   getMyFollowedAccounts,
   getSuggestedFollows,
 } from '@/lib/data/feed';
-import { getCachedActiveLiveSessions } from '@/lib/data/live';
-import { getShopProducts } from '@/lib/data/shop';
 
 /**
  * `/` Home-Route.
  *
- * - Logged-out: Landing-Page (Hero, Value-Props, Discovery-Strip).
+ * - Logged-out: Landing V13 (components/landing-v13, Bildkranz, Funktionen, Sprachen).
  * - Logged-in:  HomeFeedShell (For-You/Following Tabs, Sidebars, Vertical-Feed).
  *
  * Kein `revalidate`, weil auth-basiert — aber die einzelnen Server-Component-Reads
@@ -23,7 +21,6 @@ import { getShopProducts } from '@/lib/data/shop';
 export const dynamic = 'force-dynamic';
 
 const HOME_SIDEBAR_TIMEOUT_MS = 300;
-const HOME_PUBLIC_DYNAMIC_TIMEOUT_MS = 250;
 
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -59,13 +56,11 @@ export default async function HomePage() {
   const userId = session?.user?.id ?? null;
 
   if (!userId) {
-    const [liveNow, trendingPosts, shopProducts] = await Promise.all([
-      withTimeout(getCachedActiveLiveSessions(4), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
-      withTimeout(getPublicForYouFeed({ limit: 6 }), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
-      // Shop-Vorschau: etwas großzügigeres Timeout — die Sektion ist der
-      // Conversion-Kern der Landing (Parfüm-Funnel) und soll zuverlässig da sein.
-      withTimeout(getShopProducts({ limit: 4, sort: 'popular' }), [], 600),
-    ]);
+    // Landing V13 (aus apps/heritage-preview): reine Marketing-Seite ohne
+    // Datenbank-Abfragen. Sprache folgt dem Locale der Web-App; Tschetschenisch
+    // fällt wie überall auf Russisch zurück.
+    const locale = await getLocale();
+    const landingLang = locale === 'ru' || locale === 'ce' ? 'ru' : locale === 'en' ? 'en' : 'de';
     // ── JSON-LD: WebSite + SearchAction ─────────────────────────────────────
     // Enables Google Sitelinks Searchbox in search results. Only on the public
     // landing page — logged-in feed is personalised so WebSite schema is not
@@ -93,7 +88,7 @@ export default async function HomePage() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteJsonLd) }}
         />
-        <LandingPage featured={[]} liveNow={liveNow} trendingPosts={trendingPosts} shopProducts={shopProducts} />
+        <LandingV13 lang={landingLang} />
       </>
     );
   }
