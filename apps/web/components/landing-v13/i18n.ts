@@ -123,7 +123,7 @@ const de = {
     remove: 'Konto löschen',
     sections: 'Abschnitte',
     credits: 'Bildnachweise',
-    note: 'Das Turmfoto stammt von Wikimedia Commons, für diese Seite verkleinert, Lizenz wie angegeben. Die übrigen Landschaftsbilder und Videos sind mit KI erstellt. Die Handyansichten sind Beispielansichten der Serlo App.',
+    note: 'Das Turmfoto stammt von Wikimedia Commons, für diese Seite verkleinert, Lizenz wie angegeben. Die Handyansichten sind Beispielansichten der Serlo App.',
   },
   phones: {
     live: {
@@ -292,7 +292,7 @@ const ru: Dict = {
     remove: 'Удалить аккаунт',
     sections: 'Разделы',
     credits: 'Источники изображений',
-    note: 'Фото башни взято с Wikimedia Commons и уменьшено для этой страницы, лицензия указана. Остальные пейзажи и видео созданы с помощью ИИ. Экраны телефона показывают примеры приложения Serlo.',
+    note: 'Фото башни взято с Wikimedia Commons и уменьшено для этой страницы, лицензия указана. Экраны телефона показывают примеры приложения Serlo.',
   },
   phones: {
     live: {
@@ -459,7 +459,7 @@ const en: Dict = {
     remove: 'Delete account',
     sections: 'Sections',
     credits: 'Image credits',
-    note: 'The tower photo comes from Wikimedia Commons, reduced in size for this page, licence as stated. The other landscape images and videos were made with AI. The phone screens are example views of the Serlo app.',
+    note: 'The tower photo comes from Wikimedia Commons, reduced in size for this page, licence as stated. The phone screens are example views of the Serlo app.',
   },
   phones: {
     live: {
