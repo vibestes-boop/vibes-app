@@ -1,0 +1,31 @@
+// Daten der Landing V13 (serlo.ch): Kacheln des Bildkranzes, Bildnachweise, Logo.
+
+export type Chapter = { id: string; label: string };
+export type Tile = { src: string; w: number; h: number; kind: 'photo' | 'screen' | 'video'; video?: string; optional?: boolean };
+export type Credit = { title: string; author: string; license: string; licenseUrl: string; url: string };
+
+// Bildkranz im Einstieg: KI-Landschaften (Bilder und Videos, alle 16:9).
+export const tiles: Tile[] = [
+  { src: '/landing/media/wolkenmeer-poster-640.webp', video: '/landing/media/wolkenmeer-640.mp4', w: 640, h: 360, kind: 'video' },
+  { src: '/landing/media/winter-640.webp', w: 640, h: 360, kind: 'photo' },
+  { src: '/landing/media/schlucht-poster-640.webp', video: '/landing/media/schlucht-640.mp4', w: 640, h: 360, kind: 'video' },
+  { src: '/landing/media/wiese-640.webp', w: 640, h: 360, kind: 'photo' },
+  { src: '/landing/media/bergsee-poster-640.webp', video: '/landing/media/bergsee-640.mp4', w: 640, h: 360, kind: 'video' },
+  { src: '/landing/media/ruinen-640.webp', w: 640, h: 360, kind: 'photo' },
+  { src: '/landing/media/wasserfall-poster-640.webp', video: '/landing/media/wasserfall-640.mp4', w: 640, h: 360, kind: 'video' },
+  { src: '/landing/media/bruecke-640.webp', w: 640, h: 360, kind: 'photo' },
+  { src: '/landing/media/herbsttal-poster-640.webp', video: '/landing/media/herbsttal-640.mp4', w: 640, h: 360, kind: 'video' },
+  { src: '/landing/media/sturm-640.webp', w: 640, h: 360, kind: 'photo' },
+  { src: '/landing/media/sternennacht-poster-640.webp', video: '/landing/media/sternennacht-640.mp4', w: 640, h: 360, kind: 'video' },
+  { src: '/landing/media/buchenwald-640.webp', w: 640, h: 360, kind: 'photo' },
+  { src: '/landing/media/tuerme-640.webp', w: 640, h: 360, kind: 'photo' },
+];
+
+// Echte Fotos dieser Seite. Quelle Wikimedia Commons.
+export const credits: Credit[] = [
+  { title: 'Turm von Tazbichi', author: 'Flandria12', license: 'CC BY-SA 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', url: 'https://commons.wikimedia.org/wiki/File:%D0%A2%D0%B0%D0%B7%D0%B1%D0%B8%D1%87%D0%B0_%D0%B1l%D0%BE%D0%B2.jpg' },
+];
+
+// Serlo-Zeichen (Herzschlag, der zum Turm wird), Ansicht 1024 × 1024
+export const MARK_PATH =
+  'M641.8 100.4L649.2 102.1L677.8 133.1L696.5 161.7L705.5 185.4L708.0 209.0L699.8 209.9L696.5 213.1L695.7 222.9L697.4 235.2L700.6 238.4L713.7 240.1L714.5 271.9L703.9 281.7L703.1 293.2L739.0 648.4L745.5 652.5L966.0 652.5L970.1 656.5L970.1 661.4L967.7 664.7L730.8 665.5L728.4 663.9L690.0 282.5L690.0 276.8L703.1 264.6L703.9 258.0L699.0 250.7L687.6 249.9L686.7 240.9L684.3 200.9L693.3 196.8L694.1 190.3L690.0 176.4L679.4 156.8L658.2 129.8L648.4 120.0L645.1 119.2L640.2 120.0L623.9 137.2L608.4 158.4L598.6 177.2L594.5 193.5L597.7 199.2L603.5 200.9L600.2 249.1L588.8 250.7L583.9 258.0L584.7 264.6L597.7 276.0L597.7 280.1L571.6 537.3L538.9 896.6L536.5 902.3L531.6 900.7L530.8 894.2L485.1 456.5L481.0 421.4L476.9 414.8L468.7 414.8L464.6 421.4L440.1 551.2L418.9 678.6L414.8 677.8L383.0 547.9L375.6 542.2L371.5 543.0L367.5 547.9L334.8 661.4L331.5 665.5L62.1 665.5L58.8 663.9L58.0 655.7L61.2 652.5L322.6 651.6L328.3 641.0L374.8 484.2L378.1 484.2L379.7 486.7L406.7 592.8L410.7 596.9L418.1 596.1L421.4 592.8L423.0 585.5L471.2 324.2L473.6 319.3L478.5 319.3L494.0 433.6L525.9 737.4L530.0 743.9L538.9 743.9L542.2 738.2L585.5 288.3L584.7 282.5L572.4 271.1L574.1 240.1L586.3 238.4L589.6 235.2L591.2 228.6L591.2 213.1L587.9 209.9L580.6 209.0L583.9 182.1L589.6 167.4L611.6 132.3L624.7 116.8L641.8 101.3Z';

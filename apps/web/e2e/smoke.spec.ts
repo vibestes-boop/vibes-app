@@ -27,16 +27,12 @@ test.describe('public web smoke', () => {
 
     expect(response?.ok(), 'Home route should load').toBe(true);
     await expect(page).toHaveTitle(/Serlo/);
-    const landing = page
-      .getByTestId('public-landing')
-      .or(page.locator('main').filter({
-        has: page.getByRole('heading', { name: /Live\. Shop\. Community\./i }),
-      }))
-      .first();
+    // Landing V13 (components/landing-v13): Bildkranz um „Hier sind deine Leute“
+    const landing = page.getByTestId('public-landing').first();
 
     await expect(landing).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /Live\. Shop\. Community\./i }),
+      page.getByRole('heading', { level: 1, name: /Hier sind deine Leute/i }),
     ).toBeVisible();
     await expect(
       landing.getByRole('link', { name: 'Einloggen' }).first(),
