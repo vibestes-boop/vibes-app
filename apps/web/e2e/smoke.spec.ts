@@ -27,12 +27,15 @@ test.describe('public web smoke', () => {
 
     expect(response?.ok(), 'Home route should load').toBe(true);
     await expect(page).toHaveTitle(/Serlo/);
-    // Landing V13 (components/landing-v13): Bildkranz um „Hier sind deine Leute“
+    // Gäste-Startseite: Landing V13 (components/landing-v13) oder als Rückweg die
+    // alte components/landing-page.tsx. Beide gelten als gesund. Das hält auch den
+    // Lauf direkt nach einem Push auf main grün, solange Vercel noch die vorige
+    // Fassung ausliefert (der Smoke wartet nicht auf das neue Deployment).
     const landing = page.getByTestId('public-landing').first();
 
     await expect(landing).toBeVisible();
     await expect(
-      page.getByRole('heading', { level: 1, name: /Hier sind deine Leute/i }),
+      page.getByRole('heading', { level: 1, name: /Hier sind deine Leute|Live\. Shop\. Community\./i }),
     ).toBeVisible();
     await expect(
       landing.getByRole('link', { name: 'Einloggen' }).first(),
