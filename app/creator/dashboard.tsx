@@ -58,6 +58,7 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 
 const { width: W } = Dimensions.get('window');
 
@@ -80,6 +81,8 @@ export default function CreatorDashboard() {
   const userId = profile?.id ?? null;
 
   const [period, setPeriod] = useState<AnalyticsPeriod>(28);
+  // Unterstreichung gleitet mit Feder zum gewählten Zeitraum (wie die Auswahl der unteren Leiste)
+  const periodLine = useSlidingSelection(String(period), { underline: 2 });
 
   const overview  = useCreatorOverview(userId, period);
   const earnings  = useCreatorEarnings(userId, period);
@@ -164,18 +167,20 @@ export default function CreatorDashboard() {
       >
         {/* ── Period Tabs ─────────────────────────────────────────── */}
         <View style={[s.periodRow, { borderBottomColor: colors.border.subtle }]}>
+          <SlidingPill selection={periodLine} style={{ backgroundColor: colors.text.primary, borderRadius: 1 }} />
           {PERIODS.map((p) => (
-            <Pressable
+            <SpringPressable
               key={p.value}
+              onLayout={periodLine.onLayoutFor(String(p.value))}
               onPress={() => setPeriod(p.value)}
-              style={[s.periodTab, period === p.value && { borderBottomColor: colors.text.primary, borderBottomWidth: 2 }]}
+              style={s.periodTab}
               accessibilityRole="tab"
               accessibilityState={{ selected: period === p.value }}
             >
               <Text style={[s.periodTabText, { color: period === p.value ? colors.text.primary : colors.text.muted }]}>
                 {p.label}
               </Text>
-            </Pressable>
+            </SpringPressable>
           ))}
         </View>
 

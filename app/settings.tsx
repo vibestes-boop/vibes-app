@@ -63,6 +63,7 @@ View,
 import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { SlidingLabel, SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -176,6 +177,9 @@ export default function SettingsScreen() {
   const setAppLocale    = _useI18nS((s: any) => s.setLocale);
   const appPickedByUser = _useI18nS((s: any) => s.pickedByUser);
   const useDeviceLocale = _useI18nS((s: any) => s.useDeviceLocale);
+  // Darstellung und Sprache: Auswahl gleitet als Kapsel wie in der unteren Leiste
+  const themeSel = useSlidingSelection(themeMode);
+  const langSel = useSlidingSelection(appPickedByUser ? appLocale : 'auto');
 
   const saveScale = useSharedValue(1);
   const saveStyle = useAnimatedStyle(() => ({ transform: [{ scale: saveScale.value }] }));
@@ -560,21 +564,22 @@ export default function SettingsScreen() {
             <View style={{ flex: 1, gap: 10 }}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.appearance')}</Text>
               <View style={s.themeRow}>
+                <SlidingPill selection={themeSel} style={{ borderRadius: 12, backgroundColor: colors.text.primary }} />
                 {(['system', 'dark', 'light'] as const).map((m) => {
                   const labels = { system: t('settings.themeSystem'), dark: t('settings.themeDark'), light: t('settings.themeLight') };
                   const active = themeMode === m;
                   return (
-                    <Pressable key={m} onPress={() => setThemeMode(m)}
+                    <SpringPressable key={m} onLayout={themeSel.onLayoutFor(m)} onPress={() => setThemeMode(m)}
                       style={[s.themeBtn, {
-                        backgroundColor: active ? colors.text.primary : colors.bg.elevated,
-                        borderColor: active ? colors.text.primary : colors.border.default,
+                        backgroundColor: active ? 'transparent' : colors.bg.elevated,
+                        borderColor: active ? 'transparent' : colors.border.default,
                       }]}
                       accessibilityRole="button" accessibilityState={{ selected: active }}
                     >
-                      <Text style={[s.themeBtnTxt, { color: active ? colors.bg.primary : colors.text.muted }]}>
+                      <SlidingLabel selection={themeSel} optionKey={m} color={colors.text.muted} activeColor={colors.bg.primary} style={s.themeBtnTxt}>
                         {labels[m]}
-                      </Text>
-                    </Pressable>
+                      </SlidingLabel>
+                    </SpringPressable>
                   );
                 })}
               </View>
@@ -589,6 +594,7 @@ export default function SettingsScreen() {
             <View style={{ flex: 1, gap: 10 }}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.langLabel')}</Text>
               <View style={s.langRow}>
+                <SlidingPill selection={langSel} style={{ borderRadius: 12, backgroundColor: colors.text.primary }} />
                 {([
                   { key: 'auto', label: t('settings.langAuto'), active: !appPickedByUser, onPress: () => useDeviceLocale() },
                   { key: 'de',   label: 'Deutsch',  active: appPickedByUser && appLocale === 'de', onPress: () => setAppLocale('de') },
@@ -596,17 +602,17 @@ export default function SettingsScreen() {
                   { key: 'en',   label: 'English',  active: appPickedByUser && appLocale === 'en', onPress: () => setAppLocale('en') },
                   { key: 'ce',   label: 'Нохчийн',  active: appPickedByUser && appLocale === 'ce', onPress: () => setAppLocale('ce') },
                 ] as const).map(({ key, label, active, onPress }) => (
-                  <Pressable key={key} onPress={onPress}
+                  <SpringPressable key={key} onLayout={langSel.onLayoutFor(key)} onPress={onPress}
                     style={[s.langBtn, {
-                      backgroundColor: active ? colors.text.primary : colors.bg.elevated,
-                      borderColor: active ? colors.text.primary : colors.border.default,
+                      backgroundColor: active ? 'transparent' : colors.bg.elevated,
+                      borderColor: active ? 'transparent' : colors.border.default,
                     }]}
                     accessibilityRole="button" accessibilityState={{ selected: active }}
                   >
-                    <Text style={[s.themeBtnTxt, { color: active ? colors.bg.primary : colors.text.muted }]} numberOfLines={1}>
+                    <SlidingLabel selection={langSel} optionKey={key} color={colors.text.muted} activeColor={colors.bg.primary} style={s.themeBtnTxt} numberOfLines={1}>
                       {label}
-                    </Text>
-                  </Pressable>
+                    </SlidingLabel>
+                  </SpringPressable>
                 ))}
               </View>
             </View>

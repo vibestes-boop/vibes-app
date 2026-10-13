@@ -549,13 +549,11 @@ export default function RootLayoutFull() {
               name="reset-password"
               options={{ headerShown: false, animation: 'none' }}
             />
+            {/* Senkrechter Feed aus einem Raster (Profil, Entdecken): schiebt sich wie ein
+                Beitrag von rechts herein, Wischen vom linken Rand führt zurück. */}
             <Stack.Screen
               name="user-posts"
-              options={{
-                headerShown: false,
-                animation: 'none',
-                presentation: 'fullScreenModal',
-              }}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
             />
             <Stack.Screen
               name="follow-list"

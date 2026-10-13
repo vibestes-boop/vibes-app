@@ -24,6 +24,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { usePostPagerStore, type PagerSeed } from '@/lib/postPagerStore';
 import {
 ArrowLeft,
 Bookmark,
@@ -80,6 +81,31 @@ type PostItem = {
   thumbnail_url?: string | null;
   bunny_video_id?: string | null;
 };
+
+// Übergabe aus einem Raster (Entdecken): nur verwenden, wenn alle IDs vorliegen.
+// Datum, Schlagwörter und Pin-Status lädt der Feed danach nach.
+function seedPosts(postIds?: string): PostItem[] | null {
+  const ids = postIds ? postIds.split(',').filter(Boolean) : [];
+  if (!ids.length) return null;
+  const byId = new Map(usePostPagerStore.getState().seed.map((p) => [p.id, p]));
+  const items = ids.map((id) => byId.get(id));
+  if (items.some((p) => !p)) return null;
+  return (items as PagerSeed[]).map((p) => ({
+    id: p.id,
+    caption: p.caption,
+    media_url: p.media_url,
+    media_type: p.media_type,
+    tags: [],
+    created_at: '',
+    author_id: p.author_id ?? '',
+    username: p.username ?? null,
+    avatar_url: p.avatar_url ?? null,
+    view_count: p.view_count ?? 0,
+    is_pinned: false,
+    thumbnail_url: p.thumbnail_url ?? null,
+    bunny_video_id: p.bunny_video_id ?? null,
+  }));
+}
 
 function formatViews(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -501,11 +527,13 @@ function PostCard({
 
 export default function UserPostsScreen() {
   useThemedStatusBar('light');
-  const { userId, startIndex, username, postIds } = useLocalSearchParams<{
+  const { userId, startIndex, username, postIds, title } = useLocalSearchParams<{
     userId?: string;
     startIndex?: string;
     username?: string;
     postIds?: string;  // kommagetrennte Post-IDs (für Saved/Reposts)
+    /** Überschrift ohne Profil, z. B. „Entdecken“ */
+    title?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -513,8 +541,10 @@ export default function UserPostsScreen() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
 
-  const [posts, setPosts] = useState<PostItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Aus Entdecken kommen die Beiträge schon mit: sofort zeichnen statt Ladekreis
+  const [seeded] = useState(() => seedPosts(postIds));
+  const [posts, setPosts] = useState<PostItem[]>(seeded ?? []);
+  const [loading, setLoading] = useState(!seeded);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [visibleIndex, setVisibleIndex] = useState(Number(startIndex ?? '0'));
   const [isMuted, setIsMuted] = useState(false);
@@ -523,7 +553,8 @@ export default function UserPostsScreen() {
   // Follow-Kontext des Profil-Autors (alle Posts hier gehören demselben User) —
   // fürs kombinierte Teilen-Sheet bei FREMDEN Posts.
   const profileUserId = Array.isArray(userId) ? userId[0] : (userId ?? null);
-  const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(profileUserId);
+  // Ohne Profil (Entdecken) gehören die Beiträge verschiedenen Leuten: dann zählt der Autor des geteilten Beitrags
+  const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(profileUserId ?? shareItem?.author_id ?? null);
   const [screenFocused, setScreenFocused] = useState(true);
   const { mutate: togglePin } = useTogglePinPost();
 
@@ -569,7 +600,16 @@ export default function UserPostsScreen() {
               username: p.profiles?.username ?? null,
               avatar_url: p.profiles?.avatar_url ?? null,
             }));
-          setPosts(mapped);
+          // Mit Übergabe: Felder ergänzen statt die Liste zu ersetzen, damit die Seite
+          // nicht springt. Medienquelle bleibt, sonst startet das Video neu.
+          setPosts((prev) => {
+            if (!prev.length) return mapped;
+            const full = new Map(mapped.map((p) => [p.id, p]));
+            return prev.map((p) => {
+              const f = full.get(p.id);
+              return f ? { ...f, media_url: p.media_url, bunny_video_id: p.bunny_video_id } : p;
+            });
+          });
           setLoading(false);
         });
     } else if (userId) {
@@ -625,7 +665,9 @@ export default function UserPostsScreen() {
   };
 
   // Foldables: reale Seiten-Größe messen (Root-onLayout) statt Modul-Dimensions.
-  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
+  // Mit Fenstergröße vorbelegt: Die Liste steht schon im ersten Bild (beim Hereinschieben),
+  // die Messung korrigiert nur bei abweichender Größe (Foldables).
+  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>({ h: H, w: W });
   const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
   const itemH = pageSize?.h ?? H;
 
@@ -673,6 +715,8 @@ export default function UserPostsScreen() {
         if (h > 0 && w > 0 && (pageSizeRef.current?.h !== h || pageSizeRef.current?.w !== w)) {
           pageSizeRef.current = { h, w };
           setPageSize({ h, w });
+          // Vorbelegte Fenstergröße passte nicht (Foldable): zurück auf die aktuelle Seite
+          if (h !== H || w !== W) requestAnimationFrame(() => flatRef.current?.scrollToIndex({ index: visibleIndex, animated: false }));
         }
       }}
     >
@@ -688,12 +732,12 @@ export default function UserPostsScreen() {
         {/* Zähler oben Mitte */}
         <View style={[s.counter, { top: insets.top + 18 }]}>
           <Text style={s.counterText}>
-            {username ? `@${username}` : ''}{posts.length > 0 ? `  ${visibleIndex + 1} / ${posts.length}` : ''}
+            {username ? `@${username}` : (title ?? '')}{posts.length > 0 ? `  ${visibleIndex + 1} / ${posts.length}` : ''}
           </Text>
         </View>
 
-        {/* FlatList erst nach der Messung: initialScrollIndex braucht den
-            korrekten getItemLayout-Offset (Foldables). Ein Frame schwarz. */}
+        {/* initialScrollIndex braucht den richtigen getItemLayout-Offset: vorbelegt mit
+            der Fenstergröße, bei Abweichung (Foldables) springt onLayout zurück. */}
         {pageSize && <FlatList
           ref={flatRef}
           data={posts}
@@ -787,7 +831,7 @@ export default function UserPostsScreen() {
             visible
             postId={shareItem.id}
             postCaption={shareItem.caption ?? undefined}
-            postAuthor={username ? String(username).replace(/^@+/, '') : ''}
+            postAuthor={username ? String(username).replace(/^@+/, '') : (shareItem.username ?? '')}
             isFollowing={isFollowing}
             isOwnProfile={isOwnProfile}
             onToggleFollow={toggleFollow}

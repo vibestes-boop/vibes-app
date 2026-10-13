@@ -9,15 +9,16 @@ import { Heart, ImageIcon, Play } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-/** Use an actual video thumbnail; never send an MP4 to an image decoder. */
-export function ExploreGridItem({ item, width }: { item: ExplorePostThumb; width?: number }) {
+/** Use an actual video thumbnail; never send an MP4 to an image decoder.
+ * `onPress`: Entdecken öffnet den senkrechten Feed; ohne Handler öffnet die Karte den einzelnen Beitrag. */
+export function ExploreGridItem({ item, width, onPress }: { item: ExplorePostThumb; width?: number; onPress?: () => void }) {
   const { colors } = useTheme();
   const { t } = useI18n();
   const isVideo = item.media_type === 'video';
   const uri = isVideo ? item.thumbnail_url : item.media_url;
   const [failedUri, setFailedUri] = useState<string | null>(null);
   return <Pressable style={({ pressed }) => [s.card, { width, flex: width ? undefined : 1, backgroundColor: colors.bg.secondary, borderColor: colors.border.default, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
-    onPress={() => router.push({ pathname: '/post/[id]', params: { id: item.id, previewUrl: item.media_url ?? '', previewType: item.media_type ?? 'image', previewCaption: item.caption ?? '', previewThumb: item.thumbnail_url ?? '' } })}
+    onPress={onPress ?? (() => router.push({ pathname: '/post/[id]', params: { id: item.id, previewUrl: item.media_url ?? '', previewType: item.media_type ?? 'image', previewCaption: item.caption ?? '', previewThumb: item.thumbnail_url ?? '' } }))}
     accessibilityRole="button" accessibilityLabel={item.caption || t('nativeUi.posts')}>
     <View style={[s.image, { backgroundColor: colors.bg.elevated }]}>
       {uri && uri !== failedUri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={160} onError={() => setFailedUri(uri)} recyclingKey={item.id} /> :

@@ -382,7 +382,6 @@ function buildStyles(c: ThemeColors) {
       borderBottomWidth: 2,
       borderBottomColor: 'transparent',
     },
-    tabBtnActive: { borderBottomColor: c.accent.primary },
     tabLabel: { color: c.text.muted, fontSize: 12, fontWeight: '600' },
 
     // ── Grid ──────────────────────────────────────────────────

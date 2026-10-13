@@ -1,6 +1,7 @@
+import { ScrollView,StyleSheet } from 'react-native';
+import { SlidingLabel, SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import { useTheme } from '@/lib/useTheme';
 import { useI18n } from '@/lib/i18n';
-import { Pressable,ScrollView,StyleSheet,Text } from 'react-native';
 
 export function ExploreTagChips({
   tags,
@@ -13,6 +14,8 @@ export function ExploreTagChips({
 }) {
   const { t } = useI18n();
   const { colors, isDark } = useTheme();
+  // Auswahl gleitet als Kapsel wie in der unteren Leiste; „Alle“ hat den Schlüssel ''
+  const selection = useSlidingSelection(activeTag ?? '');
 
   const chip = {
     paddingHorizontal: 16,
@@ -25,19 +28,16 @@ export function ExploreTagChips({
     marginRight: 0,
   } as const;
 
+  // Die gewählte Option ist durchsichtig, darunter liegt die gleitende Kapsel
   const chipActive = {
-    backgroundColor: colors.text.primary,
-    borderColor: colors.text.primary,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   } as const;
 
   const chipText = {
     fontSize: 13,
     fontWeight: '600' as const,
     color: colors.text.secondary,
-  };
-
-  const chipTextActive = {
-    color: colors.bg.primary,
   };
 
   return (
@@ -47,28 +47,32 @@ export function ExploreTagChips({
       style={s.tagScroll}
       contentContainerStyle={s.tagScrollContent}
     >
-      <Pressable
+      <SlidingPill selection={selection} style={[s.pill, { backgroundColor: colors.text.primary }]} />
+      <SpringPressable
         style={[chip, !activeTag && chipActive]}
+        onLayout={selection.onLayoutFor('')}
         accessibilityRole="button" accessibilityState={{ selected: !activeTag }}
         onPress={() => onSelectTag(null)}
       >
-        <Text style={[chipText, !activeTag && chipTextActive]}>{t('explore.all')}</Text>
-      </Pressable>
+        <SlidingLabel selection={selection} optionKey="" color={colors.text.secondary} activeColor={colors.bg.primary} style={chipText}>{t('explore.all')}</SlidingLabel>
+      </SpringPressable>
       {tags.map((tag) => (
-        <Pressable
+        <SpringPressable
           key={tag}
+          onLayout={selection.onLayoutFor(tag)}
           accessibilityRole="button" accessibilityState={{ selected: activeTag === tag }}
           style={[chip, activeTag === tag && chipActive]}
           onPress={() => onSelectTag(activeTag === tag ? null : tag)}
         >
-          <Text style={[chipText, activeTag === tag && chipTextActive]}>{tag}</Text>
-        </Pressable>
+          <SlidingLabel selection={selection} optionKey={tag} color={colors.text.secondary} activeColor={colors.bg.primary} style={chipText}>{tag}</SlidingLabel>
+        </SpringPressable>
       ))}
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
+  pill: { borderRadius: 20 },
   tagScroll: { flexGrow: 0, flexShrink: 0, marginBottom: 4 },
   tagScrollContent: {
     paddingHorizontal: 12,

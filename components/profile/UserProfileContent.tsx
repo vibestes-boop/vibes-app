@@ -29,6 +29,7 @@ import { useIsHostMuted,useToggleMuteHost } from '@/lib/useMutedLiveHosts';
 import { useReportUser } from '@/lib/useReport';
 import { formatEur,useOrderRating,useShopProducts,type Product } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
+import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -159,6 +160,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
   const [likedLoading, setLikedLoading] = useState(false);
   const [repostLoading, setRepostLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'liked' | 'reposts' | 'battles' | 'shop'>('posts');
+  // Unterstreichung gleitet mit Feder zum gewählten Reiter (wie die Auswahl der unteren Leiste)
+  const tabLine = useSlidingSelection(activeTab, { underline: 2 });
 
   // v1.17.0: Battle-History Tab nur zeigen wenn der User schon gebattled hat.
   const { data: battleStats } = useBattleStats(id);
@@ -698,44 +701,50 @@ export function UserProfileContent({ userId, onBack }: Props) {
 
       {/* ── TABS ── */}
       <View style={[s.tabBar, { borderTopColor: colors.border.subtle, backgroundColor: colors.bg.secondary }]}>
-        <Pressable
-          style={[s.tab, activeTab === 'posts' && [s.tabActive, { borderBottomColor: colors.text.primary }]]}
+        <SlidingPill selection={tabLine} style={{ borderRadius: 1, backgroundColor: activeTab === 'liked' ? '#F472B6' : activeTab === 'battles' ? '#FF2E63' : colors.text.primary }} />
+        <SpringPressable
+          style={s.tab}
+          onLayout={tabLine.onLayoutFor('posts')}
           onPress={() => { setActiveTab('posts'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
         >
           <Grid3X3 size={24} color={activeTab === 'posts' ? colors.text.primary : colors.icon.muted} strokeWidth={2} />
           {postCount > 0 && activeTab === 'posts' && (
             <View style={[s.gridCountPill, { backgroundColor: colors.bg.elevated }]}><Text style={[s.gridCountText, { color: colors.text.primary }]}>{postCount}</Text></View>
           )}
-        </Pressable>
-        <Pressable
-          style={[s.tab, activeTab === 'liked' && [s.tabActive, { borderBottomColor: '#F472B6' }]]}
+        </SpringPressable>
+        <SpringPressable
+          style={s.tab}
+          onLayout={tabLine.onLayoutFor('liked')}
           onPress={() => { setActiveTab('liked'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
         >
           <Heart size={24} color={activeTab === 'liked' ? '#F472B6' : colors.icon.muted} fill={activeTab === 'liked' ? '#F472B6' : 'transparent'} strokeWidth={2} />
-        </Pressable>
-        <Pressable
-          style={[s.tab, activeTab === 'reposts' && [s.tabActive, { borderBottomColor: colors.text.primary }]]}
+        </SpringPressable>
+        <SpringPressable
+          style={s.tab}
+          onLayout={tabLine.onLayoutFor('reposts')}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setActiveTab('reposts');
           }}
         >
           <Repeat2 size={24} color={activeTab === 'reposts' ? colors.text.primary : colors.icon.muted} strokeWidth={2} />
-        </Pressable>
+        </SpringPressable>
         {showBattlesTab && (
-          <Pressable
-            style={[s.tab, activeTab === 'battles' && [s.tabActive, { borderBottomColor: '#FF2E63' }]]}
+          <SpringPressable
+            style={s.tab}
+            onLayout={tabLine.onLayoutFor('battles')}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setActiveTab('battles');
             }}
           >
             <Swords size={24} color={activeTab === 'battles' ? '#FF2E63' : colors.icon.muted} strokeWidth={2} />
-          </Pressable>
+          </SpringPressable>
         )}
         {showShopTab && (
-          <Pressable
-            style={[s.tab, activeTab === 'shop' && [s.tabActive, { borderBottomColor: colors.text.primary }]]}
+          <SpringPressable
+            style={s.tab}
+            onLayout={tabLine.onLayoutFor('shop')}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setActiveTab('shop');
@@ -747,7 +756,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <Text style={[s.gridCountText, { color: colors.text.primary }]}>{shopProducts.length}</Text>
               </View>
             )}
-          </Pressable>
+          </SpringPressable>
         )}
       </View>
     </View>
@@ -1144,7 +1153,6 @@ const s = StyleSheet.create({
   editBtnText: { fontSize: 14, fontWeight: '600' },
   tabBar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.07)', marginTop: 8 },
   tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: 'transparent' },   // set inline via colors.text.primary
   tabLabelActive: {},   // color set inline
   gridCountPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   gridCountText: { fontSize: 11, fontWeight: '700' },
