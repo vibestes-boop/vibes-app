@@ -189,6 +189,7 @@ type PostDetail = {
   audio_url: string | null;
   audio_volume: number | null;
   bunny_video_id: string | null;
+  thumbnail_url: string | null;
   profiles: { username: string; avatar_url: string | null } | null;
 };
 
@@ -264,11 +265,13 @@ function CommentButtonDetail({ postId, onPress }: { postId: string; onPress: () 
 
 export default function PostDetailScreen() {
   useThemedStatusBar('light');
-  const { id, previewUrl, previewType, previewCaption, openComments } = useLocalSearchParams<{
+  const { id, previewUrl, previewType, previewCaption, previewThumb, openComments } = useLocalSearchParams<{
     id: string;
     previewUrl?: string;
     previewType?: string;
     previewCaption?: string;
+    /** Standbild des Videos, solange es lädt (z. B. aus dem Entdecken-Raster) */
+    previewThumb?: string;
     openComments?: string;
   }>();
   const router = useRouter();
@@ -492,9 +495,9 @@ export default function PostDetailScreen() {
         setSwipeDir(null);
         const THRESHOLD = 70;
         if (gs.dy < -THRESHOLD && nextPostId) {
-          router.replace({ pathname: '/post/[id]', params: { id: nextPostId } });
+          router.replace({ pathname: '/post/[id]', params: { id: nextPostId, swipe: 'next' } });
         } else if (gs.dy > THRESHOLD && prevPostId) {
-          router.replace({ pathname: '/post/[id]', params: { id: prevPostId } });
+          router.replace({ pathname: '/post/[id]', params: { id: prevPostId, swipe: 'prev' } });
         }
       },
       onPanResponderTerminate: () => setSwipeDir(null),
@@ -517,7 +520,7 @@ export default function PostDetailScreen() {
         // Jetzt: ~150ms (ein Round-Trip mit JOIN).
         const { data: postData, error: postErr } = await supabase
           .from('posts')
-          .select('id, caption, media_url, media_type, tags, created_at, author_id, audio_url, audio_volume, bunny_video_id, profiles!author_id(username, avatar_url)')
+          .select('id, caption, media_url, media_type, tags, created_at, author_id, audio_url, audio_volume, bunny_video_id, thumbnail_url, profiles!author_id(username, avatar_url)')
           .eq('id', id)
           .single();
 
@@ -537,6 +540,7 @@ export default function PostDetailScreen() {
           audio_url: (postData as any).audio_url ?? null,
           audio_volume: (postData as any).audio_volume ?? null,
           bunny_video_id: (postData as any).bunny_video_id ?? null,
+          thumbnail_url: (postData as any).thumbnail_url ?? null,
           profiles: profileData,
         } as PostDetail);
         // Ref setzen für PanResponder (stale-closure-sicher)
@@ -698,6 +702,7 @@ export default function PostDetailScreen() {
                 onProgress={handleProgress}
                 restartSignal={restartSignal}
                 bunnyVideoId={post?.bunny_video_id ?? null}
+                thumbnailUrl={post?.thumbnail_url ?? (previewThumb || null)}
               />
             ) : (
               <FallbackFeedVideo
@@ -707,6 +712,7 @@ export default function PostDetailScreen() {
                 isMuted={isMuted}
                 onProgress={handleProgress}
                 restartSignal={restartSignal}
+                thumbnailUrl={post?.thumbnail_url ?? (previewThumb || null)}
               />
             )
           ) : (

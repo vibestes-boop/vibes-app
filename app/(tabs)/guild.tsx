@@ -27,6 +27,7 @@ type StoryGroup,
 import { guildFeedActions,useTabRefreshStore } from "@/lib/useTabRefresh";
 import { useTheme } from "@/lib/useTheme";
 import { useThemedStatusBar } from "@/lib/useThemedStatusBar";
+import { useTabBarScroll } from "@/lib/tabBarMotion";
 import { Image } from "expo-image";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { useFocusEffect,useRouter } from "expo-router";
@@ -60,6 +61,7 @@ export default function GuildScreen() {
   // Guild-Commerce: offene Sammelbestellungs-Runde → „Jetzt aktiv"-Karte
   const { data: activeRound } = useActivePreorderRound();
   const listRef = useRef<FlatList<GuildPost>>(null);
+  const tabBarScroll = useTabBarScroll();
   const setGuildRefreshing = useTabRefreshStore((s) => s.setGuildRefreshing);
   const guildRefreshTick = useTabRefreshStore((s) => s.guildRefreshTick);
 
@@ -294,6 +296,8 @@ export default function GuildScreen() {
         <FlatList
           ref={listRef}
           data={posts}
+          onScroll={tabBarScroll}
+          scrollEventThrottle={16}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           windowSize={3}

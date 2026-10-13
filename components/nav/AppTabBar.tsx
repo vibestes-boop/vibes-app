@@ -1,37 +1,97 @@
-import { Compass, MessageCircle, User, Zap } from 'lucide-react-native';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Compass, MessageCircle, User, Zap, type LucideIcon } from 'lucide-react-native';
+import { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { useI18n } from '@/lib/i18n';
+import { tabBarCompact } from '@/lib/tabBarMotion';
 import { TabGlyph } from './TabGlyph';
 
-export function AppTabBar({ focusedRoute, bottomInset, unreadMessages = 0, unreadNotifications = 0, refreshing = false, onNavigate, onCreate }: {
+// Animated.View über require: der Default-Import crasht in Hermes HBC (siehe OfflineBanner)
+/* eslint-disable @typescript-eslint/no-require-imports */
+const _ra = require('react-native-reanimated') as any;
+const AnimatedView = (_ra?.default ?? _ra)?.View ?? View;
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+// Schwebende Kapsel wie bei Instagram: nur Symbole, die Auswahl gleitet als
+// Kapsel von Tab zu Tab, und beim Runterscrollen wird die Leiste kompakter.
+const ITEM_H = 52;
+const PAD = 4;
+const COMPACT_SCALE = 0.86;
+const SLIDE = { damping: 20, stiffness: 260, mass: 0.8 };
+const PRESS = { damping: 18, stiffness: 420, mass: 0.6 };
+
+type Item = { route: string; label: string; icon?: LucideIcon };
+
+function TabButton({ item, selected, badge, loading, onPress }: {
+  item: Item; selected: boolean; badge: number; loading: boolean; onPress: () => void;
+}) {
+  const create = item.route === 'create';
+  const scale = useSharedValue(1);
+  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return <Pressable accessibilityRole={create ? 'button' : 'tab'} accessibilityLabel={item.label}
+    accessibilityState={create ? undefined : { selected }} onPress={onPress} style={s.item}
+    onPressIn={() => { scale.value = withSpring(0.86, PRESS); }} onPressOut={() => { scale.value = withSpring(1, PRESS); }}>
+    <AnimatedView style={pressStyle}>
+      <TabGlyph icon={item.icon} create={create} selected={selected} loading={loading} badge={badge} />
+    </AnimatedView>
+  </Pressable>;
+}
+
+export function AppTabBar({ focusedRoute, bottomInset, unreadMessages = 0, unreadNotifications = 0, refreshing = false, compactable = true, onNavigate, onCreate }: {
   focusedRoute: string; bottomInset: number; unreadMessages?: number; unreadNotifications?: number; refreshing?: boolean;
+  /** false für Vorschauen (Einstellungen): die Leiste reagiert dann nicht aufs Scrollen */
+  compactable?: boolean;
   onNavigate: (route: string) => void; onCreate: () => void;
 }) {
   const { t } = useI18n();
-  const items = [
+  const items: Item[] = [
     { route: 'index', label: t('tabs.home'), icon: Zap },
     { route: 'explore', label: t('tabs.explore'), icon: Compass },
-    { route: 'create', label: t('nativeUi.create'), icon: undefined },
+    { route: 'create', label: t('nativeUi.createPost') },
     { route: 'messages', label: t('tabs.messages'), icon: MessageCircle },
     { route: 'profile', label: t('tabs.profile'), icon: User },
   ];
   const selected = ['guild', 'shop'].includes(focusedRoute) ? 'explore' : focusedRoute === 'notifications' ? 'profile' : focusedRoute;
-  return <View pointerEvents="box-none" style={[s.outer, { paddingBottom: Math.max(bottomInset - 4, 10) }]}>
-    <GlassSurface radius={34} style={s.bar}>
-      {items.map(item => <Pressable key={item.route} accessibilityRole={item.route === 'create' ? 'button' : 'tab'}
-        accessibilityLabel={item.route === 'create' ? t('nativeUi.createPost') : item.label}
-        accessibilityState={item.route === 'create' ? undefined : { selected: selected === item.route }}
-        onPress={() => item.route === 'create' ? onCreate() : onNavigate(item.route)}
-        style={({ pressed }) => [s.item, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}>
-        <TabGlyph icon={item.icon} label={item.label} create={item.route === 'create'} selected={selected === item.route}
-          loading={item.route === 'index' && refreshing} badge={item.route === 'messages' ? unreadMessages : item.route === 'profile' ? unreadNotifications : 0} />
-      </Pressable>)}
-    </GlassSurface>
+  const index = items.findIndex(item => item.route === selected && item.route !== 'create');
+
+  // Breite eines Tabs aus der gemessenen Leiste; die Kapsel springt beim ersten Mal hin
+  const [itemW, setItemW] = useState(0);
+  const x = useSharedValue(0);
+  const placed = useRef(false);
+  useEffect(() => {
+    if (!itemW || index < 0) return;
+    const to = index * itemW;
+    if (placed.current) x.value = withSpring(to, SLIDE);
+    else { x.value = to; placed.current = true; }
+  }, [index, itemW, x]);
+  const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  const barStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: compactable ? 1 - (1 - COMPACT_SCALE) * tabBarCompact.value : 1 }],
+  }), [compactable]);
+
+  return <View pointerEvents="box-none" style={[s.outer, { paddingBottom: Math.max(bottomInset - 6, 10) }]}>
+    <AnimatedView style={[s.wrap, barStyle]}>
+      <GlassSurface radius={(ITEM_H + PAD * 2) / 2} style={s.bar}>
+        <View style={s.row} onLayout={(e: LayoutChangeEvent) => setItemW(e.nativeEvent.layout.width / items.length)}>
+          {itemW > 0 && index >= 0 && <AnimatedView pointerEvents="none" style={[s.pill, { width: itemW }, pillStyle]}>
+            <GlassSurface material="solid" elevated={false} radius={ITEM_H / 2} style={s.pillFace} />
+          </AnimatedView>}
+          {items.map(item => <TabButton key={item.route} item={item} selected={selected === item.route}
+            loading={item.route === 'index' && refreshing}
+            badge={item.route === 'messages' ? unreadMessages : item.route === 'profile' ? unreadNotifications : 0}
+            onPress={() => item.route === 'create' ? onCreate() : onNavigate(item.route)} />)}
+        </View>
+      </GlassSurface>
+    </AnimatedView>
   </View>;
 }
 const s = StyleSheet.create({
-  outer: { paddingHorizontal: 8, paddingTop: 4 },
-  bar: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, paddingHorizontal: 5 },
-  item: { flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center' },
+  outer: { paddingHorizontal: 22, paddingTop: 4, alignItems: 'center' },
+  wrap: { width: '100%', maxWidth: 420 },
+  bar: { padding: PAD },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  pill: { position: 'absolute', left: 0, top: 0, height: ITEM_H, paddingHorizontal: 2 },
+  pillFace: { flex: 1 },
+  item: { flex: 1, height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
 });

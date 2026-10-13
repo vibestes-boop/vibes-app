@@ -9,10 +9,16 @@ jest.mock('@/lib/useTheme', () => ({ useTheme: () => ({ colors: require('@/lib/t
 jest.mock('expo-image', () => ({ Image: (props: object) => require('react').createElement(require('react-native').Image, { ...props, testID: 'media-image' }) }));
 const item = { id: 'post-1', author_id: 'author-1', profiles: { username: 'amir', avatar_url: null }, media_type: 'image', media_url: 'https://example.test/photo.jpg', caption: 'A landscape' };
 beforeEach(() => mockPush.mockClear());
-it('opens the post from its media card', () => {
+it('opens the post from its media card with an instant preview', () => {
   const screen = render(<ExploreGridItem item={item} width={192} />);
   fireEvent.press(screen.getByLabelText('A landscape'));
-  expect(mockPush).toHaveBeenCalledWith({ pathname: '/post/[id]', params: { id: 'post-1' } });
+  expect(mockPush).toHaveBeenCalledWith({ pathname: '/post/[id]', params: { id: 'post-1', previewUrl: 'https://example.test/photo.jpg', previewType: 'image', previewCaption: 'A landscape', previewThumb: '' } });
+});
+it('hands a video post its still image so the detail never opens black', () => {
+  const video = { ...item, media_type: 'video', media_url: 'https://example.test/clip.mp4', thumbnail_url: 'https://example.test/cover.jpg' };
+  const screen = render(<ExploreGridItem item={video} />);
+  fireEvent.press(screen.getByLabelText('A landscape'));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: '/post/[id]', params: { id: 'post-1', previewUrl: video.media_url, previewType: 'video', previewCaption: 'A landscape', previewThumb: video.thumbnail_url } });
 });
 it('opens the author independently without forwarding the press to the post', () => {
   const screen = render(<ExploreGridItem item={item} />);

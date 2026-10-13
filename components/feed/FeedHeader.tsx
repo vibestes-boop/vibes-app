@@ -31,7 +31,7 @@ export function FeedHeader({ mode, top, overMedia = false, onModeChange, onSearc
 }
 const s = StyleSheet.create({
   bar: { position: 'absolute', left: 0, right: 0, zIndex: 25, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16 },
-  brand: { width: 57, justifyContent: 'center', minHeight: 44 },
+  brand: { flexShrink: 0, justifyContent: 'center', minHeight: 44 },
   mediaShadow: { shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 1 } },
   segment: { flex: 1, minWidth: 0, flexDirection: 'row', padding: 4, borderRadius: 27 },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 23, paddingHorizontal: 4 },

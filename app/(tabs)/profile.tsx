@@ -49,6 +49,7 @@ Trash2
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {Alert,FlatList,Pressable,RefreshControl,StyleSheet,Text,View } from 'react-native';
 import { formatEur,useShopProducts,type Product } from '@/lib/useShop';
+import { useTabBarScroll } from '@/lib/tabBarMotion';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -67,6 +68,7 @@ export default function ProfileScreen() {
   const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
+  const tabBarScroll = useTabBarScroll();
   const router = useRouter();
   const { colors } = useTheme();
   const s = getProfileStyles(colors);
@@ -401,6 +403,8 @@ export default function ProfileScreen() {
         columnWrapperStyle={{ gap: GRID_GAP }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100, gap: GRID_GAP }}
+        onScroll={tabBarScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={false}

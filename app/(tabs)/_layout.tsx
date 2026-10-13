@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AppTabBar } from '@/components/nav/AppTabBar';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs, useRouter } from 'expo-router';
@@ -6,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUnreadDMCount } from '@/lib/useMessages';
 import { useUnreadCount } from '@/lib/useNotifications';
 import { useNotificationsRealtime } from '@/lib/useNotificationsRealtime';
+import { setTabBarCompact } from '@/lib/tabBarMotion';
 import { useTabRefreshStore, vibesFeedActions } from '@/lib/useTabRefresh';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
@@ -19,6 +21,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const refresh = useTabRefreshStore(s => s.triggerVibesRefresh);
   const refreshing = useTabRefreshStore(s => s.isVibesRefreshing);
   const focusedRoute = state.routes[state.index]?.name ?? 'index';
+  // Neuer Tab: Leiste wieder voll, wie bei Instagram
+  useEffect(() => { setTabBarCompact(false); }, [focusedRoute]);
   return <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
     <AppTabBar focusedRoute={focusedRoute} bottomInset={insets.bottom} unreadMessages={unreadDMs} unreadNotifications={unreadNotifs} refreshing={refreshing}
       onCreate={() => { impactAsync(ImpactFeedbackStyle.Medium); router.push('/create/start'); }}

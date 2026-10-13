@@ -17,7 +17,7 @@ export function ExploreGridItem({ item, width }: { item: ExplorePostThumb; width
   const uri = isVideo ? item.thumbnail_url : item.media_url;
   const [failedUri, setFailedUri] = useState<string | null>(null);
   return <Pressable style={({ pressed }) => [s.card, { width, flex: width ? undefined : 1, backgroundColor: colors.bg.secondary, borderColor: colors.border.default, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
-    onPress={() => router.push({ pathname: '/post/[id]', params: { id: item.id } })}
+    onPress={() => router.push({ pathname: '/post/[id]', params: { id: item.id, previewUrl: item.media_url ?? '', previewType: item.media_type ?? 'image', previewCaption: item.caption ?? '', previewThumb: item.thumbnail_url ?? '' } })}
     accessibilityRole="button" accessibilityLabel={item.caption || t('nativeUi.posts')}>
     <View style={[s.image, { backgroundColor: colors.bg.elevated }]}>
       {uri && uri !== failedUri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={160} onError={() => setFailedUri(uri)} recyclingKey={item.id} /> :

@@ -31,6 +31,7 @@ import { timeAgo } from '@/lib/timeAgo';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useI18n } from '@/lib/i18n';
+import { useTabBarScroll } from '@/lib/tabBarMotion';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 
@@ -194,6 +195,7 @@ export default function MessagesScreen() {
   const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
+  const tabBarScroll = useTabBarScroll();
   const { colors } = useTheme();
   const { preSelectUserId } = useLocalSearchParams<{ preSelectUserId?: string }>();
   const [showNew, setShowNew] = useState(false);
@@ -355,6 +357,8 @@ export default function MessagesScreen() {
             </View>
           }
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+          onScroll={tabBarScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
