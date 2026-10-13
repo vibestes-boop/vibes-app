@@ -104,7 +104,8 @@ export function useTrendingTags() {
   });
 }
 
-export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
+/** `enabled: false`, wenn ein Bildschirm den Hook nur in einem Modus braucht (user-posts aus Entdecken). */
+export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode, { enabled = true }: { enabled?: boolean } = {}) {
   const userId = useAuthStore(s => s.profile?.id);
   const normalizedTag = tag?.trim().toLowerCase() || null;
   return useInfiniteQuery({
@@ -134,6 +135,7 @@ export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
       return lastPage.length === 30 ? allPages.length : undefined;
     },
     staleTime: 1000 * 60 * 5,   // 5 Min (war 1 Min) — vermeidet Re-Fetch beim Tab-Wechsel
+    enabled,
   });
 }
 

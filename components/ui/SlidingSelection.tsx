@@ -38,6 +38,9 @@ export function useSlidingSelection(selected: string | null, { underline = 0, pe
   const y = useSharedValue(saved?.y ?? 0);
   const w = useSharedValue(saved?.w ?? 0);
   const h = useSharedValue(saved?.h ?? 0);
+  // Sichtbarkeit als Wert auf dem UI-Thread: Die Kapsel ist immer eingehängt und wird
+  // nur eingeblendet. Erst beim Einhängen gesetzte Werte kamen sonst nie an.
+  const shown = useSharedValue(saved ? 1 : 0);
   // Lage aller Optionen auch auf dem UI-Thread, damit Beschriftungen ihre Farbe
   // mit der vorbeigleitenden Kapsel überblenden können (SlidingLabel)
   const framesSV = useSharedValue<Record<string, Frame>>({});
@@ -51,6 +54,7 @@ export function useSlidingSelection(selected: string | null, { underline = 0, pe
     const top = underline ? f.y + f.height - underline : f.y;
     const height = underline || f.height;
     if (persistKey) lastPlace.set(persistKey, { x: f.x, y: top, w: f.width, h: height });
+    shown.value = 1;
     if (placed.current) {
       x.value = withSpring(f.x, SLIDE_SPRING);
       y.value = withSpring(top, SLIDE_SPRING);
@@ -65,9 +69,12 @@ export function useSlidingSelection(selected: string | null, { underline = 0, pe
       placed.current = true;
       setReady(true);
     }
-  }, [underline, persistKey, x, y, w, h]);
+  }, [underline, persistKey, x, y, w, h, shown]);
 
-  useEffect(() => { moveTo(selected); }, [selected, moveTo]);
+  useEffect(() => {
+    if (selected == null) shown.value = 0;
+    else moveTo(selected);
+  }, [selected, moveTo, shown]);
 
   const onLayoutFor = useCallback((key: string) => (e: LayoutChangeEvent) => {
     const { x: fx, y: fy, width, height } = e.nativeEvent.layout;
@@ -77,12 +84,13 @@ export function useSlidingSelection(selected: string | null, { underline = 0, pe
   }, [moveTo, framesSV]);
 
   const pillStyle = useAnimatedStyle(() => ({
+    opacity: shown.value,
     width: w.value,
     height: h.value,
     transform: [{ translateX: x.value }, { translateY: y.value }],
   }));
 
-  return { onLayoutFor, pillStyle, visible: ready && selected != null, x, y, w, h, framesSV };
+  return { onLayoutFor, pillStyle, visible: ready && selected != null, x, y, w, h, shown, framesSV };
 }
 
 /** Die gleitende Kapsel; als erstes Kind in den Container der Optionen legen.
@@ -92,7 +100,6 @@ export function SlidingPill({ selection, style, children }: {
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
 }) {
-  if (!selection.visible) return null;
   return <AnimatedView pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0 }, style, selection.pillStyle]}>{children}</AnimatedView>;
 }
 
@@ -108,7 +115,7 @@ export function SlidingLabel({ selection, optionKey, color, activeColor, style, 
   activeColor: string;
   style?: StyleProp<TextStyle>;
 }) {
-  const { x, y, w, h, framesSV } = selection;
+  const { x, y, w, h, shown, framesSV } = selection;
   const colorStyle = useAnimatedStyle(() => {
     const f = framesSV.value[optionKey];
     if (!f || w.value <= 0 || h.value <= 0) return { color };
@@ -116,7 +123,7 @@ export function SlidingLabel({ selection, optionKey, color, activeColor, style, 
     const oy = Math.min(y.value + h.value, f.y + f.height) - Math.max(y.value, f.y);
     const tx = Math.max(0, Math.min(1, ox / Math.max(1, Math.min(w.value, f.width))));
     const ty = Math.max(0, Math.min(1, oy / Math.max(1, Math.min(h.value, f.height))));
-    return { color: interpolateColor(tx * ty, [0, 1], [color, activeColor]) };
+    return { color: interpolateColor(tx * ty * shown.value, [0, 1], [color, activeColor]) };
   }, [optionKey, color, activeColor]);
   return <AnimatedText {...props} style={[style, colorStyle]} />;
 }

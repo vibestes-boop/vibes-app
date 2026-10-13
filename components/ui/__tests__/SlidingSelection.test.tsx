@@ -41,6 +41,7 @@ it('legt die Kapsel auf die gewählte Option, sobald deren Lage bekannt ist', ()
   t.lay('a', 0, 80);
   t.lay('b', 90, 100);
   expect(t.sel.visible).toBe(true);
+  expect(t.sel.shown.value).toBe(1);
   expect(t.sel.x.value).toBe(90);
   expect(t.sel.w.value).toBe(100);
 });
@@ -53,6 +54,7 @@ it('gleitet beim Wechsel zur neuen Option und versteckt sich ohne Auswahl', () =
   expect(t.sel.x.value).toBe(90);
   t.rerender(null);
   expect(t.sel.visible).toBe(false);
+  expect(t.sel.shown.value).toBe(0);
 });
 
 it('behandelt einen leeren Schlüssel als Option (z. B. „Alle“)', () => {

@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { usePostPagerStore, type PagerSeed } from '@/lib/postPagerStore';
+import { useExploreGrid, type ExplorePostThumb, type ExploreSortMode } from '@/lib/useExplore';
 import {
 ArrowLeft,
 Bookmark,
@@ -35,7 +36,7 @@ Share2,
 Volume2,
 VolumeX
 } from 'lucide-react-native';
-import { useCallback,useEffect,useRef,useState } from 'react';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -81,6 +82,25 @@ type PostItem = {
   thumbnail_url?: string | null;
   bunny_video_id?: string | null;
 };
+
+// Beitrag aus der Entdecken-Abfrage; Datum und Schlagwörter lädt der Feed nach
+function exploreToPost(p: ExplorePostThumb): PostItem {
+  return {
+    id: p.id,
+    caption: p.caption,
+    media_url: p.media_url,
+    media_type: p.media_type,
+    tags: [],
+    created_at: '',
+    author_id: p.author_id ?? '',
+    username: p.profiles?.username ?? null,
+    avatar_url: p.profiles?.avatar_url ?? null,
+    view_count: p.view_count ?? 0,
+    is_pinned: false,
+    thumbnail_url: p.thumbnail_url ?? null,
+    bunny_video_id: p.bunny_video_id ?? null,
+  };
+}
 
 // Übergabe aus einem Raster (Entdecken): nur verwenden, wenn alle IDs vorliegen.
 // Datum, Schlagwörter und Pin-Status lädt der Feed danach nach.
@@ -527,13 +547,17 @@ function PostCard({
 
 export default function UserPostsScreen() {
   useThemedStatusBar('light');
-  const { userId, startIndex, username, postIds, title } = useLocalSearchParams<{
+  const { userId, startIndex, username, postIds, title, source, tag, sort } = useLocalSearchParams<{
     userId?: string;
     startIndex?: string;
     username?: string;
     postIds?: string;  // kommagetrennte Post-IDs (für Saved/Reposts)
     /** Überschrift ohne Profil, z. B. „Entdecken“ */
     title?: string;
+    /** 'explore': Beiträge aus der Entdecken-Abfrage, am Ende wird nachgeladen */
+    source?: string;
+    tag?: string;
+    sort?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -541,8 +565,13 @@ export default function UserPostsScreen() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
 
+  // Entdecken: dieselbe Abfrage wie das Raster (gleicher Cache, sofort da), am Ende
+  // lädt der Feed die nächste Seite. Die Suche übergibt dagegen eine feste Liste.
+  const exploreMode = source === 'explore';
+  const grid = useExploreGrid(exploreMode ? (tag || null) : null, (sort as ExploreSortMode) || 'forYou', { enabled: exploreMode });
+  const gridPosts = useMemo(() => (exploreMode ? grid.data?.pages.flat() ?? [] : []), [exploreMode, grid.data]);
   // Aus Entdecken kommen die Beiträge schon mit: sofort zeichnen statt Ladekreis
-  const [seeded] = useState(() => seedPosts(postIds));
+  const [seeded] = useState(() => (exploreMode && gridPosts.length ? gridPosts.map(exploreToPost) : seedPosts(postIds)));
   const [posts, setPosts] = useState<PostItem[]>(seeded ?? []);
   const [loading, setLoading] = useState(!seeded);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -643,6 +672,49 @@ export default function UserPostsScreen() {
         });
     }
   }, [userId, postIds]);
+
+  // Entdecken: neue Seiten der Abfrage hinten anhängen; die vorhandene Reihenfolge
+  // bleibt, damit die aktuelle Seite nicht springt.
+  useEffect(() => {
+    if (!exploreMode) return;
+    setPosts((prev) => {
+      const have = new Set(prev.map((p) => p.id));
+      const fresh = gridPosts.filter((p) => !have.has(p.id)).map(exploreToPost);
+      return fresh.length ? [...prev, ...fresh] : prev;
+    });
+    if (gridPosts.length) setLoading(false);
+  }, [exploreMode, gridPosts]);
+
+  // Entdecken: Datum, Schlagwörter und Pin-Status für Beiträge nachladen, die sie
+  // noch nicht haben. Medienquelle bleibt, sonst startet das Video neu.
+  const detailedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!exploreMode) return;
+    const missing = posts.map((p) => p.id).filter((id) => !detailedRef.current.has(id));
+    if (!missing.length) return;
+    missing.forEach((id) => detailedRef.current.add(id));
+    supabase
+      .from('posts')
+      .select('id, tags, created_at, is_pinned, view_count')
+      .in('id', missing)
+      .then(({ data }) => {
+        if (!data?.length) return;
+        const byId = new Map((data as any[]).map((p) => [p.id, p]));
+        setPosts((prev) => prev.map((p) => {
+          const d = byId.get(p.id);
+          return d ? { ...p, tags: d.tags ?? [], created_at: d.created_at ?? '', is_pinned: d.is_pinned ?? false, view_count: Math.max(p.view_count, d.view_count ?? 0) } : p;
+        }));
+      });
+  }, [exploreMode, posts]);
+
+  // Für onViewableItemsChanged: FlatList hält den ersten Handler fest, darum die
+  // aktuelle Liste über eine Ref lesen (sonst fehlen nachgeladene Beiträge).
+  const postsRef = useRef(posts);
+  postsRef.current = posts;
+
+  const loadMore = () => {
+    if (exploreMode && grid.hasNextPage && !grid.isFetchingNextPage) void grid.fetchNextPage();
+  };
 
   const handleDelete = (postId: string) => {
     Alert.alert(t('posts.deleteTitle'), t('posts.deleteConfirm'), [
@@ -763,11 +835,18 @@ export default function UserPostsScreen() {
           windowSize={3}
           maxToRenderPerBatch={3}
           initialNumToRender={2}
+          onEndReached={loadMore}
+          onEndReachedThreshold={2}
+          ListFooterComponent={exploreMode && grid.hasNextPage ? (
+            <View style={{ height: pageSize.h, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator color="#FFFFFF" />
+            </View>
+          ) : null}
           onViewableItemsChanged={({ viewableItems }) => {
             const idx = viewableItems[0]?.index;
             if (idx != null) {
               setVisibleIndex(idx);
-              const postId = posts[idx]?.id;
+              const postId = postsRef.current[idx]?.id;
               if (postId && !viewedPosts.current.has(postId)) {
                 viewedPosts.current.add(postId);
                 supabase.rpc('increment_post_view', { p_post_id: postId }).then(() => {

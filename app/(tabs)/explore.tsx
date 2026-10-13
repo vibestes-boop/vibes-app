@@ -72,9 +72,15 @@ export default function ExploreScreen() {
   const setPagerSeed = usePostPagerStore((st) => st.setSeed);
   const openPager = useCallback((post: ExplorePostThumb) => {
     const index = Math.max(0, posts.findIndex((p) => p.id === post.id));
+    // Raster: Der Feed liest dieselbe Abfrage (gleicher Cache) und lädt am Ende weiter.
+    if (!isSearching) {
+      router.push({ pathname: '/user-posts', params: { source: 'explore', tag: activeTag ?? '', sort: sortMode, startIndex: String(index), title: t('tabs.explore') } });
+      return;
+    }
+    // Suche: feste Trefferliste, als Übergabe für sofortiges Zeichnen
     setPagerSeed(posts.map((p) => ({ id: p.id, author_id: p.author_id ?? null, media_url: p.media_url, media_type: p.media_type, thumbnail_url: p.thumbnail_url ?? null, bunny_video_id: p.bunny_video_id ?? null, caption: p.caption, username: p.profiles?.username ?? null, avatar_url: p.profiles?.avatar_url ?? null, view_count: p.view_count ?? 0 })));
     router.push({ pathname: '/user-posts', params: { postIds: posts.map((p) => p.id).join(','), startIndex: String(index), title: t('tabs.explore') } });
-  }, [posts, router, setPagerSeed, t]);
+  }, [posts, isSearching, activeTag, sortMode, router, setPagerSeed, t]);
   const sectionHeading = (title: string) => <Text style={[s.sectionTitle, { color: colors.text.primary }]}>{title}</Text>;
   const renderPeople = useCallback(() => <View style={s.section}>
     <View style={{ paddingHorizontal: 20 }}><Text style={[s.sectionTitle, { color: colors.text.primary }]}>{t('nativeUi.people')}</Text></View>
