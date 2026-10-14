@@ -13,6 +13,7 @@ import { useQuery,useQueryClient } from '@tanstack/react-query';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import { useAuthStore } from './authStore';
 import { containsBlockedWord } from './liveModerationWords';
+import { LIVE_SESSION_SELECT } from './liveSessionSelect';
 import { supabase } from './supabase';
 
 export type LiveSession = {
@@ -98,11 +99,14 @@ export function useActiveLiveSessions(options: { enabled?: boolean } = {}) {
   return useQuery<LiveSession[]>({
     queryKey: ['live-sessions-active'],
     queryFn: async () => {
+      // Spaltenliste statt `*`: seit 20260814260000 hat live_sessions Spaltenrechte,
+      // `*` scheitert mit 42501 (die OBS-Zugangsdaten sind gesperrt). Verkettung
+      // statt Template-String, sonst parst supabase-js `${string}` als Spalten.
       // FK explizit (host_id) — sonst HTTP 300 Multiple Choices, weil live_cohosts
       // zusätzliche live_sessions↔profiles Relationships erzeugt (user_id, invited_by).
       const { data, error } = await supabase
         .from('live_sessions')
-        .select('*, profiles!host_id(username, avatar_url)')
+        .select(LIVE_SESSION_SELECT + ', profiles!host_id(username, avatar_url)')
         .eq('status', 'active')
         // `live_sessions` teilt sich Serlo mit Berkat (gleiche Supabase-Instanz).
         // Ohne diesen Filter landete jede Berkat-Auktions-Show im Live-Bereich
@@ -111,7 +115,8 @@ export function useActiveLiveSessions(options: { enabled?: boolean } = {}) {
         .eq('app', 'serlo')
         .gte('started_at', new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString()) // max 8h alte Sessions
         .order('viewer_count', { ascending: false })
-        .limit(20);
+        .limit(20)
+        .overrideTypes<LiveSession[], { merge: false }>();
       if (error) throw error;
       // Deduplizierung nach host_id
       const seen = new Set<string>();
@@ -178,14 +183,18 @@ export function useLiveSession(sessionId: string | null) {
     queryKey: ['live-session', sessionId],
     queryFn: async () => {
       if (!sessionId) return null;
+      // Spaltenliste statt `*`: seit 20260814260000 hat live_sessions Spaltenrechte,
+      // `*` scheitert mit 42501 (die OBS-Zugangsdaten sind gesperrt). Verkettung
+      // statt Template-String, sonst parst supabase-js `${string}` als Spalten.
       // FK explizit (host_id) — sonst HTTP 300 Multiple Choices, weil live_cohosts
       // zusätzliche live_sessions↔profiles Relationships erzeugt (user_id, invited_by).
       // maybeSingle() statt single() — kein 406 wenn Row (z.B. wegen RLS) fehlt.
       const { data, error } = await supabase
         .from('live_sessions')
-        .select('*, profiles!host_id(username, avatar_url)')
+        .select(LIVE_SESSION_SELECT + ', profiles!host_id(username, avatar_url)')
         .eq('id', sessionId)
-        .maybeSingle();
+        .maybeSingle()
+        .overrideTypes<LiveSession, { merge: false }>();
       if (error) {
         Sentry.captureMessage('useLiveSession query failed', {
           level: 'error',
