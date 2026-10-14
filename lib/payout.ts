@@ -4,6 +4,10 @@
  * Extrahiert aus app/creator/payout-request.tsx, damit die Diamanten→Euro-Umrechnung
  * (hier verlässt echtes Geld das System) unit-testbar ist und nicht im Screen vergraben
  * liegt. Wert-identisch zur vorherigen Inline-Logik (RATE 0.02, Min 2500).
+ *
+ * ⚠️ Der Server prüft dieselben zwei Werte im Trigger `public.payout_requests_guard()`
+ * (supabase/migrations/20261014120000_payout_requests_guard.sql) und rechnet
+ * `euro_amount` selbst. Nur zusammen ändern, sonst lehnt die DB Anträge ab.
  */
 
 /** Wechselkurs: 1 Diamant = 2 Cent. */
