@@ -1492,7 +1492,7 @@ export const en: DeepPartial<Messages> = {
     creatorStudio: 'Creator Studio',
     creatorStudioSub: 'Earnings, analytics, top posts',
     becomeCreator: 'Become a creator ✦',
-    becomeCreatorSub: 'Free · Instant access · Monetization',
+    becomeCreatorSub: 'Free · Monetization',
     creatorStudioOpen: 'Open Creator Studio',
     becomeCreatorA11y: 'Become a creator',
     adminPanel: 'Admin Panel',

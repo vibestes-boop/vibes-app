@@ -64,50 +64,6 @@ export function useAdminUsers(query: string) {
   });
 }
 
-// ─── User-Aktionen ────────────────────────────────────────────────────────────
-
-export function useAdminBanUser() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, ban }: { userId: string; ban: boolean }) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_banned: ban })
-        .eq('id', userId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
-  });
-}
-
-export function useAdminVerifyUser() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, verify }: { userId: string; verify: boolean }) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_verified: verify })
-        .eq('id', userId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
-  });
-}
-
-export function useAdminToggleAdmin() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, isAdmin }: { userId: string; isAdmin: boolean }) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: isAdmin })
-        .eq('id', userId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
-  });
-}
-
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
 export interface ContentReport {

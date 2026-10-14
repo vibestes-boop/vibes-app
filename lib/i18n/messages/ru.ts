@@ -1580,7 +1580,7 @@ export const ru: DeepPartial<Messages> = {
     creatorStudio: 'Creator Studio',
     creatorStudioSub: 'Доходы, аналитика, топ-посты',
     becomeCreator: 'Стать автором ✦',
-    becomeCreatorSub: 'Бесплатно · Сразу · Монетизация',
+    becomeCreatorSub: 'Бесплатно · Монетизация',
     creatorStudioOpen: 'Открыть Creator Studio',
     becomeCreatorA11y: 'Стать автором',
     adminPanel: 'Admin Panel',
