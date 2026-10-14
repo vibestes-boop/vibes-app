@@ -13,12 +13,22 @@
 -- NICHTS in der DB zurück. Ausgabe erscheint im "Messages/Notices"-Tab.
 -- Ein Fehlschlag bricht mit „✗ …“ ab.
 --
--- Fixtures wie in buy_product.sql: `session_replication_role = replica` nur
--- für das Anlegen der Test-Profile (ohne auth.users-Kette), danach wieder
+-- Fixtures: `session_replication_role = replica` nur für das Anlegen (kein
+-- Signup-Trigger, der selbst ein Profil anlegen würde), danach wieder
 -- `origin`, damit die Wächter auf profiles bei den Proben scharf sind.
+-- ⚠️ Die Konten in auth.users sind nötig, nicht nur die Profile: Postgres
+-- prüft profiles_id_fkey beim ersten UPDATE einer Zeile, die in derselben
+-- Transaktion angelegt wurde, nach — auch wenn die id gleich bleibt
+-- (live am 14.10.2026 mit 23503 gescheitert, bevor diese Zeilen da waren).
 -- ============================================================================
 BEGIN;
 SET LOCAL session_replication_role = replica;
+
+INSERT INTO auth.users (id) VALUES
+  ('a0000000-0000-4000-8000-00000000000a'),
+  ('a0000000-0000-4000-8000-00000000000b'),
+  ('a0000000-0000-4000-8000-00000000000c'),
+  ('a0000000-0000-4000-8000-00000000000d');
 
 INSERT INTO public.profiles (id, username, is_admin, is_moderator) VALUES
   ('a0000000-0000-4000-8000-00000000000a', 'test_rpc_admin',     true,  false),
