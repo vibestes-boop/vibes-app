@@ -9,6 +9,8 @@
 // Sicherheit: Alle Supabase-Calls sind SECURITY DEFINER RPCs oder direkte
 // Tabellenzugriffe — RLS-Policies blocken Nicht-Admin-User auf DB-Ebene.
 // Zusätzlich prüfen wir is_admin im aufrufenden Server-Component (Layout).
+// Fremde Profile (Rolle, Sperre, Haken) gehen NUR über RPCs — RLS lässt
+// auch Admins nur ihr eigenes Profil ändern (siehe „User mutations“).
 // -----------------------------------------------------------------------------
 
 import { revalidatePath } from 'next/cache';
@@ -753,17 +755,25 @@ export async function adminInviteUser(formData: FormData): Promise<ActionResult<
   return { ok: true, data: { user_id: invitedUserId, delivery: 'email' } };
 }
 
+// Rechte-Spalten in fremden Profilen (Rolle, Admin, Haken, Sperre,
+// Einschränkung, Shadowban) ändern NUR die SECURITY-DEFINER-RPCs aus
+// supabase/migrations/20261014160000_admin_profile_privilege_rpcs.sql.
+// Ein direktes `.from('profiles').update()` mit der Admin-Sitzung trifft
+// 0 Zeilen (RLS erlaubt nur das eigene Profil) und meldet KEINEN Fehler — so
+// hat die Konsole bis 14.10.2026 „Rolle gesetzt“ gezeigt, ohne etwas zu
+// ändern. Die RPCs prüfen is_admin() selbst und schreiben den Audit-Eintrag
+// in derselben Transaktion.
+
 export async function adminBanUser(userId: string, ban: boolean): Promise<ActionResult> {
   const { supabase, error: authErr } = await requireAdmin();
   if (authErr) return { ok: false, error: authErr };
+  if (!userId) return { ok: false, error: 'Nutzer-ID fehlt.' };
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ is_banned: ban })
-    .eq('id', userId);
-
-  if (error) return { ok: false, error: error.message };
-  await recordAdminUserAction(supabase, userId, ban ? 'admin.user.ban' : 'admin.user.unban', { is_banned: ban });
+  const result = await callAdminProfileRpc(supabase, 'admin_set_user_banned', {
+    p_user_id: userId,
+    p_banned: ban,
+  });
+  if (!result.ok) return result;
   revalidatePath('/admin/users');
   return { ok: true };
 }
@@ -771,14 +781,13 @@ export async function adminBanUser(userId: string, ban: boolean): Promise<Action
 export async function adminVerifyUser(userId: string, verify: boolean): Promise<ActionResult> {
   const { supabase, error: authErr } = await requireAdmin();
   if (authErr) return { ok: false, error: authErr };
+  if (!userId) return { ok: false, error: 'Nutzer-ID fehlt.' };
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ is_verified: verify })
-    .eq('id', userId);
-
-  if (error) return { ok: false, error: error.message };
-  await recordAdminUserAction(supabase, userId, verify ? 'admin.user.verify' : 'admin.user.unverify', { is_verified: verify });
+  const result = await callAdminProfileRpc(supabase, 'admin_set_user_verified', {
+    p_user_id: userId,
+    p_verified: verify,
+  });
+  if (!result.ok) return result;
   revalidatePath('/admin/users');
   return { ok: true };
 }
@@ -786,14 +795,13 @@ export async function adminVerifyUser(userId: string, verify: boolean): Promise<
 export async function adminToggleAdmin(userId: string, isAdmin: boolean): Promise<ActionResult> {
   const { supabase, error: authErr } = await requireAdmin();
   if (authErr) return { ok: false, error: authErr };
+  if (!userId) return { ok: false, error: 'Nutzer-ID fehlt.' };
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ is_admin: isAdmin })
-    .eq('id', userId);
-
-  if (error) return { ok: false, error: error.message };
-  await recordAdminUserAction(supabase, userId, isAdmin ? 'admin.user.make_admin' : 'admin.user.remove_admin', { is_admin: isAdmin });
+  const result = await callAdminProfileRpc(supabase, 'admin_set_user_admin', {
+    p_user_id: userId,
+    p_is_admin: isAdmin,
+  });
+  if (!result.ok) return result;
   revalidatePath('/admin/users');
   return { ok: true };
 }
@@ -806,23 +814,14 @@ export async function adminSetUserRole(userId: string, role: AdminAssignableUser
     return { ok: false, error: 'Diese Rolle ist nicht erlaubt.' };
   }
   if (user?.id === userId && role !== 'admin') {
-    return { ok: false, error: 'Du kannst dir nicht selbst Admin-Rechte entziehen.' };
+    return { ok: false, error: ADMIN_PROFILE_RPC_ERRORS.cannot_demote_self };
   }
 
-  const patch = {
-    is_admin: role === 'admin',
-    is_moderator: role === 'moderator',
-    is_operator: role === 'operator',
-    is_creator_ops: role === 'creator_ops',
-    is_creator: role === 'creator',
-  };
-  const { error } = await supabase
-    .from('profiles')
-    .update(patch)
-    .eq('id', userId);
-
-  if (error) return { ok: false, error: error.message };
-  await recordAdminUserAction(supabase, userId, 'admin.user.set_role', { role, ...patch });
+  const result = await callAdminProfileRpc(supabase, 'admin_set_user_role', {
+    p_user_id: userId,
+    p_role: role,
+  });
+  if (!result.ok) return result;
   revalidatePath('/admin/users');
   revalidatePath('/admin/command-center');
   return { ok: true };
@@ -836,23 +835,12 @@ export async function adminSetUserSafetyState(
   if (authErr) return { ok: false, error: authErr };
   if (!userId) return { ok: false, error: 'Nutzer-ID fehlt.' };
 
-  const restrictedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  const patch =
-    action === 'restrict'
-      ? { is_restricted: true, restricted_until: restrictedUntil }
-      : action === 'unrestrict'
-        ? { is_restricted: false, restricted_until: null }
-        : action === 'shadowban'
-          ? { is_shadow_banned: true }
-          : { is_shadow_banned: false };
-
-  const { error } = await supabase
-    .from('profiles')
-    .update(patch)
-    .eq('id', userId);
-
-  if (error) return { ok: false, error: error.message };
-  await recordAdminUserAction(supabase, userId, `admin.user.${action}`, patch);
+  // Die Einschränkung (30 Tage) rechnet die Datenbank, nicht der Server-Takt.
+  const result = await callAdminProfileRpc(supabase, 'admin_set_user_safety_state', {
+    p_user_id: userId,
+    p_action: action,
+  });
+  if (!result.ok) return result;
   revalidatePath('/admin/users');
   revalidatePath('/admin/reports');
   revalidatePath('/admin/command-center');
@@ -2616,6 +2604,42 @@ async function recordAdminUserAction(
     p_action: action,
     p_metadata: metadata,
   });
+}
+
+type AdminProfileRpc =
+  | 'admin_set_user_role'
+  | 'admin_set_user_admin'
+  | 'admin_set_user_verified'
+  | 'admin_set_user_banned'
+  | 'admin_set_user_safety_state';
+
+// Meldungen der RPCs (RAISE EXCEPTION '<code>') → Text für die Konsole.
+const ADMIN_PROFILE_RPC_ERRORS: Record<string, string> = {
+  not_authenticated: 'Bitte zuerst anmelden.',
+  not_admin: 'Keine ausreichende Berechtigung.',
+  cannot_demote_self: 'Du kannst dir nicht selbst Admin-Rechte entziehen.',
+  cannot_sanction_self: 'Du kannst dich nicht selbst sperren oder einschränken.',
+  profile_not_found: 'Nutzer nicht gefunden.',
+  invalid_role: 'Diese Rolle ist nicht erlaubt.',
+  invalid_action: 'Diese Aktion ist nicht erlaubt.',
+  invalid_input: 'Ungültige Eingabe.',
+};
+
+async function callAdminProfileRpc(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  fn: AdminProfileRpc,
+  args: Record<string, unknown>,
+): Promise<ActionResult> {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) {
+    return { ok: false, error: ADMIN_PROFILE_RPC_ERRORS[error.message] ?? error.message };
+  }
+  // Nur eine ausdrückliche Bestätigung der Datenbank zählt als gespeichert —
+  // nie wieder „Erfolg“ ohne geänderte Zeile.
+  if ((data as { success?: unknown } | null)?.success !== true) {
+    return { ok: false, error: 'Die Änderung wurde nicht gespeichert.' };
+  }
+  return { ok: true };
 }
 
 async function getRequestOrigin(): Promise<string> {
