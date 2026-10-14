@@ -1,5 +1,6 @@
 -- ============================================================================
 -- creator_analytics_guard.sql — Test zu 20261014130000_creator_analytics_guard.sql
+--                                 und 20261014140000_creator_top_posts_ambiguous.sql
 --
 -- Prüft den auth.uid()-Abgleich in den vier Creator-Auswertungen
 --   get_creator_overview, get_creator_follower_growth,
@@ -11,10 +12,11 @@
 -- Die Aufrufe laufen als `authenticated` mit JWT-Claims — genau der Weg, den
 -- App und Web über PostgREST nehmen.
 --
--- get_creator_top_posts scheitert live an einem bekannten Rumpf-Fehler (42702,
--- „post_id" mehrdeutig, siehe Kopf der Migration). Dort gilt für berechtigte
--- Aufrufer: entweder Zeilen ODER genau 42702 — nur nie 42501. Für fremde IDs
--- muss 42501 kommen, weil der Guard vor der Abfrage steht.
+-- get_creator_top_posts scheiterte bis 20261014140000 bei jedem Aufruf mit
+-- 42702 („post_id" mehrdeutig). Jetzt verlangt der Test Zeilen: die drei
+-- eigenen Beiträge inkl. des privaten, in der richtigen Reihenfolge für
+-- views / likes / comments, mit den richtigen Zahlen und Bildpfaden — und
+-- nie den Beitrag eines anderen Creators.
 --
 -- AUSFÜHREN: kompletten Block in Supabase → SQL Editor einfügen + Run.
 -- SICHER: eine Transaktion mit ROLLBACK — nichts bleibt zurück. Ausgabe im
@@ -33,12 +35,14 @@ INSERT INTO public.profiles (id, username, avatar_url, is_admin) VALUES
   ('c0c0c0c0-0000-4000-8000-00000000000d', 'cag_test_admin',     NULL,               true),
   ('c0c0c0c0-0000-4000-8000-00000000000e', 'cag_test_sender',    'avatars/cag_s.jpg', false);
 
--- Beiträge von A: ein öffentlicher, ein privater Frauen-Only-Beitrag (darf nur A
--- selbst sehen), ein alter außerhalb der 28 Tage.
-INSERT INTO public.posts (id, author_id, caption, media_url, privacy, women_only, view_count, created_at) VALUES
-  ('c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000a', 'cag öffentlich', 'posts/cag1.jpg', 'public',  false, 100, now() - interval '1 day'),
-  ('c0c0c0c0-0000-4000-8000-0000000000f2', 'c0c0c0c0-0000-4000-8000-00000000000a', 'cag GEHEIM',     'posts/cag2.jpg', 'private', true,   50, now() - interval '2 days'),
-  ('c0c0c0c0-0000-4000-8000-0000000000f3', 'c0c0c0c0-0000-4000-8000-00000000000a', 'cag alt',        'posts/cag3.jpg', 'public',  false,  30, now() - interval '40 days');
+-- Beiträge von A: ein öffentliches Video mit Vorschaubild, ein privater Frauen-
+-- Only-Beitrag (darf nur A selbst sehen), ein alter außerhalb der 28 Tage.
+-- Dazu ein Beitrag von B mit den meisten Aufrufen — darf in A's Liste nie stehen.
+INSERT INTO public.posts (id, author_id, caption, media_url, media_type, thumbnail_url, privacy, women_only, view_count, created_at) VALUES
+  ('c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000a', 'cag öffentlich', 'posts/cag1.mp4', 'video', 'thumbnails/cag1.jpg', 'public',  false, 100, now() - interval '1 day'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f2', 'c0c0c0c0-0000-4000-8000-00000000000a', 'cag GEHEIM',     'posts/cag2.jpg', 'image', NULL,                  'private', true,   50, now() - interval '2 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f3', 'c0c0c0c0-0000-4000-8000-00000000000a', 'cag alt',        'posts/cag3.jpg', 'image', NULL,                  'public',  false,  30, now() - interval '40 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f9', 'c0c0c0c0-0000-4000-8000-00000000000b', 'cag fremd',      'posts/cag9.jpg', 'image', NULL,                  'public',  false, 999, now() - interval '1 day');
 
 INSERT INTO public.likes (post_id, user_id) VALUES
   ('c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000b'),
@@ -48,6 +52,28 @@ INSERT INTO public.likes (post_id, user_id) VALUES
 INSERT INTO public.comments (id, post_id, user_id, text, parent_id) VALUES
   ('c0c0c0c0-0000-4000-8000-0000000000c1', 'c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000b', 'cag Kommentar', NULL),
   ('c0c0c0c0-0000-4000-8000-0000000000c2', 'c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000a', 'cag Antwort',   'c0c0c0c0-0000-4000-8000-0000000000c1');
+
+-- Für die Top-Beiträge: jede Sortierung ergibt eine ANDERE Reihenfolge
+--   Beitrag          views  likes  Kommentare (ohne Antworten)
+--   cag öffentlich    100     2     1   (+ 3 Antworten → zählen nicht)
+--   cag GEHEIM         50     3     2
+--   cag alt            30     1     3
+-- Alles vor 60 Tagen: außerhalb beider overview-Fenster (0–28 und 28–56 Tage),
+-- damit 2) dieselben overview-Zahlen prüft; top_posts zählt ohne Zeitgrenze.
+INSERT INTO public.likes (post_id, user_id, created_at) VALUES
+  ('c0c0c0c0-0000-4000-8000-0000000000f2', 'c0c0c0c0-0000-4000-8000-00000000000b', now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f2', 'c0c0c0c0-0000-4000-8000-00000000000d', now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f2', 'c0c0c0c0-0000-4000-8000-00000000000e', now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f3', 'c0c0c0c0-0000-4000-8000-00000000000b', now() - interval '60 days');
+INSERT INTO public.comments (post_id, user_id, text, parent_id, created_at) VALUES
+  ('c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000e', 'cag Antwort 2', 'c0c0c0c0-0000-4000-8000-0000000000c1', now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000b', 'cag Antwort 3', 'c0c0c0c0-0000-4000-8000-0000000000c1', now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f1', 'c0c0c0c0-0000-4000-8000-00000000000d', 'cag Antwort 4', 'c0c0c0c0-0000-4000-8000-0000000000c1', now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f2', 'c0c0c0c0-0000-4000-8000-00000000000b', 'cag K2a', NULL, now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f2', 'c0c0c0c0-0000-4000-8000-00000000000e', 'cag K2b', NULL, now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f3', 'c0c0c0c0-0000-4000-8000-00000000000b', 'cag K3a', NULL, now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f3', 'c0c0c0c0-0000-4000-8000-00000000000e', 'cag K3b', NULL, now() - interval '60 days'),
+  ('c0c0c0c0-0000-4000-8000-0000000000f3', 'c0c0c0c0-0000-4000-8000-00000000000d', 'cag K3c', NULL, now() - interval '60 days');
 
 -- B folgt A seit gestern (neue Periode), der Schenker seit 35 Tagen (Vorperiode)
 INSERT INTO public.follows (follower_id, following_id, created_at) VALUES
@@ -66,6 +92,7 @@ DECLARE
   a    uuid := 'c0c0c0c0-0000-4000-8000-00000000000a';
   b    uuid := 'c0c0c0c0-0000-4000-8000-00000000000b';
   adm  uuid := 'c0c0c0c0-0000-4000-8000-00000000000d';
+  f1   uuid := 'c0c0c0c0-0000-4000-8000-0000000000f1';
   ov   record;
   gh   record;
   n    bigint;
@@ -149,16 +176,49 @@ BEGIN
          AND gh.gift_emoji = '🌹' AND gh.diamond_value = 5,
          format('2) gift_history: Schenker/Gift falsch: %s / %s / %s / %s', gh.sender_name, gh.sender_avatar, gh.gift_emoji, gh.diamond_value);
 
-  BEGIN
-    SELECT count(*), bool_or(caption = 'cag GEHEIM')
-      INTO n, hit FROM public.get_creator_top_posts(a, 'views', 10);
-    ASSERT n = 3 AND hit, '2) top_posts: 3 eigene Beiträge inkl. privatem erwartet, war: '||n;
-    RAISE NOTICE '✓ 2) top_posts eigene ID: % Beiträge (Rumpf-Fehler 42702 offenbar behoben)', n;
-  EXCEPTION WHEN ambiguous_column THEN
-    RAISE WARNING '2) get_creator_top_posts: bekannter Rumpf-Fehler 42702 (post_id mehrdeutig) — Guard lässt die eigene ID durch, die Abfrage scheitert wie live';
-  END;
   RESET ROLE;
   RAISE NOTICE '✓ 2) eigene ID: overview / follower_growth / gift_history liefern die Live-Zahlen';
+
+  -- ── 2b) top_posts für die eigene ID: Zeilen, Reihenfolge, Zahlen ───────────
+  -- Bis 20261014140000 kam hier immer 42702 — jetzt ist jeder Fehler rot.
+  -- Reihenfolge = Ausgabereihenfolge (WITH ORDINALITY), denn App und Web
+  -- zeigen die Zeilen so an, wie sie kommen.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  SET LOCAL ROLE authenticated;
+  FOR r IN
+    SELECT * FROM (VALUES
+      ('views',    10, '#1 cag öffentlich 100/2/1 | #2 cag GEHEIM 50/3/2 | #3 cag alt 30/1/3'),
+      ('likes',    10, '#1 cag GEHEIM 50/3/2 | #2 cag öffentlich 100/2/1 | #3 cag alt 30/1/3'),
+      ('comments', 10, '#1 cag alt 30/1/3 | #2 cag GEHEIM 50/3/2 | #3 cag öffentlich 100/2/1'),
+      ('egal',     10, '#1 cag öffentlich 100/2/1 | #2 cag GEHEIM 50/3/2 | #3 cag alt 30/1/3'),  -- unbekannt → views
+      ('likes',     2, '#1 cag GEHEIM 50/3/2 | #2 cag öffentlich 100/2/1')                       -- p_limit
+    ) v(sort_by, lim, expected)
+  LOOP
+    SELECT string_agg(format('#%s %s %s/%s/%s', t.rank, t.caption, t.view_count, t.like_count, t.comment_count),
+                      ' | ' ORDER BY t.ordinality)
+      INTO msg
+      FROM public.get_creator_top_posts(a, r.sort_by, r.lim) WITH ORDINALITY AS t;
+    ASSERT msg IS NOT DISTINCT FROM r.expected,
+           format('2b) top_posts(%s, %s): erwartet „%s", war „%s"', r.sort_by, r.lim, r.expected, coalesce(msg, 'leer'));
+  END LOOP;
+
+  -- Standardwerte wie in der App-Signatur (views, 5)
+  SELECT count(*) INTO n FROM public.get_creator_top_posts(a);
+  ASSERT n = 3, '2b) top_posts(a) mit Standardwerten: 3 Zeilen erwartet, war: '||n;
+
+  -- Spalten landen in den richtigen Feldern (App/Web lesen sie per Namen)
+  SELECT * INTO r FROM public.get_creator_top_posts(a, 'views', 1);
+  ASSERT r.post_id = f1 AND r.media_url = 'posts/cag1.mp4' AND r.media_type = 'video'
+         AND r.thumbnail_url = 'thumbnails/cag1.jpg' AND r.created_at = now() - interval '1 day',
+         format('2b) top_posts Platz 1: Felder falsch: %s / %s / %s / %s / %s',
+                r.post_id, r.media_url, r.media_type, r.thumbnail_url, r.created_at);
+  SELECT * INTO r FROM public.get_creator_top_posts(a, 'likes', 1);
+  ASSERT r.caption = 'cag GEHEIM' AND r.media_url = 'posts/cag2.jpg' AND r.media_type = 'image'
+         AND r.thumbnail_url IS NULL,
+         format('2b) top_posts privater Beitrag: Felder falsch: %s / %s / %s / %s',
+                r.caption, r.media_url, r.media_type, r.thumbnail_url);
+  RESET ROLE;
+  RAISE NOTICE '✓ 2b) top_posts eigene ID: 3 Beiträge inkl. privatem, Reihenfolge views/likes/comments, Limit, Felder';
 
   -- ── 3) Fremde ID und leere ID → 42501, für alle vier ───────────────────────
   PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
@@ -196,12 +256,9 @@ BEGIN
     ASSERT n = 1, '4) '||who||': follower_growth 1 Zeile erwartet, war: '||n;
     SELECT count(*) INTO n FROM public.get_creator_gift_history(a, 10);
     ASSERT n = 1, '4) '||who||': gift_history 1 Zeile erwartet, war: '||n;
-    BEGIN
-      SELECT count(*) INTO n FROM public.get_creator_top_posts(a, 'views', 10);
-      ASSERT n = 3, '4) '||who||': top_posts 3 Zeilen erwartet, war: '||n;
-    EXCEPTION WHEN ambiguous_column THEN
-      NULL;  -- bekannter Rumpf-Fehler, siehe 2); entscheidend: kein 42501
-    END;
+    SELECT count(*), bool_or(caption = 'cag GEHEIM') INTO n, hit
+      FROM public.get_creator_top_posts(a, 'views', 10);
+    ASSERT n = 3 AND hit, '4) '||who||': top_posts 3 Zeilen inkl. privatem erwartet, war: '||n;
     RESET ROLE;
   END LOOP;
   RAISE NOTICE '✓ 4) Admin und service_role: fremde ID erlaubt';
