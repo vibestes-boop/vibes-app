@@ -144,6 +144,11 @@ export default function PayoutPage() {
             </p>
             {loading ? (
               <div className="mt-1 h-6 w-32 animate-pulse rounded bg-muted" />
+            ) : balance === null ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Dein Guthaben konnte gerade nicht geladen werden. Bitte lade die
+                Seite neu.
+              </p>
             ) : (
               <p className="text-2xl font-bold">
                 {((balance ?? 0) * RATE).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
@@ -155,7 +160,7 @@ export default function PayoutPage() {
           </div>
         </div>
 
-        {!loading && !eligible && (
+        {!loading && balance !== null && !eligible && (
           <div className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>

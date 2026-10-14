@@ -30,6 +30,11 @@ export interface CreatorOverview {
   likes_delta:     number | null;
   comments_delta:  number | null;
   followers_delta: number | null;
+  /** Beiträge, die im Zeitraum veröffentlicht wurden — dieselbe Menge, über die
+   *  total_views summiert. null = Zählung fehlgeschlagen. */
+  posts_in_period:    number | null;
+  /** Ø Aufrufe je im Zeitraum veröffentlichtem Beitrag. null = unbekannt. */
+  avg_views_per_post: number | null;
 }
 
 export interface TopPost {
@@ -56,6 +61,23 @@ function calcDelta(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 100);
 }
 
+/** Ø Aufrufe je Beitrag; null, wenn die Zahl der Beiträge unbekannt ist. */
+export function avgViewsPerPost(totalViews: number, posts: number | null): number | null {
+  if (posts === null) return null;
+  return posts > 0 ? Math.round(totalViews / posts) : 0;
+}
+
+/** Engagement-Rate eines Beitrags in %: (Likes + Kommentare) ÷ Aufrufe —
+ *  dieselbe Formel wie engagement_rate in useCreatorOverview und die ER-Spalte
+ *  im Web-Studio. */
+export function postEngagementRate(
+  post: Pick<TopPost, 'view_count' | 'like_count' | 'comment_count'>,
+): number {
+  return post.view_count > 0
+    ? ((post.like_count + post.comment_count) / post.view_count) * 100
+    : 0;
+}
+
 // ─── Hook: Übersicht ──────────────────────────────────────────────────────────
 export function useCreatorOverview(userId: string | null, days: AnalyticsPeriod = 28) {
   return useQuery<CreatorOverview>({
@@ -63,9 +85,22 @@ export function useCreatorOverview(userId: string | null, days: AnalyticsPeriod 
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .rpc('get_creator_overview', { p_user_id: userId, p_days: days });
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      const [{ data, error }, postsRes] = await Promise.all([
+        supabase.rpc('get_creator_overview', { p_user_id: userId, p_days: days }),
+        // Teiler für „Ø pro Post": get_creator_overview summiert total_views nur
+        // über Beiträge mit created_at im Zeitraum — also genau diese zählen.
+        supabase
+          .from('posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('author_id', userId!)
+          .gte('created_at', since),
+      ]);
       if (error) throw error;
+      if (postsRes.error) {
+        __DEV__ && console.warn('[useCreatorOverview] posts count failed', postsRes.error);
+      }
+      const postsInPeriod = postsRes.error ? null : (postsRes.count ?? 0);
       const row = (data as any[])?.[0] ?? {};
       const tv = Number(row.total_views ?? 0);
       const tl = Number(row.total_likes ?? 0);
@@ -91,6 +126,8 @@ export function useCreatorOverview(userId: string | null, days: AnalyticsPeriod 
         likes_delta:     calcDelta(tl, pl),
         comments_delta:  calcDelta(tc, pc),
         followers_delta: calcDelta(nf, pf),
+        posts_in_period:    postsInPeriod,
+        avg_views_per_post: avgViewsPerPost(tv, postsInPeriod),
       };
     },
   });

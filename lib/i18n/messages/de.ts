@@ -420,7 +420,7 @@ export const de = {
     views: 'Aufrufe',
     viewsShort: 'Views',
     commentsShort: 'Komm.',
-    postCompletion: 'Post · Abschlussrate',
+    postEngagement: 'Post · Engagement',
     noData: 'Noch keine Post-Daten 📊',
     noDataSub: 'Erstelle Posts und interagiere mit deiner Community',
     video: 'Video',

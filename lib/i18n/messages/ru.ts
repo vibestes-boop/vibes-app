@@ -422,7 +422,7 @@ export const ru: DeepPartial<Messages> = {
     views: 'Просмотры',
     viewsShort: 'Просм.',
     commentsShort: 'Комм.',
-    postCompletion: 'Пост · Досмотры',
+    postEngagement: 'Пост · Вовлечение',
     noData: 'Пока нет данных по постам 📊',
     noDataSub: 'Публикуй посты и общайся со своим комьюнити',
     video: 'Видео',

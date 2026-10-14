@@ -16,15 +16,44 @@ import type { ActionResult } from './profile';
 //
 // Tabelle: `payout_requests`
 //   creator_id, diamonds_amount, euro_amount, iban, paypal_email, note, status
-// RLS: Insert + Select nur für eigene Rows.
+// RLS: Insert + Select nur für eigene Rows. Seit 14.10.2026 prüft die Datenbank
+// den Antrag selbst (Trigger `payout_requests_guard`, Migration 20261014120000):
+// Betrag ≤ Guthaben, Mindestbetrag, ein offener Antrag, euro_amount/status
+// serverseitig; die Diamanten werden beim Antrag abgezogen (20261014120100).
+// Die Prüfungen in `requestPayout` bleiben für klare Fehlermeldungen vorab.
+//
+// Guthaben-Quelle: RPC `get_creator_earnings` → `coins_wallets.diamonds`,
+// derselbe Weg wie die App (`useCreatorEarnings`) und /studio/revenue.
+// `profiles` hat KEINE Spalte `diamonds_balance`: bis 14.10.2026 las dieser
+// Code dort, bekam 42703, verschluckte den Fehler und sah immer 0 Diamanten.
 // -----------------------------------------------------------------------------
 
 const MIN_PAYOUT = 2_500;
 const RATE       = 0.02; // €/diamond
 
-type DiamondsProfileRow = {
+type CreatorEarningsRow = {
   diamonds_balance: number | string | null;
 };
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/** Diamanten-Guthaben des Users. `null` = konnte nicht gelesen werden —
+ *  nie still als 0 behandeln (Geld-Pfad). */
+async function readDiamondsBalance(
+  supabase: SupabaseServerClient,
+  userId: string,
+): Promise<number | null> {
+  const { data, error } = await supabase.rpc('get_creator_earnings', {
+    p_user_id: userId,
+    p_days: 28,
+  });
+  if (error) return null;
+
+  // Ohne Wallet-Zeile liefert die RPC trotzdem eine Zeile mit 0.
+  const row = (Array.isArray(data) ? data[0] : null) as CreatorEarningsRow | null;
+  const balance = Number(row?.diamonds_balance ?? 0);
+  return Number.isFinite(balance) ? balance : null;
+}
 
 export interface PayoutRequest {
   id:           string;
@@ -39,20 +68,15 @@ export interface PayoutRequest {
   processed_at: string | null;
 }
 
-/** Liest nur den diamonds_balance — Server-Action-Wrapper damit Client Components
- *  nicht direkt lib/data/studio (= next/headers) importieren müssen. */
-export async function getMyDiamondsBalance(): Promise<number> {
+/** Liest nur das Diamanten-Guthaben — Server-Action-Wrapper damit Client Components
+ *  nicht direkt lib/data/studio (= next/headers) importieren müssen.
+ *  `null` = Guthaben konnte nicht gelesen werden (die Seite zeigt dann einen Hinweis). */
+export async function getMyDiamondsBalance(): Promise<number | null> {
   const user = await getUser();
   if (!user) return 0;
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('profiles')
-    .select('diamonds_balance')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  return Number((data as DiamondsProfileRow | null)?.diamonds_balance ?? 0);
+  return readDiamondsBalance(supabase, user.id);
 }
 
 export async function getMyPayoutRequests(): Promise<PayoutRequest[]> {
@@ -97,25 +121,26 @@ export async function requestPayout(formData: FormData): Promise<ActionResult<nu
 
   // Sicherheits-Revalidierung: prüfe ob der User tatsächlich diesen Balance hat
   const supabase = await createClient();
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('diamonds_balance')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  const actualBalance = Number((profileData as DiamondsProfileRow | null)?.diamonds_balance ?? 0);
+  const actualBalance = await readDiamondsBalance(supabase, user.id);
+  if (actualBalance === null) {
+    return { ok: false, error: 'Dein Guthaben konnte gerade nicht geprüft werden. Bitte versuche es später erneut.' };
+  }
   if (actualBalance < MIN_PAYOUT) {
     return { ok: false, error: `Dein aktuelles Guthaben reicht nicht aus (${actualBalance.toLocaleString('de-DE')} 💎). Mindestens ${MIN_PAYOUT.toLocaleString('de-DE')} 💎 erforderlich.` };
   }
 
   // Prüfen ob eine ausstehende Anfrage existiert
-  const { count: pendingCount } = await supabase
+  const { count: pendingCount, error: pendingError } = await supabase
     .from('payout_requests')
     .select('id', { count: 'exact', head: true })
     .eq('creator_id', user.id)
     .in('status', ['pending', 'processing']);
 
-  if ((pendingCount ?? 0) > 0) {
+  // Fehler nicht als „keine offene Anfrage“ lesen — sonst entstehen Doppel-Anträge.
+  if (pendingError || pendingCount === null) {
+    return { ok: false, error: 'Offene Anfragen konnten gerade nicht geprüft werden. Bitte versuche es später erneut.' };
+  }
+  if (pendingCount > 0) {
     return { ok: false, error: 'Du hast bereits eine offene Auszahlungsanfrage. Warte bis diese bearbeitet wurde.' };
   }
 
