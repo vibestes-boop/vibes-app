@@ -23,13 +23,16 @@ function renderWithQueryClient(ui: React.ReactElement) {
 
 // -----------------------------------------------------------------------------
 // v1.w.UI.10 Layout-Reset — FeedSidebar ist von 17 Einträgen auf 5 Primary +
-// 3 Secondary runterkompaktiert. Plus prominenter „Posten"-CTA oben.
+// 3 Secondary runterkompaktiert. Plus prominenter „Erstellen"-CTA oben.
 // Diese Tests fixieren die Struktur damit kein versehentliches Re-Bloating
 // durchrutscht, ohne dass wir es merken.
 // -----------------------------------------------------------------------------
 
+let mockPathname = '/';
+beforeEach(() => { mockPathname = '/'; });
+
 jest.mock('next/navigation', () => ({
-  usePathname: () => '/',
+  usePathname: () => mockPathname,
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
 }));
 
@@ -82,8 +85,8 @@ jest.mock('@/lib/notifications-drawer-store', () => ({
 }));
 
 describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
-  const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Freunde', 'Entdecken', 'Live', 'Nachrichten', 'Benachrichtigungen', 'Profil'];
-  const SECONDARY_LABELS = ['Shop', 'Pods', 'Women-Only Zone', 'Creator-Studio'];
+  const PRIMARY_LABELS = ['Feed', 'Entdecken', 'Nachrichten', 'Benachrichtigungen', 'Profil'];
+  const SECONDARY_LABELS = ['Live', 'Shop', 'Clan', 'Folge ich', 'Freunde', 'Women-Only Zone', 'Creator-Studio'];
   const REMOVED_LABELS = [
     'Entwürfe',
     'Geplant',
@@ -113,11 +116,11 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     }
   });
 
-  it('zeigt prominenten „Posten"-CTA der auf /create verlinkt', () => {
+  it('zeigt prominenten „Erstellen"-CTA der auf /create verlinkt', () => {
     renderWithQueryClient(<FeedSidebar viewerId="viewer-1" />);
     const cta = screen.getByRole('link', { name: /Neuen Post erstellen/i });
     expect(cta).toHaveAttribute('href', '/create');
-    expect(cta.textContent).toContain('Posten');
+    expect(cta.textContent).toContain('Erstellen');
   });
 
   it('rendert keine der 9 früheren Sidebar-Items (in Dropdown/Studio migriert)', () => {
@@ -127,31 +130,33 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     }
   });
 
-  it('disabled auth-required Items + Posten-CTA wenn viewerId null ist', () => {
+  it('führt geschützte Ziele für Gäste zur Anmeldung und erhält das Rücksprungziel', () => {
     renderWithQueryClient(<FeedSidebar viewerId={null} />);
-    const ctaLink = screen.getByRole('link', { name: /Neuen Post erstellen/i });
-    expect(ctaLink).toHaveAttribute('aria-disabled', 'true');
-
-    // „Folge ich" + „Nachrichten" + „Creator-Studio" sind requiresAuth →
-    // disabled wenn kein Viewer. Benachrichtigungen (Drawer-Button) und Profil
-    // rendern logged-out gar nicht.
-    const folgeIch = screen.getByText('Folge ich').closest('a');
-    expect(folgeIch).toHaveAttribute('aria-disabled', 'true');
-    const messages = screen.getByText('Nachrichten').closest('a');
-    expect(messages).toHaveAttribute('aria-disabled', 'true');
+    for (const [label, path] of [
+      ['Neuen Post erstellen', '/create'], ['Nachrichten', '/messages'],
+      ['Profil', '/profile'], ['Folge ich', '/following'], ['Creator-Studio', '/studio'],
+    ]) {
+      const link = screen.getByRole('link', { name: label });
+      expect(link).toHaveAttribute('href', `/login?next=${encodeURIComponent(path)}`);
+      expect(link).not.toHaveAttribute('aria-disabled', 'true');
+    }
+    expect(screen.getByRole('link', { name: 'Entdecken' })).toHaveAttribute('href', '/explore');
     expect(screen.queryByText('Benachrichtigungen')).not.toBeInTheDocument();
-    expect(screen.queryByText('Profil')).not.toBeInTheDocument();
-    const creatorStudio = screen.getByText('Creator-Studio').closest('a');
-    expect(creatorStudio).toHaveAttribute('aria-disabled', 'true');
+  });
 
-    // Öffentliche Items bleiben aktiviert
-    const entdecken = screen.getByText('Entdecken').closest('a');
-    expect(entdecken).not.toHaveAttribute('aria-disabled', 'true');
+  it('markiert Profil nur für das eigene Konto', () => {
+    mockPathname = '/u/another-user';
+    const props = { viewerId: 'viewer-1', viewerProfile: { username: 'me', display_name: null, avatar_url: null } };
+    const { rerender } = renderWithQueryClient(<FeedSidebar {...props} />);
+    expect(screen.getByRole('link', { name: 'Profil' })).not.toHaveAttribute('aria-current');
+    mockPathname = '/u/me/followers';
+    rerender(<FeedSidebar {...props} />);
+    expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('markiert das aktive Item via aria-current wenn pathname matcht (Default-Pathname /)', () => {
     renderWithQueryClient(<FeedSidebar viewerId="viewer-1" />);
-    const fuerDich = screen.getByText('Für dich').closest('a');
+    const fuerDich = screen.getByText('Feed').closest('a');
     expect(fuerDich).toHaveAttribute('aria-current', 'page');
 
     const entdecken = screen.getByText('Entdecken').closest('a');

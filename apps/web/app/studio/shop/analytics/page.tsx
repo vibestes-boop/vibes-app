@@ -1,5 +1,5 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ShopAnalyticsPage() {
   const user = await getUser();
-  if (!user) redirect('/login?next=/studio/shop/analytics');
+  if (!user) return <ReturnToRedirect />;
 
   const rows = await getShopAnalytics();
   const sorted = [...rows].sort((a, b) => b.revenue_coins - a.revenue_coins);

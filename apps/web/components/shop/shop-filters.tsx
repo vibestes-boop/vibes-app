@@ -77,7 +77,9 @@ export function ShopFilters() {
 
   const clearAll = () => {
     const q = params.get("q");
-    const url = (pathname + (q ? `?q=${q}` : "")) as Route;
+    const next = new URLSearchParams();
+    if (q) next.set("q", q);
+    const url = (pathname + (q ? `?${next.toString()}` : "")) as Route;
     startTransition(() => router.replace(url));
   };
 
@@ -189,6 +191,8 @@ export function ShopFilters() {
         <div className="flex items-center gap-2">
           <input
             type="number"
+            key={`min:${minPrice}`}
+            aria-label="Mindestpreis in Coins"
             placeholder="Min"
             defaultValue={minPrice}
             min={0}
@@ -198,6 +202,8 @@ export function ShopFilters() {
           <span className="text-muted-foreground">—</span>
           <input
             type="number"
+            key={`max:${maxPrice}`}
+            aria-label="Höchstpreis in Coins"
             placeholder="Max"
             defaultValue={maxPrice}
             min={0}

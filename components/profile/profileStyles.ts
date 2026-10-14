@@ -1,4 +1,4 @@
-import type { ThemeColors } from '@/lib/theme';
+import { darkColors, type ThemeColors } from '@/lib/theme';
 import { StyleSheet } from 'react-native';
 import { GRID_CELL_WIDTH,GRID_GAP } from './profileConstants';
 
@@ -21,11 +21,11 @@ function buildStyles(c: ThemeColors) {
     // ── Top Navigation Header ─────────────────────────────────
     header: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
+      alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingBottom: 10,
-      backgroundColor: c.bg.secondary,   // weiße Karte im Light-Mode
+      backgroundColor: c.bg.primary,   // consistent profile surface im Light-Mode
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border.subtle,
     },
@@ -38,17 +38,18 @@ function buildStyles(c: ThemeColors) {
       opacity: 0.7,
     },
     handle: {
+      flex: 1, minWidth: 0, marginRight: 10,
       color: c.text.primary,
       fontSize: 18,
       fontWeight: '600',
       letterSpacing: -0.4,
       marginTop: 1,
     },
-    headerRight: { flexDirection: 'row', gap: 6 },
+    headerRight: { flexDirection: 'row', gap: 4 },
     hBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 44,
+      height: 44,
+      borderRadius: 15,
       backgroundColor: c.bg.subtle,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border.default,
@@ -63,7 +64,7 @@ function buildStyles(c: ThemeColors) {
       minWidth: 14,
       height: 14,
       borderRadius: 7,
-      backgroundColor: '#F472B6',
+      backgroundColor: c.accent.danger,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 2,
@@ -77,10 +78,10 @@ function buildStyles(c: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,   // einheitliches 16er-Raster (vorher 20 → bruch mit Buttons/Tabs)
-      paddingTop: 10,
-      paddingBottom: 10,
-      gap: 16,
-      backgroundColor: c.bg.secondary,   // weiße Karte
+      paddingTop: 8,
+      paddingBottom: 18,
+      gap: 20,
+      backgroundColor: c.bg.primary,   // consistent profile surface
     },
     avatarWrap: { position: 'relative' },
     avatarRing: {
@@ -95,11 +96,11 @@ function buildStyles(c: ThemeColors) {
       height: 75,
       borderRadius: 37.5,
       overflow: 'hidden',
-      backgroundColor: c.bg.secondary,  // Gap passt zur Karten-Fläche (vorher bg.primary → farbiger Donut)
+      backgroundColor: c.bg.primary,  // Gap passt zur Karten-Fläche (vorher bg.primary → farbiger Donut)
     },
     avatarImg: { width: '100%', height: '100%' },
     avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    avatarInitial: { color: c.text.secondary, fontSize: 30, fontWeight: '600' },
+    avatarInitial: { color: c.text.primary, fontSize: 30, fontWeight: '600' },
     storyDot: {
       position: 'absolute',
       bottom: 4,
@@ -119,14 +120,14 @@ function buildStyles(c: ThemeColors) {
       width: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: c.accent.primary,
+      backgroundColor: c.accent.solid,
       borderWidth: 2,
       borderColor: c.bg.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     storyAddBadgeText: {
-      color: c.bg.primary,
+      color: c.text.onAccent,
       fontSize: 14,
       fontWeight: '600',
       lineHeight: 16,
@@ -141,7 +142,7 @@ function buildStyles(c: ThemeColors) {
       justifyContent: 'space-around',
     },
     statItem: { alignItems: 'center', flex: 1 },
-    statNum: { color: c.text.primary, fontSize: 18, fontWeight: '600', letterSpacing: -0.5 },
+    statNum: { color: c.text.primary, fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
     statLabel: { color: c.text.muted, fontSize: 11, fontWeight: '500', marginTop: 2 },
     statDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: c.border.subtle },
 
@@ -151,10 +152,10 @@ function buildStyles(c: ThemeColors) {
       paddingBottom: 10,
       paddingTop: 2,
       gap: 4,
-      backgroundColor: c.bg.secondary,   // fortsetzung der Karte — KEIN borderBottom mehr
+      backgroundColor: c.bg.primary,   // fortsetzung der Karte — KEIN borderBottom mehr
     },                                   // (durchgehende Fläche statt gestapelter Bänder)
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-    displayName: { color: c.text.primary, fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
+    displayName: { color: c.text.primary, fontSize: 25, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, flexShrink: 1 },
     verifiedBadge: {
       width: 20,
       height: 20,
@@ -264,7 +265,7 @@ function buildStyles(c: ThemeColors) {
       paddingBottom: 14,
       paddingTop: 10,
       gap: 8,
-      backgroundColor: c.bg.secondary,
+      backgroundColor: c.bg.primary,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border.subtle,
     },
@@ -329,9 +330,9 @@ function buildStyles(c: ThemeColors) {
     // Legacy (werden nicht mehr genutzt, sicherheitshalber drin)
     btnPrimary: {
       flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      gap: 6, paddingVertical: 9, borderRadius: 10, backgroundColor: c.accent.primary,
+      gap: 6, paddingVertical: 9, borderRadius: 10, backgroundColor: c.accent.solid,
     },
-    btnPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+    btnPrimaryText: { color: c.text.onAccent, fontSize: 13, fontWeight: '700' },
     btnSecondary: {
       width: 40, height: 40, borderRadius: 10,
       backgroundColor: c.bg.subtle, borderWidth: StyleSheet.hairlineWidth,
@@ -345,7 +346,7 @@ function buildStyles(c: ThemeColors) {
       marginTop: 12,
       marginBottom: 12,
       borderRadius: 16,
-      backgroundColor: c.bg.secondary,
+      backgroundColor: c.bg.primary,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border.default,
       overflow: 'hidden',
@@ -369,9 +370,10 @@ function buildStyles(c: ThemeColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border.subtle,
       marginBottom: GRID_GAP,
-      backgroundColor: c.bg.secondary,
+      backgroundColor: c.bg.primary,
     },
     tabBtn: {
+      gap: 6, minWidth: 82, paddingHorizontal: 12,
       // Breite kommt inline aus TAB_WIDTH (scrollbare Leiste) — kein flex:1 mehr,
       // da flex in einer horizontalen ScrollView zu 0 kollabieren würde.
       alignItems: 'center',
@@ -388,7 +390,7 @@ function buildStyles(c: ThemeColors) {
     cell: { width: '100%', aspectRatio: 4 / 5, overflow: 'hidden', backgroundColor: c.bg.secondary, position: 'relative' },
     cellAdd: {
       width: '100%', aspectRatio: 4 / 5, alignItems: 'center', justifyContent: 'center',
-      backgroundColor: c.bg.secondary,
+      backgroundColor: c.bg.primary,
       borderWidth: StyleSheet.hairlineWidth, borderColor: c.border.subtle,
     },
 
@@ -448,11 +450,4 @@ function buildStyles(c: ThemeColors) {
 
 // ── Backward-Compat Alias (wird ersetzt wenn Komponenten migriert sind) ────────
 // Bleibt bis alle Imports auf getProfileStyles() umgestellt sind.
-export const profileStyles = buildStyles({
-  bg: { primary: '#050508', secondary: '#0D0D0D', elevated: '#1A1A1A', input: '#111111', subtle: 'rgba(255,255,255,0.04)' },
-  text: { primary: '#FFFFFF', secondary: '#9CA3AF', muted: '#4B5563', inverse: '#FFFFFF' },
-  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24', rose: '#F43F5E' },
-  border: { default: 'rgba(255,255,255,0.08)', subtle: 'rgba(255,255,255,0.04)', strong: 'rgba(255,255,255,0.16)' },
-  icon: { default: '#9CA3AF', muted: '#4B5563', active: '#FFFFFF', inactive: '#6B7280' },
-  tabBar: { bg: '#050508', border: 'rgba(255,255,255,0.06)', active: '#FFFFFF', inactive: '#6B7280' },
-});
+export const profileStyles = buildStyles(darkColors);

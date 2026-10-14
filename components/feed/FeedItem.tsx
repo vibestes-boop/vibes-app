@@ -77,7 +77,7 @@ export const VideoProgressBar = React.memo(
     onSeek?: (fraction: number) => void;
     onSeekEnd?: (fraction: number) => void;
     bottomOffset?: number;
-  }>(function VideoProgressBar({ onSeek, onSeekEnd, bottomOffset = 49 }, ref) {
+  }>(function VideoProgressBar({ onSeek, onSeekEnd, bottomOffset = 60 }, ref) {
     const [isScrubbing, setIsScrubbing] = useState(false);
     const trackWidth = useRef(0);
     // Aktueller Abspiel-Fortschritt (als Ref, damit PanResponder Zugriff hat)
@@ -912,7 +912,7 @@ export const FeedItem = React.memo(function FeedItem({
       />
 
       <Animated.View
-        style={[styles.bottomInfo, { paddingBottom: insets.bottom + 52 }, overlayFadeStyle]}
+        style={[styles.bottomInfo, { paddingBottom: insets.bottom + 66 }, overlayFadeStyle]}
         pointerEvents={commentsOpen ? 'none' : 'box-none'}
       >
 
@@ -1051,12 +1051,12 @@ export const FeedItem = React.memo(function FeedItem({
           postId={item.id}
           onSeek={handleSeek}
           onSeekEnd={handleSeekEnd}
-          bottomOffset={insets.bottom + 49}
+          bottomOffset={insets.bottom + 60}
         />
       )}
 
       <Animated.View
-        style={[styles.rightActions, { bottom: insets.bottom + 88 }, overlayFadeStyle]}
+        style={[styles.rightActions, { bottom: insets.bottom + 102 }, overlayFadeStyle]}
         pointerEvents={commentsOpen ? 'none' : 'auto'}
       >
         {/* Mute-Button — für Videos UND für Bild-Posts mit Musik-Track */}

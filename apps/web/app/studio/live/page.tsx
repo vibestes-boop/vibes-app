@@ -1,7 +1,7 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { redirect } from 'next/navigation';
 import type { Route } from 'next';
 import { Radio, Clock, Users, Play, Plus, Settings, CalendarDays, BellRing, Gem, MessageCircle, Trophy } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
@@ -59,7 +59,7 @@ function formatShortDate(iso: string): string {
 export default async function StudioLivePage() {
   const user = await getUser();
   if (!user) {
-    redirect('/login?next=/studio/live');
+    return <ReturnToRedirect />;
   }
 
   const [activeSession, pastSessions, scheduledLives] = await Promise.all([

@@ -50,7 +50,7 @@ export default async function FollowersPage({ params }: PageProps) {
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-lg px-4 pb-16 pt-6">
+    <main className="mx-auto w-full max-w-lg px-4 pb-16 pt-16">
       {/* Header */}
       <header className="mb-6">
         <Link

@@ -249,7 +249,7 @@ const ceMessages = {
     rowCreatorStudioLabel: 'Creator Studio',
     rowCreatorStudioSubtitle: 'Доходаш, аналитика, топ-посташ',
     rowCreatorActivateLabel: 'Creator хила ✦',
-    rowCreatorActivateSubtitle: 'Мегийна · Схьагора · Монетизаци',
+    rowCreatorActivateSubtitle: 'Мегийна · Монетизаци',
     rowLanguageLabel: 'Мотт',
     rowThemeLabel: 'Дизайн',
     rowThemeLight: 'Серло',

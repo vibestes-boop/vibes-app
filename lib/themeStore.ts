@@ -66,6 +66,13 @@ export const useThemeStore = create<ThemeStore>()(
       storage: createJSONStorage(() => AsyncStorage),
       // Nur mode persistieren — resolved wird beim Start neu berechnet
       partialize: (s) => ({ mode: s.mode }),
+      // AsyncStorage resolves after the system scheme effect on cold starts.
+      // Restore preference and derived palette together, never stale colors.
+      merge: (persisted, current) => {
+        const saved = (persisted as { mode?: unknown } | undefined)?.mode;
+        const mode = saved === 'light' || saved === 'dark' || saved === 'system' ? saved : current.mode;
+        return { ...current, mode, ...resolveColors(mode, current._systemScheme) };
+      },
       // v2: Dark-Mode-Default. Wer bisher auf 'system' war (nie aktiv gewählt),
       // wird auf 'dark' migriert → landet nicht mehr ungewollt im Light Mode.
       // Explizit gewähltes 'light'/'dark' bleibt unangetastet.

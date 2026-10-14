@@ -1,36 +1,22 @@
-/**
- * bakeImageEdits — brennt Filter + Drehen/Spiegeln pixel-genau ins Bild ein.
- *
- * Hintergrund: Der Editor lädt sonst das ROHE Bild hoch — Filter/Drehen waren reine
- * Vorschau und kamen nie im Post an. Diese Helper rendert das Bild mit dem aktiven
- * Farb-Filter (gleiche Matrix wie die Vorschau-SkiaFilteredImage) + Rotation/Flip
- * über eine Skia-Offscreen-Surface in eine neue JPEG-Datei.
- *
- * Bewusst NUR Filter + Rotation/Flip (reine, verlustfreie Bild-Transformationen, die
- * exakt der Vorschau entsprechen). Anpassen (Helligkeit etc.) bleibt außen vor — die
- * Vorschau nutzt dort nur ein grobes Overlay, kein echter Matrix-Effekt.
- *
- * Defensiv: bei jedem Fehler/Skia-nicht-bereit → null → Aufrufer lädt das rohe Bild
- * hoch (Verhalten wie bisher, kein Regress). Text/Sticker brauchen view-shot (separat).
- */
+/** Renders filters, adjustments and rotation into a photo; null signals failure or no edits. */
 import * as FileSystem from 'expo-file-system/legacy';
-import { COLOR_FILTERS } from '@/lib/cameraFilters';
+import { hasImageAdjustments, NEUTRAL_ADJUSTMENTS, normalizedImageMatrix, type ImageAdjustments } from './imageAdjustments';
 import type { ColorFilterId } from '@/lib/cameraFilters';
 import { Skia, SKIA_READY } from '@/lib/skiaLoader';
 
 export async function bakeImageEdits(
   uri: string,
-  edits: { filterId: ColorFilterId | null; rotation: number; flipH: boolean },
+  edits: { filterId: ColorFilterId | null; rotation: number; flipH: boolean; adjustments?: ImageAdjustments },
 ): Promise<string | null> {
   const hasFilter = !!edits.filterId && edits.filterId !== 'none';
   const rot = (((edits.rotation ?? 0) % 360) + 360) % 360;
   const hasTransform = rot !== 0 || !!edits.flipH;
-  if (!hasFilter && !hasTransform) return null;     // nichts zu backen → rohes Bild nutzen
+  const hasAdjustments = hasImageAdjustments(edits.adjustments ?? NEUTRAL_ADJUSTMENTS);
+  if (!hasFilter && !hasTransform && !hasAdjustments) return null;     // nichts zu backen → rohes Bild nutzen
   if (!SKIA_READY || !Skia) return null;
 
   try {
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    const data = Skia.Data.fromBase64(base64);
+    const data = await Skia.Data.fromURI(uri);
     const img = Skia.Image.MakeImageFromEncoded(data);
     if (!img) return null;
 
@@ -45,10 +31,8 @@ export async function bakeImageEdits(
     const canvas = surface.getCanvas();
 
     const paint = Skia.Paint();
-    if (hasFilter && edits.filterId) {
-      // Gleiche Umrechnung wie SkiaFilteredImage: Bias-Spalte (jede 5.) /255.
-      const m = COLOR_FILTERS[edits.filterId];
-      const skia20 = m.map((v: number, i: number) => ((i + 1) % 5 === 0 ? v / 255 : v));
+    if (hasFilter || hasAdjustments) {
+      const skia20 = normalizedImageMatrix(edits.filterId, edits.adjustments);
       paint.setColorFilter(Skia.ColorFilter.MakeMatrix(skia20));
     }
 

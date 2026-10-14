@@ -1,3 +1,6 @@
+import { useTheme } from '@/lib/useTheme';
+import type { ThemeColors } from '@/lib/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoogleGlyph } from '@/components/ui/GoogleGlyph';
 import { supabase } from '@/lib/supabase';
 import { appleSignIn } from '@/lib/useAppleSignIn';
@@ -5,7 +8,7 @@ import { ENABLE_GOOGLE_LOGIN,googleSignIn } from '@/lib/useGoogleSignIn';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link,useRouter } from 'expo-router';
-import { Lock,Mail,User,Zap } from 'lucide-react-native';
+import { Lock,Mail,User } from 'lucide-react-native';
 import { useRef,useState } from 'react';
 import {
 ActivityIndicator,
@@ -23,7 +26,10 @@ View,
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useI18n } from '@/lib/i18n';
 export default function RegisterScreen() {
-  useThemedStatusBar('light');
+  useThemedStatusBar('auto');
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(colors);
   const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -96,27 +102,27 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LinearGradient
-        colors={['#000000', '#0d0016', '#000000']}
+        colors={[colors.bg.primary, colors.bg.primary]}
         style={StyleSheet.absoluteFill}
       />
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoArea}>
-          <Zap size={32} stroke="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
+
           <Text style={styles.logoText}>{t('auth.registerTitle')}</Text>
           <Text style={styles.tagline}>{t('auth.registerTagline')}</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputWrapper}>
-            <User size={18} stroke="#4B5563" strokeWidth={1.8} />
+            <User size={18} stroke={colors.icon.muted} strokeWidth={1.8} />
             <TextInput
               style={styles.input}
               placeholder={t('auth.usernamePlaceholder')}
-              placeholderTextColor="#4B5563"
+              placeholderTextColor={colors.text.muted}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -128,12 +134,14 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Mail size={18} stroke="#4B5563" strokeWidth={1.8} />
+            <Mail size={18} stroke={colors.icon.muted} strokeWidth={1.8} />
             <TextInput
               ref={emailRef}
               style={styles.input}
-              placeholder={t('auth.emailPlaceholder')}
-              placeholderTextColor="#4B5563"
+              accessibilityLabel={t('auth.emailPlaceholder')}
+            textContentType="emailAddress"
+            placeholder={t('auth.emailPlaceholder')}
+              placeholderTextColor={colors.text.muted}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -146,15 +154,17 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Lock size={18} stroke="#4B5563" strokeWidth={1.8} />
+            <Lock size={18} stroke={colors.icon.muted} strokeWidth={1.8} />
             <TextInput
               ref={passwordRef}
               style={styles.input}
               placeholder={t('auth.passwordMinPlaceholder')}
-              placeholderTextColor="#4B5563"
+              placeholderTextColor={colors.text.muted}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              textContentType="newPassword"
+            accessibilityLabel={t('auth.passwordPlaceholder')}
+            secureTextEntry
               returnKeyType="done"
               onSubmitEditing={handleRegister}
             />
@@ -169,13 +179,13 @@ export default function RegisterScreen() {
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
-              colors={['#CCCCCC', '#FFFFFF']}
+              colors={[colors.accent.primary, colors.accent.primary]}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             />
             {loading
-              ? <ActivityIndicator color="#fff" />
+              ? <ActivityIndicator color={colors.bg.primary} />
               : <Text style={styles.registerBtnText}>{t('auth.createAccount')}</Text>
             }
           </Pressable>
@@ -204,7 +214,7 @@ export default function RegisterScreen() {
           {Platform.OS === 'ios' && (
             <AppleAuthentication.AppleAuthenticationButton
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              buttonStyle={isDark ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
               cornerRadius={16}
               style={styles.appleBtn}
               onPress={appleSignIn}
@@ -244,10 +254,10 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: c.bg.primary,
   },
   scroll: {
     flexGrow: 1,
@@ -261,14 +271,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logoText: {
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontSize: 26,
     fontWeight: '600',
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   tagline: {
-    color: '#4B5563',
+    color: c.text.muted,
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
@@ -279,17 +289,17 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D0D0D',
+    backgroundColor: c.bg.secondary,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
     gap: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: c.border.default,
   },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontSize: 16,
   },
   registerBtn: {
@@ -300,13 +310,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   registerBtnText: {
-    color: '#FFFFFF',
+    color: c.bg.primary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
   legalText: {
-    color: 'rgba(255,255,255,0.5)',
+    color: c.text.secondary,
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'center',
@@ -314,7 +324,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   legalLink: {
-    color: 'rgba(255,255,255,0.85)',
+    color: c.text.primary,
     textDecorationLine: 'underline',
   },
   loginLink: {
@@ -322,11 +332,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   loginText: {
-    color: '#4B5563',
+    color: c.text.muted,
     fontSize: 14,
   },
   loginHighlight: {
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontWeight: '600',
   },
   // ── Divider & Apple ──
@@ -339,10 +349,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: c.border.strong,
   },
   dividerText: {
-    color: 'rgba(255,255,255,0.25)',
+    color: c.text.muted,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -354,14 +364,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 54,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.text.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
   },
   googleBtnText: {
-    color: '#111114',
+    color: c.bg.primary,
     fontSize: 17,
     fontWeight: '600',
   },

@@ -28,6 +28,10 @@ const customConfig = {
     // Aliases aus tsconfig spiegeln
     '^@/(.*)$': '<rootDir>/$1',
     '^@shared/(.*)$': '<rootDir>/../../shared/$1',
+    // Shared schemas live outside this app; CI only installs apps/web deps.
+    // Match tsconfig so they use the web app's declared Zod version.
+    '^zod$': '<rootDir>/node_modules/zod',
+    '^zod/(.*)$': '<rootDir>/node_modules/zod/$1',
   },
   testMatch: ['<rootDir>/**/__tests__/**/*.test.{ts,tsx}'],
   testPathIgnorePatterns: ['/node_modules/', '/.next/'],

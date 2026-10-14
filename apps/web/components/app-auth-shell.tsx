@@ -39,6 +39,7 @@ import { NotifBellPill } from '@/components/layout/notif-bell-pill';
 import { useUnreadShellRealtime } from '@/components/layout/use-unread-shell-counts';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALE_INTL } from '@/lib/i18n/config';
+import { isFocusedPage } from '@/lib/navigation-chrome';
 import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
 
@@ -164,7 +165,7 @@ export function AppAuthShell() {
     pathname === '/signup' ||
     pathname?.startsWith('/auth/') ||
     pathname?.startsWith('/reset-password') ||
-    onAnonymousLanding;
+    onAnonymousLanding || isFocusedPage(pathname);
 
   const viewerId = state.status === 'authenticated' ? state.user.id : null;
 
@@ -176,7 +177,7 @@ export function AppAuthShell() {
     <>
       {!hideGlobalChrome && <TopRightActionsClient state={state} getSupabase={getSupabase} />}
       {!hideGlobalChrome && (
-        <MobileBottomNav isAuthed={state.status === 'anonymous' ? false : state.status === 'authenticated' ? true : null} />
+        <MobileBottomNav viewerUsername={state.status === 'authenticated' ? state.profile?.username : null} isAuthed={state.status === 'anonymous' ? false : state.status === 'authenticated' ? true : null} />
       )}
       {/* Globale Notifications-Drawer — immer gemountet, öffnet sich per Zustand-Store */}
       <NotificationsDrawer viewerId={viewerId} />
@@ -342,9 +343,15 @@ function TopRightActionsClient({
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
+            <Link href="/saved">
+              <Bookmark className="h-4 w-4" />
+              <span>Gespeicherte Beiträge</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link href="/shop/saved">
               <Bookmark className="h-4 w-4" />
-              <span>Gemerkt</span>
+              <span>Gemerkte Produkte</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

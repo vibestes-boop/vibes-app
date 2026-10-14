@@ -40,7 +40,7 @@ export function StoryRingAvatar({
   avatarUrl,
   size = 40,
   initials = '?',
-  fallbackColors = ['#0e4a58', '#083344'],
+  fallbackColors = ['#626B78', '#303742'],
   style,
   onPress,
 }: StoryRingAvatarProps) {
@@ -60,9 +60,9 @@ export function StoryRingAvatar({
 
   // Ringfarben: immer auf jedem Hintergrund sichtbar (kein Weiß!)
   const ringColors: [string, string] = hasStories && hasUnviewed
-    ? ['#F472B6', '#A855F7']   // Pink → Lila  (ungesehen)
+    ? [colors.accent.primary, colors.accent.secondary] // Silver (ungesehen)
     : hasStories
-      ? ['#9CA3AF', '#6B7280'] // Grau          (gesehen)
+      ? [colors.text.muted, colors.icon.muted] // Grau          (gesehen)
       : ['transparent', 'transparent'];
 
   const handlePress = () => {

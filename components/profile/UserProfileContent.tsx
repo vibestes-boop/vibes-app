@@ -1,3 +1,4 @@
+import { productDisplayPrice } from '@/lib/productDisplayPrice';
 /**
  * UserProfileContent
  * Identische Logik wie app/user/[id].tsx, aber als wiederverwendbare Komponente.
@@ -964,12 +965,11 @@ export function UserProfileContent({ userId, onBack }: Props) {
           // v1.26.5: Shop-Tab → Produkt-Thumbnail statt Post-Thumbnail
           if (activeTab === 'shop') {
             const product = item as unknown as Product;
-            const isPreorder = product.sale_mode === 'preorder';
-            const eur = formatEur(product.price_eur);
+            const price = productDisplayPrice(product);
+            const isEuro = price.currency === 'eur';
+            const eur = isEuro ? formatEur(price.amount) : null;
             // Coin-Sale nur bei Coin-Produkten relevant — Vorbestellungen laufen über €.
-            const salePrice = !isPreorder && product.sale_price_coins != null && product.sale_price_coins < product.price_coins
-              ? product.sale_price_coins
-              : null;
+            const salePrice = !isEuro && price.amount != null && price.amount < product.price_coins ? price.amount : null;
             const shownCoins = salePrice ?? product.price_coins;
             return (
               <Pressable
@@ -993,8 +993,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 {/* Titel + Preis (Vorbestellung = €, sonst Coins) */}
                 <View style={shopCellOverlay}>
                   <Text style={shopCellTitle} numberOfLines={1}>{product.title}</Text>
-                  {isPreorder ? (
-                    <Text style={shopCellPrice} numberOfLines={1}>{eur ?? t('profile.preorder')}</Text>
+                  {isEuro ? (
+                    <Text style={shopCellPrice} numberOfLines={1}>{eur ?? t('nativeUi.askPrice')}</Text>
                   ) : (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                       <CoinIcon size={12} />

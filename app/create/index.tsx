@@ -1,4 +1,8 @@
+import { darkColors } from '@/lib/theme';
 import { useModerateImage } from '@/lib/useModerate';
+import { EditorToolbar, type EditorTool } from '@/components/create/editor/EditorToolbar';
+import { hasImageAdjustments } from '@/lib/imageAdjustments';
+import { SKIA_READY } from '@/lib/skiaLoader';
 import { useI18n } from '@/lib/i18n';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -10,7 +14,9 @@ type ImagePickerAsset,
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import React,{ useCallback,useEffect,useRef,useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
+ActivityIndicator,
 Alert,
 BackHandler,
 Pressable,
@@ -50,8 +56,6 @@ import {
   TextOverlayItem,
   type TextOverlay,
   TrashZone,
-  type TrimResult,
-  VideoTrimSheet,
 } from '@/components/create/editor';
 import { useAuthStore } from '@/lib/authStore';
 import type { ColorFilterId } from '@/lib/cameraFilters';
@@ -74,7 +78,6 @@ import {
   Music2,
   Palette,
   RotateCw,
-  Scissors,
   Settings2,
   SlidersHorizontal,
   Smile,
@@ -128,6 +131,12 @@ export default function CreatePostScreen() {
   const [uploading, setUploading]   = useState(false);
   const [uploadPct, setUploadPct]   = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [storyPreparing, setStoryPreparing] = useState(false);
+  const storyPreparingRef = useRef(false);
+  const editorMounted = useRef(true);
+  useEffect(() => { editorMounted.current = true; return () => { editorMounted.current = false; }; }, []);
+  const [publishing, setPublishing] = useState(false);
+  const publishingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // v1.20 — Cloud-Draft + Scheduled-Post Cache (vermeidet Re-Upload)
@@ -150,7 +159,6 @@ export default function CreatePostScreen() {
   const [showMusicPicker, setShowMusicPicker]   = useState(false);
   const [showDetails, setShowDetails]           = useState(false);
   const [showTextEditor, setShowTextEditor]     = useState(false);
-  const [showTrimSheet, setShowTrimSheet]       = useState(false);
   const [showStickerSheet, setShowStickerSheet] = useState(false);
   const [showFilterSheet, setShowFilterSheet]   = useState(false);
   const [showAdjustSheet, setShowAdjustSheet]   = useState(false);
@@ -168,14 +176,14 @@ export default function CreatePostScreen() {
   const [activeFilter, setActiveFilter]         = useState<ColorFilterId | null>(null);
   const [adjustValues, setAdjustValues]         = useState<AdjustValues>({ brightness: 0, contrast: 0, saturation: 0 });
   const [rotateState, setRotateState]           = useState<RotateState>({ rotation: 0, flipH: false });
-  const [trimResult, setTrimResult]             = useState<TrimResult | null>(null);
   const [isDrawMode, setIsDrawMode]             = useState(false);
 
   // Editor verlassen — mit Rückfrage, wenn etwas verloren ginge.
   // Hing bisher nur am Zurück-KNOPF; die Android-Wischgeste umging ihn und
   // verwarf Aufnahme, Text und Beschreibung kommentarlos.
   const confirmLeave = useCallback(() => {
-    if ((caption.trim() || image) && !uploading) {
+    if (uploading || publishing || storyPreparing || draftSavingBusy || schedulingBusy) return;
+    if (caption.trim() || image) {
       Alert.alert(tr('create.saveDraftTitle'), '', [
         { text: tr('create.discard'), style: 'destructive', onPress: () => router.back() },
         { text: tr('create.saveDraft'), onPress: async () => {
@@ -184,17 +192,17 @@ export default function CreatePostScreen() {
         }},
       ]);
     } else { router.back(); }
-  }, [caption, image, uploading, selectedTags, saveDraft, router, tr]);
+  }, [caption, image, uploading, publishing, storyPreparing, draftSavingBusy, schedulingBusy, selectedTags, saveDraft, router, tr]);
 
   // Android-Hardware-Zurück auf denselben Weg zwingen
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (uploading) return true;          // während des Uploads gar nicht verlassen
+      if (uploading || publishing || storyPreparing || draftSavingBusy || schedulingBusy) return true;          // während des Uploads gar nicht verlassen
       confirmLeave();
       return true;                         // Standard-Verhalten unterdrücken
     });
     return () => sub.remove();
-  }, [confirmLeave, uploading]);
+  }, [confirmLeave, uploading, publishing, storyPreparing, draftSavingBusy, schedulingBusy]);
   const [drawnPaths, setDrawnPaths]             = useState<DrawnPath[]>([]);
   const [drawColor, setDrawColor]               = useState('#fff');
   const [drawWidth, setDrawWidth]               = useState(6);
@@ -203,9 +211,14 @@ export default function CreatePostScreen() {
   const isTrashHoveredRef = useRef(false);
 
   // Video-Player für Inline-Vorschau
-  const videoPlayer = useVideoPlayer(mediaTypeParam === 'video' ? (mediaUri ?? '') : '', (p) => {
-    p.loop = true; p.play();
+  const editorFocused = useIsFocused();
+  const videoPlayer = useVideoPlayer(image?.type === 'video' ? image.uri : null, (p) => {
+    p.loop = true;
   });
+  useEffect(() => {
+    if (editorFocused && image?.type === 'video') videoPlayer.play();
+    else videoPlayer.pause();
+  }, [editorFocused, image?.type, videoPlayer]);
 
   // v1.20 — Hydrate von Cloud-Draft (?draftId=…)
   useEffect(() => {
@@ -249,9 +262,11 @@ export default function CreatePostScreen() {
   // kann nicht „verschwinden". Null bei Fehler → Aufrufer fällt auf bakeImageEdits zurück.
   const compositeViaCapture = useCallback(async (): Promise<string | null> => {
     if (!image || image.type === 'video') return null;
-    const filterBaked = await bakeImageEdits(image.uri, { filterId: activeFilter, rotation: 0, flipH: false });
+    const filterBaked = SKIA_READY ? await bakeImageEdits(image.uri, { filterId: activeFilter, rotation: 0, flipH: false, adjustments: adjustValues }) : null;
+    if (SKIA_READY && (activeFilter || hasImageAdjustments(adjustValues)) && !filterBaked) return null;
     setCaptureUri(filterBaked ?? image.uri);
-    setCapturing(true);
+    // SVG can be captured directly; native Skia uses the rendered photo.
+    setCapturing(SKIA_READY);
     await new Promise((r) => setTimeout(r, 160));   // einen Frame warten bis gerendert
     try {
       const uri = await shotRef.current?.capture?.();
@@ -265,7 +280,44 @@ export default function CreatePostScreen() {
     } finally {
       setCapturing(false);
     }
-  }, [image, activeFilter]);
+  }, [image, activeFilter, adjustValues]);
+
+  const preparePhoto = useCallback(async (): Promise<string> => {
+    if (!image) throw new Error(tr('create.mediaRequired'));
+    const overlays = textOverlays.length > 0 || stickerOverlays.length > 0 || drawnPaths.length > 0;
+    const edited = !!activeFilter || hasImageAdjustments(adjustValues) || rotateState.rotation !== 0 || rotateState.flipH;
+    if (!overlays && !edited) return image.uri;
+    const uri = overlays || !SKIA_READY
+      ? await compositeViaCapture()
+      : await bakeImageEdits(image.uri, { filterId: activeFilter, ...rotateState, adjustments: adjustValues });
+    // A failed export must never silently discard the user's edits.
+    if (!uri) throw new Error(tr('editorUx.exportFailed'));
+    return uri;
+  }, [image, textOverlays, stickerOverlays, drawnPaths, activeFilter, adjustValues, rotateState, compositeViaCapture, tr]);
+
+  const openStory = async () => {
+    if (!image || uploading || publishingRef.current || storyPreparingRef.current) return;
+    storyPreparingRef.current = true;
+    setStoryPreparing(true);
+    try {
+      const uri = image.type === 'video' ? image.uri : await preparePhoto();
+      if (!editorMounted.current) return;
+      router.push({ pathname: '/create-story', params: { mediaUri: uri, mediaType: image.type === 'video' ? 'video' : 'image', mediaMimeType: uri === image.uri ? image.mimeType ?? '' : 'image/jpeg' } });
+    } catch {
+      if (editorMounted.current) Alert.alert(tr('create.tooBad'), tr('editorUx.exportFailed'));
+    } finally {
+      storyPreparingRef.current = false;
+      if (editorMounted.current) setStoryPreparing(false);
+    }
+  };
+  const handleStory = () => {
+    if (currentAudioTrack) {
+      Alert.alert(tr('editorUx.storyPreview'), tr('editorUx.storySoundNotice'), [
+        { text: tr('common.cancel'), style: 'cancel' },
+        { text: tr('editorUx.continueWithoutSound'), onPress: () => void openStory() },
+      ]);
+    } else void openStory();
+  };
 
   /** Sorgt dafür, dass das lokale Image zu R2 hochgeladen ist (Cache). Nutzt ggf. bestehende URL. */
   const ensureMediaUploaded = useCallback(async (signal: AbortSignal | undefined): Promise<{
@@ -276,7 +328,7 @@ export default function CreatePostScreen() {
     if (!profile) throw new Error(tr('create.noProfile'));
     if (!image)  return { mediaUrl: null, thumbnailUrl: null, mediaType: null };
     const mt: 'image' | 'video' = image.type === 'video' ? 'video' : 'image';
-    if (image.uri.startsWith('http') && uploadedMediaRef.current.url === image.uri) {
+    if (image.uri.startsWith('http') && uploadedMediaRef.current.url === image.uri && !activeFilter && !hasImageAdjustments(adjustValues) && rotateState.rotation === 0 && !rotateState.flipH && textOverlays.length === 0 && stickerOverlays.length === 0 && drawnPaths.length === 0 && coverTimeMs === 0) {
       return {
         mediaUrl:     uploadedMediaRef.current.url,
         thumbnailUrl: uploadedMediaRef.current.thumbnailUrl,
@@ -286,26 +338,8 @@ export default function CreatePostScreen() {
     const isVideo = mt === 'video';
     setUploading(true); setUploadPct(0);
     try {
-      // Bild für den Upload zusammenrechnen (nur Bilder). Mit Text/Sticker/Zeichnung:
-      // via view-shot die fertige Vorschau einfangen. Sonst (oder bei Capture-Fehler):
-      // Filter + Drehen/Spiegeln via Skia backen. Beides defensiv → schlimmstenfalls
-      // rohes Bild (kein Regress).
-      let uploadUri = image.uri;
-      let uploadMime = image.mimeType;
-      if (!isVideo) {
-        const hasOverlays = textOverlays.length > 0 || stickerOverlays.length > 0 || drawnPaths.length > 0;
-        const composited = hasOverlays ? await compositeViaCapture() : null;
-        if (composited) {
-          uploadUri = composited; uploadMime = 'image/jpeg';
-        } else {
-          const baked = await bakeImageEdits(image.uri, {
-            filterId: activeFilter,
-            rotation: rotateState.rotation,
-            flipH: rotateState.flipH,
-          });
-          if (baked) { uploadUri = baked; uploadMime = 'image/jpeg'; }
-        }
-      }
+      const uploadUri = isVideo ? image.uri : await preparePhoto();
+      const uploadMime = uploadUri === image.uri ? image.mimeType : 'image/jpeg';
       const { url } = await uploadPostMedia(profile.id, uploadUri, uploadMime, (pct) => setUploadPct(pct), signal);
       let thumbnailUrl: string | null = null;
       if (isVideo) thumbnailUrl = await generateAndUploadThumbnail(profile.id, image.uri, signal, coverTimeMs);
@@ -314,7 +348,7 @@ export default function CreatePostScreen() {
     } finally {
       setUploading(false); setUploadPct(0);
     }
-  }, [profile, image, coverTimeMs, activeFilter, rotateState, textOverlays, stickerOverlays, drawnPaths, compositeViaCapture]);
+  }, [profile, image, coverTimeMs, activeFilter, rotateState, textOverlays, stickerOverlays, drawnPaths, preparePhoto, adjustValues, tr]);
 
   const addTextOverlay = (overlay: Omit<TextOverlay,'id'|'x'|'y'>) => {
     setTextOverlays(prev => [...prev, {
@@ -333,7 +367,7 @@ export default function CreatePostScreen() {
     setShowCropSheet(false);
     if (!image || croppedUri === image.uri) return;
     uploadedMediaRef.current = { url: null, thumbnailUrl: null };
-    setImage({ ...image, uri: croppedUri });
+    setImage({ ...image, uri: croppedUri, mimeType: croppedUri.endsWith('.png') ? 'image/png' : 'image/jpeg' });
   };
 
   // Trash zone callbacks
@@ -392,10 +426,12 @@ export default function CreatePostScreen() {
   }, []);
 
   const handlePost = async () => {
-    if (!profile) return;
+    if (!profile || publishingRef.current) return;
     // Medium ist Pflicht — Feed/Web/Contract unterstützen keine medienlosen Posts.
     // Reiner Text läuft über den TEXT-Modus (Studio), der Text als Bild rendert.
     if (!image) { Alert.alert(tr('create.almostDone'), tr('create.mediaRequired')); return; }
+    publishingRef.current = true;
+    setPublishing(true);
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -454,6 +490,8 @@ export default function CreatePostScreen() {
         [{ text: 'OK' }]
       );
     } finally {
+      publishingRef.current = false;
+      setPublishing(false);
       setUploading(false); setUploadPct(0);
     }
   };
@@ -549,6 +587,17 @@ export default function CreatePostScreen() {
   };
 
   const isVideo = image?.type === 'video';
+  const editorBusy = uploading || publishing || storyPreparing || draftSavingBusy || schedulingBusy;
+  const editorTools: EditorTool[] = isVideo
+    ? [{ id: 'cover', label: tr('create.cover'), Icon: CoverIcon, active: coverTimeMs > 0, onPress: () => setShowCoverSheet(true) }]
+    : [
+      { id: 'text', label: tr('create.text'), Icon: Type, active: textOverlays.length > 0, onPress: () => setShowTextEditor(true) },
+      { id: 'sticker', label: tr('create.sticker'), Icon: Smile, active: stickerOverlays.length > 0, onPress: () => setShowStickerSheet(true) },
+      { id: 'filter', label: tr('create.filter'), Icon: Palette, active: !!activeFilter, onPress: () => setShowFilterSheet(true) },
+      { id: 'adjust', label: tr('create.adjust'), Icon: SlidersHorizontal, active: hasImageAdjustments(adjustValues), onPress: () => setShowAdjustSheet(true) },
+      { id: 'rotate', label: tr('create.rotate'), Icon: RotateCw, active: rotateState.rotation !== 0 || rotateState.flipH, onPress: () => setShowRotateSheet(true) },
+      { id: 'crop', label: tr('create.crop'), Icon: Crop, onPress: () => setShowCropSheet(true) },
+    ];
 
   return (
     <View style={s.root}>
@@ -572,9 +621,9 @@ export default function CreatePostScreen() {
               nativeControls={false}
             />
           ) : capturing && captureUri ? (
-            <Image source={{ uri: captureUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
+            <Image source={{ uri: captureUri }} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="contain" />
           ) : (
-            <SkiaFilteredImage uri={image.uri} filterId={activeFilter} />
+            <SkiaFilteredImage uri={image.uri} filterId={activeFilter} adjustments={adjustValues} />
           )
         ) : (
           <View style={s.emptyState}>
@@ -590,17 +639,6 @@ export default function CreatePostScreen() {
         )}
 
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          {adjustValues.brightness !== 0 && (
-            <View
-              pointerEvents="none"
-              style={[StyleSheet.absoluteFill, {
-                backgroundColor: adjustValues.brightness > 0
-                  ? `rgba(255,255,255,${(adjustValues.brightness / 50) * 0.25})`
-                  : `rgba(0,0,0,${(Math.abs(adjustValues.brightness) / 50) * 0.35})`,
-              }]}
-            />
-          )}
-
           <View style={s.vignetteTop} pointerEvents="none" />
           <View style={s.vignetteBottom} pointerEvents="none" />
 
@@ -677,13 +715,15 @@ export default function CreatePostScreen() {
         <Pressable
           onPress={confirmLeave}
           style={s.topBtn}
+          disabled={editorBusy}
+          accessibilityRole="button" accessibilityLabel={tr('mobileDesign.close')}
           hitSlop={10}
         >
           <X size={22} color="#fff" strokeWidth={2.5} />
         </Pressable>
 
         {/* Musik-Badge */}
-        <Pressable onPress={() => setShowMusicPicker(true)} style={s.musicBadge}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr('create.addSound')} disabled={editorBusy} onPress={() => setShowMusicPicker(true)} style={s.musicBadge}>
           <Music2 size={13} color="#fff" strokeWidth={2.5} />
           <Text style={s.musicBadgeText} numberOfLines={1}>
             {currentAudioTrack ? currentAudioTrack.title : tr('create.addSound')}
@@ -696,106 +736,38 @@ export default function CreatePostScreen() {
         </Pressable>
 
         {/* Einstellungsrad — oben rechts → öffnet Details-Sheet */}
-        <Pressable onPress={() => setShowDetails(true)} style={s.topBtn} hitSlop={10}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr('create.details')} disabled={editorBusy || !image} onPress={() => setShowDetails(true)} style={s.topBtn} hitSlop={10}>
           <Settings2 size={20} color="#fff" strokeWidth={2} />
         </Pressable>
       </View>
       )}
 
-      {/* ── Rechte Tool-Sidebar (im Zeichnen-Modus ausgeblendet) ── */}
-      {!isDrawMode && (
-      <View style={[s.sidebar, { top: insets.top + 70 }]}>
-
-        <Pressable onPress={() => setShowMusicPicker(true)} style={s.sideBtn}>
-          <Music2 size={26} color="#fff" strokeWidth={1.8} />
-          {currentAudioTrack && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>{tr('create.sound')}</Text>
-        </Pressable>
-
-        <Pressable style={s.sideBtn} onPress={() => setShowTextEditor(true)}>
-          <Type size={26} color="#fff" strokeWidth={1.8} />
-          {textOverlays.length > 0 && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>{tr('create.text')}</Text>
-        </Pressable>
-
-        <Pressable style={[s.sideBtn, stickerOverlays.length > 0 && s.sideBtnActive]} onPress={() => setShowStickerSheet(true)}>
-          <Smile size={26} color="#fff" strokeWidth={1.8} />
-          {stickerOverlays.length > 0 && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>{tr('create.sticker')}</Text>
-        </Pressable>
-
-        <Pressable style={[s.sideBtn, !!activeFilter && s.sideBtnActive]} onPress={() => setShowFilterSheet(true)}>
-          <Palette size={26} color="#fff" strokeWidth={1.8} />
-          {!!activeFilter && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>{tr('create.filter')}</Text>
-        </Pressable>
-
-        {/* Zeichnen-Button entfernt (funktionierte nicht) — Draw-Code bleibt dormant für später */}
-
-        <Pressable style={[s.sideBtn, (adjustValues.brightness !== 0 || adjustValues.contrast !== 0 || adjustValues.saturation !== 0) && s.sideBtnActive]} onPress={() => setShowAdjustSheet(true)}>
-          <SlidersHorizontal size={26} color="#fff" strokeWidth={1.8} />
-          {(adjustValues.brightness !== 0 || adjustValues.contrast !== 0) && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>{tr('create.adjust')}</Text>
-        </Pressable>
-
-        <Pressable style={[s.sideBtn, (rotateState.rotation !== 0 || rotateState.flipH) && s.sideBtnActive]} onPress={() => setShowRotateSheet(true)}>
-          <RotateCw size={26} color="#fff" strokeWidth={1.8} />
-          {(rotateState.rotation !== 0 || rotateState.flipH) && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>{tr('create.rotate')}</Text>
-        </Pressable>
-
-        {/* Zuschneiden — nur für Bilder (v1: Seitenverhältnis-Center-Crop) */}
-        {!isVideo && image && (
-          <Pressable style={s.sideBtn} onPress={() => setShowCropSheet(true)}>
-            <Crop size={26} color="#fff" strokeWidth={1.8} />
-            <Text style={s.sideLabel}>{tr('create.crop')}</Text>
-          </Pressable>
-        )}
-
-        {/* Schneiden — nur für Videos */}
-        {isVideo && (
-          <Pressable style={[s.sideBtn, trimResult && s.sideBtnActive]} onPress={() => setShowTrimSheet(true)}>
-            <Scissors size={26} color="#fff" strokeWidth={1.8} />
-            {trimResult && <View style={s.sideBtnDot} />}
-            <Text style={s.sideLabel}>{tr('create.trim')}</Text>
-          </Pressable>
-        )}
-
-        {/* Cover — nur für Videos (Start-Frame fürs Feed-Thumbnail) */}
-        {isVideo && image && (
-          <Pressable style={[s.sideBtn, coverTimeMs > 0 && s.sideBtnActive]} onPress={() => setShowCoverSheet(true)}>
-            <CoverIcon size={26} color="#fff" strokeWidth={1.8} />
-            {coverTimeMs > 0 && <View style={s.sideBtnDot} />}
-            <Text style={s.sideLabel}>{tr('create.cover')}</Text>
-          </Pressable>
-        )}
-
-      </View>
-      )}
+      {!isDrawMode && image && <EditorToolbar tools={editorTools} top={insets.top + 76} bottom={insets.bottom + 132} disabled={editorBusy} />}
 
       {/* ── Bottom-Buttons (im Zeichnen-Modus ausgeblendet) ───── */}
       {!isDrawMode && (
       <View style={[s.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         {image && (
-          <Pressable onPress={pickFromLibrary} style={s.thumbBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('editorUx.changeMedia')} disabled={editorBusy} onPress={pickFromLibrary} style={s.thumbBtn}>
             <Image source={{ uri: image.uri }} style={s.thumb} contentFit="cover" />
           </Pressable>
         )}
 
         <View style={s.bottomActions}>
           {/* Story-Button */}
-          <Pressable style={s.storyBtn} onPress={handlePost} disabled={uploading}>
-            <Text style={s.storyBtnText}>{tr('create.story')}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('editorUx.storyPreview')} style={[s.storyBtn, (editorBusy || !image) && { opacity: 0.5 }]} onPress={handleStory} disabled={editorBusy || !image}>
+            {storyPreparing ? <ActivityIndicator color="#FFF" /> : <Text style={s.storyBtnText}>{tr('create.story')}</Text>}
           </Pressable>
 
           {/* Weiter → Details-Sheet */}
           <Pressable
-            style={s.nextBtn}
+            accessibilityRole="button" accessibilityLabel={tr('editorUx.postDetails')}
+            style={[s.nextBtn, (editorBusy || !image) && { opacity: 0.5 }]}
             onPress={() => setShowDetails(true)}
-            disabled={uploading}
+            disabled={editorBusy || !image}
           >
             <Text style={s.nextBtnText}>{tr('create.next')}</Text>
-            <ChevronRight size={18} color="#000" strokeWidth={2.5} />
+            <ChevronRight size={18} color={darkColors.text.onAccent} strokeWidth={2.5} />
           </Pressable>
         </View>
       </View>
@@ -860,16 +832,6 @@ export default function CreatePostScreen() {
         />
       )}
 
-      {/* ── VideoTrimSheet ───────────────────────────────────── */}
-      {isVideo && image && (
-        <VideoTrimSheet
-          visible={showTrimSheet}
-          uri={image.uri}
-          onDone={(r) => { setTrimResult(r); setShowTrimSheet(false); }}
-          onCancel={() => setShowTrimSheet(false)}
-        />
-      )}
-
       {/* ── Details-Sheet (Caption / Tags / Privacy / Post) ── */}
       <DetailsSheet
         visible={showDetails}
@@ -881,7 +843,7 @@ export default function CreatePostScreen() {
         settings={postSettings}
         onSettings={setPostSettings}
         onPost={handlePost}
-        uploading={uploading}
+        uploading={uploading || publishing}
         onSchedule={() => setShowScheduler(true)}
         onSaveDraft={handleSaveCloudDraft}
         busyDraft={draftSavingBusy}
@@ -941,7 +903,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
 
   // Vollbild-Preview
-  preview: { ...StyleSheet.absoluteFillObject },
+  preview: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
   vignetteTop: { position:'absolute', top:0, left:0, right:0, height:160, backgroundColor:'transparent' },
   vignetteBottom: { position:'absolute', bottom:0, left:0, right:0, height:220, backgroundColor:'transparent' },
 
@@ -979,35 +941,10 @@ const s = StyleSheet.create({
   },
   musicBadgeText: { color:'#fff', fontSize:13, fontWeight:'700', flex:1 },
 
-  // ── Rechte Sidebar — kein Hintergrund, kein Rahmen ─────
-  sidebar: {
-    position:'absolute', right:10,
-    flexDirection:'column', alignItems:'center', gap:22,
-  },
-  sideBtn: {
-    alignItems:'center', justifyContent:'center', width:50, paddingVertical:2,
-  },
-  sideBtnActive: {
-    opacity: 1,
-  },
-  sideBtnIcon: { fontSize: 24 },
-  sideLabel: {
-    color:'rgba(255,255,255,0.75)',
-    fontSize:10, fontWeight:'700',
-    marginTop:4, textAlign:'center',
-    textShadowColor:'rgba(0,0,0,0.8)', textShadowOffset:{width:0,height:1}, textShadowRadius:4,
-  },
-  sideBtnDot: {
-    position:'absolute', top:0, right:4,
-    width:9, height:9, borderRadius:5,
-    backgroundColor:'#fff',
-    borderWidth:1.5, borderColor:'rgba(0,0,0,0.5)',
-  },
-
   // ── Bottom-Bar ───────────────────────────────────────────
   bottomBar: {
     position:'absolute', bottom:0, left:0, right:0,
-    paddingHorizontal:14, paddingTop:16,
+    paddingHorizontal:14, paddingTop:16, backgroundColor: 'rgba(0,0,0,0.9)',
     flexDirection:'row', alignItems:'flex-end', gap:10,
   },
   thumbBtn: {
@@ -1029,12 +966,11 @@ const s = StyleSheet.create({
 
   nextBtn: {
     flex:1.7, paddingVertical:17, borderRadius:16,
-    backgroundColor:'#fff',
+    backgroundColor: darkColors.accent.solid,
     alignItems:'center', justifyContent:'center',
     flexDirection:'row', gap:6,
-    shadowColor:'#fff', shadowOpacity:0.2, shadowRadius:12, shadowOffset:{width:0,height:0},
   },
-  nextBtnText: { color:'#000', fontSize:15, fontWeight:'700', letterSpacing:0.2 },
+  nextBtnText: { color: darkColors.text.onAccent, fontSize:15, fontWeight:'700', letterSpacing:0.2 },
 });
 
 // SH is exported from the barrel but not needed directly in this file

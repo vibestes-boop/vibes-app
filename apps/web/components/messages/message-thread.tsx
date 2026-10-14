@@ -15,7 +15,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { createBrowserClient } from '@supabase/ssr';
-import { Send, ImagePlus, Loader2, Smile, CornerDownRight, X, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Send, ImagePlus, Loader2, Smile, CornerDownRight, X, Check, CheckCheck, Trash2, MoreHorizontal } from 'lucide-react';
+import { useI18n } from '@/lib/i18n/client';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { GifPicker } from './gif-picker';
 import { ProductLinkCard } from './product-link-card';
 import type {
@@ -70,7 +72,7 @@ interface Props {
   productShare: ProductShareContext | null;
 }
 
-type PendingMessage = MessageWithContext & { pending?: boolean };
+type PendingMessage = MessageWithContext & { pending?: boolean; failed?: boolean };
 
 export function MessageThread({
   conversationId,
@@ -92,6 +94,11 @@ export function MessageThread({
   // ── Scroll-Up Infinite-Scroll (v1.w.UI.72) ────────────────────────────────
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState(false);
+  const { t } = useI18n();
+  const operationIds = useRef(new Set<string>());
+  const [busyIds, setBusyIds] = useState(new Set<string>());
+  const [actionErrors, setActionErrors] = useState<Record<string, 'delete' | 'reaction'>>({});
 
   // Stable refs damit IntersectionObserver-Callback keine stale closures hat.
   const hasMoreRef = useRef(initialHasMore);
@@ -169,32 +176,32 @@ export function MessageThread({
     isLoadingOlderRef.current = true;
     setIsLoadingOlder(true);
 
-    const result = await loadOlderMessages(conversationId, before);
-
-    if (result.ok && result.data.messages.length > 0) {
-      // Scroll-Höhe JETZT speichern, VOR State-Update (DOM noch unverändert).
-      scrollRestoreRef.current = scrollerRef.current?.scrollHeight ?? 0;
-      pendingPrependRef.current = true;
-      setMessages((prev) => {
-        // Dedup-Guard: bereits vorhandene IDs nicht doppelt einfügen.
-        const existingIds = new Set(prev.map((m) => m.id));
-        const fresh = result.data.messages.filter((m) => !existingIds.has(m.id));
-        return [...fresh, ...prev];
-      });
+    setOlderError(false);
+    try {
+      const result = await loadOlderMessages(conversationId, before);
+      if (!result.ok) throw new Error('History unavailable');
+      if (result.data.messages.length > 0) {
+        scrollRestoreRef.current = scrollerRef.current?.scrollHeight ?? 0;
+        pendingPrependRef.current = true;
+        setMessages(previous => {
+          const existingIds = new Set(previous.map(message => message.id));
+          return [...result.data.messages.filter(message => !existingIds.has(message.id)), ...previous];
+        });
+      }
       setHasMore(result.data.hasMore);
-    } else if (result.ok) {
-      // Keine weiteren Messages
-      setHasMore(false);
+      hasMoreRef.current = result.data.hasMore;
+    } catch {
+      setOlderError(true);
+    } finally {
+      isLoadingOlderRef.current = false;
+      setIsLoadingOlder(false);
     }
-
-    isLoadingOlderRef.current = false;
-    setIsLoadingOlder(false);
   }, [conversationId]);
 
   // IntersectionObserver auf dem Top-Sentinel — löst Load aus wenn sichtbar.
   useEffect(() => {
     const sentinel = topSentinelRef.current;
-    if (!sentinel || !hasMore) return;
+    if (!sentinel || !hasMore || olderError) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -206,7 +213,7 @@ export function MessageThread({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, handleLoadOlder]);
+  }, [hasMore, olderError, handleLoadOlder]);
 
   // ────────────────────────────────────────────────────────────────────────────
 
@@ -360,77 +367,114 @@ export function MessageThread({
 
   const messagesByDay = useMemo(() => groupByDay(messages), [messages]);
 
-  const onSent = useCallback((msg: PendingMessage) => {
-    setMessages((prev) => [...prev, msg]);
+  const sendingIds = useRef(new Set<string>());
+  const transmitMessage = useCallback(async (message: PendingMessage) => {
+    if (sendingIds.current.has(message.id)) return;
+    sendingIds.current.add(message.id);
+    setMessages(previous => previous.map(item => item.id === message.id ? { ...item, pending: true, failed: false } : item));
+    try {
+      const result = await sendDirectMessage({
+        conversationId,
+        content: message.content,
+        imageUrl: message.image_url,
+        replyToId: message.reply_to_id,
+        postId: message.post_id,
+        storyMediaUrl: message.story_media_url,
+      });
+      if (!result.ok) throw new Error('Message was not accepted');
+      setMessages(previous => {
+        // Realtime may deliver before the action response. Keep exactly one row.
+        if (previous.some(item => item.id === result.data.id)) {
+          return previous.filter(item => item.id !== message.id);
+        }
+        return previous.map(item => item.id === message.id
+          ? { ...item, id: result.data.id, pending: false, failed: false }
+          : item);
+      });
+    } catch {
+      setMessages(previous => previous.map(item => item.id === message.id
+        ? { ...item, pending: false, failed: true } : item));
+    } finally {
+      sendingIds.current.delete(message.id);
+    }
+  }, [conversationId]);
+
+  const onSent = useCallback(async (message: PendingMessage) => {
+    setMessages(previous => [...previous, message]);
     setReplyTo(null);
     wasNearBottomRef.current = true;
+    await transmitMessage(message);
+  }, [transmitMessage]);
+
+  const beginOperation = useCallback((messageId: string) => {
+    if (operationIds.current.has(messageId)) return false;
+    operationIds.current.add(messageId);
+    setBusyIds(new Set(operationIds.current));
+    setActionErrors(previous => {
+      const next = { ...previous };
+      delete next[messageId];
+      return next;
+    });
+    return true;
   }, []);
 
-  const onToggleReaction = useCallback(
-    async (messageId: string, emoji: string) => {
-      setPickerFor(null);
-      // Optimistic
-      setReactions((prev) => {
-        const existing = prev.find((r) => r.message_id === messageId && r.emoji === emoji);
-        if (existing?.by_me) {
-          // Remove
-          return prev
-            .map((r) =>
-              r.message_id === messageId && r.emoji === emoji
-                ? { ...r, by_me: false, count: Math.max(0, r.count - 1) }
-                : r,
-            )
-            .filter((r) => r.count > 0);
-        }
-        if (existing) {
-          return prev.map((r) =>
-            r.message_id === messageId && r.emoji === emoji
-              ? { ...r, by_me: true, count: r.count + 1 }
-              : r,
-          );
-        }
-        return [...prev, { message_id: messageId, emoji, count: 1, by_me: true }];
+  const finishOperation = useCallback((messageId: string) => {
+    operationIds.current.delete(messageId);
+    setBusyIds(new Set(operationIds.current));
+  }, []);
+
+  const onToggleReaction = useCallback(async (messageId: string, emoji: string) => {
+    if (!beginOperation(messageId)) return;
+    setPickerFor(null);
+    try {
+      const result = await toggleMessageReaction(messageId, emoji);
+      if (!result.ok) throw new Error('Reaction unavailable');
+      setReactions(previous => {
+        const existing = previous.find(item => item.message_id === messageId && item.emoji === emoji);
+        // A realtime update may already contain this acknowledgement.
+        if (Boolean(existing?.by_me) === result.data.added) return previous;
+        if (!existing) return [...previous, { message_id: messageId, emoji, count: 1, by_me: true }];
+        return previous.map(item => item === existing
+          ? { ...item, by_me: result.data.added, count: item.count + (result.data.added ? 1 : -1) }
+          : item).filter(item => item.count > 0);
       });
-      const res = await toggleMessageReaction(messageId, emoji);
-      if (!res.ok) {
-        // Realtime refresh korrigiert bei Fehler automatisch.
-        console.warn('reaction failed', res.error);
-      }
-    },
-    [],
-  );
+    } catch {
+      setActionErrors(previous => ({ ...previous, [messageId]: 'reaction' }));
+    } finally {
+      finishOperation(messageId);
+    }
+  }, [beginOperation, finishOperation]);
 
   const onDeleteMessage = useCallback(async (messageId: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== messageId));
-    const res = await deleteMessage(messageId);
-    if (!res.ok) console.warn('delete failed', res.error);
-  }, []);
+    if (!beginOperation(messageId)) return;
+    try {
+      const result = await deleteMessage(messageId);
+      if (!result.ok) throw new Error('Delete unavailable');
+      setMessages(previous => previous.filter(message => message.id !== messageId));
+      setReplyTo(previous => previous?.id === messageId ? null : previous);
+      setPickerFor(previous => previous === messageId ? null : previous);
+    } catch {
+      setActionErrors(previous => ({ ...previous, [messageId]: 'delete' }));
+    } finally {
+      finishOperation(messageId);
+    }
+  }, [beginOperation, finishOperation]);
 
   return (
     <>
       <div
         ref={scrollerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-4"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4"
       >
-        {/* Top-Sentinel für IntersectionObserver + Loading-Spinner */}
         {hasMore && (
-          <div ref={topSentinelRef} className="flex h-8 items-center justify-center">
-            {isLoadingOlder && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <svg
-                  className="h-3.5 w-3.5 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                <span>Ältere Nachrichten…</span>
-              </div>
-            )}
+          <div ref={topSentinelRef} className="mb-3 text-center">
+            {isLoadingOlder ? <p role="status" className="py-3 text-xs text-muted-foreground">{t('messages.loadingOlder')}</p> : <>
+              {olderError && <p role="alert" className="text-xs text-destructive">{t('messages.olderFailed')}</p>}
+              <button type="button" onClick={() => void handleLoadOlder()} className="min-h-11 rounded-full border px-4 text-xs">
+                {t(olderError ? 'common.retry' : 'messages.loadOlder')}
+              </button>
+            </>}
           </div>
         )}
 
@@ -448,6 +492,9 @@ export function MessageThread({
                       msg={msg}
                       isOwn={msg.sender_id === viewerId}
                       reactions={reactionMap.get(msg.id) ?? []}
+                      busy={busyIds.has(msg.id)}
+                      actionError={actionErrors[msg.id]}
+                      onRetry={() => void transmitMessage(msg)}
                       onReply={() => setReplyTo(msg)}
                       onOpenPicker={() => setPickerFor(msg.id)}
                       onToggleReaction={onToggleReaction}
@@ -515,23 +562,30 @@ const MessageBubble = memo(function MessageBubble({
   msg,
   isOwn,
   reactions,
+  onRetry,
   onReply,
   onOpenPicker,
   onToggleReaction,
   onDelete,
   pickerOpen,
   onClosePicker,
+  busy,
+  actionError,
 }: {
   msg: PendingMessage;
   isOwn: boolean;
   reactions: ReactionAggregate[];
+  onRetry: () => void;
   onReply: () => void;
   onOpenPicker: () => void;
   onToggleReaction: (messageId: string, emoji: string) => void;
   onDelete: () => void;
   pickerOpen: boolean;
   onClosePicker: () => void;
+  busy: boolean;
+  actionError?: 'delete' | 'reaction';
 }) {
+  const { t } = useI18n();
   const time = new Date(msg.created_at).toLocaleTimeString('de-DE', {
     hour: '2-digit',
     minute: '2-digit',
@@ -586,7 +640,7 @@ const MessageBubble = memo(function MessageBubble({
                 {imageOnly && (
                   <span className="pointer-events-none absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] text-white">
                     <span suppressHydrationWarning>{time}</span>
-                    {isOwn && !msg.pending &&
+                    {isOwn && !msg.pending && !msg.failed &&
                       (msg.read ? (
                         <CheckCheck className="h-3 w-3 stroke-[2.5]" />
                       ) : (
@@ -648,7 +702,7 @@ const MessageBubble = memo(function MessageBubble({
                 >
                   {/* suppressHydrationWarning: toLocaleTimeString ist TZ-abhängig. */}
                   <span suppressHydrationWarning>{time}</span>
-                  {isOwn && !msg.pending && (
+                  {isOwn && !msg.pending && !msg.failed && (
                     <span
                       aria-label={msg.read ? 'gelesen' : 'gesendet'}
                       className={msg.read ? 'text-white' : ''}
@@ -665,44 +719,31 @@ const MessageBubble = memo(function MessageBubble({
             )}
           </div>
 
-          {/* Hover-Actions — AUSSERHALB der overflow-hidden Bubble (sonst geklippt). */}
-          <div
-            className={`absolute ${
-              isOwn ? 'left-[-72px]' : 'right-[-72px]'
-            } top-1/2 flex -translate-y-1/2 gap-1 opacity-0 transition-opacity group-hover:opacity-100`}
-          >
-            <button
-              type="button"
-              onClick={onReply}
-              className="grid h-7 w-7 place-items-center rounded-full bg-card text-foreground shadow hover:bg-muted"
-              aria-label="Antworten"
-              title="Antworten"
-            >
-              <CornerDownRight className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={onOpenPicker}
-              className="grid h-7 w-7 place-items-center rounded-full bg-card text-foreground shadow hover:bg-muted"
-              aria-label="Emoji-Reaktion hinzufügen"
-              title="Reaktion"
-            >
-              <Smile className="h-3.5 w-3.5" />
-            </button>
-            {isOwn && (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="grid h-7 w-7 place-items-center rounded-full bg-card text-red-500 shadow hover:bg-muted"
-                aria-label="Löschen"
-                title="Löschen"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+          {!msg.pending && !msg.failed && (
+            <div className={`absolute ${isOwn ? '-left-12' : '-right-12'} top-1/2 -translate-y-1/2 md:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100`}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" disabled={busy} className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label={t('messages.actions')}>
+                    <MoreHorizontal size={20} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={isOwn ? 'end' : 'start'}>
+                  <DropdownMenuItem onSelect={onReply}><CornerDownRight size={16} />{t('messages.reply')}</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onOpenPicker}><Smile size={16} />{t('messages.react')}</DropdownMenuItem>
+                  {isOwn && <DropdownMenuItem onSelect={onDelete}><Trash2 size={16} />{t('common.delete')}</DropdownMenuItem>}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
+        {busy && <p role="status" className="mt-1 text-xs text-muted-foreground">{t('common.loading')}</p>}
+        {actionError && <p role="alert" className="mt-1 text-xs text-destructive">{t(actionError === 'delete' ? 'messages.deleteFailed' : 'messages.reactionFailed')}</p>}
+        {msg.failed && <div className="serlo-message-failure" role="alert">
+          <p>{t('messages.sendFailed')}</p>
+          <button type="button" onClick={onRetry}>{t('common.retry')}</button>
+        </div>}
+        {msg.pending && <span role="status" className="mt-1 text-xs text-muted-foreground">{t('messages.sending')}</span>}
         {reactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {reactions.map((r) => (
@@ -710,6 +751,8 @@ const MessageBubble = memo(function MessageBubble({
                 key={r.emoji}
                 type="button"
                 onClick={() => onToggleReaction(msg.id, r.emoji)}
+                disabled={busy}
+                aria-pressed={r.by_me}
                 className={`flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-xs ${
                   r.by_me
                     ? 'border-primary bg-primary/10 text-foreground'
@@ -744,6 +787,7 @@ const MessageBubble = memo(function MessageBubble({
                   key={e}
                   type="button"
                   onClick={() => onToggleReaction(msg.id, e)}
+                  disabled={busy}
                   className="text-xl transition-transform duration-fast ease-out-expo hover:scale-110"
                 >
                   {e}
@@ -779,11 +823,12 @@ function Composer({
   onCancelReply: () => void;
   productShare: ProductShareContext | null;
   onClearProductShare: () => void;
-  onSent: (msg: PendingMessage) => void;
+  onSent: (msg: PendingMessage) => Promise<void>;
   // Owner des Channels ist MessageThread — Composer feuert nur `track()` darauf.
   // Siehe Kommentar am Ref-Deklarationspunkt in MessageThread oben.
   typingChannelRef: MutableRefObject<ReturnType<ReturnType<typeof supa>['channel']> | null>;
 }) {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -803,14 +848,21 @@ function Composer({
   // ── v1.w.UI.190 — GIF-Picker ─────────────────────────────────────────────────
   const [showGifPicker, setShowGifPicker] = useState(false);
 
+  const uploadSequence = useRef(0);
+  useEffect(() => () => { uploadSequence.current += 1; }, []);
+  useEffect(() => () => {
+    if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+  }, [pendingImagePreviewUrl]);
+
   // Cleanup Object-URL bei Unmount oder wenn das Bild entfernt wird.
   const clearPendingImage = useCallback(() => {
-    if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+    uploadSequence.current += 1;
+    setIsUploading(false);
     setPendingImagePreviewUrl(null);
     setPendingImageUrl(null);
     setPendingImageName(null);
     setUploadError(null);
-  }, [pendingImagePreviewUrl]);
+  }, []);
 
   // v1.w.UI.190 — GIF direkt senden (Giphy-URL, kein R2-Upload nötig).
   // Parity mit mobile handleSendGif in app/messages/[id].tsx.
@@ -832,20 +884,8 @@ function Composer({
         post: null,
         pending: true,
       };
-      onSent(optimistic);
-      startTransition(async () => {
-        const res = await sendDirectMessage({
-          conversationId,
-          content: null,
-          imageUrl: gifUrl,
-          replyToId: null,
-        });
-        if (!res.ok) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('[GIF send failed]', res.error);
-          }
-        }
-      });
+      const sending = onSent(optimistic);
+      startTransition(async () => { await sending; });
     },
     [conversationId, viewerId, onSent, startTransition],
   );
@@ -867,7 +907,7 @@ function Composer({
       }
 
       // Vorschau sofort zeigen, Upload starten.
-      if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+      const sequence = ++uploadSequence.current;
       const previewUrl = URL.createObjectURL(file);
       setPendingImagePreviewUrl(previewUrl);
       setPendingImageName(file.name);
@@ -875,39 +915,27 @@ function Composer({
       setUploadError(null);
       setIsUploading(true);
 
-      const pathResult = await requestImageUploadPath();
-      if (!pathResult.ok) {
-        setIsUploading(false);
-        URL.revokeObjectURL(previewUrl);
+      try {
+        const pathResult = await requestImageUploadPath();
+        if (sequence !== uploadSequence.current) return;
+        if (!pathResult.ok) throw new Error(pathResult.error);
+        const { path, bucket } = pathResult.data;
+        const client = supa();
+        const { error } = await client.storage.from(bucket).upload(path, file, { upsert: false, contentType: file.type });
+        if (sequence !== uploadSequence.current) return;
+        if (error) throw new Error(t('messages.uploadFailed'));
+        const { data } = client.storage.from(bucket).getPublicUrl(path);
+        setPendingImageUrl(data.publicUrl);
+      } catch {
+        if (sequence !== uploadSequence.current) return;
         setPendingImagePreviewUrl(null);
         setPendingImageName(null);
-        setUploadError(pathResult.error);
-        return;
+        setUploadError(t('messages.uploadFailed'));
+      } finally {
+        if (sequence === uploadSequence.current) setIsUploading(false);
       }
-
-      const { path, bucket } = pathResult.data;
-      const client = supa();
-      const { error: storageError } = await client.storage
-        .from(bucket)
-        .upload(path, file, { upsert: false, contentType: file.type });
-
-      if (storageError) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[chat image upload]', storageError.message);
-        }
-        setIsUploading(false);
-        URL.revokeObjectURL(previewUrl);
-        setPendingImagePreviewUrl(null);
-        setPendingImageName(null);
-        setUploadError('Upload fehlgeschlagen.');
-        return;
-      }
-
-      const { data: urlData } = client.storage.from(bucket).getPublicUrl(path);
-      setPendingImageUrl(urlData.publicUrl);
-      setIsUploading(false);
     },
-    [pendingImagePreviewUrl],
+    [t],
   );
 
   // Typing-Presence clientseitig tracken (3s Auto-Stop). Nutzt den von
@@ -999,33 +1027,24 @@ function Composer({
       post: null,
       pending: true,
     };
-    onSent(optimistic);
+    const sending = onSent(optimistic);
+    startTransition(async () => { await sending; });
     setText('');
     clearPendingImage();
     if (productForSend) onClearProductShare();
 
-    startTransition(async () => {
-      const res = await sendDirectMessage({
-        conversationId,
-        content: finalContent || null,
-        imageUrl: imageUrlForSend ?? null,
-        replyToId: replyTo?.id ?? null,
-      });
-      if (!res.ok) {
-        console.warn('send failed', res.error);
-      }
-    });
+
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
   };
 
   return (
-    <div className="relative border-t bg-background px-3 py-2">
+    <div className="serlo-message-composer relative border-t px-3 py-2">
       {replyTo && (
         <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs">
           <CornerDownRight className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
@@ -1117,7 +1136,7 @@ function Composer({
 
       {/* Upload-Fehler ohne Preview (z.B. Dateityp/Größe abgelehnt) */}
       {uploadError && !pendingImagePreviewUrl && !isUploading && (
-        <div className="mb-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
+        <div role="alert" className="mb-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
           {uploadError}
         </div>
       )}
@@ -1169,10 +1188,11 @@ function Composer({
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
           onKeyDown={onKeyDown}
+          aria-label={isSelf ? 'Notiz schreiben' : 'Nachricht schreiben'}
           placeholder={isSelf ? 'Notiere etwas für dich…' : 'Nachricht schreiben…'}
           rows={1}
           maxLength={500}
-          className="flex-1 resize-none rounded-2xl border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
+          className="min-w-0 flex-1 resize-none rounded-2xl border bg-background px-3 py-2 text-base outline-none focus:border-primary"
         />
         <button
           type="button"

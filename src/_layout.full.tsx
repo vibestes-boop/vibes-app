@@ -12,7 +12,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { useEffect, useRef, useState } from 'react';
 import { passwordRecovery } from '@/lib/passwordRecovery';
-import { View, Text, ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet, useColorScheme } from 'react-native';
 import {
   useFonts,
   Inter_400Regular,
@@ -30,7 +30,7 @@ function AuthGuard() {
   const { useAuthStore } =
     require('@/lib/authStore') as typeof import('@/lib/authStore');
 
-  const { session, initialized, profile, setSession, fetchProfile } =
+  const { session, initialized, profile, profileStatus, setSession, fetchProfile } =
     useAuthStore();
   const segments = useSegments();
   const router = useRouter();
@@ -55,111 +55,59 @@ function AuthGuard() {
   }, [hydrated, initialized, useAuthStore]);
 
   useEffect(() => {
+    if (!hydrated) return;
+    let active = true;
+    let receivedAuthEvent = false;
     const safetyTimer = setTimeout(() => {
-      useAuthStore.setState({ initialized: true });
+      if (active) useAuthStore.setState({ initialized: true });
     }, 2500);
 
-    supabase.auth
-      .getSession()
-      .then(
-        async ({
-          data: { session },
-        }: {
-          data: { session: import('@supabase/supabase-js').Session | null };
-        }) => {
-          setSession(session);
-          if (session?.user) {
-            const cachedProfile = useAuthStore.getState().profile;
-            if (cachedProfile?.id === session.user.id) {
-              useAuthStore.setState({ initialized: true });
-              void fetchProfile(session.user.id);
-              return;
-            }
-            await fetchProfile(session.user.id);
-          }
-          useAuthStore.setState({ initialized: true });
-        },
-      )
-      .catch(() => {
-        useAuthStore.setState({ initialized: true });
-      })
-      .finally(() => clearTimeout(safetyTimer));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!active) return;
+      receivedAuthEvent = true;
+      if (event === 'PASSWORD_RECOVERY') {
+        passwordRecovery.active = true;
+        router.replace('/reset-password' as never);
+      }
+      setSession(nextSession);
+      useAuthStore.setState({ initialized: true });
+      // Keep this callback synchronous. Profile loading runs in its own effect.
+    });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (event: string, session: import('@supabase/supabase-js').Session | null) => {
-        setSession(session);
-        if (session?.user) await fetchProfile(session.user.id);
-        if (event === 'PASSWORD_RECOVERY') {
-          passwordRecovery.active = true;
-          router.replace('/reset-password' as never);
-        }
-      },
-    );
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active && !receivedAuthEvent) setSession(data.session);
+    }).catch(() => {
+      // Keep the hydrated session when the network is unavailable.
+    }).finally(() => {
+      clearTimeout(safetyTimer);
+      if (active) useAuthStore.setState({ initialized: true });
+    });
 
-    return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      active = false;
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
+  }, [hydrated, router, setSession, supabase, useAuthStore]);
+
+  const userId = session?.user.id;
+  const accessToken = session?.access_token;
+  useEffect(() => {
+    if (hydrated && initialized && userId && accessToken) void fetchProfile(userId);
+  }, [hydrated, initialized, userId, accessToken, fetchProfile]);
 
   useEffect(() => {
-    // Erst routen wenn Zustand hydrated UND Auth initialisiert ist
     if (!hydrated || !initialized) return;
-    // Passwort-Reset läuft: der Recovery-Link hat eine Sitzung gesetzt, aber der
-    // Nutzer MUSS erst ein neues Passwort vergeben. Ohne diese Sperre würde der
-    // Guard ihn sofort in die Tabs schicken und der Reset-Screen wäre unerreichbar.
-    if (passwordRecovery.active) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboardingGroup = segments[0] === '(onboarding)';
-
-    __DEV__ && console.log(
-      '[AuthGuard] initialized:', initialized,
-      'session:', !!session,
-      'profile:', !!profile,
-      'segments:', segments,
-    );
-
-    if (!session) {
-      // Kein Token → Login — egal wo der User gerade ist
-      if (!inAuthGroup) router.replace('/(auth)/login' as never);
-      return;
-    }
-
-    // Session vorhanden, aber profile noch am Laden → NICHTS tun
-    // (sonst sieht der User bei jedem App-Start das Onboarding bis fetchProfile fertig ist)
-    // Wir erkennen "noch am Laden" daran dass initialized gerade erst true wurde und profile null ist.
-    // AuthStore setzt profile auf null bevor er fetchProfile aufruft — das ist der false-positive.
-    // Lösung: Nur navigieren wenn profile definitiv null ist UND wir nicht schon im Onboarding/Auth sind.
-
-    if (!profile) {
-      // Kein Profil in DB trotz gültiger Session → echter Neu-User → Onboarding
-      if (!inOnboardingGroup && !inAuthGroup) {
-        router.replace('/(onboarding)' as never);
-      }
-      return;
-    }
-
-    // Ab hier: session ✓ + profile ✓
-    if (inAuthGroup) {
-      // Von Login-Seite wegnavigieren
-      router.replace(
-        !profile.onboarding_complete
-          ? ('/(onboarding)' as never)
-          : ('/(tabs)' as never),
-      );
-      return;
-    }
-    if (inOnboardingGroup && profile.onboarding_complete) {
-      // Onboarding wurde bereits abgeschlossen — direkt zu Tabs
-      router.replace('/(tabs)' as never);
-      return;
-    }
-    if (!inAuthGroup && !inOnboardingGroup && !profile.onboarding_complete) {
-      // User hat Onboarding noch nicht abgeschlossen
-      router.replace('/(onboarding)' as never);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, initialized, profile, segments, hydrated]);
+    const { authDestination } = require('@/lib/authDestination') as typeof import('@/lib/authDestination');
+    const destination = authDestination({
+      authenticated: !!session,
+      profile: profile?.id === session?.user.id ? profile : null,
+      profileStatus,
+      group: segments[0],
+      recovering: passwordRecovery.active,
+    });
+    if (destination) router.replace(destination as never);
+  }, [session, initialized, profile, profileStatus, segments, hydrated, router]);
 
   // ── Deep-Link Handler (vibes://live/<id> und vibes://post/<id>) ──────────
   // Race-Condition-Fix: URL beim Cold-Start sofort speichern,
@@ -214,7 +162,6 @@ function AuthGuard() {
       const { parseFragment } =
         require('@/lib/useGoogleSignIn') as typeof import('@/lib/useGoogleSignIn');
       const p = parseFragment(url);
-      __DEV__ && console.log('[Recovery] URL:', url.slice(0, 120), '| Tokens:', Object.keys(p).join(','));
       if (p.access_token && p.refresh_token) {
         passwordRecovery.active = true;
         router.replace('/reset-password' as never);
@@ -333,14 +280,27 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 // ─── AppSplash ────────────────────────────────────────────────────────────────
 function AppSplash() {
-  const { useAuthStore } =
-    require('@/lib/authStore') as typeof import('@/lib/authStore');
-  const initialized = useAuthStore((s) => s.initialized);
-  if (initialized) return null;
+  const { useAuthStore } = require('@/lib/authStore') as typeof import('@/lib/authStore');
+  const { useThemeStore } = require('@/lib/themeStore') as typeof import('@/lib/themeStore');
+  const { useI18n } = require('@/lib/i18n') as typeof import('@/lib/i18n');
+  const { initialized, session, profile, profileStatus, fetchProfile } = useAuthStore();
+  const colors = useThemeStore((s) => s.colors);
+  const { t } = useI18n();
+  const needsProfile = !!session && profile?.id !== session.user.id && profileStatus !== 'missing';
+  if (initialized && (!needsProfile || passwordRecovery.active)) return null;
+  const failed = needsProfile && profileStatus === 'error';
   return (
-    <View style={splashStyles.overlay}>
-      <ActivityIndicator color="#FFFFFF" size="large" />
-      <Text style={splashStyles.label}>Serlo — wird geladen…</Text>
+    <View style={[splashStyles.overlay, { backgroundColor: colors.bg.primary }]}>
+      {!failed && <ActivityIndicator color={colors.accent.primary} size="large" />}
+      <Text style={[splashStyles.label, { color: colors.text.primary }]} accessibilityRole={failed ? 'alert' : undefined}>
+        {t(failed ? 'auth.profileLoadFailed' : 'auth.loadingAccount')}
+      </Text>
+      {failed && (
+        <Pressable accessibilityRole="button" onPress={() => session && void fetchProfile(session.user.id)}
+          style={[splashStyles.retry, { backgroundColor: colors.text.primary }]}>
+          <Text style={{ color: colors.bg.primary, fontWeight: '700' }}>{t('auth.retryProfile')}</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -383,12 +343,15 @@ const splashStyles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 999,
     gap: 16,
+    paddingHorizontal: 28,
   },
+  retry: { minHeight: 48, paddingHorizontal: 24, borderRadius: 16, justifyContent: 'center' },
   label: {
     color: '#CFFAFE',
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.2,
+    textAlign: 'center',
   },
   banner: {
     position: 'absolute',

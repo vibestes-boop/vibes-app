@@ -1,0 +1,80 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Claude Code (lokales Tooling)
+.claude/
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Playwright
+test-results/
+playwright-report/
+
+# Coverage / build artifacts
+coverage/
+.next/
+apps/web/.next/
+apps/web/coverage/
+apps/web/test-results/
+apps/web/playwright-report/
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files (nie Keys committen – nur .env.example)
+.env
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# Supabase CLI cache
+supabase/.temp/
+.vercel
+
+# Legacy/local sibling app copy. The real web app lives in apps/web.
+vibes-web/
+
+# Remotion render outputs
+apps/remotion/out/*
+!apps/remotion/out/.gitkeep
+
+# Code backups (erstellt via cp *.backup-YYYYMMDD_HHMMSS)
+*.backup-*
+_backups/
+*.pt
+*.pt
+
+# Standalone local heritage concept; preserved separately from the app release.
+/apps/heritage-preview/
+
+# Native builds only use the root Expo app and shared code.
+/apps/

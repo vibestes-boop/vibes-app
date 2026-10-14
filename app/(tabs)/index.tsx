@@ -1,3 +1,6 @@
+import { StudioBackdrop } from '@/components/ui/StudioBackdrop';
+import { darkColors } from '@/lib/theme';
+import { usePersistentDismissal } from '@/lib/usePersistentDismissal';
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
@@ -18,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
 
 import { FEED_VIDEO_VIEWABILITY,SCREEN_HEIGHT } from '@/components/feed/feedConstants';
+import { FeedHeader } from '@/components/feed/FeedHeader';
 import { FeedItem } from '@/components/feed/FeedItem';
 import { FeedSkeleton } from '@/components/feed/FeedSkeleton';
 import { vibeFeedScreenStyles as styles } from '@/components/feed/feedStyles';
@@ -48,7 +52,7 @@ import { useVideoMute } from '@/lib/useVideoPreferences';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useFocusEffect,useRouter } from 'expo-router';
-import { AlertTriangle,PlusCircle,Search,SearchX,TrendingUp,Zap } from 'lucide-react-native';
+import { AlertTriangle,PlusCircle,SearchX,TrendingUp,X,Zap } from 'lucide-react-native';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
@@ -61,7 +65,6 @@ type FeedRow =
 
 export default function VibeFeedScreen() {
   const { t } = useI18n();
-  useThemedStatusBar('light');
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -205,7 +208,6 @@ export default function VibeFeedScreen() {
     data: pagedPosts,
     isLoading: foryouLoading,
     isError: foryouError,
-    error: foryouErr,
     refetch: refetchForyou,
     fetchNextPage: fetchNextForyou,
     hasNextPage: hasNextForyou,
@@ -221,7 +223,6 @@ export default function VibeFeedScreen() {
     data: followingPagedPosts,
     isLoading: followingLoading,
     isError: followingError,
-    error: followingErr,
     refetch: refetchFollowing,
     fetchNextPage: fetchNextFollowing,
     hasNextPage: hasNextFollowing,
@@ -233,7 +234,6 @@ export default function VibeFeedScreen() {
   // Aktiver Feed basierend auf Modus
   const isLoading         = feedMode === 'foryou' ? foryouLoading    : followingLoading;
   const isError           = feedMode === 'foryou' ? foryouError      : followingError;
-  const error             = feedMode === 'foryou' ? foryouErr        : followingErr;
   const refetch           = feedMode === 'foryou' ? refetchForyou    : refetchFollowing;
   const fetchNextPage     = feedMode === 'foryou' ? fetchNextForyou  : fetchNextFollowing;
   const hasNextPage       = feedMode === 'foryou' ? hasNextForyou    : hasNextFollowing;
@@ -311,8 +311,7 @@ export default function VibeFeedScreen() {
     setHasNewPosts(false);
     hideBanner();
     lastFetchedAt.current = new Date().toISOString();
-    await refetch();
-    setIsRefreshing(false);
+    try { await refetch(); } finally { setIsRefreshing(false); }
     setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 50);
   }, [refetch, hideBanner]);
 
@@ -524,6 +523,8 @@ export default function VibeFeedScreen() {
       id: d.id,
       data: d,
     }));
+    // Following stays chronological and only contains followed authors.
+    if (feedMode === 'following') return rows;
     // Jedes aktive Live nach allen 6 Posts einfügen
     activeLives.forEach((live, i) => {
       const insertAt = Math.min((i + 1) * 6, rows.length);
@@ -534,7 +535,7 @@ export default function VibeFeedScreen() {
       });
     });
     return rows;
-  }, [feedData, activeLives]);
+  }, [feedData, activeLives, feedMode]);
 
 
   // renderItem liest volatile Werte aus Refs — stabile Funktion, keine FlatList-Re-Renders
@@ -572,55 +573,72 @@ export default function VibeFeedScreen() {
     [onMuteToggle, handleOpenStory, onOpenTune]
   );
 
+  const overMedia = !isLoading && feedRows.length > 0;
+  useThemedStatusBar(overMedia ? 'light' : 'auto');
+  const emptyActionStyle = { minHeight: 44, backgroundColor: colors.accent.solid, borderColor: colors.accent.solid };
+  const showFollowingEmpty = feedMode === 'following' && !isLoading && !isError && feedRows.length === 0;
+
   return (
-    <View style={styles.container} {...swipePan.panHandlers}>
+    <View style={[styles.container, { backgroundColor: overMedia ? '#000000' : colors.bg.primary }]} {...swipePan.panHandlers}>
+      {!overMedia && <StudioBackdrop />}
       {isLoading && <FeedSkeleton />}
-      {isError && (
+      {isError && feedRows.length === 0 && (
         <View style={styles.emptyTag}>
-          <AlertTriangle size={52} color="#F59E0B" />
-          <Text style={styles.emptyTagTitle}>{t('feed.loadErrorTitle')}</Text>
-          <Text style={styles.emptyTagSub}>{t('feed.loadErrorSub')}</Text>
+          <AlertTriangle size={52} color={colors.accent.warning} />
+          <Text style={[styles.emptyTagTitle, { color: colors.text.primary }]}>{t('feed.loadErrorTitle')}</Text>
+          <Text style={[styles.emptyTagSub, { color: colors.text.secondary }]}>{t('feed.loadErrorSub')}</Text>
+          <Pressable accessibilityRole="button" disabled={isRefreshing} onPress={() => void handleRefresh()} style={[styles.emptyTagBtn, emptyActionStyle]}>{isRefreshing ? <ActivityIndicator color={colors.text.onAccent} /> : <Text style={[styles.emptyTagBtnText, { color: colors.text.onAccent }]}>{t('nativeUi.retry')}</Text>}</Pressable>
         </View>
       )}
-      {!isLoading && !isError && feedData.length === 0 && activeTag && (
+      {feedMode === 'foryou' && !isLoading && !isError && feedRows.length === 0 && activeTag && (
         <View style={styles.emptyTag}>
-          <SearchX size={52} color="rgba(255,255,255,0.5)" />
-          <Text style={styles.emptyTagTitle}>{`Nichts unter „${activeTag}“`}</Text>
-          <Text style={styles.emptyTagSub}>{t('feed.emptyTagSub')}</Text>
+          <SearchX size={52} color={colors.icon.muted} />
+          <Text style={[styles.emptyTagTitle, { color: colors.text.primary }]}>{t('explore.tagEmpty', { tag: activeTag })}</Text>
+          <Text style={[styles.emptyTagSub, { color: colors.text.secondary }]}>{t('feed.emptyTagSub')}</Text>
           <Pressable
             onPress={() => setActiveTag(null)}
-            style={styles.emptyTagBtn}
+            style={[styles.emptyTagBtn, emptyActionStyle]}
             accessibilityRole="button"
-            accessibilityLabel="Filter entfernen"
+            accessibilityLabel={t('feed.removeFilter')}
           >
-            <Text style={styles.emptyTagBtnText}>{t('feed.removeFilter')}</Text>
+            <Text style={[styles.emptyTagBtnText, { color: colors.text.onAccent }]}>{t('feed.removeFilter')}</Text>
           </Pressable>
         </View>
       )}
       {/* Ganz leerer Feed — "Für dich" Mode */}
       {feedMode === 'foryou' && !isLoading && !isError && feedRows.length === 0 && !activeTag && !isTrending && (
         <View style={[styles.emptyTag, { gap: 16 }]}>
-          <Zap size={56} color={colors.accent.secondary} strokeWidth={1.5} />
-          <Text style={styles.emptyTagTitle}>{t('feed.welcomeTitle')}</Text>
-          <Text style={styles.emptyTagSub}>
+          <Zap size={56} color={colors.accent.primary} strokeWidth={1.5} />
+          <Text style={[styles.emptyTagTitle, { color: colors.text.primary }]}>{t('feed.welcomeTitle')}</Text>
+          <Text style={[styles.emptyTagSub, { color: colors.text.secondary }]}>
             {t('feed.welcomeSub')}
           </Text>
           <Pressable
             onPress={() => router.navigate('/(tabs)/explore')}
-            style={[styles.emptyTagBtn, { backgroundColor: `${colors.accent.secondary}33`, borderColor: `${colors.accent.secondary}66`, borderWidth: 1 }]}
+            style={[styles.emptyTagBtn, emptyActionStyle]}
             accessibilityRole="button"
-            accessibilityLabel="Explore öffnen"
+            accessibilityLabel={t('feed.openExplore')}
           >
-            <Text style={[styles.emptyTagBtnText, { color: colors.accent.secondary }]}>{t('feed.openExplore')}</Text>
+            <Text style={[styles.emptyTagBtnText, { color: colors.text.onAccent }]}>{t('feed.openExplore')}</Text>
           </Pressable>
         </View>
       )}
       {/* Ganz leerer Feed — "Folge ich" Mode */}
-      {feedMode === 'following' && !isLoading && !isError && feedRows.length === 0 && (
+      {showFollowingEmpty && (
         <ScrollView
-          style={{ flex: 1 }}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1 }}
+          style={{ flex: 1, marginTop: insets.top + 64 }}
+          showsVerticalScrollIndicator
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 88 }}
+          contentInsetAdjustmentBehavior="never"
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={handleRefresh}
+              tintColor="transparent"
+              colors={['transparent']}
+              progressViewOffset={insets.top + 100}
+            />
+          }
         >
           <FollowingEmptyState
             onExplore={() => router.navigate('/(tabs)/explore')}
@@ -642,7 +660,9 @@ export default function VibeFeedScreen() {
           </View>
         </View>
       )}
-      <FlatList
+      {/* The empty-state scroll view owns the full viewport. A second flex list
+          would reserve half the height and clip the suggested profiles. */}
+      {!showFollowingEmpty && <FlatList
         ref={listRef}
         data={feedRows}
         extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}:${profilePanel ? '1' : '0'}:${pageSize ? `${pageSize.h}x${pageSize.w}` : ''}`}
@@ -688,9 +708,9 @@ export default function VibeFeedScreen() {
             progressViewOffset={insets.top + 100}
           />
         }
-      />
+      />}
 
-      {/* Pull-to-Refresh: markeneigener Beam statt nativem Spinner (Feed ist immer schwarz) */}
+      {/* Pull-to-Refresh: markeneigener Beam statt nativem Spinner */}
       {isRefreshing && (
         <View
           style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 58, alignItems: 'center', zIndex: 50 }}
@@ -715,93 +735,27 @@ export default function VibeFeedScreen() {
         </Pressable>
       </Animated.View>
 
-      {/* ── Haupt-Header: Toggle + Suche in einer Zeile ───────────────── */}
-      <View
-        style={[styles.feedModeBar, { top: insets.top }]}
-        pointerEvents="box-none"
-      >
-        {/* Links: LIVE-Einstieg (TikTok-Pattern) — nur wenn gerade jemand
-            streamt. activeLives ist Heat-Score-sortiert (beste Session zuerst)
-            und wird eh schon für die Feed-Live-Karten geladen → 0 Extra-Query.
-            Ohne Live: Spacer für symmetrisches Zentrieren des Toggles. */}
-        {activeLives.length > 0 ? (
-          <Pressable
-            onPress={() => {
-              impactAsync(ImpactFeedbackStyle.Light);
-              router.push({ pathname: '/live/watch/[id]' as any, params: { id: activeLives[0].id } });
-            }}
-            hitSlop={8}
-            style={styles.livePill}
-            pointerEvents="auto"
-            accessibilityRole="button"
-            accessibilityLabel="Live-Stream ansehen"
-          >
-            <View style={styles.liveDot} />
-            <Text style={styles.livePillText}>LIVE</Text>
-          </Pressable>
-        ) : (
-          <View style={{ width: 36 }} pointerEvents="none" />
-        )}
+      <FeedHeader mode={feedMode} top={insets.top} overMedia={overMedia}
+        onModeChange={mode => {
+          impactAsync(ImpactFeedbackStyle.Light);
+          setFeedMode(mode);
+          if (mode === 'foryou') setActiveTag(null);
+        }}
+        onSearch={() => router.navigate('/(tabs)/explore')}
+        onLive={activeLives.length > 0 ? () => router.push({ pathname: '/live/watch/[id]' as any, params: { id: activeLives[0].id } }) : undefined}
+      />
 
-        {/* Mitte: "Für dich | Folge ich" Toggle */}
-        <View style={styles.feedModeRow} pointerEvents="auto">
-          <Pressable
-            onPress={() => {
-              impactAsync(ImpactFeedbackStyle.Light);
-              setFeedMode('foryou');
-              setActiveTag(null);
-            }}
-            style={styles.feedModeBtn}
-            hitSlop={12}
-          >
-            <Text style={[styles.feedModeTxt, feedMode === 'foryou' && styles.feedModeTxtActive]}>
-              {t('feed.forYou')}
-            </Text>
-            {feedMode === 'foryou' && <View style={styles.feedModeLine} />}
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              impactAsync(ImpactFeedbackStyle.Light);
-              setFeedMode('following');
-            }}
-            style={styles.feedModeBtn}
-            hitSlop={12}
-          >
-            <Text style={[styles.feedModeTxt, feedMode === 'following' && styles.feedModeTxtActive]}>
-              {t('feed.following')}
-            </Text>
-            {feedMode === 'following' && <View style={styles.feedModeLine} />}
-          </Pressable>
-        </View>
-
-        {/* Rechts: Suche. (Replays-Uhr + Kategorie-Chips bewusst entfernt —
-            minimale Top-Zeile nach Short-Video-Standard: das Video ist das
-            Produkt. Themen-Browsing lebt in Entdecken, Replays im Live-Bereich.
-            activeTag bleibt als Onboarding-Seed erhalten, Empty-State hat
-            weiterhin den „Filter entfernen"-Ausweg.) */}
-        <Pressable
-          onPress={() => {
-            impactAsync(ImpactFeedbackStyle.Light);
-            router.navigate('/(tabs)/explore');
-          }}
-          hitSlop={10}
-          style={styles.feedSearchBtn}
-          pointerEvents="auto"
-        >
-          <Search size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
-        </Pressable>
-      </View>
+      {isError && feedRows.length > 0 && <Pressable onPress={() => void handleRefresh()} disabled={isRefreshing} accessibilityRole="button" accessibilityLabel={t('nativeUi.retry')} style={{ position: 'absolute', top: insets.top + 68, left: 16, right: 16, zIndex: 95, minHeight: 52, padding: 14, gap: 12, flexDirection: 'row', alignItems: 'center', borderRadius: 16, backgroundColor: 'rgba(14,14,16,0.96)' }}>
+        <AlertTriangle size={20} color="#EACF8C" /><Text accessibilityRole="alert" style={{ flex: 1, color: '#FFFFFF', fontSize: 13 }}>{t('feed.loadErrorTitle')}</Text><Text style={{ color: darkColors.accent.primary, fontSize: 13, fontWeight: '600' }}>{t('nativeUi.retry')}</Text>
+      </Pressable>}
 
       {showFirstPostNudge && (
         <FirstPostNudge
+          userId={profile?.id ?? null}
           top={insets.top + 100}
           onCreate={() => {
             impactAsync(ImpactFeedbackStyle.Light);
-            router.push({
-              pathname: '/create',
-              params: { caption: 'Was sagt ihr dazu?' },
-            });
+            router.push('/create/start');
           }}
         />
       )}
@@ -829,70 +783,15 @@ export default function VibeFeedScreen() {
   );
 }
 
-function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }) {
+function FirstPostNudge({ top, onCreate, userId }: { top: number; onCreate: () => void; userId: string | null }) {
   const { t } = useI18n();
-  return (
-    <View
-      pointerEvents="box-none"
-      style={{
-        position: 'absolute',
-        left: 14,
-        right: 14,
-        top,
-        zIndex: 95,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.14)',
-          backgroundColor: 'rgba(8,10,22,0.88)',
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          shadowColor: '#000',
-          shadowOpacity: 0.28,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 10 },
-        }}
-      >
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-            {t('feed.firstVibeTitle')}
-          </Text>
-          <Text
-            style={{
-              color: 'rgba(255,255,255,0.62)',
-              fontSize: 12,
-              lineHeight: 17,
-              marginTop: 2,
-            }}
-            numberOfLines={2}
-          >
-            {t('feed.firstVibeSub')}
-          </Text>
-        </View>
-        <Pressable
-          onPress={onCreate}
-          accessibilityRole="button"
-          accessibilityLabel={t('feed.firstVibeTitle')}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            borderRadius: 999,
-            backgroundColor: '#FFFFFF',
-            paddingHorizontal: 12,
-            paddingVertical: 9,
-          }}
-        >
-          <PlusCircle size={16} color="#070A16" strokeWidth={2.4} />
-          <Text style={{ color: '#070A16', fontSize: 12, fontWeight: '700' }}>{t('feed.firstVibeCta')}</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
+  const { visible, dismiss } = usePersistentDismissal(userId ? `serlo:first-post-dismissed:${userId}` : null);
+  if (!visible) return null;
+  return <View style={{ position: 'absolute', top, left: 16, right: 16, zIndex: 95, flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingLeft: 15, paddingRight: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(14,14,16,0.94)' }}>
+    <Pressable onPress={onCreate} accessibilityRole="button" accessibilityLabel={t('feed.firstVibeTitle')} style={{ flex: 1, minHeight: 68, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <PlusCircle size={23} color={darkColors.accent.primary} strokeWidth={1.5} />
+      <View style={{ flex: 1 }}><Text style={{ color: '#FFFFFF', fontSize: 13, fontFamily: 'Inter_600SemiBold' }}>{t('feed.firstVibeTitle')}</Text><Text style={{ color: '#C1C1C8', fontSize: 11, lineHeight: 16, marginTop: 4 }}>{t('feed.firstVibeSub')}</Text></View>
+    </Pressable>
+    <Pressable onPress={dismiss} accessibilityRole="button" accessibilityLabel={t('mobileDesign.close')} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><X size={17} color="#D4D4D8" /></Pressable>
+  </View>;
 }

@@ -433,3 +433,30 @@ describe('SearchBox — Form-Submit', () => {
     );
   });
 });
+
+describe('SearchBox — browser history', () => {
+  afterEach(() => jest.useRealTimers());
+  it('updates the input when navigation provides a previous search term', () => {
+    const { rerender } = render(<SearchBox initialQuery="am" />);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'balz' } });
+    rerender(<SearchBox initialQuery="balz" />);
+    rerender(<SearchBox initialQuery="am" />);
+    expect(screen.getByRole('searchbox')).toHaveValue('am');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('does not reopen old suggestions after clearing the input', async () => {
+    jest.useFakeTimers();
+    let resolveRequest!: (value: object) => void;
+    global.fetch = jest.fn(() => new Promise(resolve => { resolveRequest = resolve; })) as jest.Mock;
+    render(<SearchBox />);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zaur' } });
+    await tickDebounce();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
+    await act(async () => {
+      resolveRequest({ ok: true, json: async () => FULL_RESULTS });
+    });
+    expect(screen.getByRole('searchbox')).toHaveValue('');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+});

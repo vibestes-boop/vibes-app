@@ -5,10 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
-
-function getSafeNext(value: string | null, fallback: string) {
-  return value && value.startsWith('/') && !value.startsWith('//') ? value : fallback;
-}
+import { getSafeReturnPath } from '@/lib/auth/return-path';
 
 function getHashParams() {
   const hash = window.location.hash.startsWith('#')
@@ -36,7 +33,7 @@ export function HashSessionRescue() {
       const fallback = authType === 'invite' ? '/onboarding' : '/';
       const next = authType === 'recovery'
         ? '/auth/reset-password'
-        : getSafeNext(url.searchParams.get('next'), fallback);
+        : getSafeReturnPath(url.searchParams.get('next'), fallback);
 
       const supabase = createClient();
       const { error } = await supabase.auth.setSession({

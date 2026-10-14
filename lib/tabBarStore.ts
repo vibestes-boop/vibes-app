@@ -4,7 +4,7 @@
  * Slot 1 = Feed (fest)
  * Slot 2 = wählbar (default: guild)
  * Slot 3 = + Create (fest)
- * Slot 4 = wählbar (default: messages)
+ * Slot 4 = wählbar (default: shop)
  * Slot 5 = Profil (fest)
  *
  * Persistiert via Zustand + AsyncStorage.
@@ -26,6 +26,7 @@ Zap,
 import { create } from 'zustand';
 import { createJSONStorage,persist } from 'zustand/middleware';
 
+import { normalizeNavSlots, selectNavSlot, type NavSlots } from './navigationSlots';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
 
@@ -96,13 +97,13 @@ export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
     labelKey: 'tabs.live',
     label:  'Live',
     icon:   Video,
-    route:  '/live/start',
+    route:  '/live',
     isPush: true,
   },
   women_only: {
     key:    'women_only',
     labelKey: 'tabs.women_only',
-    label:  'WOZ 🌸',
+    label:  'WOZ',
     icon:   Flower2,
     route:  '/women-only',
     isPush: true,
@@ -114,17 +115,19 @@ export const ALL_TAB_FEATURES: TabFeature[] = [
   'guild', 'messages', 'shop', 'explore', 'notifications', 'live', 'women_only',
 ];
 
-const isTabFeature = (v: unknown): v is TabFeature =>
-  typeof v === 'string' && (ALL_TAB_FEATURES as string[]).includes(v);
 
 // DB-Sync (v1.x): Slot-Wahl wandert nach profiles.nav_slot_2/4, damit die Web-
 // Seite dieselbe Nav rendert. Best-effort — AsyncStorage hält den Wert lokal,
 // also bleibt die UI auch bei DB-Fehler/Offline funktionsfähig.
-async function persistSlotToDb(field: 'nav_slot_2' | 'nav_slot_4', value: TabFeature) {
+async function persistSlotsToDb(slots: NavSlots) {
   const userId = useAuthStore.getState().user?.id;
   if (!userId) return;
+  const profile = useAuthStore.getState().profile;
+  if (profile?.id === userId) {
+    useAuthStore.setState({ profile: { ...profile, nav_slot_2: slots.slot2, nav_slot_4: slots.slot4 } });
+  }
   try {
-    await supabase.from('profiles').update({ [field]: value }).eq('id', userId);
+    await supabase.from('profiles').update({ nav_slot_2: slots.slot2, nav_slot_4: slots.slot4 }).eq('id', userId);
   } catch {
     /* Spalte fehlt noch (Migration nicht angewandt) / offline → ignorieren */
   }
@@ -135,7 +138,7 @@ async function persistSlotToDb(field: 'nav_slot_2' | 'nav_slot_4', value: TabFea
 interface TabBarStore {
   /** Slot 2: Feature links vom Create-Button. Default: guild */
   slot2: TabFeature;
-  /** Slot 4: Feature rechts vom Create-Button. Default: messages */
+  /** Slot 4: Feature rechts vom Create-Button. Default: shop */
   slot4: TabFeature;
   setSlot2: (f: TabFeature) => void;
   setSlot4: (f: TabFeature) => void;
@@ -148,27 +151,29 @@ interface TabBarStore {
 
 export const useTabBarStore = create<TabBarStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       slot2: 'guild',
       slot4: 'shop',
-      setSlot2: (f) => { set({ slot2: f }); void persistSlotToDb('nav_slot_2', f); },
-      setSlot4: (f) => { set({ slot4: f }); void persistSlotToDb('nav_slot_4', f); },
+      setSlot2: (f) => { const slots = selectNavSlot(get(), 2, f); set(slots); void persistSlotsToDb(slots); },
+      setSlot4: (f) => { const slots = selectNavSlot(get(), 4, f); set(slots); void persistSlotsToDb(slots); },
       hydrateFromProfile: () => {
         // KEIN Extra-Read: die Nav-Slots stehen im select=*, das authStore beim
         // Login ohnehin lädt (authStore.fetchProfileViaRest). Wir lesen sie nur
         // aus dem bereits im Speicher liegenden Profil-Objekt.
         const profile = useAuthStore.getState().profile;
         if (!profile) return;
-        set((s) => ({
-          slot2: isTabFeature(profile.nav_slot_2) ? profile.nav_slot_2 : s.slot2,
-          slot4: isTabFeature(profile.nav_slot_4) ? profile.nav_slot_4 : s.slot4,
-        }));
+        set(normalizeNavSlots(profile.nav_slot_2, profile.nav_slot_4));
       },
     }),
     {
       name: 'serlo-tab-bar',
       storage: createJSONStorage(() => AsyncStorage),
       version: 2,
+      partialize: (s) => ({ slot2: s.slot2, slot4: s.slot4 }),
+      merge: (saved, current) => {
+        const slots = saved as Partial<NavSlots> | undefined;
+        return { ...current, ...normalizeNavSlots(slots?.slot2, slots?.slot4) };
+      },
       migrate: (persisted: any, version: number) => {
         // v2: slot4 default auf 'shop' umstellen
         if (version < 2) {

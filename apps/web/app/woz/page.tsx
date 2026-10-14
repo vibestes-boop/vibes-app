@@ -8,15 +8,15 @@ import { createClient } from '@/lib/supabase/server';
 import { PostGrid } from '@/components/profile/post-grid';
 import { WozJoinButton } from '@/components/woz/woz-join-button';
 import { WozLeaveButton } from '@/components/woz/woz-leave-button';
+import { getMyWomenOnlyStatus } from '@/app/actions/women-only';
 
 // -----------------------------------------------------------------------------
 // /woz — Women-Only Zone Hub.
 //
 // v1.w.UI.213: Parity mit app/women-only/index.tsx.
 //
-// Zwei Zustände:
-//   1. Nicht verifiziert → Premium-Gate mit "Beitreten"-CTA
-//   2. Verifiziert → WOZ-Post-Grid (getWOZFeed, RLS schützt serverseitig)
+// Zugang beantragen → Antrag in Prüfung → freigegebener WOZ-Feed.
+// Abgelehnte oder widerrufene Anträge werden ausdrücklich angezeigt.
 //
 // Auth-Gate: Nicht-eingeloggte → /login?next=/woz.
 // Verification-Check: gender='female' && women_only_verified=true.
@@ -72,12 +72,10 @@ const FEATURES = [
   },
   {
     icon: Sparkles,
-    title: 'Sofort aktivierbar',
-    desc: 'Level-1-Selbstdeklaration genügt. Level-2-Verifikation folgt optional.',
+    title: 'Zugang nach Prüfung',
+    desc: 'Du beantragst den Zugang per Selbstdeklaration. Nach der Freigabe kannst du teilnehmen.',
   },
 ];
-
-import { getMyWomenOnlyStatus } from '@/app/actions/women-only';
 
 export default async function WozPage() {
   const status = await getWozStatus();
@@ -127,12 +125,19 @@ export default async function WozPage() {
 
         {/* CTA / Pending-Status */}
         {isPending ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+          <div role="status" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
             ⏳ Dein Antrag ist in Prüfung. Zum Schutz der Zone wird jeder Beitritt
             geprüft — du bekommst Zugang, sobald er freigegeben ist.
           </div>
         ) : (
           <>
+            {(req.status === 'rejected' || req.status === 'revoked') && (
+              <p role="status" className="mb-4 rounded-xl border border-border bg-muted p-4 text-sm">
+                {req.status === 'rejected'
+                  ? 'Dein Antrag wurde nicht freigegeben. Du kannst erneut eine Prüfung beantragen.'
+                  : 'Dein Zugang ist nicht mehr aktiv. Du kannst erneut eine Prüfung beantragen.'}
+              </p>
+            )}
             <WozJoinButton />
             <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/70">
               Zum Schutz der Zone wird jeder Beitritt geprüft.

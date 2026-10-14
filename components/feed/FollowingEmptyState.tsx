@@ -1,20 +1,9 @@
-/**
- * FollowingEmptyState
- *
- * Angezeigt wenn "Folge ich"-Feed leer ist.
- * Zeigt User-Empfehlungen mit Follow-Buttons direkt —
- * sodass der User ohne Tab-Wechsel jemanden folgen kann.
- *
- * ⚠️ Der Feed-Hintergrund ist IMMER schwarz (#000, TikTok-Stil — siehe
- * feedStyles.container) unabhängig vom App-Theme. Darum nutzt dieser
- * Empty-State eine FESTE Hell-auf-Dunkel-Palette (FEED) statt useTheme():
- * im Light Mode war der Titel sonst dunkel auf Schwarz → unlesbar, und der
- * Explore-Button verschwand komplett. Werte spiegeln die Feed-Overlay-
- * Konvention (#FFFFFF / rgba(255,255,255,…)).
- */
+import { GlassSurface } from '@/components/ui/GlassSurface';
+import { useI18n } from '@/lib/i18n';
+/** Empty following feed: profile suggestions use the selected app theme. */
+import { useTheme } from '@/lib/useTheme';
 import { useDiscoverPeople,type DiscoverUser } from '@/lib/useDiscoverPeople';
 import { useFollow } from '@/lib/useFollow';
-import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -27,26 +16,12 @@ StyleSheet,
 Text,
 View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// Feste Palette für den immer-schwarzen Feed-Hintergrund (theme-unabhängig).
-const FEED = {
-  textPrimary:   '#FFFFFF',
-  textSecondary: 'rgba(255,255,255,0.75)',
-  textMuted:     'rgba(255,255,255,0.55)',
-  surface:       'rgba(255,255,255,0.08)',
-  surfaceStrong: 'rgba(255,255,255,0.14)',
-  border:        'rgba(255,255,255,0.12)',
-  borderStrong:  'rgba(255,255,255,0.22)',
-  ctaBg:         '#FFFFFF',
-  ctaText:       '#0A0A0A',
-  icon:          'rgba(255,255,255,0.85)',
-} as const;
 
 // ── Einzelne User-Karte ───────────────────────────────────────────────────────
 function SuggestedUserCard({ user }: { user: DiscoverUser }) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { isFollowing, toggle, isLoading } = useFollow(user.id);
 
   const initials = user.username.slice(0, 2).toUpperCase();
@@ -54,30 +29,26 @@ function SuggestedUserCard({ user }: { user: DiscoverUser }) {
   const handleFollow = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggle();
-    // Nach Folgen den Feed refreshen
-    setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ['following-feed'] });
-    }, 800);
-  }, [toggle, queryClient]);
+  }, [toggle]);
 
   const reasonLabel: Record<DiscoverUser['reason'], string> = {
-    guild:     'Gleiche Guild',
-    interests: 'Ähnliche Interessen',
-    new:       'Neu bei Vibes',
+    guild:     t('nativeUi.sameGroup'),
+    interests: t('nativeUi.sameInterests'),
+    new:       t('nativeUi.newHere'),
   };
 
   return (
-    <View style={[card.wrap, { backgroundColor: FEED.surface, borderColor: FEED.border }]}>
+    <GlassSurface material="solid" radius={24} style={card.wrap}>
       {/* Avatar */}
       <Pressable
         onPress={() => router.push({ pathname: '/user/[id]', params: { id: user.id } })}
         style={card.avatar}
       >
         {user.avatar_url ? (
-          <Image source={{ uri: user.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={{ uri: user.avatar_url }} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="cover" />
         ) : (
-          <View style={[StyleSheet.absoluteFill, card.avatarFallback, { backgroundColor: FEED.surfaceStrong }]}>
-            <Text style={[card.avatarInitials, { color: FEED.textSecondary }]}>{initials}</Text>
+          <View style={[StyleSheet.absoluteFill, card.avatarFallback, { backgroundColor: colors.bg.input }]}>
+            <Text style={[card.avatarInitials, { color: colors.text.secondary }]}>{initials}</Text>
           </View>
         )}
       </Pressable>
@@ -87,11 +58,11 @@ function SuggestedUserCard({ user }: { user: DiscoverUser }) {
         style={card.info}
         onPress={() => router.push({ pathname: '/user/[id]', params: { id: user.id } })}
       >
-        <Text style={[card.username, { color: FEED.textPrimary }]} numberOfLines={1}>
+        <Text style={[card.username, { color: colors.text.primary }]} numberOfLines={1}>
           @{user.username}
         </Text>
-        <View style={[card.reasonPill, { backgroundColor: FEED.surfaceStrong }]}>
-          <Text style={[card.reasonText, { color: FEED.textMuted }]}>
+        <View style={[card.reasonPill, { backgroundColor: colors.bg.input }]}>
+          <Text style={[card.reasonText, { color: colors.text.muted }]}>
             {reasonLabel[user.reason]}
           </Text>
         </View>
@@ -100,29 +71,31 @@ function SuggestedUserCard({ user }: { user: DiscoverUser }) {
       {/* Follow Button */}
       <Pressable
         onPress={handleFollow}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isLoading, busy: isLoading }}
         disabled={isLoading}
         style={[
           card.followBtn,
           isFollowing
-            ? { backgroundColor: FEED.surfaceStrong, borderWidth: 1, borderColor: FEED.borderStrong }
-            : { backgroundColor: FEED.ctaBg },
+            ? { backgroundColor: colors.bg.input, borderWidth: 1, borderColor: colors.border.strong }
+            : { backgroundColor: colors.accent.solid },
         ]}
       >
         {isLoading ? (
-          <ActivityIndicator size="small" color={isFollowing ? FEED.textPrimary : FEED.ctaText} />
+          <ActivityIndicator size="small" color={isFollowing ? colors.text.primary : colors.text.onAccent} />
         ) : isFollowing ? (
           <>
-            <CheckCircle2 size={12} color={FEED.textSecondary} strokeWidth={2.5} />
-            <Text style={[card.followBtnText, { color: FEED.textSecondary, fontSize: 11 }]}>Folgst du</Text>
+            <CheckCircle2 size={12} color={colors.text.secondary} strokeWidth={2.5} />
+            <Text style={[card.followBtnText, { color: colors.text.secondary, fontSize: 11 }]}>{t('explore.following')}</Text>
           </>
         ) : (
           <>
-            <UserPlus size={12} color={FEED.ctaText} strokeWidth={2.5} />
-            <Text style={[card.followBtnText, { color: FEED.ctaText }]}>Folgen</Text>
+            <UserPlus size={12} color={colors.text.onAccent} strokeWidth={2.5} />
+            <Text style={[card.followBtnText, { color: colors.text.onAccent }]}>{t('explore.follow')}</Text>
           </>
         )}
       </Pressable>
-    </View>
+    </GlassSurface>
   );
 }
 
@@ -132,41 +105,42 @@ interface Props {
 }
 
 export function FollowingEmptyState({ onExplore }: Props) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
   const { data: suggestions = [], isLoading } = useDiscoverPeople();
-  const insets = useSafeAreaInsets();
 
   return (
-    // paddingTop räumt unter die absolute Feed-Kopfleiste (Toggle bei insets.top, 52px hoch)
-    <View style={[s.root, { backgroundColor: 'transparent', paddingTop: insets.top + 64 }]}>
+    // The parent scroll viewport begins below the fixed feed header.
+    <View style={s.root}>
       {/* ── Illustration + Title ─── */}
       <View style={s.hero}>
-        <View style={[s.iconRing, { backgroundColor: FEED.surface, borderColor: FEED.border }]}>
-          <Users size={32} color={FEED.icon} strokeWidth={1.5} />
-        </View>
-        <Text style={[s.title, { color: FEED.textPrimary }]}>Folge interessanten Leuten</Text>
-        <Text style={[s.sub, { color: FEED.textMuted }]}>
-          Ihre neuesten Posts erscheinen{'\n'}hier chronologisch — kein Algorithmus.
+        <GlassSurface radius={24} style={s.iconRing}>
+          <Users size={32} color={colors.accent.primary} strokeWidth={1.5} />
+        </GlassSurface>
+        <Text style={[s.title, { color: colors.text.primary }]}>{t('inbox.followTitle')}</Text>
+        <Text style={[s.sub, { color: colors.text.muted }]}>
+          {t('inbox.followBody')}
         </Text>
       </View>
 
       {/* ── User-Empfehlungen ─────── */}
       <View style={s.section}>
-        <Text style={[s.sectionLabel, { color: FEED.textMuted }]}>
-          Empfehlungen für dich
+        <Text style={[s.sectionLabel, { color: colors.text.muted }]}>
+          {t('nativeUi.people')}
         </Text>
 
         {isLoading ? (
           <View style={s.loadingWrap}>
-            <ActivityIndicator color={FEED.textMuted} />
+            <ActivityIndicator color={colors.text.muted} />
           </View>
         ) : suggestions.length === 0 ? (
-          <Text style={[s.noSuggestions, { color: FEED.textMuted }]}>
-            Keine Empfehlungen verfügbar — schau im Explore-Tab vorbei.
+          <Text style={[s.noSuggestions, { color: colors.text.muted }]}>
+            {t('inbox.followEmpty')}
           </Text>
         ) : (
           // Karten fließen inline — der äußere ScrollView (Feed) scrollt; keine
           // innere maxHeight-Begrenzung mehr (vorher nur ~2 User sichtbar).
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 12 }}>
             {suggestions.slice(0, 6).map((u) => (
               <SuggestedUserCard key={u.id} user={u} />
             ))}
@@ -176,11 +150,12 @@ export function FollowingEmptyState({ onExplore }: Props) {
 
       {/* ── Explore CTA ──────────── */}
       <Pressable
+        accessibilityRole="button"
         onPress={onExplore}
-        style={[s.exploreBtn, { borderColor: FEED.borderStrong }]}
+        style={[s.exploreBtn, { borderColor: colors.border.strong }]}
       >
-        <Compass size={16} color={FEED.textSecondary} strokeWidth={2} />
-        <Text style={[s.exploreBtnText, { color: FEED.textSecondary }]}>Mehr im Explore-Tab entdecken</Text>
+        <Compass size={16} color={colors.text.secondary} strokeWidth={2} />
+        <Text style={[s.exploreBtnText, { color: colors.text.secondary }]}>{t('tabs.explore')}</Text>
       </Pressable>
     </View>
   );
@@ -198,13 +173,12 @@ const s = StyleSheet.create({
     marginBottom: 32,
   },
   iconRing: {
-    width: 72, height: 72, borderRadius: 36,
+    width: 64, height: 64, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
     marginBottom: 4,
   },
   title: {
-    fontSize: 20, fontWeight: '600', letterSpacing: -0.5, textAlign: 'center',
+    fontSize: 24, fontWeight: '600', letterSpacing: -0.7, textAlign: 'center',
   },
   sub: {
     fontSize: 14, lineHeight: 20, textAlign: 'center',
@@ -218,7 +192,7 @@ const s = StyleSheet.create({
   exploreBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, paddingVertical: 12, borderRadius: 12,
-    borderWidth: 1, marginTop: 16,
+    minHeight: 44, borderWidth: 1, marginTop: 16,
   },
   exploreBtnText: { fontSize: 14, fontWeight: '600' },
 });
@@ -226,8 +200,8 @@ const s = StyleSheet.create({
 const card = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 12, borderRadius: 14,
-    borderWidth: 1, gap: 10,
+    padding: 14, borderRadius: 24,
+    gap: 10,
   },
   avatar: {
     width: 44, height: 44, borderRadius: 22, overflow: 'hidden',
@@ -245,8 +219,8 @@ const card = StyleSheet.create({
   reasonText: { fontSize: 11, fontWeight: '500' },
   followBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
-    minWidth: 80, justifyContent: 'center',
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999,
+    minHeight: 44, minWidth: 88, justifyContent: 'center',
   },
   followBtnText: { fontSize: 12, fontWeight: '700' },
 });

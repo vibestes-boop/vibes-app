@@ -1,5 +1,6 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
@@ -45,7 +46,7 @@ export default async function ConversationPage({ params, searchParams }: PagePro
 
   const user = await getUser();
   if (!user) {
-    redirect(`/login?next=/messages/${id}`);
+    return <ReturnToRedirect />;
   }
 
   const header = await getConversationHeader(id);
@@ -62,14 +63,14 @@ export default async function ConversationPage({ params, searchParams }: PagePro
     : header.other_user.display_name ?? `@${header.other_user.username}`;
 
   return (
-    <div className="flex h-dvh w-full flex-col">
+    <div className="serlo-chat-thread flex min-h-0 w-full flex-1 flex-col">
       {/* relative: ConversationSearch positioniert ihr Overlay absolut relativ zu diesem Container */}
-      <header className="relative flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur">
+      <header className="serlo-message-header relative flex shrink-0 items-center gap-3 border-b px-4 py-3">
         {/* Zurück-Pfeil — nur auf Mobile (Desktop hat die Konversationsliste links) */}
         <Link
           href={'/messages' as Route}
           aria-label="Zurück zur Liste"
-          className="md:hidden grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-muted"
+          className="xl:hidden grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-muted"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>

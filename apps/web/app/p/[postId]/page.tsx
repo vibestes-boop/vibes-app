@@ -293,7 +293,7 @@ export default async function PostDetailPage({
         // Autor-Karte
         const authorCard = (
           <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/u/${post.author.username}`}
                 className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
@@ -334,7 +334,7 @@ export default async function PostDetailPage({
                   isPinned={post.is_pinned ?? false}
                 />
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                   <FollowButton
                     isAuthenticated={!!viewer}
                     isFollowing={followingAuthor}
@@ -568,7 +568,7 @@ export default async function PostDetailPage({
               </div>
 
               {/* Info-Zeile: Autor + Caption + Kommentare links | Share rechts */}
-              <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="mt-6 grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="space-y-4">
                   {authorCard}
                   {captionCard}
@@ -590,12 +590,12 @@ export default async function PostDetailPage({
         // Kommentare in der Sidebar direkt unter Caption — Short-Video-Web-Pattern.
         // Mehr von @author ganz am Ende der Sidebar.
         return (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div>
               {mediaBlock}
               {statsBar}
             </div>
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               {authorCard}
               {captionCard}
               {productCard}

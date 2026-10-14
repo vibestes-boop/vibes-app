@@ -1,4 +1,4 @@
-import type { ThemeColors } from '@/lib/theme';
+import { darkColors, type ThemeColors } from '@/lib/theme';
 import { StyleSheet } from 'react-native';
 import { EXPLORE_ITEM_HEIGHT,EXPLORE_ITEM_WIDTH } from './exploreConstants';
 
@@ -48,8 +48,8 @@ export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
     position: 'relative',
   },
   filterBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: c.bg.subtle,
+    borderColor: c.accent.primary,
   },
   filterDot: {
     position: 'absolute',
@@ -58,7 +58,7 @@ export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.accent.primary,
     borderWidth: 1.5,
     borderColor: c.bg.primary,
   },
@@ -97,8 +97,8 @@ export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
     borderColor: c.border.subtle,
   },
   optionRowActive: {
-    backgroundColor: 'rgba(29,185,84,0.08)',
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: c.bg.subtle,
+    borderColor: c.accent.primary,
   },
   optionIconWrap: {
     width: 36,
@@ -193,11 +193,4 @@ export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
 });
 
 /** @deprecated use getExploreStyles(colors) */
-export const exploreStyles = getExploreStyles({
-  bg: { primary: '#050508', secondary: '#0D0D0D', elevated: '#1A1A1A', input: '#111', subtle: 'rgba(255,255,255,0.04)' },
-  text: { primary: '#FFFFFF', secondary: '#9CA3AF', muted: '#4B5563', inverse: '#FFFFFF' },
-  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24', rose: '#F43F5E' },
-  border: { default: 'rgba(255,255,255,0.08)', subtle: 'rgba(255,255,255,0.04)', strong: 'rgba(255,255,255,0.18)' },
-  icon: { default: '#9CA3AF', muted: '#4B5563', active: '#FFFFFF', inactive: '#6B7280' },
-  tabBar: { bg: '#050508', border: 'rgba(255,255,255,0.06)', active: '#FFFFFF', inactive: '#6B7280' },
-});
+export const exploreStyles = getExploreStyles(darkColors);

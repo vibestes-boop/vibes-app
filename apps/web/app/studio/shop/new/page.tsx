@@ -1,5 +1,5 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { ArrowLeft, Plus } from 'lucide-react';
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function NewProductPage() {
   const user = await getUser();
-  if (!user) redirect('/login?next=/studio/shop/new');
+  if (!user) return <ReturnToRedirect />;
   const isAdmin = await getIsAdmin();
 
   return (

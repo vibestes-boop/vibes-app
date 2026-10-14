@@ -26,11 +26,11 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export type LinkableProduct = { id: string; title: string; cover_url: string | null };
-
 import type { PostSettingsState } from '@/components/create';
 import { useI18n } from '@/lib/i18n';
 import { GlassSheet, useEditorSheet } from './sharedStyles';
+
+export type LinkableProduct = { id: string; title: string; cover_url: string | null };
 
 const TAG_OPTIONS = ['#vibes','#music','#chill','#art','#life','#travel','#food','#fitness','#coding','#fashion'];
 
@@ -71,13 +71,15 @@ export function DetailsSheet({
         <View style={ds.overlay} />
       </TouchableWithoutFeedback>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ds.sheetWrap}>
-        <GlassSheet style={[ds.sheet, { paddingBottom: insets.bottom + 16 }]}>
+        <GlassSheet style={ds.sheet}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
           <View style={[ds.handle, { backgroundColor: t.border }]} />
           <Text style={[ds.heading, { color: t.text }]}>{tr('create.details')}</Text>
 
           <TextInput
             style={[ds.captionInput, { backgroundColor: t.fill, color: t.text }]}
-            
+            accessibilityLabel={tr('editorUx.caption')}
+            placeholder={tr('editorUx.captionPlaceholder')}
             placeholderTextColor={t.textMuted}
             value={caption}
             onChangeText={onCaption}
@@ -168,10 +170,10 @@ export function DetailsSheet({
           <Pressable
             onPress={() => { onClose(); onPost(); }}
             disabled={uploading}
-            style={({ pressed }) => [ds.postBtn, { backgroundColor: t.accent }, pressed && { opacity: 0.85 }]}
+            style={({ pressed }) => [ds.postBtn, { backgroundColor: t.action }, pressed && { opacity: 0.85 }]}
           >
-            <Text style={ds.postBtnText}>{uploading ? tr('create.uploading') : tr('create.postNow')}</Text>
-            <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+            <Text style={[ds.postBtnText, { color: t.onAction }]}>{uploading ? tr('create.uploading') : tr('create.postNow')}</Text>
+            <ArrowRight size={18} color={t.onAction} strokeWidth={2.5} />
           </Pressable>
 
           {(onSchedule || onSaveDraft) && (
@@ -202,6 +204,7 @@ export function DetailsSheet({
               )}
             </View>
           )}
+          </ScrollView>
         </GlassSheet>
       </KeyboardAvoidingView>
     </Modal>
@@ -211,7 +214,7 @@ export function DetailsSheet({
 const ds = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 0 },
+  sheet: { maxHeight: '88%', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 0 },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   heading: { fontSize: 17, fontWeight: '700', paddingHorizontal: 20, marginBottom: 16 },
   captionInput: { borderRadius: 14, marginHorizontal: 16, padding: 14, fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },

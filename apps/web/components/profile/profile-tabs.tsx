@@ -72,13 +72,13 @@ export function ProfileTabs({
         next.set('tab', tab);
       }
       const qs = next.toString();
-      // typedRoutes: `router.replace` verlangt eine literal-typed Route.
+      // typedRoutes: `router.push` verlangt eine literal-typed Route.
       // Unsere Profile-Routes sind dynamic (`/u/[username]`), deshalb casten
       // wir zu `Route` — die Basis-Konstruktion ist korrekt und Next löst
       // den Dynamic-Match zur Laufzeit sauber auf.
       const href = (qs ? `${pathname}?${qs}` : pathname) as Route;
       startTransition(() => {
-        router.replace(href, { scroll: false });
+        router.push(href, { scroll: false });
       });
     },
     [router, pathname, params, startTransition],
@@ -99,11 +99,23 @@ export function ProfileTabs({
     //   - Icon-Stroke beim aktiven Tab: `stroke-[2.25]` — gleiche Technik wie
     //     in der neuen MobileBottomNav. Ein inaktives Icon wirkt damit leichter,
     //     aktives prägnanter (Gewicht-Shift ohne Farb-Shift).
-    //   - Label immer sichtbar auf sm+, Count-Pill immer formatiert.
+    //   - Labels bleiben sichtbar; schmale Displays können die Tab-Leiste scrollen.
     <div
       role="tablist"
       aria-label={labels.tablist}
-      className="sticky top-0 z-30 flex items-stretch justify-around border-b-2 border-border/60 bg-background/80 backdrop-blur-md"
+      className="sticky top-16 z-30 flex items-stretch overflow-x-auto border-b-2 border-border/60 bg-background/80 backdrop-blur-md"
+      onKeyDown={(event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)'));
+        const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
+        if (current < 0) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0
+          : event.key === 'End' ? tabs.length - 1
+          : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        // Manual activation: arrows move focus; Enter/Space selects a tab.
+        tabs[next]?.focus();
+      }}
     >
       {TABS.map(({ key, label, icon: Icon }) => {
         const isActive = key === active;
@@ -111,15 +123,18 @@ export function ProfileTabs({
         return (
           <button
             key={key}
+            id={`tab-${key}`}
             role="tab"
             type="button"
+            aria-label={label}
             aria-selected={isActive}
-            aria-controls={`panel-${key}`}
+            aria-controls={isActive ? `panel-${key}` : undefined}
+            tabIndex={isActive ? 0 : -1}
             data-state={isActive ? 'active' : 'inactive'}
             disabled={isPending}
             onClick={() => onSelect(key)}
             className={cn(
-              'relative flex flex-1 items-center justify-center gap-1.5 py-3.5 text-sm transition-colors duration-base ease-out-expo',
+              'relative flex min-w-max flex-1 flex-col items-center justify-center gap-1.5 px-3 py-3 text-xs transition-colors duration-base ease-out-expo sm:flex-row sm:py-3.5 sm:text-sm',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
               // Active-Underline via ::after-Pseudo — sitzt auf der -2px Sockel-
               // Linie des Containers und hat -bottom-0.5 Offset damit die beiden
@@ -135,17 +150,19 @@ export function ProfileTabs({
               className={cn('h-4 w-4', isActive ? 'stroke-[2.25]' : 'stroke-[1.75]')}
               aria-hidden
             />
-            <span className="hidden sm:inline">{label}</span>
-            {typeof count === 'number' && count > 0 && (
-              <span
-                className={cn(
-                  'text-xs tabular-nums',
-                  isActive ? 'text-foreground/80' : 'text-muted-foreground',
-                )}
-              >
-                {count.toLocaleString(LOCALE_INTL[locale])}
-              </span>
-            )}
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <span>{label}</span>
+              {typeof count === 'number' && count > 0 && (
+                <span
+                  className={cn(
+                    'text-xs tabular-nums',
+                    isActive ? 'text-foreground/80' : 'text-muted-foreground',
+                  )}
+                >
+                  {count.toLocaleString(LOCALE_INTL[locale])}
+                </span>
+              )}
+            </span>
           </button>
         );
       })}

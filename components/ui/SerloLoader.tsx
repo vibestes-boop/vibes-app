@@ -1,5 +1,5 @@
 /**
- * SerloLoader — markeneigener Lade-Indikator: ein blauer Lichtstrahl gleitet
+ * SerloLoader — markeneigener Lade-Indikator: ein silberner Lichtstrahl gleitet
  * sanft hin und her. Der Schweif streckt sich lang in der Mitte und zieht sich
  * am Wendepunkt kurz zusammen, ein funkelnder Glüh-Kopf führt; beim Umkehren
  * dreht der Kopf mit (Flip am kontrahierten Wendepunkt → unsichtbar).
@@ -28,9 +28,9 @@ const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
-const BLUE       = '#3B9EFF';
-const BLUE_SOFT  = 'rgba(59,158,255,0)';
-const HEAD_WHITE = '#EAF6FF';
+const SILVER       = '#909CAC';
+const SILVER_SOFT  = 'rgba(144,156,172,0)';
+const HEAD_LIGHT = '#FFFFFF';
 
 const P = 2200;        // ms pro Hin-und-Zurück — minimal ruhiger = eleganter
 const A = 64;          // Reiseweite (px ab Mitte) — weiterer Weg
@@ -83,13 +83,13 @@ export function SerloLoader() {
         {/* Schweif (zwei Lagen: scharf + weiter/fainter = Glow-Halo) */}
         <Animated.View style={[s.trailWrap, trailStyle]}>
           <LinearGradient
-            colors={[BLUE_SOFT, 'rgba(59,158,255,0.12)', 'rgba(59,158,255,0.32)', 'rgba(59,158,255,0.60)', BLUE, HEAD_WHITE]}
+            colors={[SILVER_SOFT, 'rgba(144,156,172,0.12)', 'rgba(144,156,172,0.32)', 'rgba(144,156,172,0.60)', SILVER, HEAD_LIGHT]}
             locations={[0, 0.32, 0.58, 0.80, 0.95, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailGlow}
           />
           <LinearGradient
-            colors={[BLUE_SOFT, 'rgba(59,158,255,0.12)', 'rgba(59,158,255,0.32)', 'rgba(59,158,255,0.60)', BLUE, HEAD_WHITE]}
+            colors={[SILVER_SOFT, 'rgba(144,156,172,0.12)', 'rgba(144,156,172,0.32)', 'rgba(144,156,172,0.60)', SILVER, HEAD_LIGHT]}
             locations={[0, 0.32, 0.58, 0.80, 0.95, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailSharp}
@@ -104,19 +104,19 @@ export function SerloLoader() {
                 <FeGaussianBlur stdDeviation="3" />
               </Filter>
               <RadialGradient id="halo" cx="50%" cy="50%" r="50%">
-                <Stop offset="0"    stopColor="#CFE8FF" stopOpacity={0.92} />
-                <Stop offset="0.4"  stopColor={BLUE}    stopOpacity={0.4} />
-                <Stop offset="1"    stopColor={BLUE}    stopOpacity={0} />
+                <Stop offset="0"    stopColor="#E7EDF5" stopOpacity={0.92} />
+                <Stop offset="0.4"  stopColor={SILVER}    stopOpacity={0.4} />
+                <Stop offset="1"    stopColor={SILVER}    stopOpacity={0} />
               </RadialGradient>
             </Defs>
             {/* Weicher Halo (zart) */}
             <Circle cx="48" cy="22" r="16.5" fill="url(#halo)" />
             {/* Feine, weich geblurrte Strahlen */}
             <G filter="url(#soft)">
-              <Rect x="6"    y="21.5" width="84" height="1"   fill="#DCEEFF" opacity={0.7} />
-              <Rect x="47.5" y="12"   width="1"   height="20" fill="#DCEEFF" opacity={0.5} />
-              <Rect x="39"   y="21.65" width="18" height="0.8" fill="#CFE8FF" opacity={0.3} transform="rotate(45 48 22)" />
-              <Rect x="39"   y="21.65" width="18" height="0.8" fill="#CFE8FF" opacity={0.3} transform="rotate(-45 48 22)" />
+              <Rect x="6"    y="21.5" width="84" height="1"   fill="#FFFFFF" opacity={0.7} />
+              <Rect x="47.5" y="12"   width="1"   height="20" fill="#FFFFFF" opacity={0.5} />
+              <Rect x="39"   y="21.65" width="18" height="0.8" fill="#E7EDF5" opacity={0.3} transform="rotate(45 48 22)" />
+              <Rect x="39"   y="21.65" width="18" height="0.8" fill="#E7EDF5" opacity={0.3} transform="rotate(-45 48 22)" />
             </G>
             {/* Weicher Kern-Glow + feiner scharfer Kern */}
             <Circle cx="48" cy="22" r="4.5" fill="#fff" opacity={0.2} />
@@ -142,7 +142,7 @@ const s = StyleSheet.create({
   trailWrap: { position: 'absolute', right: 0, top: TRAIL_TOP, width: W, height: H, justifyContent: 'center' },
   trailSharp: {
     position: 'absolute', right: 0, left: 0, top: 0, height: H, borderRadius: H,
-    shadowColor: BLUE, shadowOpacity: 0.7, shadowRadius: 6, shadowOffset: { width: 0, height: 0 },
+    shadowColor: SILVER, shadowOpacity: 0.7, shadowRadius: 6, shadowOffset: { width: 0, height: 0 },
   },
   trailGlow:  {
     position: 'absolute', right: 0, left: 0, top: -3, height: H + 6, borderRadius: (H + 6) / 2,

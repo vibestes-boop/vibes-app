@@ -50,12 +50,15 @@ function compact(n: number): string {
 function ReplayCard({ session }: { session: ReplaySession }) {
   const host = session.host;
   return (
-    <Link
-      href={`/live/replay/${session.id}` as Route}
+    <article
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-elevation-1 transition-all duration-150 hover:shadow-elevation-2 hover:-translate-y-0.5"
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video overflow-hidden bg-muted">
+      <Link
+        href={`/live/replay/${session.id}` as Route}
+        aria-label={`${session.title ?? 'Live-Stream Replay'} ansehen`}
+        className="relative block aspect-video overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
         {session.thumbnail_url ? (
           <Image
             src={session.thumbnail_url}
@@ -97,7 +100,7 @@ function ReplayCard({ session }: { session: ReplaySession }) {
             </span>
           )}
         </div>
-      </div>
+      </Link>
 
       {/* Meta */}
       <div className="flex min-w-0 gap-3 p-3">
@@ -106,7 +109,6 @@ function ReplayCard({ session }: { session: ReplaySession }) {
           <Link
             href={`/u/${host.username}` as Route}
             className="shrink-0"
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="relative h-9 w-9 overflow-hidden rounded-full bg-muted">
               {host.avatar_url ? (
@@ -127,9 +129,9 @@ function ReplayCard({ session }: { session: ReplaySession }) {
         )}
 
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-medium leading-snug">
+          <Link href={`/live/replay/${session.id}` as Route} className="line-clamp-2 text-sm font-medium leading-snug hover:underline">
             {session.title ?? 'Live-Stream Replay'}
-          </p>
+          </Link>
           {host && (
             <p className="mt-0.5 text-xs text-muted-foreground">@{host.username}</p>
           )}
@@ -139,7 +141,7 @@ function ReplayCard({ session }: { session: ReplaySession }) {
           </div>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }
 

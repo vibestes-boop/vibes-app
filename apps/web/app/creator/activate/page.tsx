@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import type { Route } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Gift, ShoppingBag, Video, TrendingUp, Diamond } from 'lucide-react';
+import { Gift, ShoppingBag, Video, TrendingUp, Diamond, LifeBuoy } from 'lucide-react';
 
 import { getProfile } from '@/lib/auth/session';
-import { CreatorActivateForm } from '@/components/studio/creator-activate-form';
+import { getSafeReturnPath } from '@/lib/auth/return-path';
 
 // -----------------------------------------------------------------------------
 // /creator/activate — v1.w.UI.163
@@ -17,12 +18,16 @@ import { CreatorActivateForm } from '@/components/studio/creator-activate-form';
 // durch.
 //
 // Auth-Gate: kein Redirect auf Login hier — die Page zeigt generischen Text.
-// Wer auf "Aktivieren" klickt, wird vom Server-Action nach Login weitergesendet.
+//
+// Creator schaltet nur ein Admin frei (Zaurs Entscheidung, 14.10.2026). Die
+// frühere Selbst-Aktivierung (activateCreator) ist entfernt: Sie scheiterte seit
+// 20260822150000 ohnehin am Trigger guard_profile_privileges. Die Page erklärt
+// den Weg und verlinkt den Support.
 // -----------------------------------------------------------------------------
 
 export const metadata: Metadata = {
   title: 'Creator werden — Serlo',
-  description: 'Aktiviere dein Creator-Konto und monetarisiere deinen Content.',
+  description: 'So bekommst du ein Creator-Konto bei Serlo und monetarisierst deinen Content.',
   robots: { index: false },
 };
 
@@ -37,12 +42,15 @@ const BENEFITS = [
   { icon: Diamond,     label: 'Auszahlung',       desc: 'Ab 50 € auszahlbar' },
 ] as const;
 
-export default async function CreatorActivatePage() {
+export default async function CreatorActivatePage({ searchParams }: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const next = getSafeReturnPath((await searchParams).next, '/studio');
   const profile = await getProfile();
 
   // Bereits Creator → sofort ins Studio
   if (profile && (profile as { is_creator?: boolean }).is_creator) {
-    redirect('/studio' as Route);
+    redirect(next as Route);
   }
 
   return (
@@ -54,7 +62,7 @@ export default async function CreatorActivatePage() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Creator werden</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Kostenlos · Sofortzugang · Monetarisierung
+          Kostenlos · Freischaltung durch das Serlo-Team
         </p>
       </div>
 
@@ -73,15 +81,25 @@ export default async function CreatorActivatePage() {
         ))}
       </div>
 
-      {/* CTA form — client component handles the server action + redirect */}
-      <CreatorActivateForm />
+      <p className="mb-4 text-center text-sm text-muted-foreground">
+        Den Creator-Zugang schaltet das Serlo-Team frei. Schreib uns kurz über den
+        Support, wir melden uns bei dir.
+      </p>
+
+      <Link
+        href={'/support' as Route}
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+      >
+        <LifeBuoy className="h-4 w-4" aria-hidden />
+        Freischaltung anfragen
+      </Link>
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        Mit der Aktivierung stimmst du den{' '}
+        Mit der Freischaltung gelten die{' '}
         <a href="/terms" className="underline underline-offset-2 hover:text-foreground">
           Creator-Nutzungsbedingungen
-        </a>{' '}
-        zu.
+        </a>
+        .
       </p>
     </div>
   );

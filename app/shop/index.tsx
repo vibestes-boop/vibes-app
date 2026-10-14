@@ -1,3 +1,4 @@
+import { productDisplayPrice } from '@/lib/productDisplayPrice';
 import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 /**
  * app/shop/index.tsx — Shop (TikTok-inspiriertes Layout)
@@ -255,8 +256,9 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
 
   const isPreorder    = product.sale_mode === 'preorder';
   // Sale-State: aktueller Preis = sale_price wenn gesetzt; price_coins wird Vorpreis
-  const hasSale       = product.sale_price_coins != null && product.sale_price_coins < product.price_coins;
-  const currentPrice  = hasSale ? product.sale_price_coins! : product.price_coins;
+  const price = productDisplayPrice(product);
+  const hasSale = price.currency === 'coins' && price.amount != null && price.amount < product.price_coins;
+  const currentPrice = price.amount ?? product.price_coins;
   const salePercent   = hasSale
     ? Math.round((1 - product.sale_price_coins! / product.price_coins) * 100)
     : 0;
@@ -424,9 +426,9 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
         {/* Preis-Zeile: aktueller Preis (+ durchgestrichener Vorpreis bei Sale) + Sold-Pill.
             Bei Vorbestellung: kein Coin-Preis (zahlbar bei Lieferung). */}
         <View style={card.footer}>
-          {isPreorder ? (
-            <Text style={[card.price, { color: '#B45309' }]} numberOfLines={1}>
-              {formatEur(product.price_eur) ?? t('shop.preorder')}
+          {price.currency === 'eur' ? (
+            <Text style={[card.price, { color: colors.accent.primary }]} numberOfLines={1}>
+              {formatEur(price.amount) ?? t('nativeUi.askPrice')}
             </Text>
           ) : (
             <>
@@ -872,7 +874,7 @@ export default function ShopScreen() {
         keyExtractor={(item) => (item as { id: string }).id}
         numColumns={2}
         columnWrapperStyle={s.gridRow}
-        contentContainerStyle={[s.gridContent, { paddingBottom: insets.bottom + 48 }]}
+        contentContainerStyle={[s.gridContent, { paddingBottom: insets.bottom + 92 }]}
         showsVerticalScrollIndicator={false}
         initialNumToRender={6}
         maxToRenderPerBatch={6}
@@ -1053,12 +1055,12 @@ const s = StyleSheet.create({
   },
   tabScroll: { flex: 1 },
   tabRow: { gap: 18, alignItems: 'flex-end' },
-  tab: { alignItems: 'center' },
+  tab: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   tabLabel: { fontSize: 14, lineHeight: 18, paddingBottom: 8, includeFontPadding: false },
   tabUnderline: { height: 2, width: '100%', borderRadius: 1 },
 
   sortBtn: {
-    width: 32, height: 32, borderRadius: 16, borderWidth: 1,
+    width: 44, height: 44, borderRadius: 14, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
     marginLeft: 8, marginBottom: 6,
   },

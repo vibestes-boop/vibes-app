@@ -876,7 +876,7 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
   // User-Suche: username + display_name (kein follower_count auf profiles)
   const usersPromise = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, verified:is_verified, created_at')
+    .select('id, username, display_name, avatar_url, verified:is_verified, created_at, followers:follows!follows_following_id_fkey(count)')
     .eq('is_banned', false)
     .eq('is_shadow_banned', false)
     .or(`username.ilike.${like},display_name.ilike.${like}`)
@@ -929,6 +929,7 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
       display_name: string | null;
       avatar_url: string | null;
       verified: boolean | null;
+      followers: Array<{ count: number }> | null;
     }>
   ).map((u) => ({
     id: u.id,
@@ -936,7 +937,7 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
     display_name: u.display_name,
     avatar_url: u.avatar_url,
     verified: u.verified ?? false,
-    follower_count: 0, // Placeholder — profiles hat keinen denorm. Counter.
+    follower_count: u.followers?.[0]?.count ?? 0,
   }));
 
   return {
@@ -984,7 +985,7 @@ export async function searchPaginated(
   if (type === 'users') {
     const { data } = await supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .select('id, username, display_name, avatar_url, verified:is_verified, followers:follows!follows_following_id_fkey(count)')
       .eq('is_banned', false)
       .eq('is_shadow_banned', false)
       .or(`username.ilike.${like},display_name.ilike.${like}`)
@@ -994,9 +995,10 @@ export async function searchPaginated(
     const users = ((data ?? []) as Array<{
       id: string; username: string; display_name: string | null;
       avatar_url: string | null; verified: boolean | null;
+      followers: Array<{ count: number }> | null;
     }>).map((u) => ({
       id: u.id, username: u.username, display_name: u.display_name,
-      avatar_url: u.avatar_url, verified: u.verified ?? false, follower_count: 0,
+      avatar_url: u.avatar_url, verified: u.verified ?? false, follower_count: u.followers?.[0]?.count ?? 0,
     }));
     return { type, users, hasMore: users.length >= SEARCH_PAGE_LIMIT };
   }

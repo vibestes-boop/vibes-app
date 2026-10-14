@@ -40,8 +40,8 @@ export async function FeedShell({ children }: { children: ReactNode }) {
     : null;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[1600px]">
-      <aside className="hidden w-[260px] shrink-0 border-r border-border xl:block">
+    <div className="serlo-app-shell mx-auto flex min-h-dvh w-full max-w-[1680px]">
+      <aside className="serlo-sidebar-frame hidden w-[232px] shrink-0 xl:block">
         <FeedSidebar
           viewerId={viewerId}
           viewerProfile={viewerProfile}

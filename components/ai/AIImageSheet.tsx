@@ -336,17 +336,15 @@ export function AIImageSheet({
                           style={[
                             s.sizeChip,
                             {
-                              backgroundColor: isActive ? colors.accent.primary : colors.bg.elevated,
-                              borderColor: isActive ? colors.accent.primary : colors.border.subtle,
+                              backgroundColor: isActive ? colors.accent.solid : colors.bg.elevated,
+                              borderColor: isActive ? colors.accent.solid : colors.border.subtle,
                             },
                           ]}
                         >
                           <Text
                             style={[
                               s.sizeChipText,
-                              // accent.primary ist invers (weiß im Dark-, schwarz im
-                              // Light-Mode) → Text muss bg.primary sein, sonst weiß-auf-weiß.
-                              { color: isActive ? colors.bg.primary : colors.text.primary },
+                              { color: isActive ? colors.text.onAccent : colors.text.primary },
                             ]}
                           >
                             {sizeLabelKey(sz) ? t(sizeLabelKey(sz)!) : sz}
@@ -392,10 +390,10 @@ export function AIImageSheet({
               <Pressable
                 onPress={handleUse}
                 disabled={isGenerating}
-                style={[s.actionBtn, { backgroundColor: colors.accent.primary }]}
+                style={[s.actionBtn, { backgroundColor: colors.accent.solid }]}
               >
-                <Check size={16} color={colors.bg.primary} strokeWidth={2.5} />
-                <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>{t('ai.useImage')}</Text>
+                <Check size={16} color={colors.text.onAccent} strokeWidth={2.5} />
+                <Text style={[s.actionBtnText, { color: colors.text.onAccent }]}>{t('ai.useImage')}</Text>
               </Pressable>
             </>
           ) : (
@@ -405,20 +403,20 @@ export function AIImageSheet({
               style={[
                 s.actionBtn,
                 {
-                  backgroundColor: colors.accent.primary,
+                  backgroundColor: colors.accent.solid,
                   opacity: prompt.trim().length < PROMPT_MIN || quotaBlock.blocked ? 0.5 : 1,
                 },
               ]}
             >
               {isGenerating ? (
                 <>
-                  <ActivityIndicator color={colors.bg.primary} size="small" />
-                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>{t('ai.generating')}</Text>
+                  <ActivityIndicator color={colors.text.onAccent} size="small" />
+                  <Text style={[s.actionBtnText, { color: colors.text.onAccent }]}>{t('ai.generating')}</Text>
                 </>
               ) : (
                 <>
-                  <Sparkles size={16} color={colors.bg.primary} strokeWidth={2} />
-                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>{t('ai.generate')}</Text>
+                  <Sparkles size={16} color={colors.text.onAccent} strokeWidth={2} />
+                  <Text style={[s.actionBtnText, { color: colors.text.onAccent }]}>{t('ai.generate')}</Text>
                 </>
               )}
             </Pressable>

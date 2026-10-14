@@ -1,5 +1,5 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { ShoppingBag, ArrowLeft, PackageOpen, Boxes, ChevronRight } from 'lucide-react';
@@ -27,7 +27,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
   const role: 'buyer' | 'seller' = roleParam === 'seller' ? 'seller' : 'buyer';
 
   const user = await getUser();
-  if (!user) redirect('/login?next=/studio/orders');
+  if (!user) return <ReturnToRedirect />;
 
   const supabase = await createClient();
   const { data: prof } = await supabase

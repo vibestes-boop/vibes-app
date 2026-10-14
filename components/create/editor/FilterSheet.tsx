@@ -1,119 +1,40 @@
+import { useTheme } from '@/lib/useTheme';
 import { Image } from 'expo-image';
-import React from 'react';
+import { useId } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
-
+import Svg, { Defs, FeColorMatrix, Filter, Image as SvgImage } from 'react-native-svg';
 import type { ColorFilterId } from '@/lib/cameraFilters';
 import { useI18n } from '@/lib/i18n';
-import { COLOR_FILTERS, FILTER_CATALOG } from '@/lib/cameraFilters';
+import { FILTER_CATALOG } from '@/lib/cameraFilters';
+import { hasImageAdjustments, NEUTRAL_ADJUSTMENTS, normalizedImageMatrix, type ImageAdjustments } from '@/lib/imageAdjustments';
 import { SkiaCanvas, SkiaColorMatrix, SkiaImage, SKIA_READY, useSkiaImage } from '@/lib/skiaLoader';
 import { GlassSheet, useEditorSheet, SH, SW } from './sharedStyles';
 
-// ─── Filter-Overlay System (View-basiert, für Expo Go) ──────────────────────
-export function extractFilterStyle(filterId: ColorFilterId | null): {
-  tint: string; tintOpacity: number;
-  brightness: 'lighten' | 'darken' | null; biasOpacity: number;
-  desaturate: boolean; desatOpacity: number;
-} {
-  if (!filterId || filterId === 'none') return { tint: 'transparent', tintOpacity: 0, brightness: null, biasOpacity: 0, desaturate: false, desatOpacity: 0 };
-  const m = COLOR_FILTERS[filterId];
-  const rr = m[0], rg = m[1], rb = m[2];
-  const gg = m[6], gb = m[7];
-  const br = m[10], bg = m[11], bb = m[12];
-  const rBias = m[4], gBias = m[9], bBias = m[14];
-
-  const diagAvg = (rr + gg + bb) / 3;
-  const brightness: 'lighten' | 'darken' | null = diagAvg > 1.1 ? 'lighten' : diagAvg < 0.7 ? 'darken' : null;
-  const biasOpacity = Math.min(0.35, Math.abs(diagAvg - 1) * 0.5);
-
-  const r = Math.round(Math.max(0, Math.min(255, rBias)));
-  const g = Math.round(Math.max(0, Math.min(255, gBias)));
-  const b = Math.round(Math.max(0, Math.min(255, bBias)));
-  const biasSum = Math.abs(rBias) + Math.abs(gBias) + Math.abs(bBias);
-  const tintOpacity = Math.min(0.3, biasSum / 255 * 1.5);
-  const tint = tintOpacity > 0.02 ? `rgb(${r},${g},${b})` : 'transparent';
-
-  const crossStrength = Math.abs(rg) + Math.abs(rb) + Math.abs(br) + Math.abs(bg) + Math.abs(gb);
-  const lumaish = 0.3 * rr + 0.59 * gg + 0.11 * bb;
-  const desaturate = lumaish > 0.7 && crossStrength > 0.4;
-  const desatOpacity = desaturate ? Math.min(0.9, lumaish) : 0;
-
-  return { tint, tintOpacity, brightness, biasOpacity, desaturate, desatOpacity };
-}
-
-export function FilterOverlays({ filterId }: { filterId: ColorFilterId | null }) {
-  if (!filterId || filterId === 'none') return null;
-  const { tint, tintOpacity, brightness, biasOpacity, desaturate, desatOpacity } = extractFilterStyle(filterId);
-  return (
-    <>
-      {tintOpacity > 0.01 && (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint, opacity: tintOpacity }]} />
-      )}
-      {brightness === 'lighten' && (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,1)', opacity: biasOpacity }]} />
-      )}
-      {brightness === 'darken' && (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,1)', opacity: biasOpacity }]} />
-      )}
-      {desaturate && (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(128,128,128,1)', opacity: desatOpacity * 0.4 }]} />
-      )}
-    </>
-  );
-}
-
-export function SkiaFilteredImage({ uri, filterId }: {
-  uri: string; filterId: ColorFilterId | null;
+function MatrixImage({ uri, filterId, adjustments = NEUTRAL_ADJUSTMENTS, width = SW, height = SH, cover = false }: {
+  uri: string; filterId: ColorFilterId | null; adjustments?: ImageAdjustments; width?: number; height?: number; cover?: boolean;
 }) {
   const image = useSkiaImage(uri);
-  const matrix = filterId ? COLOR_FILTERS[filterId] : COLOR_FILTERS.none;
-  if (SKIA_READY && image && SkiaCanvas && SkiaImage && SkiaColorMatrix) {
-    const skia20 = matrix.map((v, i) => ((i + 1) % 5 === 0 ? v / 255 : v));
-    return (
-      <SkiaCanvas style={StyleSheet.absoluteFill}>
-        {/* contain: ganzes Medium sichtbar (kein seitlicher Cover-Beschnitt) —
-            zeigt die Vorschau so, wie der Post später im Feed erscheint. */}
-        <SkiaImage image={image} x={0} y={0} width={SW} height={SH} fit="contain">
-          <SkiaColorMatrix matrix={skia20} />
-        </SkiaImage>
-      </SkiaCanvas>
-    );
-  }
-  return (
-    <View style={StyleSheet.absoluteFill}>
-      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" />
-      <FilterOverlays filterId={filterId} />
-    </View>
-  );
+  const id = 'photo-' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const matrix = normalizedImageMatrix(filterId, adjustments);
+  const edited = (filterId && filterId !== 'none') || hasImageAdjustments(adjustments);
+  if (!edited) return <Image source={{ uri }} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit={cover ? 'cover' : 'contain'} />;
+  if (SKIA_READY && image && SkiaCanvas && SkiaImage && SkiaColorMatrix) return <SkiaCanvas style={StyleSheet.absoluteFill}>
+    <SkiaImage image={image} x={0} y={0} width={width} height={height} fit={cover ? 'cover' : 'contain'}><SkiaColorMatrix matrix={matrix} /></SkiaImage>
+  </SkiaCanvas>;
+  return <Svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} style={StyleSheet.absoluteFill}>
+    <Defs><Filter id={id} x="0%" y="0%" width="100%" height="100%"><FeColorMatrix type="matrix" values={matrix} /></Filter></Defs>
+    <SvgImage href={{ uri }} x={0} y={0} width={width} height={height} preserveAspectRatio={cover ? 'xMidYMid slice' : 'xMidYMid meet'} filter={`url(#${id})`} />
+  </Svg>;
 }
 
-export function FilterThumb({ uri, filterId, size, active }: {
-  uri: string; filterId: ColorFilterId;
-  size: number; active: boolean;
-}) {
-  const image = useSkiaImage(uri);
-  const isActive = active;
-  const thStyle = { width: size, height: size * 1.35, borderRadius: 10, overflow: 'hidden' as const,
-    borderWidth: isActive ? 2.5 : 0, borderColor: '#fff' };
-
-  if (SKIA_READY && image && SkiaCanvas && SkiaImage && SkiaColorMatrix) {
-    const matrix = COLOR_FILTERS[filterId];
-    const skia20 = matrix.map((v, i) => ((i + 1) % 5 === 0 ? v / 255 : v));
-    return (
-      <View style={thStyle}>
-        <SkiaCanvas style={{ width: size, height: size * 1.35 }}>
-          <SkiaImage image={image} x={0} y={0} width={size} height={size * 1.35} fit="cover">
-            <SkiaColorMatrix matrix={skia20} />
-          </SkiaImage>
-        </SkiaCanvas>
-      </View>
-    );
-  }
-  return (
-    <View style={thStyle}>
-      <Image source={{ uri }} style={{ width: size, height: size * 1.35 }} contentFit="cover" />
-      <FilterOverlays filterId={filterId} />
-    </View>
-  );
+export function SkiaFilteredImage(props: { uri: string; filterId: ColorFilterId | null; adjustments?: ImageAdjustments }) {
+  return <MatrixImage {...props} />;
+}
+export function FilterThumb({ uri, filterId, size, active }: { uri: string; filterId: ColorFilterId; size: number; active: boolean }) {
+  const { colors } = useTheme();
+  return <View style={{ width: size, height: size * 1.35, borderRadius: 10, overflow: 'hidden', borderWidth: active ? 2.5 : 0, borderColor: colors.accent.primary }}>
+    <MatrixImage uri={uri} filterId={filterId} width={size} height={size * 1.35} cover />
+  </View>;
 }
 
 const COLOR_FILTER_LIST = FILTER_CATALOG.filter(f => f.category === 'color');

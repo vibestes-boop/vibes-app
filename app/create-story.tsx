@@ -1,3 +1,6 @@
+import { darkColors } from '@/lib/theme';
+import { useIsFocused } from '@react-navigation/native';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAuthStore } from '@/lib/authStore';
 import { useI18n } from '@/lib/i18n';
 import { generateAndUploadThumbnail,uploadPostMedia } from '@/lib/uploadMedia';
@@ -10,8 +13,8 @@ requestMediaLibraryPermissionsAsync,
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
-import { ArrowLeft,BarChart2,ImagePlus,Send,Type,X } from 'lucide-react-native';
-import { useCallback,useState } from 'react';
+import { ArrowLeft,BarChart2,ImagePlus,Send,X } from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -34,11 +37,18 @@ export default function CreateStoryScreen() {
   const { mutateAsync: createStory } = useCreateStory();
 
   // Optional von außen (z.B. Text-Modus) ein fertiges Bild durchreichen → Picker überspringen
-  const params = useLocalSearchParams<{ mediaUri?: string; mediaType?: string }>();
+  const params = useLocalSearchParams<{ mediaUri?: string; mediaType?: string; mediaMimeType?: string }>();
   const [mediaUri, setMediaUri] = useState<string | null>(params.mediaUri ?? null);
   const [mediaType, setMediaType] = useState<'image' | 'video'>(params.mediaType === 'video' ? 'video' : 'image');
-  const [mediaMimeType, setMediaMimeType] = useState<string | null>(null);
+  const [mediaMimeType, setMediaMimeType] = useState<string | null>(params.mediaMimeType || null);
   const [uploading, setUploading] = useState(false);
+  const publishingRef = useRef(false);
+  const focused = useIsFocused();
+  const videoPlayer = useVideoPlayer(mediaType === 'video' ? mediaUri : null, player => { player.loop = true; });
+  useEffect(() => {
+    if (focused && mediaType === 'video') videoPlayer.play();
+    else videoPlayer.pause();
+  }, [focused, mediaType, videoPlayer]);
 
   // ── Poll-State ────────────────────────────────────────────────────────────────
   const [pollActive, setPollActive] = useState(false);
@@ -65,11 +75,12 @@ export default function CreateStoryScreen() {
       setMediaType(asset.type === 'video' ? 'video' : 'image');
       setMediaMimeType(asset.mimeType ?? null);
     }
-  }, []);
+  }, [t]);
 
   // ── Upload + Story erstellen ────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
-    if (!mediaUri || !profile) return;
+    if (!mediaUri || !profile || publishingRef.current) return;
+    publishingRef.current = true;
     setUploading(true);
     try {
       const mimeType = mediaMimeType ?? (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
@@ -101,9 +112,10 @@ export default function CreateStoryScreen() {
     } catch (err: any) {
       Alert.alert(t('story.almostTitle'), err?.message ?? t('story.failedText'));
     } finally {
+      publishingRef.current = false;
       setUploading(false);
     }
-  }, [mediaUri, mediaType, mediaMimeType, profile, createStory, router, pollActive, pollQuestion, pollOption0, pollOption1]);
+  }, [mediaUri, mediaType, mediaMimeType, profile, createStory, router, pollActive, pollQuestion, pollOption0, pollOption1, t]);
 
   return (
     <KeyboardAvoidingView
@@ -111,13 +123,13 @@ export default function CreateStoryScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LinearGradient
-        colors={['#0A0A0A', '#0d1a2e', '#0A0A0A']}
+        colors={[darkColors.bg.primary, darkColors.bg.secondary, darkColors.bg.primary]}
         style={StyleSheet.absoluteFill}
       />
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('mobileDesign.back')} disabled={uploading} onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={20} stroke="#9CA3AF" strokeWidth={2} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('story.createTitle')}</Text>
@@ -126,17 +138,19 @@ export default function CreateStoryScreen() {
 
       {/* Haupt-Preview */}
       <View style={styles.previewArea}>
-        {mediaUri ? (
+        {mediaUri ? (mediaType === 'video' ? (
+          <VideoView player={videoPlayer} style={styles.previewImage} contentFit="contain" nativeControls />
+        ) : (
           <Image
             source={{ uri: mediaUri }}
             style={styles.previewImage}
             contentFit="contain"
           />
-        ) : (
+        )) : (
           /* Kein Bild — großer Pick-Button */
           <Pressable onPress={pickMedia} style={styles.pickerBtn}>
             <LinearGradient
-              colors={['rgba(255,255,255,0.10)', 'rgba(22,163,74,0.05)']}
+              colors={['rgba(255,255,255,0.10)', 'rgba(220,229,241,0.08)']}
               style={StyleSheet.absoluteFill}
             />
             <ImagePlus size={48} stroke="#FFFFFF" strokeWidth={1.5} />
@@ -149,15 +163,16 @@ export default function CreateStoryScreen() {
       {/* Aktionen am unteren Rand */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         {mediaUri && (
-          <Pressable onPress={pickMedia} style={styles.changeBtn}>
-            <Type size={16} stroke="#9CA3AF" strokeWidth={2} />
-            <Text style={styles.changeBtnText}>{t('story.otherImage')}</Text>
+          <Pressable disabled={uploading} onPress={pickMedia} style={styles.changeBtn}>
+            <ImagePlus size={16} stroke="#9CA3AF" strokeWidth={2} />
+            <Text style={styles.changeBtnText}>{t('editorUx.changeMedia')}</Text>
           </Pressable>
         )}
 
         {/* Poll-Button: nur wenn Bild vorhanden */}
         {mediaUri && (
           <Pressable
+            disabled={uploading}
             onPress={() => setPollActive((v) => !v)}
             style={[
               styles.changeBtn,
@@ -236,21 +251,21 @@ export default function CreateStoryScreen() {
 
         <Pressable
           onPress={mediaUri ? handlePublish : pickMedia}
-          style={[styles.publishBtn, !mediaUri && styles.publishBtnDisabled]}
+          style={[styles.publishBtn, { backgroundColor: mediaUri ? darkColors.accent.solid : darkColors.bg.elevated }, !mediaUri && styles.publishBtnDisabled]}
           disabled={uploading}
         >
           {uploading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={darkColors.text.onAccent} />
           ) : (
             <>
               <LinearGradient
-                colors={mediaUri ? ['#CCCCCC', '#FFFFFF'] : ['#1F2937', '#1F2937']}
+                colors={mediaUri ? [darkColors.accent.solid, darkColors.accent.solid] : [darkColors.bg.elevated, darkColors.bg.elevated]}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               />
-              <Send size={16} stroke="#fff" strokeWidth={2.2} />
-              <Text style={styles.publishBtnText}>
+              <Send size={16} stroke={mediaUri ? darkColors.text.onAccent : darkColors.text.primary} strokeWidth={2.2} />
+              <Text style={[styles.publishBtnText, { color: mediaUri ? darkColors.text.onAccent : darkColors.text.primary }]}>
                 {mediaUri ? t('story.publishBtn') : t('story.pickImageBtn')}
               </Text>
             </>

@@ -500,7 +500,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         <div className="mt-10 lg:hidden" />
         <div className="contents lg:hidden">
           {isOwner ? (
-            <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md md:bottom-0 lg:px-6">
+            <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md xl:bottom-0 lg:px-6">
               <Link
                 href={`/studio/shop/${product.id}/edit` as Route}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"

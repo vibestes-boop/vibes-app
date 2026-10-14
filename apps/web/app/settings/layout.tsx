@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Route } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -43,7 +43,7 @@ const NAV: SettingsNavItem[] = [
 
 export default async function SettingsLayout({ children }: { children: ReactNode }) {
   const [user, t] = await Promise.all([getUser(), getT()]);
-  if (!user) redirect('/login?next=/settings');
+  if (!user) return <ReturnToRedirect />;
 
   // Schmale Serlo-Rail (xl+, klappt per Hover auf) links neben der Settings-Nav.
   return (

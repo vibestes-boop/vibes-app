@@ -1,5 +1,5 @@
+import { ReturnToRedirect } from '@/components/auth/return-to-redirect';
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function StudioShopPage() {
   const user = await getUser();
-  if (!user) redirect('/login?next=/studio/shop');
+  if (!user) return <ReturnToRedirect />;
 
   const [products, isAdmin] = await Promise.all([getMyProducts(), getIsAdmin()]);
 

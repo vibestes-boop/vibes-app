@@ -14,8 +14,8 @@ const EXPECTED_OWNER = 'zaurhat';
 const EXPECTED_PROJECT_ID = '02ab536a-5836-4560-a5ec-2dfd6e059f90';
 const EXPECTED_IOS_BUNDLE_ID = 'com.vibesapp.vibes';
 const EXPECTED_IOS_SCHEME = 'vibes';
-const MIN_NEXT_STORE_VERSION = '1.26.6';
-const MIN_NEXT_STORE_BUILD_NUMBER = 279;
+const MIN_NEXT_STORE_VERSION = '1.31.1';
+const MIN_NEXT_STORE_BUILD_NUMBER = 293;
 
 if (args.help) {
   printHelp();

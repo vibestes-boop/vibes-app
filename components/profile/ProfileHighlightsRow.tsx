@@ -59,7 +59,7 @@ function HighlightBubble({
     >
       <View style={styles.bubbleThumb}>
         <LinearGradient
-          colors={['#CCCCCC', '#A855F7']}
+          colors={[colors.bg.input, colors.accent.secondary]}
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         />

@@ -1,3 +1,4 @@
+import { useTheme } from '@/lib/useTheme';
 /**
  * MessagesSkeleton — Shimmer-Platzhalter für die Konversations-Liste
  * Zeigt 8 Platzhalter-Zeilen während Nachrichten laden.
@@ -21,6 +22,8 @@ const BASE = 'rgba(255,255,255,0.07)';
 
 function SkeletonRow({ index }: { index: number }) {
   const shimmer = useSharedValue(0);
+  const { colors } = useTheme();
+  const surface = { backgroundColor: colors.border.strong };
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -40,14 +43,14 @@ function SkeletonRow({ index }: { index: number }) {
   return (
     <View style={s.row}>
       {/* Avatar */}
-      <Animated.View style={[s.avatar, animStyle]} />
+      <Animated.View style={[s.avatar, surface, animStyle]} />
       {/* Texte */}
       <View style={s.textWrap}>
-        <Animated.View style={[s.nameLine, animStyle]} />
-        <Animated.View style={[s.previewLine, { width: previewWidth as `${number}%` }, animStyle]} />
+        <Animated.View style={[s.nameLine, surface, animStyle]} />
+        <Animated.View style={[s.previewLine, surface, { width: previewWidth as `${number}%` }, animStyle]} />
       </View>
       {/* Zeit */}
-      <Animated.View style={[s.timeLine, animStyle]} />
+      <Animated.View style={[s.timeLine, surface, animStyle]} />
     </View>
   );
 }

@@ -474,3 +474,37 @@ describe('updatePostCaption — alias', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 });
+
+// Product publishing must use one transaction, never publish and then patch.
+describe('publishPost — product transaction', () => {
+  let viewer = 0;
+  function clientForPublish(result: { data: string | null; error: { message: string } | null }) {
+    const client = makeSupabaseMock({ user: { id: `publish-user-${++viewer}` } });
+    client.rpc.mockResolvedValue(result);
+    mockCreateClient.mockResolvedValue(client as never);
+    return client;
+  }
+  it('uses the existing RPC for ordinary posts', async () => {
+    const client = clientForPublish({ data: 'qa-post', error: null });
+    const { publishPost } = await import('../posts');
+    expect(await publishPost({ mediaUrl: 'https://example.test/photo.jpg', mediaType: 'image' })).toEqual({ ok: true, data: { id: 'qa-post' } });
+    expect(client.rpc).toHaveBeenCalledWith('create_post', expect.not.objectContaining({ p_product_id: expect.anything() }));
+    expect(client.from).not.toHaveBeenCalled();
+  });
+  it('publishes the post and product link atomically before removing its draft', async () => {
+    const client = clientForPublish({ data: 'qa-post', error: null });
+    const { publishPost } = await import('../posts');
+    await publishPost({ mediaUrl: 'https://example.test/photo.jpg', mediaType: 'image', productId: 'qa-product', draftId: 'qa-draft' });
+    expect(client.rpc).toHaveBeenNthCalledWith(1, 'create_post_with_product', expect.objectContaining({ p_product_id: 'qa-product' }));
+    expect(client.rpc).toHaveBeenNthCalledWith(2, 'delete_post_draft', { p_id: 'qa-draft' });
+    expect(client.from).not.toHaveBeenCalled();
+  });
+  it('preserves the draft and reports an error when the product transaction fails', async () => {
+    const client = clientForPublish({ data: null, error: { message: 'Product unavailable' } });
+    const { publishPost } = await import('../posts');
+    expect(await publishPost({ mediaUrl: 'https://example.test/photo.jpg', mediaType: 'image', productId: 'qa-product', draftId: 'qa-draft' })).toEqual({ ok: false, error: 'Product unavailable' });
+    expect(client.rpc).toHaveBeenCalledTimes(1);
+    expect(client.from).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+});

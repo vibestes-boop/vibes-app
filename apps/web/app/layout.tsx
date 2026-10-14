@@ -116,14 +116,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             preconnect/dns-prefetch automatisch in den <head>. */}
         <link rel="preconnect" href={R2_MEDIA_ORIGIN} />
         <link rel="dns-prefetch" href={R2_MEDIA_ORIGIN} />
-        {/* Dark ist der Serlo-Standard (Parität zur App, themeStore-Default 'dark').
-            enableSystem={false}: der Toggle bot nie „System" an — Bestands-Werte
-            'system' (nie aktiv gewählt) fallen damit auf den Dark-Default zurück,
-            explizit gewähltes Hell bleibt erhalten. */}
+        {/* Follow the device until the user explicitly chooses a theme. */}
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
+          defaultTheme="system"
+          enableSystem
           disableTransitionOnChange
         >
           <I18nProvider locale={locale} messages={messages}>
@@ -160,7 +157,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                  * programmatischen Focus-Target ohne ihn in die normale
                  * Tab-Reihenfolge zu hängen.
                  *
-                 * `pb-[...]` unter md: verhindert, dass die letzte Scroll-Zeile
+                 * `pb-[...]` unter xl: verhindert, dass die letzte Scroll-Zeile
                  * einer Seite unter der fixed MobileBottomNav verschwindet.
                  * Kombiniert die Tab-Bar-Höhe (h-14 = 3.5rem) mit der iOS-
                  * Safe-Area (`env(safe-area-inset-bottom)`).
@@ -168,7 +165,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div
                   id="main-content"
                   tabIndex={-1}
-                  className="outline-none pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+                  className="outline-none pb-[calc(3.5rem+env(safe-area-inset-bottom))] xl:pb-0"
                 >
                   {children}
                 </div>

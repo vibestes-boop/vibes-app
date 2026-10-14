@@ -207,7 +207,7 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
           <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('woz.emptyTitle')}</Text>
           <Text style={[styles.emptySub, { color: colors.text.muted }]}>{t('woz.emptySub')}</Text>
           <Pressable
-            onPress={() => router.push('/create/camera' as any)}
+            onPress={() => router.push('/create/start' as any)}
             style={[styles.emptyCta, { backgroundColor: colors.text.primary }]}
             accessibilityRole="button"
           >

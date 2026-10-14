@@ -1,8 +1,9 @@
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { VoiceSetupSheet } from '@/components/profile/VoiceSetupSheet';
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
-import { useAuthStore } from '@/lib/authStore';
+import { useAuthStore, type Profile } from '@/lib/authStore';
 import { useI18n } from '@/lib/i18n';
+import { PROFILE_SELECT } from '@/lib/profileSelect';
 import { usePrompt } from '@/lib/promptCrossPlatform';
 import { supabase } from '@/lib/supabase';
 import { uploadAvatar } from '@/lib/uploadMedia';
@@ -233,7 +234,10 @@ export default function SettingsScreen() {
       const { data, error } = await supabase
         .from('profiles')
         .update({ username: trimmedUsername, bio: bio.trim() || null, website: website.trim() || null, avatar_url: avatarUrl, teip: teip || null })
-        .eq('id', profile.id).select().single();
+        // Spaltenliste statt `select()`: Ein leeres select() wird zu RETURNING *,
+        // und seit 20260814240000 lehnt Postgres das ab (42501) — das Update
+        // wurde dann ganz zurückgerollt, das Profil also nie gespeichert.
+        .eq('id', profile.id).select(PROFILE_SELECT).single<Profile>();
       if (error) {
         if (error.code === '23505') Alert.alert(t('settings.takenTitle'), t('settings.takenText'));
         else throw error;
