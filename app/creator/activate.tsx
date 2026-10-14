@@ -3,7 +3,8 @@
  * Design: App-native Monochrom-Stil
  */
 
-import { useAuthStore } from '@/lib/authStore';
+import { useAuthStore, type Profile } from '@/lib/authStore';
+import { PROFILE_SELECT } from '@/lib/profileSelect';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
@@ -85,8 +86,11 @@ export default function CreatorActivateScreen() {
       .from('profiles')
       .update({ is_creator: true })
       .eq('id', profile.id)
-      .select()
-      .single();
+      // Spaltenliste statt `select()` (= RETURNING *, seit 20260814240000 42501).
+      // ⚠️ Danach scheitert der Aufruf weiterhin: guard_profile_privileges
+      // (20260822150000) lässt is_creator vom Client nicht ändern.
+      .select(PROFILE_SELECT)
+      .single<Profile>();
     setLoading(false);
     if (err) { setError(err.message); return; }
     setProfile({ ...profile, ...data });
