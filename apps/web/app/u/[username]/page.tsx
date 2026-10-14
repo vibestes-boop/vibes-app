@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { safeJsonLd } from '@/lib/seo/json-ld';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark, Flower2, Star } from 'lucide-react';
+import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Radio, Bookmark, Flower2, Star } from 'lucide-react';
 
 import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowStateForViewer, getBookmarkedPosts, getProfileMeta, type ProfileSortKey } from '@/lib/data/public';
 import { getUserReplays } from '@/lib/data/live';
@@ -359,9 +359,11 @@ export default async function ProfilePage({
           </div>
         )}
 
-        {/* Meta-Zeile: Website · Battle · Teip · Women-Only — Parität zur Mobile-App.
+        {/* Meta-Zeile: Website · Battle · Women-Only — Parität zur Mobile-App.
+            Women-Only nur für angemeldete Besucher. Kein Teip: Er steht wie in
+            der App auf keinem Profil, nur in den Einstellungen (Art. 9 DSGVO).
             (Resonanz fehlt noch: PostgREST-Aggregate projektweit aus → eigene RPC nötig.) */}
-        {(profile.website || profile.teip || meta.battle || (viewer && meta.womenOnly)) && (
+        {(profile.website || meta.battle || (viewer && meta.womenOnly)) && (
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
             {profile.website && (
               <a
@@ -379,12 +381,6 @@ export default async function ProfilePage({
                 <Swords className="h-3.5 w-3.5 shrink-0" />
                 {meta.battle.wins}–{meta.battle.losses}
                 {meta.battle.winRate !== null ? ` · ${meta.battle.winRate}%` : ''}
-              </span>
-            )}
-            {profile.teip && (
-              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Mountain className="h-3.5 w-3.5 shrink-0" />
-                {profile.teip}
               </span>
             )}
             {viewer && meta.womenOnly && (

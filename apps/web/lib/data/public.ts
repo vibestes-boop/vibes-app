@@ -70,7 +70,6 @@ type PublicProfileRow = {
   is_banned?: boolean | null;
   is_shadow_banned?: boolean | null;
   website?: string | null;
-  teip?: string | null;
 };
 
 type PublicProfileRpcRow = PublicProfileRow & {
@@ -101,7 +100,6 @@ function toPublicProfile(row: PublicProfileRpcRow): PublicProfile {
     live_session_id: row.live_session_id ?? null,
     is_private: row.is_private ?? false,
     website: row.website ?? null,
-    teip: row.teip ?? null,
   };
 }
 
@@ -128,6 +126,12 @@ function extractCount(v: unknown): number {
 
 // -----------------------------------------------------------------------------
 // Public profile by username — read-through cache per request.
+//
+// Läuft anonym und wird über unstable_cache für ALLE Besucher geteilt. Darum
+// trägt das Ergebnis keinen Teip (Clan = ethnische Herkunft, Art. 9 DSGVO):
+// anon darf profiles.teip ab Migration 20261015110000 nicht mehr lesen, und
+// die RPC liefert ihn dann nur noch mit auth.uid(). Die Profilseite zeigt ihn
+// wie die App ohnehin nicht — er steht nur in den Einstellungen.
 // -----------------------------------------------------------------------------
 
 async function fetchPublicProfile(username: string): Promise<PublicProfile | null> {
@@ -149,7 +153,8 @@ async function fetchPublicProfile(username: string): Promise<PublicProfile | nul
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, is_verified, is_private, is_banned, is_shadow_banned, website, teip')
+    // Kein teip: anon hat darauf kein Spaltenrecht mehr → 42501 → Profil „nicht gefunden".
+    .select('id, username, display_name, avatar_url, bio, is_verified, is_private, is_banned, is_shadow_banned, website')
     .eq('username', normalizedUsername)
     .eq('is_banned', false)
     .eq('is_shadow_banned', false)
@@ -211,7 +216,6 @@ async function fetchPublicProfile(username: string): Promise<PublicProfile | nul
     live_session_id: liveRes.data?.id ?? null,
     is_private: profile.is_private ?? false,
     website: profile.website ?? null,
-    teip: profile.teip ?? null,
   };
 }
 
