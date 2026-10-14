@@ -9,6 +9,7 @@ type AppNotification,
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useI18n } from '@/lib/i18n';
+import { useTabBarScroll } from '@/lib/tabBarMotion';
 import { FlashList } from "@shopify/flash-list";
 import { impactAsync,ImpactFeedbackStyle } from "expo-haptics";
 import { Image } from "expo-image";
@@ -423,6 +424,7 @@ export default function NotificationsScreen() {
   useThemedStatusBar('auto');
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const tabBarScroll = useTabBarScroll();
   const { colors } = useTheme();
   const {
     data: notifs = [],
@@ -511,6 +513,8 @@ export default function NotificationsScreen() {
           renderItem={renderItem}
           estimatedItemSize={70}
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+          onScroll={tabBarScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

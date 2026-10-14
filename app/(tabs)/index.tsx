@@ -49,6 +49,7 @@ import { useFollowingFeed,useHasUserPosted,useTrendingFeed,useVibeFeed } from '@
 import { useGuildStories,type StoryGroup } from '@/lib/useStories';
 import { useTabRefreshStore,vibesFeedActions } from '@/lib/useTabRefresh';
 import { useVideoMute } from '@/lib/useVideoPreferences';
+import { useTabBarScroll } from '@/lib/tabBarMotion';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useFocusEffect,useRouter } from 'expo-router';
@@ -69,6 +70,7 @@ export default function VibeFeedScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const listRef = useRef<FlatList>(null);
+  const tabBarScroll = useTabBarScroll();
 
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [screenFocused, setScreenFocused] = useState(true);
@@ -680,6 +682,7 @@ export default function VibeFeedScreen() {
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"
         scrollEventThrottle={16}
+        onScroll={tabBarScroll}
         removeClippedSubviews={Platform.OS === 'android'}
         style={styles.list}
         viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}

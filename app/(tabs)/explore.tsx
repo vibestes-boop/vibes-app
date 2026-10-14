@@ -12,6 +12,8 @@ import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useI18n } from '@/lib/i18n';
 import { useWomenOnly } from '@/lib/useWomenOnly';
+import { useTabBarScroll } from '@/lib/tabBarMotion';
+import { usePostPagerStore } from '@/lib/postPagerStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronRight, Flower2, Radio, SearchX, ShoppingBag, Users } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,6 +39,7 @@ export default function ExploreScreen() {
   const router = useRouter();
   const scrollY = useRef(new Animated.Value(0)).current;
   const listRef = useRef<FlatList<DiscoveryRow<ExplorePostThumb>>>(null);
+  const tabBarScroll = useTabBarScroll();
   const { tag: incomingTag } = useLocalSearchParams<{ tag?: string }>();
   const [query, setQuery] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(incomingTag || null);
@@ -64,6 +67,20 @@ export default function ExploreScreen() {
     } finally { setRefreshing(false); }
   };
   const shortPostQuery = isSearching && debouncedQuery.trim().length < MIN_POST_SEARCH_LENGTH;
+  // Ein Beitrag öffnet den senkrechten Feed mit allen geladenen Beiträgen: Wischen
+  // blättert dann wie im Start-Feed von Beitrag zu Beitrag, das Bild folgt dem Finger.
+  const setPagerSeed = usePostPagerStore((st) => st.setSeed);
+  const openPager = useCallback((post: ExplorePostThumb) => {
+    const index = Math.max(0, posts.findIndex((p) => p.id === post.id));
+    // Raster: Der Feed liest dieselbe Abfrage (gleicher Cache) und lädt am Ende weiter.
+    if (!isSearching) {
+      router.push({ pathname: '/user-posts', params: { source: 'explore', tag: activeTag ?? '', sort: sortMode, startIndex: String(index), title: t('tabs.explore') } });
+      return;
+    }
+    // Suche: feste Trefferliste, als Übergabe für sofortiges Zeichnen
+    setPagerSeed(posts.map((p) => ({ id: p.id, author_id: p.author_id ?? null, media_url: p.media_url, media_type: p.media_type, thumbnail_url: p.thumbnail_url ?? null, bunny_video_id: p.bunny_video_id ?? null, caption: p.caption, username: p.profiles?.username ?? null, avatar_url: p.profiles?.avatar_url ?? null, view_count: p.view_count ?? 0 })));
+    router.push({ pathname: '/user-posts', params: { postIds: posts.map((p) => p.id).join(','), startIndex: String(index), title: t('tabs.explore') } });
+  }, [posts, isSearching, activeTag, sortMode, router, setPagerSeed, t]);
   const sectionHeading = (title: string) => <Text style={[s.sectionTitle, { color: colors.text.primary }]}>{title}</Text>;
   const renderPeople = useCallback(() => <View style={s.section}>
     <View style={{ paddingHorizontal: 20 }}><Text style={[s.sectionTitle, { color: colors.text.primary }]}>{t('nativeUi.people')}</Text></View>
@@ -72,7 +89,7 @@ export default function ExploreScreen() {
     </ScrollView>
   </View>, [people.data, colors.text.primary, t]);
   const rows = useMemo(() => buildDiscoveryRows(posts, columns, !isSearching && !loading && (people.data?.length ?? 0) > 0), [posts, columns, isSearching, loading, people.data?.length]);
-  const renderItem = useCallback(({ item }: { item: DiscoveryRow<ExplorePostThumb> }) => item.kind === 'people' ? renderPeople() : <View style={s.gridRow}>{item.posts.map(post => <ExploreGridItem key={post.id} item={post} width={cardWidth} />)}</View>, [cardWidth, renderPeople]);
+  const renderItem = useCallback(({ item }: { item: DiscoveryRow<ExplorePostThumb> }) => item.kind === 'people' ? renderPeople() : <View style={s.gridRow}>{item.posts.map(post => <ExploreGridItem key={post.id} item={post} width={cardWidth} onPress={() => openPager(post)} />)}</View>, [cardWidth, renderPeople, openPager]);
   const emptyState = loading ? <ActivityIndicator color={colors.accent.primary} style={{ padding: 36 }} /> : <View style={s.empty}>
     <SearchX size={32} color={colors.icon.muted} />
     <Text style={[s.emptyText, { color: colors.text.secondary }]}>{failed ? t('nativeUi.loadError') : shortPostQuery ? t('ux.searchMinimum') : isSearching ? t('explore.nothingFound', { query: debouncedQuery }) : activeTag ? t('explore.tagEmpty', { tag: activeTag }) : t('nativeUi.emptyPosts')}</Text>
@@ -110,7 +127,7 @@ export default function ExploreScreen() {
     </View>
     <ExploreSortModal visible={filterOpen} sortMode={sortMode} onClose={() => setFilterOpen(false)} onSelectSort={mode => { listRef.current?.scrollToOffset({ offset: 0, animated: false }); setSortMode(mode); }} />
     <Animated.FlatList key={`grid-${fontScale}`} ref={listRef} data={rows} keyExtractor={item => item.key} renderItem={renderItem}
-      onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={16}
+      onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true, listener: tabBarScroll })} scrollEventThrottle={16}
       contentContainerStyle={{ paddingBottom: insets.bottom + 88 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator={false} initialNumToRender={8} maxToRenderPerBatch={8} windowSize={7}
       ListHeaderComponent={<View>
@@ -137,7 +154,7 @@ export default function ExploreScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12, gap: 10 },
-  wordmark: { width: 62, flexShrink: 0 },
+  wordmark: { flexShrink: 0 },
   gridRow: { flexDirection: 'row', paddingHorizontal: DISCOVERY_MEDIA_GUTTER, gap: DISCOVERY_MEDIA_GAP }, gridHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, gap: 12 },
   sectionTitle: { marginLeft: 0, fontSize: 18, fontWeight: '700', letterSpacing: -0.4, paddingVertical: 9, flexShrink: 1 },
   sortLabel: { flexDirection: 'row', alignItems: 'center', gap: 3, minHeight: 44 },

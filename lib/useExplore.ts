@@ -28,6 +28,8 @@ export type ExplorePostThumb = {
   profiles?: { username: string | null; avatar_url: string | null } | null;
   media_url: string | null;
   thumbnail_url?: string | null;
+  /** Für HLS im senkrechten Feed, damit das Video nicht nach dem Nachladen neu startet */
+  bunny_video_id?: string | null;
   media_type: string;
   caption: string | null;
   like_count?: number | null;
@@ -102,7 +104,8 @@ export function useTrendingTags() {
   });
 }
 
-export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
+/** `enabled: false`, wenn ein Bildschirm den Hook nur in einem Modus braucht (user-posts aus Entdecken). */
+export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode, { enabled = true }: { enabled?: boolean } = {}) {
   const userId = useAuthStore(s => s.profile?.id);
   const normalizedTag = tag?.trim().toLowerCase() || null;
   return useInfiniteQuery({
@@ -115,7 +118,7 @@ export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
 
       let q = supabase
         .from('posts')
-        .select('id, author_id, profiles!author_id(username,avatar_url), media_url, thumbnail_url, media_type, caption, like_count, view_count, dwell_time_score, created_at')
+        .select('id, author_id, profiles!author_id(username,avatar_url), media_url, thumbnail_url, bunny_video_id, media_type, caption, like_count, view_count, dwell_time_score, created_at')
         .not('media_url', 'is', null)
         .range(offset, offset + limit - 1);
 
@@ -132,6 +135,7 @@ export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
       return lastPage.length === 30 ? allPages.length : undefined;
     },
     staleTime: 1000 * 60 * 5,   // 5 Min (war 1 Min) — vermeidet Re-Fetch beim Tab-Wechsel
+    enabled,
   });
 }
 
@@ -172,7 +176,7 @@ export function useExplorePostSearch(query: string, sortMode: ExploreSortMode = 
       const blocked = await getBlockedIdSet({ userId, strict: true });
       let request = supabase
         .from('posts')
-        .select('id, author_id, profiles!author_id(username,avatar_url), media_url, thumbnail_url, media_type, caption, like_count, view_count')
+        .select('id, author_id, profiles!author_id(username,avatar_url), media_url, thumbnail_url, bunny_video_id, media_type, caption, like_count, view_count')
         .ilike('caption', `%${query.trim()}%`)
         .not('media_url', 'is', null)
         .limit(30);

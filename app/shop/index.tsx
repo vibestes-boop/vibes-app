@@ -23,6 +23,7 @@ import { useCoinsWallet } from '@/lib/useGifts';
 import { formatEur, useActivePreorderRound, useSavedProducts, useShopBanners, useShopProducts, type Product, type ProductCategory, type ShopBanner } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
@@ -606,6 +607,8 @@ export default function ShopScreen() {
   const listRef = useRef<FlatList>(null);
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  // Unterstreichung gleitet mit Feder zur gewählten Kategorie (wie die Auswahl der unteren Leiste)
+  const tabLine = useSlidingSelection(activeTab, { underline: 2 });
   const [search, setSearch]       = useState('');
 
   // Zusatz-Filter + Sortierung (über das Sheet erreichbar)
@@ -791,18 +794,21 @@ export default function ShopScreen() {
           style={s.tabScroll}
           contentContainerStyle={s.tabRow}
         >
+          <SlidingPill selection={tabLine} style={{ backgroundColor: colors.text.primary, borderRadius: 1 }} />
           {TABS.map((tab) => {
             const active = activeTab === tab.key;
             return (
-              <Pressable key={tab.key} onPress={() => selectTab(tab.key)} style={s.tab} hitSlop={4}>
+              <SpringPressable key={tab.key} onLayout={tabLine.onLayoutFor(tab.key)} onPress={() => selectTab(tab.key)} style={s.tab} hitSlop={4}
+                accessibilityRole="tab" accessibilityState={{ selected: active }}>
                 <Text style={[
                   s.tabLabel,
                   { color: active ? colors.text.primary : colors.text.muted, fontWeight: active ? '700' : '500' },
                 ]}>
                   {t(tab.labelKey)}
                 </Text>
-                <View style={[s.tabUnderline, { backgroundColor: active ? colors.text.primary : 'transparent' }]} />
-              </Pressable>
+                {/* Platz für die gleitende Unterstreichung */}
+                <View style={s.tabUnderline} />
+              </SpringPressable>
             );
           })}
         </ScrollView>
@@ -1055,7 +1061,7 @@ const s = StyleSheet.create({
   },
   tabScroll: { flex: 1 },
   tabRow: { gap: 18, alignItems: 'flex-end' },
-  tab: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  tab: { alignItems: 'center', minHeight: 44, justifyContent: 'flex-end' },
   tabLabel: { fontSize: 14, lineHeight: 18, paddingBottom: 8, includeFontPadding: false },
   tabUnderline: { height: 2, width: '100%', borderRadius: 1 },
 

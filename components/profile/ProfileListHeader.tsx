@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
+import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import { useBattleStats } from '@/lib/useBattleStats';
 import { useOrderRating } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
@@ -221,6 +222,9 @@ export function ProfileListHeader({
   const { colors } = useTheme();
   const { t } = useI18n();
   const s = getProfileStyles(colors);
+  // Unterstreichung gleitet mit Feder zum gewählten Reiter (wie die Auswahl der unteren Leiste);
+  // die Liste startet pro Reiter neu, darum merkt sich die Unterstreichung ihre Lage
+  const tabLine = useSlidingSelection((['vibes', 'reposts', 'saved', 'shop'] as string[]).includes(activeTab) ? activeTab : null, { underline: 2, persistKey: 'own-profile-tabs' });
   const [avatarZoomed, setAvatarZoomed] = useState(false);
   const formatCount = (n: number) =>
     n >= 1000000 ? `${(n / 1000000).toFixed(1)}M`
@@ -447,12 +451,13 @@ export function ProfileListHeader({
       <ProfileHighlightsRow userId={profile?.id ?? null} isOwn />
 
       <View style={[s.tabRow, { flexDirection: 'row' }]}>
+        <SlidingPill selection={tabLine} style={{ backgroundColor: colors.accent.primary, borderRadius: 1 }} />
         {([{ tab: 'vibes', Icon: Grid3X3, label: t('nativeUi.posts') }, { tab: 'reposts', Icon: Repeat2, label: t('nativeUi.reposts') }, { tab: 'saved', Icon: Bookmark, label: t('nativeUi.saved') }, { tab: 'shop', Icon: ShoppingBag, label: t('tabs.shop') }] as const).map(({ tab, Icon, label }) =>
-          <Pressable key={tab} onPress={() => onTabChange(tab)} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }} accessibilityLabel={label}
-            style={[s.tabBtn, { flex: 1, minWidth: 0, paddingHorizontal: 2 }, activeTab === tab && s.tabBtnActive]}>
+          <SpringPressable key={tab} onLayout={tabLine.onLayoutFor(tab)} onPress={() => onTabChange(tab)} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }} accessibilityLabel={label}
+            style={[s.tabBtn, { flex: 1, minWidth: 0, paddingHorizontal: 2 }]}>
             <Icon size={22} color={activeTab === tab ? colors.accent.primary : colors.icon.inactive} />
             <Text numberOfLines={2} style={[s.tabLabel, { color: activeTab === tab ? colors.accent.primary : colors.text.secondary, textAlign: 'center' }]}>{label}</Text>
-          </Pressable>)}
+          </SpringPressable>)}
       </View>
       {!['vibes', 'reposts', 'saved', 'shop'].includes(activeTab) && <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12, backgroundColor: colors.bg.elevated }}>
         <Pressable onPress={() => onTabChange('vibes')} accessibilityRole="button" accessibilityLabel={t('ux.backToPosts')} style={{ minHeight: 52, justifyContent: 'center', paddingRight: 12 }}><ArrowLeft size={22} color={colors.accent.primary} /></Pressable>

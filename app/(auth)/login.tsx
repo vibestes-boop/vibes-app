@@ -2,6 +2,7 @@ import { useTheme } from '@/lib/useTheme';
 import type { ThemeColors } from '@/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoogleGlyph } from '@/components/ui/GoogleGlyph';
+import { SlidingLabel, SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import { supabase } from '@/lib/supabase';
 import { appleSignIn } from '@/lib/useAppleSignIn';
 import { ENABLE_GOOGLE_LOGIN,googleSignIn } from '@/lib/useGoogleSignIn';
@@ -40,6 +41,8 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors);
   const { t, locale, setLocale } = useI18n();
+  // Sprachwahl gleitet als Kapsel wie in der unteren Leiste
+  const langSel = useSlidingSelection(locale);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -99,20 +102,22 @@ export default function LoginScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
       {/* ── Sprach-Toggle (vor dem Login erreichbar — Neulinge!) ── */}
       <View style={styles.langSwitch}>
+        <SlidingPill selection={langSel} style={{ borderRadius: 14, backgroundColor: colors.text.primary }} />
         {(['de', 'ru', 'en', 'ce'] as const).map((loc) => {
           const active = locale === loc;
           return (
-            <Pressable
+            <SpringPressable
               key={loc}
+              onLayout={langSel.onLayoutFor(loc)}
               onPress={() => setLocale(loc)}
               style={[styles.langBtn, active && styles.langBtnActive]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.langTxt, active && styles.langTxtActive]}>
+              <SlidingLabel selection={langSel} optionKey={loc} color={colors.text.secondary} activeColor={colors.bg.primary} style={styles.langTxt}>
                 {loc.toUpperCase()}
-              </Text>
-            </Pressable>
+              </SlidingLabel>
+            </SpringPressable>
           );
         })}
       </View>
@@ -398,16 +403,14 @@ const getStyles = (c: ThemeColors) => StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.border.default,
   },
+  // Gewählt: durchsichtig, darunter liegt die gleitende Kapsel
   langBtnActive: {
-    backgroundColor: c.text.primary,
-    borderColor: c.text.primary,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
   langTxt: {
     color: c.text.secondary,
     fontSize: 12,
     fontWeight: '600',
-  },
-  langTxtActive: {
-    color: c.bg.primary,
   },
 });

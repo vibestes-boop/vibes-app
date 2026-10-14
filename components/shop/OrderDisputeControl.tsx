@@ -6,6 +6,7 @@
 import { useI18n } from '@/lib/i18n';
 import { useReportOrderDispute, type OrderDispute } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
+import { SlidingLabel, SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import { AlertTriangle } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -43,6 +44,8 @@ export function OrderDisputeControl({
   const report = useReportOrderDispute();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
+  // Grund gleitet als Kapsel zur Auswahl (wie die untere Leiste)
+  const reasonSel = useSlidingSelection(reason || null);
   const [detail, setDetail] = useState('');
 
   const options = REASONS.filter((r) => !r.role || r.role === role);
@@ -82,16 +85,20 @@ export function OrderDisputeControl({
             <View style={s.handle} />
             <Text style={[s.title, { color: colors.text.primary }]}>Problem melden</Text>
             <View style={s.chips}>
+              <SlidingPill selection={reasonSel} style={{ borderRadius: 999, backgroundColor: colors.text.primary }} />
               {options.map((o) => {
                 const active = reason === o.value;
                 return (
-                  <Pressable
+                  <SpringPressable
                     key={o.value}
+                    onLayout={reasonSel.onLayoutFor(o.value)}
                     onPress={() => setReason(o.value)}
-                    style={[s.chip, { borderColor: colors.border.subtle, backgroundColor: active ? colors.text.primary : 'transparent' }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    style={[s.chip, { borderColor: active ? 'transparent' : colors.border.subtle }]}
                   >
-                    <Text style={{ fontSize: 12.5, fontWeight: '600', color: active ? colors.bg.primary : colors.text.secondary }}>{o.label}</Text>
-                  </Pressable>
+                    <SlidingLabel selection={reasonSel} optionKey={o.value} color={colors.text.secondary} activeColor={colors.bg.primary} style={{ fontSize: 12.5, fontWeight: '600' }}>{o.label}</SlidingLabel>
+                  </SpringPressable>
                 );
               })}
             </View>

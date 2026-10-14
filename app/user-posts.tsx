@@ -24,6 +24,8 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { usePostPagerStore, type PagerSeed } from '@/lib/postPagerStore';
+import { useExploreGrid, type ExplorePostThumb, type ExploreSortMode } from '@/lib/useExplore';
 import {
 ArrowLeft,
 Bookmark,
@@ -34,7 +36,7 @@ Share2,
 Volume2,
 VolumeX
 } from 'lucide-react-native';
-import { useCallback,useEffect,useRef,useState } from 'react';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -80,6 +82,50 @@ type PostItem = {
   thumbnail_url?: string | null;
   bunny_video_id?: string | null;
 };
+
+// Beitrag aus der Entdecken-Abfrage; Datum und Schlagwörter lädt der Feed nach
+function exploreToPost(p: ExplorePostThumb): PostItem {
+  return {
+    id: p.id,
+    caption: p.caption,
+    media_url: p.media_url,
+    media_type: p.media_type,
+    tags: [],
+    created_at: '',
+    author_id: p.author_id ?? '',
+    username: p.profiles?.username ?? null,
+    avatar_url: p.profiles?.avatar_url ?? null,
+    view_count: p.view_count ?? 0,
+    is_pinned: false,
+    thumbnail_url: p.thumbnail_url ?? null,
+    bunny_video_id: p.bunny_video_id ?? null,
+  };
+}
+
+// Übergabe aus einem Raster (Entdecken): nur verwenden, wenn alle IDs vorliegen.
+// Datum, Schlagwörter und Pin-Status lädt der Feed danach nach.
+function seedPosts(postIds?: string): PostItem[] | null {
+  const ids = postIds ? postIds.split(',').filter(Boolean) : [];
+  if (!ids.length) return null;
+  const byId = new Map(usePostPagerStore.getState().seed.map((p) => [p.id, p]));
+  const items = ids.map((id) => byId.get(id));
+  if (items.some((p) => !p)) return null;
+  return (items as PagerSeed[]).map((p) => ({
+    id: p.id,
+    caption: p.caption,
+    media_url: p.media_url,
+    media_type: p.media_type,
+    tags: [],
+    created_at: '',
+    author_id: p.author_id ?? '',
+    username: p.username ?? null,
+    avatar_url: p.avatar_url ?? null,
+    view_count: p.view_count ?? 0,
+    is_pinned: false,
+    thumbnail_url: p.thumbnail_url ?? null,
+    bunny_video_id: p.bunny_video_id ?? null,
+  }));
+}
 
 function formatViews(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -501,11 +547,17 @@ function PostCard({
 
 export default function UserPostsScreen() {
   useThemedStatusBar('light');
-  const { userId, startIndex, username, postIds } = useLocalSearchParams<{
+  const { userId, startIndex, username, postIds, title, source, tag, sort } = useLocalSearchParams<{
     userId?: string;
     startIndex?: string;
     username?: string;
     postIds?: string;  // kommagetrennte Post-IDs (für Saved/Reposts)
+    /** Überschrift ohne Profil, z. B. „Entdecken“ */
+    title?: string;
+    /** 'explore': Beiträge aus der Entdecken-Abfrage, am Ende wird nachgeladen */
+    source?: string;
+    tag?: string;
+    sort?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -513,8 +565,15 @@ export default function UserPostsScreen() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
 
-  const [posts, setPosts] = useState<PostItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Entdecken: dieselbe Abfrage wie das Raster (gleicher Cache, sofort da), am Ende
+  // lädt der Feed die nächste Seite. Die Suche übergibt dagegen eine feste Liste.
+  const exploreMode = source === 'explore';
+  const grid = useExploreGrid(exploreMode ? (tag || null) : null, (sort as ExploreSortMode) || 'forYou', { enabled: exploreMode });
+  const gridPosts = useMemo(() => (exploreMode ? grid.data?.pages.flat() ?? [] : []), [exploreMode, grid.data]);
+  // Aus Entdecken kommen die Beiträge schon mit: sofort zeichnen statt Ladekreis
+  const [seeded] = useState(() => (exploreMode && gridPosts.length ? gridPosts.map(exploreToPost) : seedPosts(postIds)));
+  const [posts, setPosts] = useState<PostItem[]>(seeded ?? []);
+  const [loading, setLoading] = useState(!seeded);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [visibleIndex, setVisibleIndex] = useState(Number(startIndex ?? '0'));
   const [isMuted, setIsMuted] = useState(false);
@@ -523,7 +582,8 @@ export default function UserPostsScreen() {
   // Follow-Kontext des Profil-Autors (alle Posts hier gehören demselben User) —
   // fürs kombinierte Teilen-Sheet bei FREMDEN Posts.
   const profileUserId = Array.isArray(userId) ? userId[0] : (userId ?? null);
-  const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(profileUserId);
+  // Ohne Profil (Entdecken) gehören die Beiträge verschiedenen Leuten: dann zählt der Autor des geteilten Beitrags
+  const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(profileUserId ?? shareItem?.author_id ?? null);
   const [screenFocused, setScreenFocused] = useState(true);
   const { mutate: togglePin } = useTogglePinPost();
 
@@ -569,7 +629,16 @@ export default function UserPostsScreen() {
               username: p.profiles?.username ?? null,
               avatar_url: p.profiles?.avatar_url ?? null,
             }));
-          setPosts(mapped);
+          // Mit Übergabe: Felder ergänzen statt die Liste zu ersetzen, damit die Seite
+          // nicht springt. Medienquelle bleibt, sonst startet das Video neu.
+          setPosts((prev) => {
+            if (!prev.length) return mapped;
+            const full = new Map(mapped.map((p) => [p.id, p]));
+            return prev.map((p) => {
+              const f = full.get(p.id);
+              return f ? { ...f, media_url: p.media_url, bunny_video_id: p.bunny_video_id } : p;
+            });
+          });
           setLoading(false);
         });
     } else if (userId) {
@@ -604,6 +673,49 @@ export default function UserPostsScreen() {
     }
   }, [userId, postIds]);
 
+  // Entdecken: neue Seiten der Abfrage hinten anhängen; die vorhandene Reihenfolge
+  // bleibt, damit die aktuelle Seite nicht springt.
+  useEffect(() => {
+    if (!exploreMode) return;
+    setPosts((prev) => {
+      const have = new Set(prev.map((p) => p.id));
+      const fresh = gridPosts.filter((p) => !have.has(p.id)).map(exploreToPost);
+      return fresh.length ? [...prev, ...fresh] : prev;
+    });
+    if (gridPosts.length) setLoading(false);
+  }, [exploreMode, gridPosts]);
+
+  // Entdecken: Datum, Schlagwörter und Pin-Status für Beiträge nachladen, die sie
+  // noch nicht haben. Medienquelle bleibt, sonst startet das Video neu.
+  const detailedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!exploreMode) return;
+    const missing = posts.map((p) => p.id).filter((id) => !detailedRef.current.has(id));
+    if (!missing.length) return;
+    missing.forEach((id) => detailedRef.current.add(id));
+    supabase
+      .from('posts')
+      .select('id, tags, created_at, is_pinned, view_count')
+      .in('id', missing)
+      .then(({ data }) => {
+        if (!data?.length) return;
+        const byId = new Map((data as any[]).map((p) => [p.id, p]));
+        setPosts((prev) => prev.map((p) => {
+          const d = byId.get(p.id);
+          return d ? { ...p, tags: d.tags ?? [], created_at: d.created_at ?? '', is_pinned: d.is_pinned ?? false, view_count: Math.max(p.view_count, d.view_count ?? 0) } : p;
+        }));
+      });
+  }, [exploreMode, posts]);
+
+  // Für onViewableItemsChanged: FlatList hält den ersten Handler fest, darum die
+  // aktuelle Liste über eine Ref lesen (sonst fehlen nachgeladene Beiträge).
+  const postsRef = useRef(posts);
+  postsRef.current = posts;
+
+  const loadMore = () => {
+    if (exploreMode && grid.hasNextPage && !grid.isFetchingNextPage) void grid.fetchNextPage();
+  };
+
   const handleDelete = (postId: string) => {
     Alert.alert(t('posts.deleteTitle'), t('posts.deleteConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -625,7 +737,9 @@ export default function UserPostsScreen() {
   };
 
   // Foldables: reale Seiten-Größe messen (Root-onLayout) statt Modul-Dimensions.
-  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
+  // Mit Fenstergröße vorbelegt: Die Liste steht schon im ersten Bild (beim Hereinschieben),
+  // die Messung korrigiert nur bei abweichender Größe (Foldables).
+  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>({ h: H, w: W });
   const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
   const itemH = pageSize?.h ?? H;
 
@@ -673,6 +787,8 @@ export default function UserPostsScreen() {
         if (h > 0 && w > 0 && (pageSizeRef.current?.h !== h || pageSizeRef.current?.w !== w)) {
           pageSizeRef.current = { h, w };
           setPageSize({ h, w });
+          // Vorbelegte Fenstergröße passte nicht (Foldable): zurück auf die aktuelle Seite
+          if (h !== H || w !== W) requestAnimationFrame(() => flatRef.current?.scrollToIndex({ index: visibleIndex, animated: false }));
         }
       }}
     >
@@ -688,12 +804,12 @@ export default function UserPostsScreen() {
         {/* Zähler oben Mitte */}
         <View style={[s.counter, { top: insets.top + 18 }]}>
           <Text style={s.counterText}>
-            {username ? `@${username}` : ''}{posts.length > 0 ? `  ${visibleIndex + 1} / ${posts.length}` : ''}
+            {username ? `@${username}` : (title ?? '')}{posts.length > 0 ? `  ${visibleIndex + 1} / ${posts.length}` : ''}
           </Text>
         </View>
 
-        {/* FlatList erst nach der Messung: initialScrollIndex braucht den
-            korrekten getItemLayout-Offset (Foldables). Ein Frame schwarz. */}
+        {/* initialScrollIndex braucht den richtigen getItemLayout-Offset: vorbelegt mit
+            der Fenstergröße, bei Abweichung (Foldables) springt onLayout zurück. */}
         {pageSize && <FlatList
           ref={flatRef}
           data={posts}
@@ -719,11 +835,18 @@ export default function UserPostsScreen() {
           windowSize={3}
           maxToRenderPerBatch={3}
           initialNumToRender={2}
+          onEndReached={loadMore}
+          onEndReachedThreshold={2}
+          ListFooterComponent={exploreMode && grid.hasNextPage ? (
+            <View style={{ height: pageSize.h, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator color="#FFFFFF" />
+            </View>
+          ) : null}
           onViewableItemsChanged={({ viewableItems }) => {
             const idx = viewableItems[0]?.index;
             if (idx != null) {
               setVisibleIndex(idx);
-              const postId = posts[idx]?.id;
+              const postId = postsRef.current[idx]?.id;
               if (postId && !viewedPosts.current.has(postId)) {
                 viewedPosts.current.add(postId);
                 supabase.rpc('increment_post_view', { p_post_id: postId }).then(() => {
@@ -787,7 +910,7 @@ export default function UserPostsScreen() {
             visible
             postId={shareItem.id}
             postCaption={shareItem.caption ?? undefined}
-            postAuthor={username ? String(username).replace(/^@+/, '') : ''}
+            postAuthor={username ? String(username).replace(/^@+/, '') : (shareItem.username ?? '')}
             isFollowing={isFollowing}
             isOwnProfile={isOwnProfile}
             onToggleFollow={toggleFollow}

@@ -498,10 +498,16 @@ export default function RootLayoutFull() {
               // auch das Edge-Back-Swipe. Schließen weiter über das X oben links.
               options={{ presentation: 'card', animation: 'slide_from_bottom', gestureEnabled: false }}
             />
-            {/* slide_from_bottom: Swipe-zu-nächstem-Post (router.replace) kommt
-                vertikal von unten rein — wie im Feed, statt horizontal „von der
-                Seite" (war slide_from_right). */}
-            <Stack.Screen name="post/[id]" options={{ animation: 'slide_from_bottom' }} />
+            {/* Öffnen (Entdecken, Profil, Mitteilungen): normaler iOS-Push von rechts
+                mit Wisch-zurück, wie bei Instagram. Das Hochfahren von unten wirkte als
+                Karte ohne Schließ-Geste kaputt. Wischen zum nächsten/vorigen Post
+                (router.replace mit `swipe`) kommt weiter vertikal von unten wie im Feed. */}
+            <Stack.Screen
+              name="post/[id]"
+              options={({ route }) => ({
+                animation: (route.params as { swipe?: string } | undefined)?.swipe ? 'slide_from_bottom' : 'slide_from_right',
+              })}
+            />
             <Stack.Screen
               name="guild-post/[id]"
               options={{
@@ -543,13 +549,11 @@ export default function RootLayoutFull() {
               name="reset-password"
               options={{ headerShown: false, animation: 'none' }}
             />
+            {/* Senkrechter Feed aus einem Raster (Profil, Entdecken): schiebt sich wie ein
+                Beitrag von rechts herein, Wischen vom linken Rand führt zurück. */}
             <Stack.Screen
               name="user-posts"
-              options={{
-                headerShown: false,
-                animation: 'none',
-                presentation: 'fullScreenModal',
-              }}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
             />
             <Stack.Screen
               name="follow-list"
