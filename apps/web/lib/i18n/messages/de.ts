@@ -803,7 +803,7 @@ const deMessages = {
     rowCreatorStudioLabel: "Creator Studio",
     rowCreatorStudioSubtitle: "Einnahmen, Analytics, Top Posts",
     rowCreatorActivateLabel: "Creator werden ✦",
-    rowCreatorActivateSubtitle: "Kostenlos · Sofortzugang · Monetarisierung",
+    rowCreatorActivateSubtitle: "Kostenlos · Monetarisierung",
     rowLanguageLabel: "Sprache",
     rowThemeLabel: "Design",
     rowThemeLight: "Hell",

@@ -1621,7 +1621,7 @@ export const de = {
     creatorStudio: 'Creator Studio',
     creatorStudioSub: 'Einnahmen, Analytics, Top Posts',
     becomeCreator: 'Creator werden ✦',
-    becomeCreatorSub: 'Kostenlos · Sofortzugang · Monetarisierung',
+    becomeCreatorSub: 'Kostenlos · Monetarisierung',
     creatorStudioOpen: 'Creator Studio öffnen',
     becomeCreatorA11y: 'Creator werden',
     adminPanel: 'Admin Panel',

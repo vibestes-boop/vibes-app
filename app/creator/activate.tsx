@@ -1,13 +1,16 @@
 /**
- * app/creator/activate.tsx — Creator-Modus aktivieren
+ * app/creator/activate.tsx — Creator-Zugang (Info + Anfrage)
  * Design: App-native Monochrom-Stil
+ *
+ * Creator schaltet nur ein Admin frei (Zaurs Entscheidung, 14.10.2026).
+ * Selbst freischalten ging ohnehin nicht mehr: guard_profile_privileges
+ * (20260822150000) sperrt is_creator für Client-Aufrufe. Wer Creator werden
+ * will, fragt im Support-Chat an.
  */
 
-import { useAuthStore, type Profile } from '@/lib/authStore';
-import { PROFILE_SELECT } from '@/lib/profileSelect';
-import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/useTheme';
-import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
 ArrowLeft,
@@ -18,9 +21,8 @@ Sparkles,
 TrendingUp,
 Video,
 } from 'lucide-react-native';
-import React,{ useState } from 'react';
+import React from 'react';
 import {
-ActivityIndicator,
 Pressable,ScrollView,
 StyleSheet,
 Text,
@@ -42,14 +44,10 @@ export default function CreatorActivateScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
-  const { profile, setProfile } = useAuthStore();
-
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const { profile } = useAuthStore();
 
   // Bereits Creator?
-  if (profile?.is_creator || success) {
+  if (profile?.is_creator) {
     return (
       <View style={[s.root, { backgroundColor: colors.bg.primary }]}>
         <View style={[s.headerMin, { paddingTop: insets.top + 8 }]}>
@@ -77,25 +75,9 @@ export default function CreatorActivateScreen() {
     );
   }
 
-  const handleActivate = async () => {
-    if (!profile?.id) return;
-    setLoading(true);
-    setError(null);
-    impactAsync(ImpactFeedbackStyle.Medium);
-    const { data, error: err } = await supabase
-      .from('profiles')
-      .update({ is_creator: true })
-      .eq('id', profile.id)
-      // Spaltenliste statt `select()` (= RETURNING *, seit 20260814240000 42501).
-      // ⚠️ Danach scheitert der Aufruf weiterhin: guard_profile_privileges
-      // (20260822150000) lässt is_creator vom Client nicht ändern.
-      .select(PROFILE_SELECT)
-      .single<Profile>();
-    setLoading(false);
-    if (err) { setError(err.message); return; }
-    setProfile({ ...profile, ...data });
-    notificationAsync(NotificationFeedbackType.Success);
-    setSuccess(true);
+  const handleRequest = () => {
+    impactAsync(ImpactFeedbackStyle.Light);
+    router.push('/support' as any);
   };
 
   return (
@@ -117,7 +99,7 @@ export default function CreatorActivateScreen() {
         <View style={s.taglineWrap}>
           <View style={[s.taglineBadge, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
             <Sparkles size={12} color={colors.text.primary} strokeWidth={2} />
-            <Text style={[s.taglineBadgeText, { color: colors.text.primary }]}>Kostenlos · Sofort · Jederzeit deaktivierbar</Text>
+            <Text style={[s.taglineBadgeText, { color: colors.text.primary }]}>Kostenlos · Freischaltung durch das Serlo-Team</Text>
           </View>
           <Text style={[s.taglineTitle, { color: colors.text.primary }]}>
             Monetarisiere{'\n'}deine Inhalte
@@ -165,25 +147,23 @@ export default function CreatorActivateScreen() {
           ))}
         </View>
 
-        {error && <Text style={s.errorText}>{error}</Text>}
+        <Text style={[s.requestInfo, { color: colors.text.secondary }]}>
+          Den Creator-Zugang schaltet das Serlo-Team frei. Schreib uns kurz im Support, wir melden uns dort bei dir.
+        </Text>
 
         {/* CTA */}
         <Pressable
-          onPress={handleActivate}
-          disabled={loading}
-          style={[s.primaryBtn, { backgroundColor: colors.text.primary, opacity: loading ? 0.6 : 1, marginTop: 24 }]}
+          onPress={handleRequest}
+          style={[s.primaryBtn, { backgroundColor: colors.text.primary, marginTop: 16 }]}
           accessibilityRole="button"
-          accessibilityLabel="Creator-Modus aktivieren"
+          accessibilityLabel="Creator-Zugang im Support anfragen"
         >
-          {loading
-            ? <ActivityIndicator color={colors.bg.primary} />
-            : <Text style={[s.primaryBtnText, { color: colors.bg.primary }]}>Jetzt Creator werden</Text>
-          }
+          <Text style={[s.primaryBtnText, { color: colors.bg.primary }]}>Freischaltung anfragen</Text>
         </Pressable>
 
         <Text style={[s.disclaimer, { color: colors.text.muted }]}>
-          Kostenlos. Keine Exklusivität. Jederzeit deaktivierbar.{'\n'}
-          Mit der Aktivierung stimmst du den Creator-Bedingungen zu.
+          Kostenlos. Keine Exklusivität.{'\n'}
+          Mit der Freischaltung gelten die Creator-Bedingungen.
         </Text>
       </ScrollView>
     </View>
@@ -225,7 +205,7 @@ const s = StyleSheet.create({
   splitCreator:  { fontSize: 15, fontWeight: '700', marginRight: 12 },
   splitPlatform: { fontSize: 11, fontWeight: '500' },
 
-  errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center', marginTop: 8 },
+  requestInfo: { fontSize: 14, lineHeight: 20, marginTop: 24 },
 
   primaryBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   primaryBtnText: { fontSize: 16, fontWeight: '600' },

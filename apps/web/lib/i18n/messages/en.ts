@@ -736,7 +736,7 @@ const enMessages = {
     rowCreatorStudioLabel: 'Creator Studio',
     rowCreatorStudioSubtitle: 'Earnings, analytics, top posts',
     rowCreatorActivateLabel: 'Become a creator ✦',
-    rowCreatorActivateSubtitle: 'Free · Instant access · Monetization',
+    rowCreatorActivateSubtitle: 'Free · Monetization',
     rowLanguageLabel: 'Language',
     rowThemeLabel: 'Theme',
     rowThemeLight: 'Light',

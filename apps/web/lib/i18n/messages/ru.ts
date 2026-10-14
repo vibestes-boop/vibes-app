@@ -793,7 +793,7 @@ const ruMessages = {
     rowCreatorStudioLabel: 'Creator Studio',
     rowCreatorStudioSubtitle: 'Доходы, аналитика, топ-посты',
     rowCreatorActivateLabel: 'Стать Creator ✦',
-    rowCreatorActivateSubtitle: 'Бесплатно · Мгновенный доступ · Монетизация',
+    rowCreatorActivateSubtitle: 'Бесплатно · Монетизация',
     rowLanguageLabel: 'Язык',
     rowThemeLabel: 'Тема',
     rowThemeLight: 'Светлая',
