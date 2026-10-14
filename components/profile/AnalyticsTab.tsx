@@ -4,10 +4,10 @@
  */
 
 import {
-fmtNum,formatDelta,
+fmtNum,formatDelta,postEngagementRate,
 useCreatorEarnings,useCreatorGiftHistory,
 useCreatorOverview,useCreatorTopPosts,useFollowerGrowth,
-type AnalyticsPeriod,type ContentSortBy,
+type AnalyticsPeriod,type ContentSortBy,type TopPost,
 } from '@/lib/useAnalytics';
 import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
@@ -169,8 +169,10 @@ function FollowerChart({ data, colors, isDark }: { data: { day: string; new_foll
 }
 
 // ─── Post Row ─────────────────────────────────────────────────────────────────
-function PostRow({ post, idx, contentSort, onPress, colors }: {
-  post: any; idx: number; contentSort: ContentSortBy;
+function PostRow({ post, idx, contentSort, maxRate, onPress, colors }: {
+  post: TopPost; idx: number; contentSort: ContentSortBy;
+  /** höchste Engagement-Rate der angezeigten Beiträge — volle Balkenlänge */
+  maxRate: number;
   onPress: () => void; colors: any;
 }) {
   const { t } = useI18n();
@@ -179,7 +181,15 @@ function PostRow({ post, idx, contentSort, onPress, colors }: {
     : contentSort === 'likes' ? post.like_count
     : post.comment_count;
 
-  const completionPct = Math.min(Math.round((post.dwell_time_score ?? 0) * 100), 100);
+  // Engagement-Rate statt „Abschlussrate": Eine Abschlussrate bräuchte die
+  // Videolänge, die nirgends gespeichert ist. Der Balken ist relativ zum
+  // stärksten Beitrag der Liste, die Zahl daneben ist der echte Wert.
+  const rate = postEngagementRate(post);
+  const rateBar = maxRate > 0 ? Math.min((rate / maxRate) * 100, 100) : 0;
+  const rateLabel = rate === 0 || rate >= 10 ? `${Math.round(rate)}%` : `${rate.toFixed(1)}%`;
+  // media_url nur bei Bildern als Vorschau — eine Video-URL kann expo-image
+  // nicht anzeigen (gleiche Regel wie im Web-Studio).
+  const thumb = post.thumbnail_url ?? (post.media_type === 'image' ? post.media_url : null);
 
   return (
     <Pressable style={[s.postRow, { borderBottomColor: colors.border.subtle }]} onPress={onPress} accessibilityRole="button">
@@ -192,9 +202,9 @@ function PostRow({ post, idx, contentSort, onPress, colors }: {
 
       {/* Thumbnail */}
       <View style={s.thumbWrap}>
-        {(post.thumbnail_url ?? post.media_url) ? (
+        {thumb ? (
           <Image
-            source={{ uri: post.thumbnail_url ?? post.media_url }}
+            source={{ uri: thumb }}
             style={[s.thumb, { backgroundColor: colors.bg.elevated }]}
             contentFit="cover" cachePolicy="memory-disk"
           />
@@ -222,12 +232,12 @@ function PostRow({ post, idx, contentSort, onPress, colors }: {
           <MessageCircle size={9} color={colors.icon.muted} strokeWidth={2} />
           <Text style={[s.miniStatText, { color: colors.text.muted }]}>{fmtNum(post.comment_count)}</Text>
         </View>
-        {/* Completion bar */}
-        <View style={s.completionRow}>
-          <View style={[s.completionTrack, { backgroundColor: colors.bg.elevated }]}>
-            <View style={[s.completionFill, { width: `${completionPct}%` as any, backgroundColor: colors.text.primary }]} />
+        {/* Engagement bar */}
+        <View style={s.rateRow}>
+          <View style={[s.rateTrack, { backgroundColor: colors.bg.elevated }]}>
+            <View style={[s.rateFill, { width: `${rateBar}%` as any, backgroundColor: colors.text.primary }]} />
           </View>
-          <Text style={[s.completionPct, { color: colors.text.muted }]}>{completionPct}%</Text>
+          <Text style={[s.rateText, { color: colors.text.muted }]} numberOfLines={1}>{rateLabel}</Text>
         </View>
       </View>
 
@@ -400,9 +410,8 @@ export function AnalyticsTab({
   const { data: followerGrowth = [] } = useFollowerGrowth(userId, period);
 
   const totalInteractions = (overview?.total_likes ?? 0) + (overview?.total_comments ?? 0);
-  const avgPerPost = topPosts.length > 0
-    ? Math.round((overview?.total_views ?? 0) / topPosts.length)
-    : 0;
+  const avgPerPost = overview?.avg_views_per_post ?? null;
+  const maxRate = Math.max(0, ...topPosts.map(postEngagementRate));
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -433,7 +442,7 @@ export function AnalyticsTab({
           {/* ── KPI 2×2 ── */}
           <SectionLabel label={t('analytics.overview')} colors={colors} />
           <View style={s.kpiGrid}>
-            <KpiCard Icon={Eye} label={t('analytics.totalViews')} value={fmtNum(overview?.total_views ?? 0)} delta={overview?.views_delta ?? null} sub={t('analytics.perPost', { n: fmtNum(avgPerPost) })} />
+            <KpiCard Icon={Eye} label={t('analytics.totalViews')} value={fmtNum(overview?.total_views ?? 0)} delta={overview?.views_delta ?? null} sub={avgPerPost !== null ? t('analytics.perPost', { n: fmtNum(avgPerPost) }) : undefined} />
             <KpiCard Icon={Users} label={t('analytics.followers')} value={fmtNum(overview?.total_followers ?? 0)} delta={overview?.followers_delta ?? null} sub={t('analytics.newN', { n: fmtNum(overview?.new_followers ?? 0) })} />
             <KpiCard Icon={Heart} label={t('analytics.likes')} value={fmtNum(overview?.total_likes ?? 0)} delta={overview?.likes_delta ?? null} />
             <KpiCard Icon={MessageCircle} label={t('analytics.comments')} value={fmtNum(overview?.total_comments ?? 0)} delta={overview?.comments_delta ?? null} sub={t('analytics.interactions', { n: fmtNum(totalInteractions) })} />
@@ -483,7 +492,7 @@ export function AnalyticsTab({
       <View style={[s.postsCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
         <View style={[s.postsCardHeader, { borderBottomColor: colors.border.subtle }]}>
           <Text style={[s.postsCardHeaderText, { color: colors.text.muted }]}>#</Text>
-          <Text style={[s.postsCardHeaderText, { color: colors.text.muted, flex: 1, marginLeft: 52 }]}>{t('analytics.postCompletion')}</Text>
+          <Text style={[s.postsCardHeaderText, { color: colors.text.muted, flex: 1, marginLeft: 52 }]}>{t('analytics.postEngagement')}</Text>
           <Text style={[s.postsCardHeaderText, { color: colors.text.muted }]}>
             {contentSort === 'views' ? t('analytics.views') : contentSort === 'likes' ? t('analytics.likes') : t('analytics.commentsShort')}
           </Text>
@@ -504,6 +513,7 @@ export function AnalyticsTab({
               post={post}
               idx={idx}
               contentSort={contentSort}
+              maxRate={maxRate}
               onPress={() => onPostPress(post.post_id, post.media_url, post.media_type, post.caption)}
               colors={colors}
             />
@@ -635,10 +645,10 @@ const s = StyleSheet.create({
   postCaption: { fontSize: 12, fontWeight: '600' },
   miniStats: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   miniStatText: { fontSize: 10, marginRight: 6 },
-  completionRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  completionTrack: { flex: 1, height: 3, borderRadius: 2, overflow: 'hidden' },
-  completionFill: { height: '100%', borderRadius: 2 },
-  completionPct: { fontSize: 9, fontWeight: '600', width: 24, textAlign: 'right' },
+  rateRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rateTrack: { flex: 1, height: 3, borderRadius: 2, overflow: 'hidden' },
+  rateFill: { height: '100%', borderRadius: 2 },
+  rateText: { fontSize: 9, fontWeight: '600', width: 30, textAlign: 'right' },
 
   metricWrap: { alignItems: 'flex-end', minWidth: 44 },
   metricValue: { fontSize: 15, fontWeight: '600', letterSpacing: -0.5 },
