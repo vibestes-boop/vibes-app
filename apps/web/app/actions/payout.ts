@@ -16,8 +16,11 @@ import type { ActionResult } from './profile';
 //
 // Tabelle: `payout_requests`
 //   creator_id, diamonds_amount, euro_amount, iban, paypal_email, note, status
-// RLS: Insert + Select nur für eigene Rows. Die RLS prüft den Betrag NICHT —
-// die Guthaben-Prüfung in `requestPayout` ist für das Web die einzige.
+// RLS: Insert + Select nur für eigene Rows. Seit 14.10.2026 prüft die Datenbank
+// den Antrag selbst (Trigger `payout_requests_guard`, Migration 20261014120000):
+// Betrag ≤ Guthaben, Mindestbetrag, ein offener Antrag, euro_amount/status
+// serverseitig; die Diamanten werden beim Antrag abgezogen (20261014120100).
+// Die Prüfungen in `requestPayout` bleiben für klare Fehlermeldungen vorab.
 //
 // Guthaben-Quelle: RPC `get_creator_earnings` → `coins_wallets.diamonds`,
 // derselbe Weg wie die App (`useCreatorEarnings`) und /studio/revenue.
