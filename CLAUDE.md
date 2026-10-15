@@ -138,7 +138,8 @@ const { colors } = useTheme();
 - Warme Stimme existiert schon punktuell (z. B. „Schreib die erste Nachricht 👋") → **konsistent** überall anwenden.
 - Belohnungs-Zahlen immer animiert hochzählen + Haptik.
 - Erste Session: erste Wert-Erfahrung in **<60 Sek**, erster Like/Follow wird gefeiert (entscheidet D1-Retention).
-- Status/Identität sichtbar machen (Teip ⛰️, Verifiziert ✓, Top-Gifter 👑, Streak 🔥) — und teilbar (Share-Karte = Mini-Werbespot).
+- Status/Identität sichtbar machen (Verifiziert ✓, Top-Gifter 👑, Streak 🔥) — und teilbar (Share-Karte = Mini-Werbespot).
+  **Nicht der Teip:** Er verrät die ethnische Herkunft (Art. 9 DSGVO) und erscheint auf keinem Profil, keiner Karte und keinem Share-Bild, nur in den eigenen Einstellungen (Zaurs Entscheidung 14./15.10.2026; App seit `14e6026b`, Web seit PR #93; ohne Anmeldung sperrt ihn die Datenbank seit `20261015110000`).
 
 ---
 
