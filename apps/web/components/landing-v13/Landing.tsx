@@ -33,6 +33,7 @@ const instrument = Instrument_Serif({ subsets: ['latin', 'latin-ext'], weight: '
 const cormorant = Cormorant_Garamond({ subsets: ['latin', 'cyrillic'], style: ['italic'], weight: ['500'], variable: '--font-cormorant', display: 'swap' });
 
 const APP_STORE = 'https://apps.apple.com/app/serlo/id6760790424';
+const BRANDWERKX = 'https://brandwerkx.de/de';
 const SECTION_IDS = ['start', 'live', 'clans', 'shop', 'heimat', 'sicherheit', 'app'] as const;
 
 // Läuft beim ersten Laden vor dem ersten Bild: schaltet Bewegung nur ein, wenn sie
@@ -430,7 +431,10 @@ export function LandingV13({ lang }: { lang: Lang }) {
           <p className="credits-note">{t.foot.note}</p>
         </details>
         <div className="foot-bottom">
-          <span>© {new Date().getFullYear()} Serlo</span>
+          <span>
+            © {new Date().getFullYear()} Serlo · {t.foot.madeBy}{' '}
+            <a href={BRANDWERKX} target="_blank" rel="noopener">BrandWerkX</a>
+          </span>
           <LangSwitch lang={lang} label={t.nav.langs} className="foot-lang" />
         </div>
       </footer>

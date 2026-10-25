@@ -124,6 +124,7 @@ const de = {
     sections: 'Abschnitte',
     credits: 'Bildnachweise',
     note: 'Das Turmfoto stammt von Wikimedia Commons, für diese Seite verkleinert, Lizenz wie angegeben. Die Handyansichten sind Beispielansichten der Serlo App.',
+    madeBy: 'Entwickelt von',
   },
   phones: {
     live: {
@@ -293,6 +294,7 @@ const ru: Dict = {
     sections: 'Разделы',
     credits: 'Источники изображений',
     note: 'Фото башни взято с Wikimedia Commons и уменьшено для этой страницы, лицензия указана. Экраны телефона показывают примеры приложения Serlo.',
+    madeBy: 'Разработано',
   },
   phones: {
     live: {
@@ -460,6 +462,7 @@ const en: Dict = {
     sections: 'Sections',
     credits: 'Image credits',
     note: 'The tower photo comes from Wikimedia Commons, reduced in size for this page, licence as stated. The phone screens are example views of the Serlo app.',
+    madeBy: 'Developed by',
   },
   phones: {
     live: {

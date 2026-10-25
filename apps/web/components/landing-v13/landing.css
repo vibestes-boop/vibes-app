@@ -339,6 +339,7 @@ html:has(.sl){-webkit-text-size-adjust:100%;scroll-padding-top:96px}
 .sl .credits span{color:var(--text-3)}
 .sl .credits-note{max-width:60em;margin:22px 0 4px;font-size:13px;line-height:1.6;color:var(--text-3)}
 .sl .foot-bottom{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 24px;padding:16px var(--pad) 22px;font-size:10px;line-height:1.4;color:var(--text-3);border-top:1px solid var(--line)}
+.sl .foot-bottom a{color:var(--text-2);transition:color .2s}.sl .foot-bottom a:hover{color:var(--text)}
 
 /* ── Kapitel-Anzeige und Skala (nur breite Bildschirme, nur mit JS) ── */
 .sl .hud,.sl .rail{display:none}
