@@ -39,12 +39,15 @@ type Props = ViewProps & {
   tone?: 'auto' | 'light' | 'dark';
   material?: 'glass' | 'solid';
   elevated?: boolean;
+  /** 0–1: deckende Schicht über dem Glas (hell bzw. dunkel), damit Symbole auf
+   *  jedem Hintergrund lesbar bleiben, z. B. die Tab-Leiste über Videos und Bildern */
+  veil?: number;
 };
 
 /** Controls use native glass; content cards use an opaque studio-lit surface.
  * Keep opacity at 1 on this component and its ancestors: native glass needs it.
  */
-export function GlassSurface({ children, style, radius = 24, tone = 'auto', material = 'glass', elevated = true, ...props }: Props) {
+export function GlassSurface({ children, style, radius = 24, tone = 'auto', material = 'glass', elevated = true, veil = 0, ...props }: Props) {
   const { isDark } = useTheme();
   const dark = tone === 'auto' ? isDark : tone === 'dark';
   const reduced = useReducedTransparency();
@@ -63,6 +66,7 @@ export function GlassSurface({ children, style, radius = 24, tone = 'auto', mate
         colors={dark ? ['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.015)', 'rgba(0,0,0,0.06)'] : native ? ['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.04)', 'rgba(230,234,240,0.16)'] : ['rgba(255,255,255,0.98)', 'rgba(255,255,255,0.55)', 'rgba(231,235,241,0.68)']}
         locations={[0, 0.52, 1]} start={{ x: 0.15, y: 0 }} end={{ x: 0.9, y: 1 }} style={StyleSheet.absoluteFill}
       />}
+      {veil > 0 && <View style={[StyleSheet.absoluteFill, { backgroundColor: dark ? `rgba(18,20,24,${veil})` : `rgba(255,255,255,${veil})` }]} />}
       <View style={[StyleSheet.absoluteFill, { borderRadius: radius, borderWidth: StyleSheet.hairlineWidth, borderColor: dark ? 'rgba(255,255,255,0.18)' : 'rgba(133,146,164,0.25)', borderTopColor: dark ? 'rgba(255,255,255,0.36)' : '#FFFFFF', borderLeftColor: dark ? 'rgba(255,255,255,0.23)' : 'rgba(255,255,255,0.95)' }]} />
     </View>
     {children}

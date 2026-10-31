@@ -4,6 +4,7 @@ import { Compass, MessageCircle, User, Zap, type LucideIcon } from 'lucide-react
 import { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { useI18n } from '@/lib/i18n';
+import { useTheme } from '@/lib/useTheme';
 import { TAB_BAR_ITEM_H, TAB_BAR_PAD, tabBarBottomGap } from '@/lib/tabBarLayout';
 import { tabBarCompact } from '@/lib/tabBarMotion';
 import { TabGlyph } from './TabGlyph';
@@ -24,8 +25,8 @@ const PRESS = { damping: 18, stiffness: 420, mass: 0.6 };
 
 type Item = { route: string; label: string; icon?: LucideIcon };
 
-function TabButton({ item, selected, badge, loading, onPress }: {
-  item: Item; selected: boolean; badge: number; loading: boolean; onPress: () => void;
+function TabButton({ item, selected, badge, loading, tone, onPress }: {
+  item: Item; selected: boolean; badge: number; loading: boolean; tone: 'light' | 'dark'; onPress: () => void;
 }) {
   const create = item.route === 'create';
   const scale = useSharedValue(1);
@@ -34,18 +35,22 @@ function TabButton({ item, selected, badge, loading, onPress }: {
     accessibilityState={create ? undefined : { selected }} onPress={onPress} style={s.item}
     onPressIn={() => { scale.value = withSpring(0.86, PRESS); }} onPressOut={() => { scale.value = withSpring(1, PRESS); }}>
     <AnimatedView style={pressStyle}>
-      <TabGlyph icon={item.icon} create={create} selected={selected} loading={loading} badge={badge} />
+      <TabGlyph icon={item.icon} create={create} selected={selected} loading={loading} badge={badge} tone={tone} />
     </AnimatedView>
   </Pressable>;
 }
 
-export function AppTabBar({ focusedRoute, bottomInset, unreadMessages = 0, unreadNotifications = 0, refreshing = false, compactable = true, onNavigate, onCreate }: {
+export function AppTabBar({ focusedRoute, bottomInset, unreadMessages = 0, unreadNotifications = 0, refreshing = false, compactable = true, tone = 'auto', onNavigate, onCreate }: {
   focusedRoute: string; bottomInset: number; unreadMessages?: number; unreadNotifications?: number; refreshing?: boolean;
+  /** 'dark' über dunklen Inhalten (Video-Feed), auch im hellen Modus; sonst nach Theme */
+  tone?: 'auto' | 'light' | 'dark';
   /** false für Vorschauen (Einstellungen): die Leiste reagiert dann nicht aufs Scrollen */
   compactable?: boolean;
   onNavigate: (route: string) => void; onCreate: () => void;
 }) {
   const { t } = useI18n();
+  const { isDark } = useTheme();
+  const barTone = (tone === 'auto' ? (isDark ? 'dark' : 'light') : tone) as 'light' | 'dark';
   const items: Item[] = [
     { route: 'index', label: t('tabs.home'), icon: Zap },
     { route: 'explore', label: t('tabs.explore'), icon: Compass },
@@ -73,13 +78,15 @@ export function AppTabBar({ focusedRoute, bottomInset, unreadMessages = 0, unrea
 
   return <View pointerEvents="box-none" style={[s.outer, { paddingBottom: tabBarBottomGap(bottomInset) }]}>
     <AnimatedView style={[s.wrap, barStyle]}>
-      <GlassSurface radius={(ITEM_H + PAD * 2) / 2} style={s.bar}>
+      {/* Deckende Schicht über dem Glas: Symbole bleiben über Videos und Bildern lesbar */}
+      <GlassSurface radius={(ITEM_H + PAD * 2) / 2} tone={barTone} veil={barTone === 'dark' ? 0.5 : 0.72} style={s.bar}>
         <View style={s.row} onLayout={(e: LayoutChangeEvent) => setItemW(e.nativeEvent.layout.width / items.length)}>
           {itemW > 0 && index >= 0 && <AnimatedView pointerEvents="none" style={[s.pill, { width: itemW }, pillStyle]}>
-            <GlassSurface material="solid" elevated={false} radius={ITEM_H / 2} style={s.pillFace} />
+            {/* Auswahl immer als helle Kapsel, wie der Umschalter „Für dich“ oben */}
+            <GlassSurface material="solid" tone="light" elevated={barTone === 'light'} radius={ITEM_H / 2} style={s.pillFace} />
           </AnimatedView>}
           {items.map(item => <TabButton key={item.route} item={item} selected={selected === item.route}
-            loading={item.route === 'index' && refreshing}
+            loading={item.route === 'index' && refreshing} tone={barTone}
             badge={item.route === 'messages' ? unreadMessages : item.route === 'profile' ? unreadNotifications : 0}
             onPress={() => item.route === 'create' ? onCreate() : onNavigate(item.route)} />)}
         </View>
