@@ -42,6 +42,7 @@ import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import type { Story,StoryGroup } from '@/lib/useStories';
 import { useMarkStoryViewed,useMyStoryVote,useStoryPollResults,useVoteStoryPoll } from '@/lib/useStories';
 import { useRemoveHighlight } from '@/lib/useStoryHighlights';
+import { nextStillUris } from '@/lib/storyTransitions';
 import { useAddStoryComment,useStoryComments,type StoryComment } from '@/lib/useStoryComments';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { ResizeMode,Video } from 'expo-av';
@@ -77,7 +78,7 @@ type Props = {
 };
 
 // ── Video-Komponenten ────────────────────────────────────────────────────────
-function NativeVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; isPaused: boolean; onDurationKnown: (ms: number) => void }) {
+function NativeVideoStory({ uri, posterUri, isPaused, onDurationKnown }: { uri: string; posterUri?: string | null; isPaused: boolean; onDurationKnown: (ms: number) => void }) {
   const player = useVideoPlayer(uri, (p: any) => { p.loop = false; p.muted = false; p.play(); });
   useEffect(() => {
     if (!player) return;
@@ -99,7 +100,17 @@ function NativeVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; isP
   }, [isPaused, player]);
 
   // contain = volles Video sichtbar (kein Schneiden)
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />;
+  // Standbild UNTER dem Video: Die Videofläche ist durchsichtig, solange sie
+  // kein Bild zeigt. So steht beim Laden und beim Hinausgleiten zum nächsten
+  // Highlight das Standbild statt Schwarz.
+  return (
+    <>
+      {posterUri ? (
+        <Image source={{ uri: posterUri }} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" />
+      ) : null}
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
+    </>
+  );
 }
 
 function FallbackVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; isPaused: boolean; onDurationKnown: (ms: number) => void }) {
@@ -995,11 +1006,10 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     if (!visible || !currentStory || isPaused) return;
     markViewed(currentStory.id);
     durationFixedRef.current = false;
-    // Nächste Story bereits jetzt prefetchen während die aktuelle läuft
-    const nextStory = group.stories[storyIndex + 1];
-    if (nextStory?.media_url && nextStory.media_type !== 'video') {
-      Image.prefetch?.(nextStory.media_url).catch(() => { });
-    }
+    // Was als Nächstes kommt, schon jetzt laden: die nächste Story, am Ende der
+    // Gruppe die erste des nächsten Highlights bzw. Nutzers
+    const upcoming = nextStillUris(group, storyIndex, allGroups);
+    if (upcoming.length > 0) Image.prefetch?.(upcoming).catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- markViewed + isPaused bewusst
   }, [currentStory?.id, visible]);
 
@@ -1114,7 +1124,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       {/* ── Media — contain: Bild immer vollständig sichtbar, kein Zoom/Cropping ── */}
       {isVideo ? (
         USE_EXPO_VIDEO
-          ? <NativeVideoStory uri={currentStory.media_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
+          ? <NativeVideoStory key={currentStory.id} uri={currentStory.media_url} posterUri={currentStory.thumbnail_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
           : <FallbackVideoStory uri={currentStory.media_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
       ) : (
         <Image
@@ -1123,7 +1133,8 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
           contentFit="contain"
           priority="high"
           transition={200}
-          placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
+          placeholder={currentStory.thumbnail_url ? { uri: currentStory.thumbnail_url } : { blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
+          placeholderContentFit="contain"
           cachePolicy="memory-disk"
         />
       )}

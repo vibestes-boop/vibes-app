@@ -205,6 +205,7 @@ export const ru: DeepPartial<Messages> = {
     following: 'Подписки',
     loadErrorTitle: 'Сейчас не грузится 🌀',
     loadErrorSub: 'Потяни вниз, чтобы обновить 👇',
+    imageFailed: 'Картинка сейчас не грузится 🙈',
     emptyTagSub: 'Постов с этим тегом пока нет — будь первым.',
     removeFilter: 'Убрать фильтр',
     welcomeTitle: 'Добро пожаловать в Serlo! ✨',

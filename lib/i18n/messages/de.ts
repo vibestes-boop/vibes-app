@@ -203,6 +203,7 @@ export const de = {
     following: 'Folge ich',
     loadErrorTitle: 'Lädt gerade nicht 🌀',
     loadErrorSub: 'Zieh nach unten zum Neu laden 👇',
+    imageFailed: 'Das Bild will gerade nicht laden 🙈',
     emptyTagSub: 'Noch keine Posts mit diesem Tag — sei der Erste.',
     removeFilter: 'Filter entfernen',
     welcomeTitle: 'Willkommen bei Serlo! ✨',

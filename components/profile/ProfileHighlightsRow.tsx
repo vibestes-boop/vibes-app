@@ -121,6 +121,7 @@ export function ProfileHighlightsRow({
         user_id: h.user_id,   // ← echte user_id bleibt erhalten (für Profil-Link im Viewer)
         media_url: item.media_url,
         media_type: item.media_type,
+        thumbnail_url: item.thumbnail_url ?? null,
         created_at: h.created_at,
         username: h.title,
         avatar_url: h.thumbnail_url || h.media_url,

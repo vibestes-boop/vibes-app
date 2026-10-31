@@ -203,6 +203,7 @@ export const en: DeepPartial<Messages> = {
     following: 'Following',
     loadErrorTitle: 'Not loading right now 🌀',
     loadErrorSub: 'Pull down to reload 👇',
+    imageFailed: 'This picture won’t load right now 🙈',
     emptyTagSub: 'No posts with this tag yet — be the first.',
     removeFilter: 'Remove filter',
     welcomeTitle: 'Welcome to Serlo! ✨',
