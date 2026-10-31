@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   BUNNY_DOWN_FOR_MS,
+  BUNNY_STREAM_ENABLED,
   __resetBunnyHealth,
   bunnyHlsAllowed,
   bunnyHlsUrl,
+  bunnyZoneHealthy,
   probeBunny,
   recheckBunnyIfDue,
   reportBunnyHlsError,
@@ -17,7 +19,8 @@ const flush = () => new Promise((r) => setImmediate(r));
 
 beforeEach(async () => {
   global.fetch = jest.fn();
-  __resetBunnyHealth();
+  // Die Zonen-Logik wird mit eingeschaltetem Bunny geprüft; der Aus-Zustand unten
+  __resetBunnyHealth({ enabled: true });
   await AsyncStorage.clear();
   jest.useRealTimers();
 });
@@ -30,14 +33,14 @@ it('baut die Playlist-Adresse aus der guid', () => {
 it('sperrt HLS bei 403 für alle Videos und merkt es sich', async () => {
   respond(403);
   await probeBunny('g1');
-  expect(bunnyHlsAllowed()).toBe(false);
+  expect(bunnyZoneHealthy()).toBe(false);
   expect(Number(await AsyncStorage.getItem('bunny-hls-down-until-v1'))).toBeGreaterThan(Date.now());
 });
 
 it('lässt HLS an, wenn nur ein einzelnes Video fehlt (404)', async () => {
   respond(404);
   await probeBunny('g1');
-  expect(bunnyHlsAllowed()).toBe(true);
+  expect(bunnyZoneHealthy()).toBe(true);
 });
 
 it('fragt bei Fehlern einzelner Videos nicht jedes Mal neu', async () => {
@@ -53,23 +56,37 @@ it('prüft nach Ablauf der Sperre still und gibt HLS bei Erfolg frei', async () 
   jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
   respond(403);
   await probeBunny('g1');
-  expect(bunnyHlsAllowed()).toBe(false);
+  expect(bunnyZoneHealthy()).toBe(false);
 
   recheckBunnyIfDue('g1'); // Sperre läuft noch → keine Abfrage
   expect(global.fetch).toHaveBeenCalledTimes(1);
 
   jest.setSystemTime(Date.now() + BUNNY_DOWN_FOR_MS + 1000);
-  expect(bunnyHlsAllowed()).toBe(false); // erst die Prüfung entscheidet
+  expect(bunnyZoneHealthy()).toBe(false); // erst die Prüfung entscheidet
   respond(200);
   recheckBunnyIfDue('g1');
   await flush();
   await flush();
-  expect(bunnyHlsAllowed()).toBe(true);
+  expect(bunnyZoneHealthy()).toBe(true);
   expect(await AsyncStorage.getItem('bunny-hls-down-until-v1')).toBeNull();
 });
 
 it('entscheidet offline nichts', async () => {
   (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('offline'));
   await probeBunny('g1');
+  expect(bunnyZoneHealthy()).toBe(true);
+});
+
+it('Bunny aus: kein HLS und keine Abfrage, auch nicht nach Fehlern', async () => {
+  __resetBunnyHealth(); // Vorgabe aus lib/bunny.ts
+  expect(BUNNY_STREAM_ENABLED).toBe(false);
+  expect(bunnyHlsAllowed()).toBe(false);
+  reportBunnyHlsError('g1');
+  recheckBunnyIfDue('g1');
+  await flush();
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
+it('Bunny an und Zone gesund: HLS erlaubt', () => {
   expect(bunnyHlsAllowed()).toBe(true);
 });

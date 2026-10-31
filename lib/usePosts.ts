@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useInfiniteQuery,useQuery,useQueryClient,type InfiniteData,type QueryClient,type QueryKey } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
+import { BUNNY_STREAM_ENABLED } from './bunnyConfig';
 import { useVibeStore } from './store';
 import { supabase } from './supabase';
 import { getBlockedIdSet } from './useBlock';
@@ -385,7 +386,10 @@ export function useGuildFeed() {
         userId
           ? supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', postIds)
           : Promise.resolve({ data: [] as { post_id: string }[] }),
-        supabase.from('posts').select('id, bunny_video_id').in('id', postIds).not('bunny_video_id', 'is', null),
+        // Bunny aus (lib/bunny.ts): keine guids abfragen
+        BUNNY_STREAM_ENABLED
+          ? supabase.from('posts').select('id, bunny_video_id').in('id', postIds).not('bunny_video_id', 'is', null)
+          : Promise.resolve({ data: [] }),
       ]);
 
       const commentMap: Record<string, number> = {};

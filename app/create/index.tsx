@@ -1,3 +1,4 @@
+import { BUNNY_STREAM_ENABLED } from '@/lib/bunnyConfig';
 import { darkColors } from '@/lib/theme';
 import { useModerateImage } from '@/lib/useModerate';
 import { EditorToolbar, type EditorTool } from '@/components/create/editor/EditorToolbar';
@@ -461,7 +462,8 @@ export default function CreatePostScreen() {
       if (mediaUrl && mediaType === 'image' && insertedRows?.id) {
         moderate(insertedRows.id, mediaUrl);
       }
-      if (mediaUrl && mediaType === 'video' && insertedRows?.id) {
+      if (BUNNY_STREAM_ENABLED && mediaUrl && mediaType === 'video' && insertedRows?.id) {
+        // Nur wenn Bunny an ist (lib/bunny.ts; seit 31.10.2026 aus).
         // Bunny-ABR-Ingest anstoßen (fire & forget). R2 bleibt Sofort-Quelle;
         // Bunny zieht das Video aus der R2-URL + transkodiert im Hintergrund zu
         // HLS. Fehler bewusst ignoriert — der R2-Fallback trägt den Post.
