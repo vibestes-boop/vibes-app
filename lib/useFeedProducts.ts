@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { supabase } from './supabase';
 
@@ -27,6 +27,9 @@ export function useFeedProducts(postIds: string[]): Record<string, LinkedProduct
     queryKey: ['feed-products', key],
     enabled: postIds.length > 0,
     staleTime: 60_000,
+    // Wie useFeedBunny: beim Nachladen die alten Karten behalten, sonst
+    // verschwindet die Produktkarte sichtbarer Posts kurz.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const out: Record<string, LinkedProduct> = {};
       const { data, error } = await supabase

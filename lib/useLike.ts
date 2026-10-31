@@ -9,9 +9,13 @@ export type UseLikeBatch = { liked: boolean; count: number };
 export function useLike(postId: string, batch?: UseLikeBatch | null) {
   const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.profile?.id);
-  const skipQueries = batch != null;
+  // Mit Sammelwerten (Feed, Gilde) kommt der Stand aus der Sammelabfrage: keine
+  // Einzelabfragen, und die Anzeige folgt ihr, bis der Nutzer selbst tippt.
+  // Früher als initialData eingefroren: Kam die Sammelabfrage erst nach dem
+  // Einhängen, stand eine Minute lang „0 Likes, nicht geliked" da.
+  const fromBatch = batch != null;
 
-  // ── Hat der User geliked? (mit batch als initialData) ─────────────────────
+  // ── Hat der User geliked? ──────────────────────────────────────────────────
   const { data: likedData } = useQuery({
     queryKey: ['like-status', userId, postId],
     queryFn: async () => {
@@ -24,15 +28,12 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
         .maybeSingle();
       return !!data;
     },
-    // batch-Wert als initialData → sofort verfügbar, wird vom Cache überschrieben
-    initialData: skipQueries ? batch!.liked : undefined,
-    // initialDataUpdatedAt verhindert sofortigen Hintergrund-Refetch (wichtig für Feed-Performance)
-    initialDataUpdatedAt: skipQueries ? Date.now() : undefined,
-    enabled: !!userId && !!postId,
+    placeholderData: fromBatch ? batch.liked : undefined,
+    enabled: !!userId && !!postId && !fromBatch,
     staleTime: 1000 * 60,
   });
 
-  // ── Like-Anzahl (mit batch als initialData) ────────────────────────────────
+  // ── Like-Anzahl ────────────────────────────────────────────────────────────
   const { data: countData } = useQuery({
     queryKey: ['like-count', postId],
     queryFn: async () => {
@@ -42,11 +43,8 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
         .eq('post_id', postId);
       return c ?? 0;
     },
-    // batch-Wert als initialData → sofort verfügbar, wird vom Cache überschrieben
-    initialData: skipQueries ? batch!.count : undefined,
-    // initialDataUpdatedAt verhindert sofortigen Hintergrund-Refetch
-    initialDataUpdatedAt: skipQueries ? Date.now() : undefined,
-    enabled: !!postId,
+    placeholderData: fromBatch ? batch.count : undefined,
+    enabled: !!postId && !fromBatch,
     staleTime: 1000 * 60,
   });
 
@@ -65,7 +63,8 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
       await queryClient.cancelQueries({ queryKey: ['like-status', userId, postId] });
       await queryClient.cancelQueries({ queryKey: ['like-count', postId] });
       queryClient.setQueryData(['like-status', userId, postId], true);
-      queryClient.setQueryData(['like-count', postId], (old: number = 0) => old + 1);
+      // Ohne eigenen Cache-Eintrag (Sammelwerte) von der angezeigten Zahl ausgehen
+      queryClient.setQueryData(['like-count', postId], (old?: number) => (old ?? count) + 1);
     },
     mutationFn: async () => {
       if (!userId) return;
@@ -89,7 +88,7 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
       await queryClient.cancelQueries({ queryKey: ['like-status', userId, postId] });
       await queryClient.cancelQueries({ queryKey: ['like-count', postId] });
       queryClient.setQueryData(['like-status', userId, postId], false);
-      queryClient.setQueryData(['like-count', postId], (old: number = 1) => Math.max(0, old - 1));
+      queryClient.setQueryData(['like-count', postId], (old?: number) => Math.max(0, (old ?? count) - 1));
     },
     mutationFn: async () => {
       if (!userId) return;

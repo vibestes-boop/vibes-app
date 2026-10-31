@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { supabase } from './supabase';
 
@@ -16,6 +16,10 @@ export function useFeedBunny(postIds: string[]): Record<string, string> {
     queryKey: ['feed-bunny', key],
     enabled: postIds.length > 0,
     staleTime: 60_000,
+    // Beim Nachladen ändert sich der Schlüssel (alle IDs). Ohne die alten Werte
+    // wäre die Karte kurz leer → sichtbare Videos wechselten HLS→R2→HLS und
+    // starteten jedes Mal neu.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const out: Record<string, string> = {};
       const { data, error } = await supabase
