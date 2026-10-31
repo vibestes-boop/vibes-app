@@ -78,7 +78,7 @@ type Props = {
 };
 
 // ── Video-Komponenten ────────────────────────────────────────────────────────
-function NativeVideoStory({ uri, posterUri, isPaused, onDurationKnown }: { uri: string; posterUri?: string | null; isPaused: boolean; onDurationKnown: (ms: number) => void }) {
+function NativeVideoStory({ uri, posterUri, isPaused, onDurationKnown, onReady }: { uri: string; posterUri?: string | null; isPaused: boolean; onDurationKnown: (ms: number) => void; onReady?: () => void }) {
   const player = useVideoPlayer(uri, (p: any) => { p.loop = false; p.muted = false; p.play(); });
   useEffect(() => {
     if (!player) return;
@@ -108,12 +108,12 @@ function NativeVideoStory({ uri, posterUri, isPaused, onDurationKnown }: { uri: 
       {posterUri ? (
         <Image source={{ uri: posterUri }} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" />
       ) : null}
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} onFirstFrameRender={onReady} />
     </>
   );
 }
 
-function FallbackVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; isPaused: boolean; onDurationKnown: (ms: number) => void }) {
+function FallbackVideoStory({ uri, isPaused, onDurationKnown, onReady }: { uri: string; isPaused: boolean; onDurationKnown: (ms: number) => void; onReady?: () => void }) {
   const fixedRef = useRef(false);
   return (
     <Video
@@ -121,6 +121,7 @@ function FallbackVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; i
       resizeMode={ResizeMode.CONTAIN}
       shouldPlay={!isPaused}
       isLooping={false} isMuted={false}
+      onReadyForDisplay={onReady}
       onPlaybackStatusUpdate={(s: any) => {
         if (!s.isLoaded || fixedRef.current) return;
         if (s.durationMillis && s.durationMillis > 0) {
@@ -129,6 +130,63 @@ function FallbackVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; i
         }
       }}
     />
+  );
+}
+
+// ── Medium als Ebene (Wechsel ohne Schwarz, ohne Bewegung) ───────────────────
+const FADE_MS = 240;
+// Meldet das neue Medium nichts (kein onLoad, kein erstes Videobild), trotzdem freigeben
+const MEDIA_READY_FALLBACK_MS = 1500;
+const NOOP = () => {};
+
+/**
+ * Foto oder Video einer Story als Ebene. Beim Wechsel liegt die abgehende Ebene
+ * obenauf (deckend schwarz hinterlegt), bleibt stehen, bis die neue `ready`
+ * meldet, und blendet dann sanft aus. Ein Video bleibt dabei angehalten auf
+ * seinem letzten Bild stehen, weil die Ebene dieselbe Instanz bleibt (key).
+ */
+function StoryMediaLayer({ story, isPaused, leaving = false, ready = true, smoothFirst = false, onLeft, onReady, onDurationKnown }: {
+  story: Story;
+  isPaused: boolean;
+  leaving?: boolean;
+  ready?: boolean;
+  smoothFirst?: boolean;
+  onLeft?: () => void;
+  onReady: () => void;
+  onDurationKnown: (ms: number) => void;
+}) {
+  const opacity = useRef(new RNAnimated.Value(1)).current;
+  useEffect(() => {
+    if (!leaving) { opacity.stopAnimation(); opacity.setValue(1); return; }
+    if (!ready) return;
+    RNAnimated.timing(opacity, { toValue: 0, duration: FADE_MS, easing: EasingRN.inOut(EasingRN.quad), useNativeDriver: true })
+      .start(({ finished }) => { if (finished) onLeft?.(); });
+  }, [leaving, ready, opacity, onLeft]);
+
+  const isVideo = story.media_type === 'video';
+  return (
+    <RNAnimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, leaving ? styles.leavingLayer : null, { opacity }]}>
+      {isVideo ? (
+        USE_EXPO_VIDEO
+          ? <NativeVideoStory uri={story.media_url} posterUri={story.thumbnail_url} isPaused={isPaused || leaving} onDurationKnown={leaving ? NOOP : onDurationKnown} onReady={onReady} />
+          : <FallbackVideoStory uri={story.media_url} isPaused={isPaused || leaving} onDurationKnown={leaving ? NOOP : onDurationKnown} onReady={onReady} />
+      ) : (
+        // contain: Bild immer vollständig sichtbar, kein Zoom/Cropping. Weich vom
+        // Vorschaubild ins Foto nur ohne Vorgänger, sonst blendet die abgehende Ebene.
+        <Image
+          source={{ uri: story.media_url }}
+          style={StyleSheet.absoluteFill}
+          contentFit="contain"
+          priority="high"
+          transition={smoothFirst ? 200 : 0}
+          placeholder={story.thumbnail_url ? { uri: story.thumbnail_url } : { blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
+          placeholderContentFit="contain"
+          cachePolicy="memory-disk"
+          onLoad={onReady}
+          onError={onReady}
+        />
+      )}
+    </RNAnimated.View>
   );
 }
 
@@ -805,7 +863,19 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const [showViewers, setShowViewers] = useState(false);
-  const [storyIndex, setStoryIndex] = useState(0);
+  // Der Index gehört zur Gruppe: Wechselt die Gruppe (nächstes Highlight bzw.
+  // nächster Nutzer), gilt sofort Story 0. Vorher setzte ein Effekt ihn erst
+  // nach dem Rendern zurück, und kurz stand die falsche oder gar keine Story da.
+  const groupIdRef = useRef(group.userId);
+  groupIdRef.current = group.userId;
+  const [indexState, setIndexState] = useState({ groupId: group.userId, index: 0 });
+  const storyIndex = indexState.groupId === group.userId ? indexState.index : 0;
+  const setStoryIndex = useCallback((next: number | ((i: number) => number)) => {
+    setIndexState((s) => {
+      const base = s.groupId === groupIdRef.current ? s.index : 0;
+      return { groupId: groupIdRef.current, index: typeof next === 'function' ? next(base) : next };
+    });
+  }, []);
   const [replyText, setReplyText] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const [highlightMenuOpen, setHighlightMenuOpen] = useState(false);
@@ -838,6 +908,27 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const wasHoldingRef = useRef(false);
 
   const currentStory: Story | undefined = group.stories[storyIndex];
+
+  // ── Wechsel ohne Schwarz und ohne Bewegung ────────────────────────────────
+  // Die vorige Story bleibt obenauf stehen, bis die neue wirklich da ist (Foto
+  // geladen bzw. erstes Videobild), und blendet dann sanft aus. Erkannt wird der
+  // Wechsel schon im Render, damit die alte Ebene im selben Bild noch liegt.
+  const [shownStory, setShownStory] = useState<Story | undefined>(currentStory);
+  const [leavingStory, setLeavingStory] = useState<Story | null>(null);
+  const [mediaReady, setMediaReady] = useState(true);
+  if (currentStory && shownStory?.id !== currentStory.id) {
+    // Kehrt die gerade ausblendende Story zurück, ist sie schon geladen
+    setMediaReady(leavingStory?.id === currentStory.id);
+    setLeavingStory(shownStory ?? null);
+    setShownStory(currentStory);
+  }
+  const markMediaReady = useCallback(() => setMediaReady(true), []);
+  const clearLeaving = useCallback(() => setLeavingStory(null), []);
+  useEffect(() => {
+    if (mediaReady) return;
+    const t = setTimeout(() => setMediaReady(true), MEDIA_READY_FALLBACK_MS);
+    return () => clearTimeout(t);
+  }, [mediaReady, currentStory?.id]);
   const isOwnStory = currentStory?.user_id === currentUserId;
   // useStoryComments braucht currentStory.id — Hook ist weiter oben, nutzt currentStory?.id
   const { data: storyComments = [] } = useStoryComments(currentStory?.id ?? null);
@@ -864,7 +955,8 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   // Bei Story-Wechsel (Tippen links/rechts oder Gruppe wechseln):
   // → Kommentar-Sheet schließen, Emoji-Picker schließen, Reply-Text löschen
-  useEffect(() => { setStoryIndex(0); setShowComments(false); setShowEmojis(false); setReplyText(''); }, [group.userId]);
+  // Der Index springt bei neuer Gruppe von selbst auf 0 (siehe oben); hier nur die übrigen Zustände
+  useEffect(() => { setShowComments(false); setShowEmojis(false); setReplyText(''); }, [group.userId]);
   useEffect(() => { setShowComments(false); setShowEmojis(false); }, [storyIndex]);
 
 
@@ -884,12 +976,12 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const goNext = useCallback(() => {
     if (storyIndex < group.stories.length - 1) setStoryIndex((i) => i + 1);
     else onNextGroup();
-  }, [storyIndex, group.stories.length, onNextGroup]);
+  }, [storyIndex, group.stories.length, onNextGroup, setStoryIndex]);
 
   const goPrev = useCallback(() => {
     if (storyIndex > 0) setStoryIndex((i) => i - 1);
     else onPrevGroup();
-  }, [storyIndex, onPrevGroup]);
+  }, [storyIndex, onPrevGroup, setStoryIndex]);
 
   const startProgress = useCallback((duration: number) => {
     timerRef.current && clearTimeout(timerRef.current);
@@ -1117,27 +1209,32 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   };
 
   if (!visible || !currentStory) return null;
-  const isVideo = currentStory.media_type === 'video';
 
   return (
     <View style={styles.screen}>
-      {/* ── Media — contain: Bild immer vollständig sichtbar, kein Zoom/Cropping ── */}
-      {isVideo ? (
-        USE_EXPO_VIDEO
-          ? <NativeVideoStory key={currentStory.id} uri={currentStory.media_url} posterUri={currentStory.thumbnail_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
-          : <FallbackVideoStory uri={currentStory.media_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
-      ) : (
-        <Image
-          source={{ uri: currentStory.media_url }}
-          style={StyleSheet.absoluteFill}
-          contentFit="contain"
-          priority="high"
-          transition={200}
-          placeholder={currentStory.thumbnail_url ? { uri: currentStory.thumbnail_url } : { blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
-          placeholderContentFit="contain"
-          cachePolicy="memory-disk"
+      {/* ── Media als Ebenen: die abgehende obenauf, bis die neue steht ── */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {leavingStory && leavingStory.id !== currentStory.id ? (
+          <StoryMediaLayer
+            key={leavingStory.id}
+            story={leavingStory}
+            leaving
+            ready={mediaReady}
+            onLeft={clearLeaving}
+            isPaused
+            onReady={NOOP}
+            onDurationKnown={NOOP}
+          />
+        ) : null}
+        <StoryMediaLayer
+          key={currentStory.id}
+          story={currentStory}
+          isPaused={isPaused}
+          smoothFirst={!leavingStory}
+          onReady={markMediaReady}
+          onDurationKnown={handleDurationKnown}
         />
-      )}
+      </View>
 
       {/* ── Vignetten: subtiler Gradient (wie Short-Video — kein harter schwarzer Block) ── */}
       <LinearGradient
@@ -1410,6 +1507,8 @@ function formatTimeAgo(dateStr: string): string {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
+  // Abgehende Story deckt die neue vollständig ab (auch die Ränder neben dem Bild)
+  leavingLayer: { zIndex: 1, backgroundColor: '#000' },
   vignetteTop: {
     position: 'absolute', top: 0, left: 0, right: 0, height: 220,
     zIndex: 1,

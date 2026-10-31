@@ -115,9 +115,11 @@ export function ProfileHighlightsRow({
       isHighlight: true,
       highlightId: h.id,
       stories: itemsToShow.map((item, idx) => ({
-        // ✔ Echte story_id verwenden wenn verfügbar → useStoryLike kann Likes persistieren
-        // Fallback auf h.id-idx nur für Post-Highlights ohne story_id
-        id: h.story_id ?? `${h.id}-${idx}`,
+        // ✔ Echte story_id verwenden wenn verfügbar → useStoryLike kann Likes persistieren.
+        // Nur fürs erste Teil: Die übrigen haben keine eigene Story-ID, und dieselbe
+        // ID für alle Teile ließ den Viewer beim Weitertippen hängen (Fortschritt und
+        // Medium hängen an der ID).
+        id: idx === 0 && h.story_id ? h.story_id : `${h.id}-${idx}`,
         user_id: h.user_id,   // ← echte user_id bleibt erhalten (für Profil-Link im Viewer)
         media_url: item.media_url,
         media_type: item.media_type,
