@@ -4,8 +4,15 @@
 // die HLS-Playlist-URL bauen. Der Player probiert HLS und fällt bei Fehler
 // (noch nicht transkodiert / kaputt) auf die R2-URL zurück.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BUNNY_STREAM_ENABLED } from './bunnyConfig';
+
+// Schalter und Begründung: lib/bunnyConfig.ts (Bunny ist seit 31.10.2026 aus)
+export { BUNNY_STREAM_ENABLED };
 
 export const BUNNY_CDN_HOST = 'vz-6857f4f1-6d5.b-cdn.net';
+
+// Intern veränderlich nur für Tests (__resetBunnyHealth)
+let streamEnabled = BUNNY_STREAM_ENABLED;
 
 export function bunnyHlsUrl(guid: string | null | undefined): string | null {
   if (!guid) return null;
@@ -39,6 +46,11 @@ AsyncStorage.getItem(DOWN_KEY)
 
 /** Darf ein neu startendes Video HLS nehmen? */
 export function bunnyHlsAllowed(): boolean {
+  return streamEnabled && bunnyZoneHealthy();
+}
+
+/** Antwortet die Pull-Zone (kein 403 in der letzten halben Stunde)? */
+export function bunnyZoneHealthy(): boolean {
   return downUntil === 0;
 }
 
@@ -73,18 +85,21 @@ export function probeBunny(guid: string): Promise<void> {
 
 /** Vom Player, wenn HLS scheitert: einmal prüfen, ob die ganze Zone hängt. */
 export function reportBunnyHlsError(guid: string): void {
+  if (!streamEnabled) return;
   if (Date.now() - lastProbeAt < RECHECK_GAP_MS) return;
   void probeBunny(guid);
 }
 
 /** Ist die Sperrzeit um, im Hintergrund nachsehen, ob Bunny wieder läuft. */
 export function recheckBunnyIfDue(guid: string): void {
+  if (!streamEnabled) return;
   if (downUntil !== 0 && Date.now() >= downUntil) void probeBunny(guid);
 }
 
 /** Nur für Tests */
-export function __resetBunnyHealth(): void {
+export function __resetBunnyHealth(opts: { enabled?: boolean } = {}): void {
   downUntil = 0;
   probing = null;
   lastProbeAt = 0;
+  streamEnabled = opts.enabled ?? BUNNY_STREAM_ENABLED;
 }
