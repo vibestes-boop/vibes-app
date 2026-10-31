@@ -45,6 +45,7 @@ import type { StoryGroup } from '@/lib/useStories';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import { useI18n } from '@/lib/i18n';
 import { IMAGE_RETRY_DELAYS, retryUri } from '@/lib/imageRetry';
+import { tabBarTop } from '@/lib/tabBarLayout';
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import {
 ActionButton,
@@ -961,7 +962,7 @@ export const FeedItem = React.memo(function FeedItem({
       />
 
       <Animated.View
-        style={[styles.bottomInfo, { paddingBottom: insets.bottom + 66 }, overlayFadeStyle]}
+        style={[styles.bottomInfo, { paddingBottom: tabBarTop(insets.bottom) + 12 }, overlayFadeStyle]}
         pointerEvents={commentsOpen ? 'none' : 'box-none'}
       >
 
@@ -1100,12 +1101,12 @@ export const FeedItem = React.memo(function FeedItem({
           postId={item.id}
           onSeek={handleSeek}
           onSeekEnd={handleSeekEnd}
-          bottomOffset={insets.bottom + 60}
+          bottomOffset={tabBarTop(insets.bottom) + 6}
         />
       )}
 
       <Animated.View
-        style={[styles.rightActions, { bottom: insets.bottom + 102 }, overlayFadeStyle]}
+        style={[styles.rightActions, { bottom: tabBarTop(insets.bottom) + 48 }, overlayFadeStyle]}
         pointerEvents={commentsOpen ? 'none' : 'auto'}
       >
         {/* Mute-Button — für Videos UND für Bild-Posts mit Musik-Track */}

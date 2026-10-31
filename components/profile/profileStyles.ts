@@ -142,8 +142,10 @@ function buildStyles(c: ThemeColors) {
       justifyContent: 'space-around',
     },
     statItem: { alignItems: 'center', flex: 1 },
-    statNum: { color: c.text.primary, fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
-    statLabel: { color: c.text.muted, fontSize: 11, fontWeight: '500', marginTop: 2 },
+    // Schriftstufen des Profils (Zaur 01.11.2026: „zu viele Textgrößen“): Name 20,
+    // Zahlen 17, Text und Knöpfe 14, alles Nebensächliche 12. Eine Schriftfamilie.
+    statNum: { color: c.text.primary, fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+    statLabel: { color: c.text.muted, fontSize: 12, fontWeight: '500', marginTop: 1 },
     statDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: c.border.subtle },
 
     // ── Bio Section ───────────────────────────────────────────
@@ -155,7 +157,7 @@ function buildStyles(c: ThemeColors) {
       backgroundColor: c.bg.primary,   // fortsetzung der Karte — KEIN borderBottom mehr
     },                                   // (durchgehende Fläche statt gestapelter Bänder)
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-    displayName: { color: c.text.primary, fontSize: 25, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, flexShrink: 1 },
+    displayName: { color: c.text.primary, fontSize: 20, fontWeight: '700', letterSpacing: -0.3, flexShrink: 1 },
     verifiedBadge: {
       width: 20,
       height: 20,
@@ -191,11 +193,11 @@ function buildStyles(c: ThemeColors) {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border.subtle,
     },
-    metaChipText: { color: c.text.secondary, fontSize: 12.5, fontWeight: '600' },
+    metaChipText: { color: c.text.secondary, fontSize: 12, fontWeight: '600' },
     bio: {
       color: c.text.secondary,
-      fontSize: 13,
-      lineHeight: 19,
+      fontSize: 14,
+      lineHeight: 20,
       fontWeight: '400',
     },
     websiteRow: {
@@ -207,7 +209,7 @@ function buildStyles(c: ThemeColors) {
     },
     websiteText: {
       color: c.accent.primary,
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '500',
       maxWidth: 220,
     },
@@ -225,7 +227,7 @@ function buildStyles(c: ThemeColors) {
       borderWidth: StyleSheet.hairlineWidth,
     },
     resonanzDot: { fontSize: 10 },
-    resonanzText: { fontSize: 11, fontWeight: '700' },
+    resonanzText: { fontSize: 12, fontWeight: '600' },
 
     // Legacy
     avatarCol: { alignItems: 'center', gap: 6 },
@@ -244,16 +246,16 @@ function buildStyles(c: ThemeColors) {
     guildBadgeText: { color: '#34D399', fontSize: 9, fontWeight: '700' },
     bioCol: { flex: 1, gap: 4 },
     followRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
-    followNum: { color: c.text.secondary, fontSize: 11, fontWeight: '700' },
-    followLabel: { color: c.text.muted, fontSize: 11 },
-    followDot: { color: c.text.muted, fontSize: 11 },
+    followNum: { color: c.text.secondary, fontSize: 12, fontWeight: '700' },
+    followLabel: { color: c.text.muted, fontSize: 12 },
+    followDot: { color: c.text.muted, fontSize: 12 },
     editPill: {
       flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
       paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
       backgroundColor: c.bg.subtle,
       borderWidth: StyleSheet.hairlineWidth, borderColor: c.border.default, marginTop: 2,
     },
-    editPillText: { color: c.text.muted, fontSize: 11, fontWeight: '600' },
+    editPillText: { color: c.text.muted, fontSize: 12, fontWeight: '600' },
     scoreCol: { alignItems: 'center', justifyContent: 'center' },
     creatorCard: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16, gap: 14 },
 
@@ -284,7 +286,7 @@ function buildStyles(c: ThemeColors) {
       borderColor: c.border.default,
     },
     btnEditText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       letterSpacing: -0.1,
     },
@@ -303,7 +305,7 @@ function buildStyles(c: ThemeColors) {
       borderColor: c.border.default,
     },
     btnActionText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       letterSpacing: -0.1,
     },
@@ -322,7 +324,7 @@ function buildStyles(c: ThemeColors) {
       borderColor: 'rgba(251,191,36,0.35)',
     },
     btnCoinsText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: '#B45309',   // Amber-700 — lesbar auf gold
     },
@@ -332,7 +334,7 @@ function buildStyles(c: ThemeColors) {
       flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
       gap: 6, paddingVertical: 9, borderRadius: 10, backgroundColor: c.accent.solid,
     },
-    btnPrimaryText: { color: c.text.onAccent, fontSize: 13, fontWeight: '700' },
+    btnPrimaryText: { color: c.text.onAccent, fontSize: 14, fontWeight: '600' },
     btnSecondary: {
       width: 40, height: 40, borderRadius: 10,
       backgroundColor: c.bg.subtle, borderWidth: StyleSheet.hairlineWidth,

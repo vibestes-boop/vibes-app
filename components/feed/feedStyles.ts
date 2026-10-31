@@ -295,7 +295,7 @@ export const feedItemStyles = StyleSheet.create({
   rightActions: {
     position: 'absolute',
     right: 6,
-    bottom: 0,   // wird dynamisch via insets.bottom + 50 gesetzt
+    bottom: 0,   // wird dynamisch über der Tab-Leiste gesetzt (lib/tabBarLayout)
     gap: 0,
     alignItems: 'center',
   },

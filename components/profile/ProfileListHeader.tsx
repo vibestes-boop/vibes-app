@@ -131,7 +131,7 @@ const msx = {
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
-  primaryText: { fontSize: 13, fontWeight: '600' as const },
+  primaryText: { fontSize: 14, fontWeight: '600' as const },
   secondaryBtn: {
     flex: 1, flexDirection: 'row' as const, alignItems: 'center' as const,
     justifyContent: 'center' as const, gap: 6,
@@ -139,7 +139,7 @@ const msx = {
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
-  secondaryText: { fontSize: 13, fontWeight: '600' as const },
+  secondaryText: { fontSize: 14, fontWeight: '600' as const },
   iconBtn: {
     width: 38, height: 38,
     alignItems: 'center' as const, justifyContent: 'center' as const,
@@ -176,8 +176,8 @@ const msx = {
     width: 30,
     alignItems: 'center' as const, justifyContent: 'center' as const,
   },
-  menuLabel: { fontSize: 15.5, fontWeight: '600' as const, letterSpacing: -0.1 },
-  menuSub: { fontSize: 12.5, marginTop: 2 },
+  menuLabel: { fontSize: 15, fontWeight: '600' as const, letterSpacing: -0.1 },
+  menuSub: { fontSize: 12, marginTop: 2 },
 };
 
 export function ProfileListHeader({
@@ -361,7 +361,7 @@ export function ProfileListHeader({
           ) : null}
         </View>
         {showHandle ? (
-          <Text style={{ color: colors.text.muted, fontSize: 13 }}>@{uname}</Text>
+          <Text style={{ color: colors.text.muted, fontSize: 12, fontWeight: '500' }}>@{uname}</Text>
         ) : null}
 
         {profile?.bio ? (
@@ -415,15 +415,15 @@ export function ProfileListHeader({
             {orderRating.sellerCount > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
-                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>{t('profile.asSeller', { count: orderRating.sellerCount })}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12, color: colors.text.muted }}>{t('profile.asSeller', { count: orderRating.sellerCount })}</Text>
               </View>
             ) : null}
             {orderRating.buyerCount > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.buyerAvg?.toFixed(1)}</Text>
-                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Käufer · {orderRating.buyerCount}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>{orderRating.buyerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12, color: colors.text.muted }}>als Käufer · {orderRating.buyerCount}</Text>
               </View>
             ) : null}
           </View>

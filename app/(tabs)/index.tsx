@@ -49,6 +49,7 @@ import { useGuildStories,type StoryGroup } from '@/lib/useStories';
 import { useTabRefreshStore,vibesFeedActions } from '@/lib/useTabRefresh';
 import { useVideoMute } from '@/lib/useVideoPreferences';
 import { useTabBarScroll } from '@/lib/tabBarMotion';
+import { tabBarTop } from '@/lib/tabBarLayout';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useFocusEffect,useRouter } from 'expo-router';
@@ -415,7 +416,7 @@ export default function VibeFeedScreen() {
     width: pageSize?.w ?? SCREEN_W,
     authorId: activeAuthorId,
     topBound: insets.top + 60,
-    bottomBound: (pageSize?.h ?? SCREEN_HEIGHT) - insets.bottom - 110,
+    bottomBound: (pageSize?.h ?? SCREEN_HEIGHT) - tabBarTop(insets.bottom) - 56,
   });
   // Stabil über alle Renders (für renderItem)
   const profilePanelRef = profileSwipe.panelRef;

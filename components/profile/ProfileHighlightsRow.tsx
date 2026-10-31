@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   bubbleLabel: {
     // color via inline (theme-aware)
-    fontSize: 10, fontWeight: '600',
+    fontSize: 12, fontWeight: '500',
     textAlign: 'center', width: BUBBLE_SIZE + 10,
   },
   loadingWrap: {
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   },
   emptyHint: {
     // color via inline (theme-aware)
-    fontSize: 11, textAlign: 'center',
+    fontSize: 12, textAlign: 'center',
     paddingHorizontal: 32, paddingBottom: 6, lineHeight: 17,
   },
 });

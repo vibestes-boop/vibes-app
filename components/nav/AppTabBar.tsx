@@ -4,6 +4,7 @@ import { Compass, MessageCircle, User, Zap, type LucideIcon } from 'lucide-react
 import { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { GlassSurface } from '@/components/ui/GlassSurface';
 import { useI18n } from '@/lib/i18n';
+import { TAB_BAR_ITEM_H, TAB_BAR_PAD, tabBarBottomGap } from '@/lib/tabBarLayout';
 import { tabBarCompact } from '@/lib/tabBarMotion';
 import { TabGlyph } from './TabGlyph';
 
@@ -15,8 +16,8 @@ const AnimatedView = (_ra?.default ?? _ra)?.View ?? View;
 
 // Schwebende Kapsel wie bei Instagram: nur Symbole, die Auswahl gleitet als
 // Kapsel von Tab zu Tab, und beim Runterscrollen wird die Leiste kompakter.
-const ITEM_H = 52;
-const PAD = 4;
+const ITEM_H = TAB_BAR_ITEM_H;
+const PAD = TAB_BAR_PAD;
 const COMPACT_SCALE = 0.86;
 const SLIDE = { damping: 20, stiffness: 260, mass: 0.8 };
 const PRESS = { damping: 18, stiffness: 420, mass: 0.6 };
@@ -70,7 +71,7 @@ export function AppTabBar({ focusedRoute, bottomInset, unreadMessages = 0, unrea
     transform: [{ scale: compactable ? 1 - (1 - COMPACT_SCALE) * tabBarCompact.value : 1 }],
   }), [compactable]);
 
-  return <View pointerEvents="box-none" style={[s.outer, { paddingBottom: Math.max(bottomInset - 6, 10) }]}>
+  return <View pointerEvents="box-none" style={[s.outer, { paddingBottom: tabBarBottomGap(bottomInset) }]}>
     <AnimatedView style={[s.wrap, barStyle]}>
       <GlassSurface radius={(ITEM_H + PAD * 2) / 2} style={s.bar}>
         <View style={s.row} onLayout={(e: LayoutChangeEvent) => setItemW(e.nativeEvent.layout.width / items.length)}>
