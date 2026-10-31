@@ -525,11 +525,12 @@ export default function RootLayoutFull() {
             {/* Öffnen (Entdecken, Profil, Mitteilungen): normaler iOS-Push von rechts
                 mit Wisch-zurück, wie bei Instagram. Das Hochfahren von unten wirkte als
                 Karte ohne Schließ-Geste kaputt. Wischen zum nächsten/vorigen Post
-                (router.replace mit `swipe`) kommt weiter vertikal von unten wie im Feed. */}
+                (router.replace mit `swipe`): Der Beitrag ist schon mit dem Finger
+                hinausgeglitten und der Nachbar hereingekommen, also ohne Übergang. */}
             <Stack.Screen
               name="post/[id]"
               options={({ route }) => ({
-                animation: (route.params as { swipe?: string } | undefined)?.swipe ? 'slide_from_bottom' : 'slide_from_right',
+                animation: (route.params as { swipe?: string } | undefined)?.swipe ? 'none' : 'slide_from_right',
               })}
             />
             <Stack.Screen

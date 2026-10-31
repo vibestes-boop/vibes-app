@@ -3,7 +3,8 @@
  *
  * Picture-in-Picture Fenster für den Duet-Modus.
  * - Kleines Video-Fenster (Gast) liegt über dem Hauptstream
- * - Draggable via PanResponder (kein Reanimated — stabiler in React Native)
+ * - Ziehbar mit Gesture Handler + Reanimated: folgt dem Finger auf dem UI-Thread.
+ *   (Vorher PanResponder mit JS-Treiber: hing nach, solange Chat und Geschenke liefen.)
  * - Tap → Swap (Haupt- und PiP-Video tauschen Plätze)
  * - "GAST" / "HOST" Label-Badge
  *
@@ -17,16 +18,22 @@ import { VideoTrack } from '@livekit/react-native';
 import type { Participant,TrackPublication } from 'livekit-client';
 import { Track } from 'livekit-client';
 import { ArrowLeftRight } from 'lucide-react-native';
-import React,{ useRef } from 'react';
+import React,{ useMemo } from 'react';
 import {
-Animated,
 Dimensions,
-PanResponder,
 Pressable,
 StyleSheet,
 Text,
 View,
 } from 'react-native';
+import { Gesture,GestureDetector } from 'react-native-gesture-handler';
+import { useAnimatedStyle,useSharedValue,withSpring } from 'react-native-reanimated';
+
+// Animated.View über require: der Default-Import crasht in Hermes HBC (siehe
+// SlidingSelection). Hooks und with* bleiben statisch importiert.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _ra = require('react-native-reanimated') as any;
+const AnimatedView = (_ra?.default ?? _ra)?.View ?? View;
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -37,6 +44,8 @@ const PIP_H = Math.round(PIP_W * (16 / 9));
 // Startposition: unten rechts, mit 16px Padding zu Rand und 80px über der Action-Bar
 const DEFAULT_X = W - PIP_W - 16;
 const DEFAULT_Y = H - PIP_H - 96;
+// Nach dem Loslassen weich an einen gültigen Platz (vorher friction 6 / tension 40)
+const PIP_SPRING = { damping: 18, stiffness: 160, mass: 1 };
 
 export interface PiPTrackRef {
   participant: Participant;
@@ -64,57 +73,35 @@ export function PiPWindow({
   onSwap,
   mirror = false,
 }: PiPWindowProps) {
-  // Aktuelle Position als Animated.ValueXY
-  const pan = useRef(new Animated.ValueXY({ x: DEFAULT_X, y: DEFAULT_Y })).current;
-  // Letzte gültige Position für Bounds-Clamp nach dem Drag
-  const lastPos = useRef({ x: DEFAULT_X, y: DEFAULT_Y });
+  // Position auf dem UI-Thread; beim Ziehen vom Startpunkt aus verschoben
+  const x = useSharedValue(DEFAULT_X);
+  const y = useSharedValue(DEFAULT_Y);
+  const startX = useSharedValue(DEFAULT_X);
+  const startY = useSharedValue(DEFAULT_Y);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-
-      onPanResponderGrant: () => {
-        // Offset vom letzten Stopp setzen
-        pan.setOffset({ x: lastPos.current.x, y: lastPos.current.y });
-        pan.setValue({ x: 0, y: 0 });
-      },
-
-      onPanResponderMove: Animated.event(
-        [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false }
-      ),
-
-      onPanResponderRelease: (_) => {
-        pan.flattenOffset();
-
-        // Nach flattenOffset() enthält pan._value bereits die absolute Position (Bug 4 Fix)
-        // lastPos.current.x + gestureState.dx würde den Offset doppelt zählen
-        const rawX = (pan.x as any)._value as number;
-        const rawY = (pan.y as any)._value as number;
-        const clampedX = Math.max(0, Math.min(W - PIP_W, rawX));
-        const clampedY = Math.max(0, Math.min(H - PIP_H - 80, rawY));
-
-        Animated.spring(pan, {
-          toValue: { x: clampedX, y: clampedY },
-          useNativeDriver: false,
-          friction: 6,
-          tension: 40,
-        }).start();
-
-        lastPos.current = { x: clampedX, y: clampedY };
-      },
+  const drag = useMemo(() => Gesture.Pan()
+    // Erst ab ein paar Punkten Bewegung: ein Tipp bleibt ein Tipp (Tauschen-Knopf)
+    .minDistance(4)
+    .onStart(() => {
+      startX.value = x.value;
+      startY.value = y.value;
     })
-  ).current;
+    .onUpdate((e) => {
+      x.value = startX.value + e.translationX;
+      y.value = startY.value + e.translationY;
+    })
+    .onEnd(() => {
+      x.value = withSpring(Math.max(0, Math.min(W - PIP_W, x.value)), PIP_SPRING);
+      y.value = withSpring(Math.max(0, Math.min(H - PIP_H - 80, y.value)), PIP_SPRING);
+    }), [x, y, startX, startY]);
+
+  const positionStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }, { translateY: y.value }],
+  }));
 
   return (
-    <Animated.View
-      style={[
-        s.pip,
-        { transform: pan.getTranslateTransform() },
-      ]}
-      {...panResponder.panHandlers}
-    >
+    <GestureDetector gesture={drag}>
+    <AnimatedView style={[s.pip, positionStyle]}>
       {/* Video-Inhalt */}
       <View style={s.videoContainer}>
         {trackRef ? (
@@ -151,7 +138,8 @@ export function PiPWindow({
 
       {/* Rahmen (leichte Andeutung dass es ein separates Fenster ist) */}
       <View style={s.border} pointerEvents="none" />
-    </Animated.View>
+    </AnimatedView>
+    </GestureDetector>
   );
 }
 

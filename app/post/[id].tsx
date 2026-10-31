@@ -1,12 +1,13 @@
 import { VideoProgressBar,type VideoProgressHandle } from '@/components/feed/FeedItem';
 import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO,type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
 import { PostShareModal } from '@/components/feed/PostShareModal';
-import { UserProfileContent } from '@/components/profile/UserProfileContent';
+import { ProfileSwipePanel, useProfileSwipePanel } from '@/components/feed/ProfileSwipePanel';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useAuthStore } from '@/lib/authStore';
 import { useFollow } from '@/lib/useFollow';
 import { useFeedNavStore } from '@/lib/feedNavStore';
 import { useFeedProducts } from '@/lib/useFeedProducts';
+import { peekFullUri, peekImageUri, postSwipeTarget, usePostPeeks, type PostPeek } from '@/lib/postSwipe';
 import { ProductFeedChip } from '@/components/feed/ProductFeedChip';
 import { supabase } from '@/lib/supabase';
 import { useBookmark } from '@/lib/useBookmark';
@@ -19,14 +20,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { ArrowLeft,Bookmark,Heart,MessageCircle,Music2,Pause,Pencil,Play,Send,Share2,Trash2,Volume2,VolumeX } from 'lucide-react-native';
-import { useCallback,useEffect,useRef,useState } from 'react';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
 Dimensions,
 Keyboard,
 KeyboardAvoidingView,
-PanResponder,
 Platform,
 Pressable,
 Animated as RNAnimated,
@@ -34,8 +34,10 @@ StyleSheet,
 Text,
 TextInput,
 View,
+type LayoutChangeEvent,
 } from 'react-native';
-import { Extrapolation,interpolate,useAnimatedStyle,useSharedValue,withSequence,withSpring,withTiming } from 'react-native-reanimated';
+import { Gesture,GestureDetector } from 'react-native-gesture-handler';
+import { Easing,Extrapolation,interpolate,runOnJS,useAnimatedStyle,useSharedValue,withSequence,withSpring,withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -307,82 +309,21 @@ export default function PostDetailScreen() {
   const [restartSignal, setRestartSignal] = useState(0);
   const focusPlaybackRef = useRef({ mediaUrl: '', focused: false });
 
-  // ── Short-Video-Style: Finger-folgendes Profil-Panel (identisch zu Vibes-Feed) ──
-  const SCREEN_W = Dimensions.get('window').width;
-  const profileSlideX = useRef(new RNAnimated.Value(SCREEN_W)).current;
-  const [profilePanel, setProfilePanel] = useState<{ authorId: string } | null>(null);
-  const profilePanelRef = useRef<{ authorId: string } | null>(null);
-
   // Foldables: reale Screen-Größe messen (Container-onLayout) statt Modul-Dimensions.
+  const SCREEN_W = Dimensions.get('window').width;
   const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
   const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
   const pH = pageSize?.h ?? H;
-  const pw = () => pageSizeRef.current?.w ?? SCREEN_W;
 
-  const snapPanelIn = () =>
-    RNAnimated.spring(profileSlideX, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 20 }).start();
-  const snapPanelOut = () =>
-    RNAnimated.spring(profileSlideX, { toValue: pw(), useNativeDriver: true, bounciness: 0, speed: 25 }).start(
-      () => { setProfilePanel(null); profilePanelRef.current = null; }
-    );
-
-  // postAuthorId: beim Rendern noch nicht bekannt (post lädt async) → ref verwenden
-  const postAuthorIdRef = useRef<string | null>(null);
-
-  const swipeLeftPan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        g.dx < -18 && Math.abs(g.dx) > Math.abs(g.dy) * 2.0,
-
-      onPanResponderGrant: () => {
-        const authorId = postAuthorIdRef.current;
-        if (!authorId) return;
-        const panel = { authorId };
-        profilePanelRef.current = panel;
-        setProfilePanel(panel);
-        profileSlideX.setValue(pw());
-      },
-
-      onPanResponderMove: (_, g) => {
-        if (!profilePanelRef.current) return;
-        profileSlideX.setValue(Math.max(0, pw() + g.dx));
-      },
-
-      onPanResponderRelease: (_, g) => {
-        if (!profilePanelRef.current) return;
-        if (g.dx < -(pw() * 0.35) || g.vx < -0.5) {
-          impactAsync(ImpactFeedbackStyle.Medium);
-          snapPanelIn();
-        } else {
-          snapPanelOut();
-        }
-      },
-
-      onPanResponderTerminate: () => snapPanelOut(),
-    })
-  ).current;
-
-  const backPan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        g.dx > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
-
-      onPanResponderMove: (_, g) => {
-        profileSlideX.setValue(Math.min(pw(), Math.max(0, g.dx)));
-      },
-
-      onPanResponderRelease: (_, g) => {
-        if (g.dx > pw() * 0.35 || g.vx > 0.5) {
-          impactAsync(ImpactFeedbackStyle.Light);
-          snapPanelOut();
-        } else {
-          snapPanelIn();
-        }
-      },
-
-      onPanResponderTerminate: () => snapPanelIn(),
-    })
-  ).current;
+  // ── Profil des Autors per Wisch nach links (folgt dem Finger, UI-Thread) ──
+  // Nicht über Fortschrittsbalken und Kommentarleiste (dort wird gescrubbt/getippt),
+  // nicht bei offenen Kommentaren.
+  const profileSwipe = useProfileSwipePanel({
+    width: pageSize?.w ?? SCREEN_W,
+    authorId: post?.author_id ?? null,
+    enabled: !commentsOpen,
+    bottomBound: pH - insets.bottom - 110,
+  });
 
   // Tap-to-like + Multiple Floating Hearts
   const postIdParam = Array.isArray(id) ? id[0] : (id ?? '');
@@ -482,30 +423,72 @@ export default function PostDetailScreen() {
   const prevPostId = currentIndex > 0 ? feedNavPostIds[currentIndex - 1] : null;
   const nextPostId = currentIndex < feedNavPostIds.length - 1 ? feedNavPostIds[currentIndex + 1] : null;
 
-  const [swipeDir, setSwipeDir] = useState<'up' | 'down' | null>(null);
+  // Beitrag gleitet mit dem Finger, der Nachbar (Vorschaubild) kommt mit herein.
+  // Am Ende ersetzt der neue Bildschirm ohne eigene Animation genau dieses Bild.
+  // Vorher PanResponder: Nichts bewegte sich, erst nach dem Loslassen schob sich
+  // ein ganz neuer Bildschirm herein und lud von vorn.
+  const peeks = usePostPeeks([prevPostId, nextPostId]);
+  const dragY = useSharedValue(0);
+  // Letzte gemessene Verschiebung: Manche Eingaben (z. B. der Simulator) melden am
+  // Ende 0, obwohl der Finger weit gewandert ist. Entschieden wird mit diesem Wert.
+  const lastDragY = useSharedValue(0);
+  const pageHeightSV = useSharedValue(pH);
+  const hasNextSV = useSharedValue(nextPostId ? 1 : 0);
+  const hasPrevSV = useSharedValue(prevPostId ? 1 : 0);
+  useEffect(() => { pageHeightSV.value = pH; }, [pH, pageHeightSV]);
+  useEffect(() => {
+    hasNextSV.value = nextPostId ? 1 : 0;
+    hasPrevSV.value = prevPostId ? 1 : 0;
+  }, [nextPostId, prevPostId, hasNextSV, hasPrevSV]);
+  // Bilder der Nachbarn vorab laden, damit sie beim Wischen schon da sind:
+  // Vorschaubild und bei Fotos das Original, das der neue Bildschirm zeigt
+  useEffect(() => {
+    const urls = [prevPostId, nextPostId]
+      .flatMap((pid) => (pid ? [peekImageUri(peeks[pid]), peekFullUri(peeks[pid])] : []))
+      .filter((u): u is string => !!u);
+    if (urls.length > 0) Image.prefetch?.(urls).catch(() => { /* ignorieren */ });
+  }, [peeks, prevPostId, nextPostId]);
 
-  const swipePanResponder = useRef(
-    PanResponder.create({
-      // Vertikale Swipes: erst ab 12px Bewegung übernehmen (verhindert Konflikt mit Tap)
-      onMoveShouldSetPanResponder: (_evt, gs) =>
-        Math.abs(gs.dy) > 12 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.8,
-      onPanResponderMove: (_evt, gs) => {
-        if (gs.dy < -20 && nextPostId) setSwipeDir('up');
-        else if (gs.dy > 20 && prevPostId) setSwipeDir('down');
-        else setSwipeDir(null);
-      },
-      onPanResponderRelease: (_evt, gs) => {
-        setSwipeDir(null);
-        const THRESHOLD = 70;
-        if (gs.dy < -THRESHOLD && nextPostId) {
-          router.replace({ pathname: '/post/[id]', params: { id: nextPostId, swipe: 'next' } });
-        } else if (gs.dy > THRESHOLD && prevPostId) {
-          router.replace({ pathname: '/post/[id]', params: { id: prevPostId, swipe: 'prev' } });
-        }
-      },
-      onPanResponderTerminate: () => setSwipeDir(null),
+  const goToNeighbour = useCallback((dir: 'next' | 'prev') => {
+    const targetId = dir === 'next' ? nextPostId : prevPostId;
+    if (!targetId) return;
+    impactAsync(ImpactFeedbackStyle.Light);
+    const pk: PostPeek | undefined = peeks[targetId];
+    // Nur gesetzte Felder übergeben: ein leerer previewType würde ein Video als Bild zeigen
+    const params: { id: string; swipe: string } & Record<string, string> = { id: targetId, swipe: dir };
+    if (pk?.media_url) params.previewUrl = pk.media_url;
+    if (pk?.media_type) params.previewType = pk.media_type;
+    if (pk?.thumbnail_url) params.previewThumb = pk.thumbnail_url;
+    if (pk?.caption) params.previewCaption = pk.caption;
+    router.replace({ pathname: '/post/[id]', params });
+  }, [nextPostId, prevPostId, peeks, router]);
+
+  const navGesture = useMemo(() => Gesture.Pan()
+    .enabled(!commentsOpen && !profileSwipe.panel && (!!nextPostId || !!prevPostId))
+    .activeOffsetY([-12, 12])
+    .failOffsetX([-14, 14])
+    .onUpdate((e) => {
+      const ty = e.translationY;
+      lastDragY.value = ty;
+      // Ohne Nachbarn in der Richtung: nur ein Gummiband
+      const blocked = (ty < 0 && hasNextSV.value === 0) || (ty > 0 && hasPrevSV.value === 0);
+      dragY.value = blocked ? ty * 0.25 : ty;
     })
-  ).current;
+    .onEnd((e) => {
+      const ty = e.translationY !== 0 ? e.translationY : lastDragY.value;
+      lastDragY.value = 0;
+      const target = postSwipeTarget(ty, e.velocityY, pageHeightSV.value, hasNextSV.value === 1, hasPrevSV.value === 1);
+      if (target) {
+        dragY.value = withTiming(
+          target === 'next' ? -pageHeightSV.value : pageHeightSV.value,
+          { duration: 220, easing: Easing.out(Easing.cubic) },
+          (done) => { if (done) runOnJS(goToNeighbour)(target); },
+        );
+      } else {
+        dragY.value = withSpring(0, { damping: 30, stiffness: 320, mass: 1, overshootClamping: true });
+      }
+    }), [commentsOpen, profileSwipe.panel, nextPostId, prevPostId, dragY, lastDragY, pageHeightSV, hasNextSV, hasPrevSV, goToNeighbour]);
+  const dragStyle = useAnimatedStyle(() => ({ transform: [{ translateY: dragY.value }] }));
 
   // Sofort-Preview aus Params — zeigt Media ohne auf DB zu warten
   const hasPreview = !!previewUrl;
@@ -547,8 +530,6 @@ export default function PostDetailScreen() {
           thumbnail_url: (postData as any).thumbnail_url ?? null,
           profiles: profileData,
         } as PostDetail);
-        // Ref setzen für PanResponder (stale-closure-sicher)
-        postAuthorIdRef.current = postData.author_id ?? null;
         loadedIdRef.current = id;
         setLoading(false);
 
@@ -673,17 +654,26 @@ export default function PostDetailScreen() {
     : '';
 
   return (
+    <GestureDetector gesture={profileSwipe.openGesture}>
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#000' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
-      {...swipeLeftPan.panHandlers}
     >
-      {/* swipePanResponder auf den inneren View — übernimmt nur vertikale Gesten */}
-      <View
-        style={styles.container}
-        {...swipePanResponder.panHandlers}
-        onLayout={(e) => {
+      {/* Nachbarbeiträge hinter dem Beitrag: werden beim Wischen sichtbar */}
+      <Animated.View style={[StyleSheet.absoluteFill, dragStyle]} pointerEvents="none">
+        {nextPostId && (peekImageUri(peeks[nextPostId]) || peekFullUri(peeks[nextPostId])) && (
+          <NeighbourPeek peek={peeks[nextPostId]} height={pH} top={pH} />
+        )}
+        {prevPostId && (peekImageUri(peeks[prevPostId]) || peekFullUri(peeks[prevPostId])) && (
+          <NeighbourPeek peek={peeks[prevPostId]} height={pH} top={-pH} />
+        )}
+      </Animated.View>
+      {/* Senkrechtes Wischen (nächster/voriger Beitrag) auf dem Beitrag selbst */}
+      <GestureDetector gesture={navGesture}>
+      <Animated.View
+        style={[styles.container, dragStyle]}
+        onLayout={(e: LayoutChangeEvent) => {
           const h = Math.round(e.nativeEvent.layout.height);
           const w = Math.round(e.nativeEvent.layout.width);
           if (h > 0 && w > 0 && (pageSizeRef.current?.h !== h || pageSizeRef.current?.w !== w)) {
@@ -778,20 +768,6 @@ export default function PostDetailScreen() {
         {isVideo && isPaused && showMuteFlash === null && (
           <View style={tapFeedbackStyles.muteFlash} pointerEvents="none">
             <Play size={60} color="rgba(255,255,255,0.85)" fill="rgba(255,255,255,0.85)" strokeWidth={1.4} />
-          </View>
-        )}
-
-        {/* 7. SWIPE-INDIKATOREN — erscheinen beim Swipen, zeigen nächsten/vorherigen Post */}
-        {swipeDir === 'up' && nextPostId && (
-          <View style={tapFeedbackStyles.swipeIndicatorTop} pointerEvents="none">
-            <Text style={tapFeedbackStyles.swipeArrow}>↑</Text>
-            <Text style={tapFeedbackStyles.swipeLabel}>Nächster Post</Text>
-          </View>
-        )}
-        {swipeDir === 'down' && prevPostId && (
-          <View style={tapFeedbackStyles.swipeIndicatorBottom} pointerEvents="none">
-            <Text style={tapFeedbackStyles.swipeLabel}>Vorheriger Post</Text>
-            <Text style={tapFeedbackStyles.swipeArrow}>↓</Text>
           </View>
         )}
 
@@ -956,7 +932,8 @@ export default function PostDetailScreen() {
             />
           </Animated.View>
         )}
-      </View>
+      </Animated.View>
+      </GestureDetector>
 
       {/* Short-Video-Style Kommentar-Eingabeleiste */}
       {post && (
@@ -968,24 +945,36 @@ export default function PostDetailScreen() {
         />
       )}
 
-      {/* Short-Video-Style Profil-Panel — erscheint beim Linksswipe über den Post */}
-      {profilePanel && (
-        <RNAnimated.View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { zIndex: 400, transform: [{ translateX: profileSlideX }] },
-          ]}
-          {...backPan.panHandlers}
-        >
-          {/* Schatten-Linie links */}
-          <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, zIndex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} />
-          <UserProfileContent
-            userId={profilePanel.authorId}
-            onBack={snapPanelOut}
-          />
-        </RNAnimated.View>
-      )}
+      {/* Profil des Autors — gleitet beim Wisch nach links herein */}
+      <ProfileSwipePanel control={profileSwipe} />
     </KeyboardAvoidingView>
+    </GestureDetector>
+  );
+}
+
+/** Vorschaubild eines Nachbarbeitrags, das beim Wischen mit hereingleitet. Sieht
+ * aus wie der erste Moment des neuen Bildschirms (Video: Standbild füllend,
+ * Foto: ganz sichtbar), damit der Wechsel am Ende nicht springt. */
+
+function NeighbourPeek({ peek, height, top }: { peek: PostPeek | undefined; height: number; top: number }) {
+  const thumb = peekImageUri(peek);
+  const full = peekFullUri(peek);
+  if (!thumb && !full) return null;
+  return (
+    <View style={{ position: 'absolute', left: 0, right: 0, top, height, backgroundColor: '#000' }}>
+      {/* Wie der Beitrag selbst: Fotos über einem leicht verschwommenen Hintergrund */}
+      {full && thumb && (
+        <Image source={{ uri: thumb }} style={[StyleSheet.absoluteFill, { opacity: 0.12 }]} contentFit="cover" blurRadius={20} />
+      )}
+      <Image
+        source={{ uri: (full ?? thumb)! }}
+        placeholder={full && thumb ? { uri: thumb } : undefined}
+        placeholderContentFit="contain"
+        style={StyleSheet.absoluteFill}
+        contentFit={peek?.media_type === 'video' ? 'cover' : 'contain'}
+        cachePolicy="memory-disk"
+      />
+    </View>
   );
 }
 
@@ -1202,7 +1191,7 @@ const cb = StyleSheet.create({
   },
 });
 
-// Flash-Feedback beim Mute/Unmute-Tap + Swipe-Indikatoren
+// Flash-Feedback beim Pause/Play-Tap
 const tapFeedbackStyles = StyleSheet.create({
   muteFlash: {
     position: 'absolute',
@@ -1215,34 +1204,5 @@ const tapFeedbackStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 50,
-  },
-  swipeIndicatorTop: {
-    position: 'absolute',
-    top: 80,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    gap: 4,
-    zIndex: 50,
-  },
-  swipeIndicatorBottom: {
-    position: 'absolute',
-    bottom: 140,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    gap: 4,
-    zIndex: 50,
-  },
-  swipeArrow: {
-    fontSize: 28,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  swipeLabel: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '600',
-    letterSpacing: 0.3,
   },
 });
