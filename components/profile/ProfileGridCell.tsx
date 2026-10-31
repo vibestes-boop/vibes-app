@@ -1,6 +1,6 @@
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
+import { useGridImage } from '@/lib/useGridImage';
 import { Image } from 'expo-image';
-import { useState } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
 import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
 import { profileStyles as s } from './profileStyles';
@@ -43,12 +43,13 @@ export function ProfileGridCell({
 }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const [imageError, setImageError] = useState(false);
+  const isVideo = post.media_type === 'video';
+  // Fotos: erst das Vorschaubild (720 px), nicht das Original (bis über 20 MB)
+  const photo = useGridImage(post);
 
-  const showFallback = !post.media_url || imageError;
+  const showFallback = !post.media_url || (!isVideo && !photo.uri);
   const viewCount = post.view_count ?? 0;
 
-  const isVideo = post.media_type === 'video';
   const captionSnippet = post.caption?.slice(0, 60) ?? '';
 
   return (
@@ -81,13 +82,13 @@ export function ProfileGridCell({
         )}
         {!showFallback && post.media_type !== 'video' && (
           <Image
-            source={{ uri: post.media_url! }}
+            source={{ uri: photo.uri! }}
             style={s.cellImg}
             contentFit="cover"
             cachePolicy="memory-disk"
             transition={200}
             placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
-            onError={() => setImageError(true)}
+            onError={photo.onError}
           />
         )}
         {showFallback && (

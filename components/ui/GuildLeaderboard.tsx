@@ -15,6 +15,7 @@ Text,
 View,
 } from 'react-native';
 import { FadeInDown } from 'react-native-reanimated';
+import { GridPhoto } from './GridPhoto';
 import { VideoGridThumb } from './VideoGridThumb';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
@@ -89,11 +90,7 @@ function TopPostCard({
               style={{ width: 72, height: 96, borderRadius: 12 }}
             />
           ) : (
-            <Image
-              source={{ uri: post.media_url }}
-              style={{ width: 72, height: 96, borderRadius: 12 }}
-              contentFit="cover"
-            />
+            <GridPhoto media={post} style={{ width: 72, height: 96, borderRadius: 12 }} />
           )}
         </View>
 

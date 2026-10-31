@@ -765,8 +765,12 @@ export const FeedItem = React.memo(function FeedItem({
         <>
           {/* Kein Blur-Fill mehr — Ränder bleiben schwarz (feedItem-Hintergrund).
               Foto vollständig (contain), kein seitliches Abschneiden/Zoom. */}
+          {/* Das kleine Vorschaubild (meist schon vorausgeladen) steht sofort,
+              bis das große Original (teils über 20 MB) da ist */}
           <Image
             source={{ uri: item.mediaUrl }}
+            placeholder={item.thumbnailUrl ? { uri: item.thumbnailUrl } : undefined}
+            placeholderContentFit="contain"
             style={StyleSheet.absoluteFill}
             contentFit="contain"
             cachePolicy="memory-disk"

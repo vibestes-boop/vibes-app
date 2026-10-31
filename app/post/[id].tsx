@@ -653,6 +653,7 @@ export default function PostDetailScreen() {
 
   // Daten: entweder aus DB (post) oder aus Preview-Params
   const displayMediaUrl = post?.media_url ?? previewUrl ?? null;
+  const displayThumbUrl = (post?.thumbnail_url ?? previewThumb) || null;
   const displayMediaType = post?.media_type ?? previewType ?? 'image';
   const displayCaption = post?.caption ?? previewCaption ?? null;
   const displayAuthorId = post?.author_id ?? null;
@@ -717,14 +718,18 @@ export default function PostDetailScreen() {
             )
           ) : (
             <>
+              {/* Der verschwommene Hintergrund braucht kein Original: das kleine
+                  Vorschaubild reicht und spart das zweite Dekodieren des großen Bildes */}
               <Image
-                source={{ uri: displayMediaUrl }}
+                source={{ uri: displayThumbUrl ?? displayMediaUrl }}
                 style={[StyleSheet.absoluteFill, { opacity: 0.12 }]}
                 contentFit="cover"
                 blurRadius={20}
               />
               <Image
                 source={{ uri: displayMediaUrl }}
+                placeholder={displayThumbUrl ? { uri: displayThumbUrl } : undefined}
+                placeholderContentFit="contain"
                 style={StyleSheet.absoluteFill}
                 contentFit="contain"
               />

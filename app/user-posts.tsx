@@ -388,7 +388,8 @@ function PostCard({
             />
           )
         ) : (
-          <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" />
+          // Vorschaubild sofort, bis das große Original da ist (wie im Feed)
+          <Image source={{ uri: item.media_url }} placeholder={item.thumbnail_url ? { uri: item.thumbnail_url } : undefined} placeholderContentFit="contain" style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" />
         )
       ) : (
         <LinearGradient colors={['#0A0A0A', '#1a0533', '#0d1f4a']} style={StyleSheet.absoluteFill} />

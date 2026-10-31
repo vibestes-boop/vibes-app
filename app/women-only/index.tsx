@@ -10,6 +10,7 @@
  * monochrome Lucide-Icons — keine Gradients, keine Emoji-Icons.
  */
 
+import { GridPhoto } from '@/components/ui/GridPhoto';
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
@@ -52,6 +53,7 @@ const CARD_W = (SCREEN_W - 48) / 2;
 type WOZPost = {
   id: string;
   media_url: string | null;
+  thumbnail_url: string | null;
   media_type: string;
   caption: string | null;
   author_id: string;
@@ -65,7 +67,7 @@ function useWOZFeed() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('posts')
-        .select('id, media_url, media_type, caption, author_id, created_at, profiles(username, avatar_url)')
+        .select('id, media_url, thumbnail_url, media_type, caption, author_id, created_at, profiles(username, avatar_url)')
         .eq('women_only', true)
         .not('media_url', 'is', null)
         .order('created_at', { ascending: false })
@@ -146,12 +148,9 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
       accessibilityRole="button"
       accessibilityLabel={item.caption ?? 'Women-Only Post'}
     >
+      {/* Vorschaubild statt Original; bei Videos nie die MP4 als Bild laden */}
       {item.media_url && (
-        <Image
-          source={{ uri: item.media_url }}
-          style={styles.cardImage}
-          contentFit="cover"
-        />
+        <GridPhoto media={item} isVideo={item.media_type === 'video'} style={styles.cardImage} />
       )}
       {/* Lesbarkeits-Scrim unten (Medien-Fläche = fest hell-auf-dunkel) */}
       <LinearGradient

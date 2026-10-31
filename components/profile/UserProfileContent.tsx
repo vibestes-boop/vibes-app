@@ -15,6 +15,7 @@ import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
 import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
+import { GridPhoto } from '@/components/ui/GridPhoto';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/lib/authStore';
@@ -31,7 +32,6 @@ import { formatEur,useOrderRating,useShopProducts,type Product } from '@/lib/use
 import { useTheme } from '@/lib/useTheme';
 import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -1039,7 +1039,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                   style={StyleSheet.absoluteFill}
                 />
               ) : (
-                <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+                <GridPhoto media={item} style={StyleSheet.absoluteFill} cachePolicy="memory-disk" />
               )
             ) : (
               <LinearGradient colors={['#1a0533', '#0d1040']} style={[StyleSheet.absoluteFill, s.textThumb]}>
