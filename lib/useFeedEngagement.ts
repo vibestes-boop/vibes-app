@@ -89,7 +89,8 @@ export function useFeedEngagement(
 
   return useQuery({
     queryKey: ['feed-engagement', userId, sortedIds, sortedAuthors],
-    placeholderData: emptyFeedEngagementMaps(),
+    // Beim Nachladen die bisherigen Zahlen behalten statt kurz auf „0 Likes" zu fallen.
+    placeholderData: (prev) => prev ?? emptyFeedEngagementMaps(),
     queryFn: async (): Promise<FeedEngagementMaps> => {
       if (!userId || postIds.length === 0) return emptyFeedEngagementMaps();
 

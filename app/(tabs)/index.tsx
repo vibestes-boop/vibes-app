@@ -45,7 +45,7 @@ import { useFeedProducts } from '@/lib/useFeedProducts';
 import type { LiveSession } from '@/lib/useLiveSession';
 import { useActiveLiveSessions } from '@/lib/useLiveSession';
 import { getTitleFromUrl } from '@/lib/useMusicPicker';
-import { useFollowingFeed,useHasUserPosted,useTrendingFeed,useVibeFeed } from '@/lib/usePosts';
+import { trimInfiniteToFirstPage,useFollowingFeed,useFreshVibeFeedAfterColdStart,useHasUserPosted,useTrendingFeed,useVibeFeed } from '@/lib/usePosts';
 import { useGuildStories,type StoryGroup } from '@/lib/useStories';
 import { useTabRefreshStore,vibesFeedActions } from '@/lib/useTabRefresh';
 import { useVideoMute } from '@/lib/useVideoPreferences';
@@ -53,6 +53,7 @@ import { useTabBarScroll } from '@/lib/tabBarMotion';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useFocusEffect,useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle,PlusCircle,SearchX,TrendingUp,X,Zap } from 'lucide-react-native';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -215,6 +216,14 @@ export default function VibeFeedScreen() {
     hasNextPage: hasNextForyou,
     isFetchingNextPage: fetchingNextForyou,
   } = useVibeFeed(activeTag);
+  // Kaltstart: gespeicherter Feed sofort, frische Beiträge hinter das laufende Video
+  const feedModeRef = useRef(feedMode);
+  feedModeRef.current = feedMode;
+  useFreshVibeFeedAfterColdStart(activeTag, pagedPosts, () => {
+    if (feedModeRef.current !== 'foryou') return false;
+    const active = visibleItemIdRef.current;
+    return !active || active === feedDataRef.current[0]?.id;
+  });
   // Trending-Feed: Fallback für neue User ohne Follows / Dwell-History
   const { data: trendingPosts } = useTrendingFeed({
     enabled: feedMode === 'foryou' && secondaryQueriesEnabled,
@@ -236,7 +245,14 @@ export default function VibeFeedScreen() {
   // Aktiver Feed basierend auf Modus
   const isLoading         = feedMode === 'foryou' ? foryouLoading    : followingLoading;
   const isError           = feedMode === 'foryou' ? foryouError      : followingError;
-  const refetch           = feedMode === 'foryou' ? refetchForyou    : refetchFollowing;
+  const refetchAllPages   = feedMode === 'foryou' ? refetchForyou    : refetchFollowing;
+  // Neu laden heißt hier immer „von oben": nur die erste Seite holen, nicht alle
+  // geladenen Seiten nacheinander
+  const queryClient = useQueryClient();
+  const refetch = useCallback(() => {
+    trimInfiniteToFirstPage(queryClient, [feedModeRef.current === 'foryou' ? 'vibe-feed' : 'following-feed']);
+    return refetchAllPages();
+  }, [queryClient, refetchAllPages]);
   const fetchNextPage     = feedMode === 'foryou' ? fetchNextForyou  : fetchNextFollowing;
   const hasNextPage       = feedMode === 'foryou' ? hasNextForyou    : hasNextFollowing;
   const isFetchingNextPage = feedMode === 'foryou' ? fetchingNextForyou : fetchingNextFollowing;
@@ -427,9 +443,12 @@ export default function VibeFeedScreen() {
   // Expo-Image batcht das intern — keine Race Conditions, keine doppelten Requests
   useEffect(() => {
     if (feedData.length === 0) return;
+    // Nur Vorschaubilder und Avatare: Foto-Originale (teils über 20 MB) hätten beim
+    // Start mit dem ersten Video um die Leitung konkurriert. Das Original des
+    // jeweils nächsten Fotos lädt der rollende Prefetch unten.
     const urls = feedData
       .slice(0, 5)
-      .flatMap((p) => [p.thumbnailUrl, p.mediaType === 'image' ? p.mediaUrl : null, p.avatarUrl])
+      .flatMap((p) => [p.thumbnailUrl, p.avatarUrl])
       .filter((u): u is string => !!u);
     if (urls.length > 0) {
       Image.prefetch?.(urls).catch(() => { /* ignorieren */ });
@@ -484,9 +503,11 @@ export default function VibeFeedScreen() {
     if (!activePlaybackItemId || feedData.length === 0) return;
     const idx = feedData.findIndex((p) => p.id === activePlaybackItemId);
     if (idx < 0) return;
+    // Original nur für den direkt nächsten Beitrag; für die übrigen reicht das
+    // Vorschaubild (steht im Feed als Platzhalter, bis das Original da ist)
     const urls = feedData
       .slice(idx + 1, idx + 4)
-      .flatMap((p) => [p.thumbnailUrl, p.mediaType === 'image' ? p.mediaUrl : null, p.avatarUrl])
+      .flatMap((p, i) => [p.thumbnailUrl, i === 0 && p.mediaType === 'image' ? p.mediaUrl : null, p.avatarUrl])
       .filter((u): u is string => !!u);
     if (urls.length > 0) Image.prefetch?.(urls).catch(() => { /* ignorieren */ });
   }, [activePlaybackItemId, feedData]);

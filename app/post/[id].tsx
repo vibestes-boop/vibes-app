@@ -281,6 +281,9 @@ export default function PostDetailScreen() {
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  // Schon geladen? Dann beim Zurückkommen (z. B. vom Profil) still im Hintergrund
+  // auffrischen statt mit Ladekreis neu aufzubauen; das Video lief sonst von vorn.
+  const loadedIdRef = useRef<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   // Nur fürs Profil-Aufrufen geschlossen → beim Zurückkommen wieder öffnen.
@@ -512,8 +515,9 @@ export default function PostDetailScreen() {
       setScreenFocused(true);
       if (!id) return;
 
+      const firstLoad = loadedIdRef.current !== id;
       (async () => {
-        setLoading(true);
+        if (firstLoad) setLoading(true);
 
         // PERF-FIX: Post + Profil in einem einzigen JOIN statt 2 sequentiellen Queries.
         // Vorher: 150ms (post) + 150ms (profile) = 300ms gesamt.
@@ -545,10 +549,12 @@ export default function PostDetailScreen() {
         } as PostDetail);
         // Ref setzen für PanResponder (stale-closure-sicher)
         postAuthorIdRef.current = postData.author_id ?? null;
+        loadedIdRef.current = id;
         setLoading(false);
 
-        // Kommentar-Notification: CommentsSheet direkt öffnen
-        if (openComments === '1') {
+        // Kommentar-Notification: CommentsSheet direkt öffnen (nur beim ersten
+        // Laden, nicht bei jedem Zurückkommen)
+        if (firstLoad && openComments === '1') {
           setTimeout(() => setCommentsOpen(true), 300);
         }
       })();
@@ -653,6 +659,7 @@ export default function PostDetailScreen() {
 
   // Daten: entweder aus DB (post) oder aus Preview-Params
   const displayMediaUrl = post?.media_url ?? previewUrl ?? null;
+  const displayThumbUrl = (post?.thumbnail_url ?? previewThumb) || null;
   const displayMediaType = post?.media_type ?? previewType ?? 'image';
   const displayCaption = post?.caption ?? previewCaption ?? null;
   const displayAuthorId = post?.author_id ?? null;
@@ -717,14 +724,18 @@ export default function PostDetailScreen() {
             )
           ) : (
             <>
+              {/* Der verschwommene Hintergrund braucht kein Original: das kleine
+                  Vorschaubild reicht und spart das zweite Dekodieren des großen Bildes */}
               <Image
-                source={{ uri: displayMediaUrl }}
+                source={{ uri: displayThumbUrl ?? displayMediaUrl }}
                 style={[StyleSheet.absoluteFill, { opacity: 0.12 }]}
                 contentFit="cover"
                 blurRadius={20}
               />
               <Image
                 source={{ uri: displayMediaUrl }}
+                placeholder={displayThumbUrl ? { uri: displayThumbUrl } : undefined}
+                placeholderContentFit="contain"
                 style={StyleSheet.absoluteFill}
                 contentFit="contain"
               />

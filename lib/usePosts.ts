@@ -1,4 +1,5 @@
-import { useInfiniteQuery,useQuery } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
+import { useInfiniteQuery,useQuery,useQueryClient,type InfiniteData,type QueryClient,type QueryKey } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
 import { useVibeStore } from './store';
 import { supabase } from './supabase';
@@ -40,12 +41,21 @@ const FEED_PAGE_SIZE = 12;
 // Mindestanzahl frischer Posts bevor seen-Content recycelt wird
 const SEEN_FALLBACK_THRESHOLD = 5;
 
+const VIBE_FEED_STALE_MS = 1000 * 60;
+
+/** Abfrage-Schlüssel des Vibe-Feeds */
+export function vibeFeedKey(committedExplore: number, committedBrain: number, activeTag: string | null) {
+  return ['vibe-feed', committedExplore, committedBrain, activeTag] as const;
+}
+
+type VibeFeedData = InfiniteData<PostWithAuthor[], string[]>;
+
 export function useVibeFeed(activeTag: string | null = null) {
   const committedExplore = useVibeStore((s) => s.committedExplore);
   const committedBrain   = useVibeStore((s) => s.committedBrain);
 
-  return useInfiniteQuery<PostWithAuthor[]>({
-    queryKey: ['vibe-feed', committedExplore, committedBrain, activeTag],
+  return useInfiniteQuery<PostWithAuthor[], Error, VibeFeedData, ReturnType<typeof vibeFeedKey>, string[]>({
+    queryKey: vibeFeedKey(committedExplore, committedBrain, activeTag),
 
     // ── ID-Exclusion cursor (statt OFFSET) ──────────────────────────────────
     // Erste Seite: leeres Array → kein Filter
@@ -57,112 +67,172 @@ export function useVibeFeed(activeTag: string | null = null) {
       return allPages.flat().map((p) => p.id);
     },
 
-    queryFn: async ({ pageParam }) => {
-      const excludeIds = pageParam as string[];
-      const isInitialUntunedPage = excludeIds.length === 0 && !activeTag;
-
-      // Geblockte Autoren beidseitig ausblenden (der Server verhindert Kontakt;
-      // das Ausblenden im Feed passiert hier, ohne den v5-Algorithmus anzufassen).
-      const blockedIds = await getBlockedIdSet();
-      const stripBlocked = (posts: PostWithAuthor[]) =>
-        blockedIds.size === 0 ? posts : posts.filter((p) => !blockedIds.has(p.author_id));
-
-      if (isInitialUntunedPage) {
-        // include_seen: false — seit Algorithmus v5 ist „seen" ein weicher
-        // Score-Penalty (×0.15) statt hartem Filter → die erste Seite kann nie
-        // leer sein UND Gesehenes rutscht nach hinten (Cross-Session-Novelty).
-        // Vorher true, was den Penalty auf Seite 1 deaktiviert hätte.
-        const { data: fastData, error: fastError } = await supabase.rpc('get_vibe_feed', {
-          explore_weight: committedExplore,
-          brain_weight:   committedBrain,
-          result_limit:   FEED_PAGE_SIZE,
-          filter_tag:     null,
-          include_seen:   false,
-          exclude_ids:    null,
-        });
-
-        if (!fastError && Array.isArray(fastData) && fastData.length > 0) {
-          return stripBlocked(fastData as PostWithAuthor[]);
-        }
-      }
-
-      // ─── Schritt 1: Nur ungesehene Posts ──────────────────────────────────
-      const { data: freshData, error: rpcError } = await supabase.rpc('get_vibe_feed', {
-        explore_weight: committedExplore,
-        brain_weight:   committedBrain,
-        result_limit:   FEED_PAGE_SIZE,
-        filter_tag:     activeTag ?? null,
-        include_seen:   false,
-        // Leeres Array als null senden — verhindert PostgREST UUID[] Typ-Auflösungs-Fehler (404)
-        exclude_ids:    excludeIds.length > 0 ? excludeIds : null,
-      });
-
-      const freshPosts = Array.isArray(freshData) ? freshData as PostWithAuthor[] : [];
-
-      // Genug frischer Content → direkt zurückgeben
-      if (!rpcError && freshPosts.length >= SEEN_FALLBACK_THRESHOLD) {
-        return stripBlocked(freshPosts);
-      }
-
-      // ─── Schritt 2: Automatischer Fallback → gesehene Posts recyceln ────
-      if (!rpcError || freshPosts.length === 0) {
-        const { data: seenData, error: seenError } = await supabase.rpc('get_vibe_feed', {
-          explore_weight: committedExplore,
-          brain_weight:   committedBrain,
-          result_limit:   FEED_PAGE_SIZE,
-          filter_tag:     activeTag ?? null,
-          include_seen:   true,
-          // Leeres Array als null senden — verhindert PostgREST UUID[] Typ-Fehler
-          exclude_ids:    excludeIds.length > 0 ? excludeIds : null,
-        });
-
-        if (!seenError && Array.isArray(seenData) && seenData.length > 0) {
-          return stripBlocked(seenData as PostWithAuthor[]);
-        }
-      }
-
-      // ─── Schritt 3: Direkter DB-Query (Sicherheitsnetz) ──────────────────
-      let query = supabase
-        .from('posts')
-        .select(`
-          id, author_id, caption, media_url, media_type, thumbnail_url,
-          dwell_time_score, score_explore, score_brain, view_count,
-          tags, guild_id, is_guild_post, created_at, women_only,
-          privacy, allow_comments, allow_download, allow_duet, audio_url,
-          profiles!author_id (username, avatar_url, is_verified)
-        `)
-        .is('is_guild_post', false)
-        .eq('privacy', 'public')
-        // ⚠️ Kritisch: nur moderierte, sichtbare Posts zeigen
-        .eq('is_visible', true)
-        .order('created_at', { ascending: false })
-        .limit(FEED_PAGE_SIZE);
-
-      if (activeTag) query = query.contains('tags', [activeTag]);
-      if (excludeIds.length > 0) query = query.not('id', 'in', `(${excludeIds.join(',')})`);
-
-      const { data: fallbackData, error: fallbackError } = await query;
-      if (fallbackError) throw fallbackError;
-
-      return stripBlocked(((fallbackData ?? []) as any[]).map((p) => ({
-        ...p,
-        username:      (p.profiles as any)?.username   ?? null,
-        avatar_url:    (p.profiles as any)?.avatar_url ?? null,
-        thumbnail_url: p.thumbnail_url ?? null,
-        final_score:   p.dwell_time_score ?? 0,
-        privacy:       p.privacy ?? 'public',
-        allow_comments: p.allow_comments ?? true,
-        allow_download: p.allow_download ?? true,
-        allow_duet:     p.allow_duet     ?? true,
-        audio_url:     p.audio_url ?? null,
-        audio_volume:  p.audio_volume ?? 0.8,
-        is_verified:   (p.profiles as any)?.is_verified ?? null,
-        women_only:    p.women_only ?? false,
-      })) as PostWithAuthor[]);
-    },
-    staleTime: 1000 * 60,
+    queryFn: ({ pageParam }) => loadVibeFeedPage(pageParam, activeTag, committedExplore, committedBrain),
+    staleTime: VIBE_FEED_STALE_MS,
+    // Nicht beim Einhängen neu laden: Nach dem Kaltstart steht der gespeicherte
+    // Feed sofort da. Ein Neuladen hätte alle gespeicherten Seiten nacheinander
+    // geholt und den Feed samt laufendem Video ausgetauscht. Frische Beiträge
+    // kommen über useFreshVibeFeedAfterColdStart hinter das laufende Video.
+    refetchOnMount: false,
     retry: 1,
   });
+}
+
+/**
+ * Kaltstart ohne Sprung: Ist der gespeicherte Feed alt, holt das eine frische
+ * Seite und setzt sie HINTER den Beitrag, der gerade läuft. Das laufende Video
+ * bleibt stehen, beim nächsten Wischen kommt Neues. Hat der Nutzer schon
+ * weitergewischt, bleibt alles, wie es ist (Nachladen bringt dann Frisches).
+ */
+export function useFreshVibeFeedAfterColdStart(
+  activeTag: string | null,
+  data: VibeFeedData | undefined,
+  isOnHead: () => boolean,
+) {
+  const queryClient = useQueryClient();
+  const committedExplore = useVibeStore((s) => s.committedExplore);
+  const committedBrain   = useVibeStore((s) => s.committedBrain);
+  const checkedRef = useRef(false);
+  const isOnHeadRef = useRef(isOnHead);
+  isOnHeadRef.current = isOnHead;
+
+  useEffect(() => {
+    if (checkedRef.current || !data) return;
+    checkedRef.current = true;
+    const key = vibeFeedKey(committedExplore, committedBrain, activeTag);
+    const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt ?? 0;
+    if (Date.now() - updatedAt < VIBE_FEED_STALE_MS) return;
+    const head = data.pages[0]?.[0];
+    if (!head) return;
+    loadVibeFeedPage([head.id], activeTag, committedExplore, committedBrain)
+      .then((fresh) => {
+        if (!isOnHeadRef.current()) return;
+        queryClient.setQueryData<VibeFeedData>(key, (old) => {
+          if (!old || old.pages[0]?.[0]?.id !== head.id) return old;
+          return { pages: [[head, ...fresh.filter((p) => p.id !== head.id)]], pageParams: [[]] };
+        });
+      })
+      .catch(() => { /* offline: gespeicherter Feed bleibt */ });
+  }, [data, activeTag, committedExplore, committedBrain, queryClient]);
+}
+
+/** Vor dem Neuladen von oben: nur die erste Seite behalten. Ein refetch()
+ * holt sonst alle geladenen Seiten nacheinander neu (das machte Ziehen-zum-
+ * Aktualisieren langsam). `queryKey` darf ein Präfix sein, z. B. ['vibe-feed']. */
+export function trimInfiniteToFirstPage(queryClient: QueryClient, queryKey: QueryKey) {
+  queryClient.setQueriesData<InfiniteData<unknown, unknown>>({ queryKey }, (old) =>
+    old && old.pages.length > 1
+      ? { pages: old.pages.slice(0, 1), pageParams: old.pageParams.slice(0, 1) }
+      : old,
+  );
+}
+
+async function loadVibeFeedPage(
+  excludeIds: string[],
+  activeTag: string | null,
+  committedExplore: number,
+  committedBrain: number,
+): Promise<PostWithAuthor[]> {
+  const isInitialUntunedPage = excludeIds.length === 0 && !activeTag;
+
+  // Geblockte Autoren beidseitig ausblenden (der Server verhindert Kontakt;
+  // das Ausblenden im Feed passiert hier, ohne den v5-Algorithmus anzufassen).
+  const blockedIds = await getBlockedIdSet();
+  const stripBlocked = (posts: PostWithAuthor[]) =>
+    blockedIds.size === 0 ? posts : posts.filter((p) => !blockedIds.has(p.author_id));
+
+  if (isInitialUntunedPage) {
+    // include_seen: false — seit Algorithmus v5 ist „seen" ein weicher
+    // Score-Penalty (×0.15) statt hartem Filter → die erste Seite kann nie
+    // leer sein UND Gesehenes rutscht nach hinten (Cross-Session-Novelty).
+    // Vorher true, was den Penalty auf Seite 1 deaktiviert hätte.
+    const { data: fastData, error: fastError } = await supabase.rpc('get_vibe_feed', {
+      explore_weight: committedExplore,
+      brain_weight:   committedBrain,
+      result_limit:   FEED_PAGE_SIZE,
+      filter_tag:     null,
+      include_seen:   false,
+      exclude_ids:    null,
+    });
+
+    if (!fastError && Array.isArray(fastData) && fastData.length > 0) {
+      return stripBlocked(fastData as PostWithAuthor[]);
+    }
+  }
+
+  // ─── Schritt 1: Nur ungesehene Posts ──────────────────────────────────
+  const { data: freshData, error: rpcError } = await supabase.rpc('get_vibe_feed', {
+    explore_weight: committedExplore,
+    brain_weight:   committedBrain,
+    result_limit:   FEED_PAGE_SIZE,
+    filter_tag:     activeTag ?? null,
+    include_seen:   false,
+    // Leeres Array als null senden — verhindert PostgREST UUID[] Typ-Auflösungs-Fehler (404)
+    exclude_ids:    excludeIds.length > 0 ? excludeIds : null,
+  });
+
+  const freshPosts = Array.isArray(freshData) ? freshData as PostWithAuthor[] : [];
+
+  // Genug frischer Content → direkt zurückgeben
+  if (!rpcError && freshPosts.length >= SEEN_FALLBACK_THRESHOLD) {
+    return stripBlocked(freshPosts);
+  }
+
+  // ─── Schritt 2: Automatischer Fallback → gesehene Posts recyceln ────
+  if (!rpcError || freshPosts.length === 0) {
+    const { data: seenData, error: seenError } = await supabase.rpc('get_vibe_feed', {
+      explore_weight: committedExplore,
+      brain_weight:   committedBrain,
+      result_limit:   FEED_PAGE_SIZE,
+      filter_tag:     activeTag ?? null,
+      include_seen:   true,
+      // Leeres Array als null senden — verhindert PostgREST UUID[] Typ-Fehler
+      exclude_ids:    excludeIds.length > 0 ? excludeIds : null,
+    });
+
+    if (!seenError && Array.isArray(seenData) && seenData.length > 0) {
+      return stripBlocked(seenData as PostWithAuthor[]);
+    }
+  }
+
+  // ─── Schritt 3: Direkter DB-Query (Sicherheitsnetz) ──────────────────
+  let query = supabase
+    .from('posts')
+    .select(`
+      id, author_id, caption, media_url, media_type, thumbnail_url,
+      dwell_time_score, score_explore, score_brain, view_count,
+      tags, guild_id, is_guild_post, created_at, women_only,
+      privacy, allow_comments, allow_download, allow_duet, audio_url,
+      profiles!author_id (username, avatar_url, is_verified)
+    `)
+    .is('is_guild_post', false)
+    .eq('privacy', 'public')
+    // ⚠️ Kritisch: nur moderierte, sichtbare Posts zeigen
+    .eq('is_visible', true)
+    .order('created_at', { ascending: false })
+    .limit(FEED_PAGE_SIZE);
+
+  if (activeTag) query = query.contains('tags', [activeTag]);
+  if (excludeIds.length > 0) query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+
+  const { data: fallbackData, error: fallbackError } = await query;
+  if (fallbackError) throw fallbackError;
+
+  return stripBlocked(((fallbackData ?? []) as any[]).map((p) => ({
+    ...p,
+    username:      (p.profiles as any)?.username   ?? null,
+    avatar_url:    (p.profiles as any)?.avatar_url ?? null,
+    thumbnail_url: p.thumbnail_url ?? null,
+    final_score:   p.dwell_time_score ?? 0,
+    privacy:       p.privacy ?? 'public',
+    allow_comments: p.allow_comments ?? true,
+    allow_download: p.allow_download ?? true,
+    allow_duet:     p.allow_duet     ?? true,
+    audio_url:     p.audio_url ?? null,
+    audio_volume:  p.audio_volume ?? 0.8,
+    is_verified:   (p.profiles as any)?.is_verified ?? null,
+    women_only:    p.women_only ?? false,
+  })) as PostWithAuthor[]);
 }
 
 // ─── Trending Feed (Top Posts nach Dwell-Score) ───────────────────────────────

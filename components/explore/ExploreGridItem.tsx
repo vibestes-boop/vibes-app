@@ -1,12 +1,12 @@
 import { DISCOVERY_MEDIA_GAP } from '@/lib/exploreLayout';
 import type { ExplorePostThumb } from '@/lib/useExplore';
+import { useGridImage } from '@/lib/useGridImage';
 import { useTheme } from '@/lib/useTheme';
 import { useI18n } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Heart, ImageIcon, Play } from 'lucide-react-native';
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 /** Use an actual video thumbnail; never send an MP4 to an image decoder.
@@ -15,13 +15,12 @@ export function ExploreGridItem({ item, width, onPress }: { item: ExplorePostThu
   const { colors } = useTheme();
   const { t } = useI18n();
   const isVideo = item.media_type === 'video';
-  const uri = isVideo ? item.thumbnail_url : item.media_url;
-  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const { uri, onError } = useGridImage(item, isVideo);
   return <Pressable style={({ pressed }) => [s.card, { width, flex: width ? undefined : 1, backgroundColor: colors.bg.secondary, borderColor: colors.border.default, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     onPress={onPress ?? (() => router.push({ pathname: '/post/[id]', params: { id: item.id, previewUrl: item.media_url ?? '', previewType: item.media_type ?? 'image', previewCaption: item.caption ?? '', previewThumb: item.thumbnail_url ?? '' } }))}
     accessibilityRole="button" accessibilityLabel={item.caption || t('nativeUi.posts')}>
     <View style={[s.image, { backgroundColor: colors.bg.elevated }]}>
-      {uri && uri !== failedUri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={160} onError={() => setFailedUri(uri)} recyclingKey={item.id} /> :
+      {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={160} onError={onError} recyclingKey={item.id} /> :
         <View style={s.placeholder}>{isVideo ? <Play color={colors.icon.muted} size={30} /> : <ImageIcon color={colors.icon.muted} size={30} />}</View>}
       {isVideo && <View style={s.play}><Play size={12} color="#FFFFFF" fill="#FFFFFF" /></View>}
       {(item.like_count ?? 0) > 0 && <View style={s.stat}><Heart size={12} color="#FFFFFF" /><Text style={s.count}>{(item.like_count ?? 0).toLocaleString()}</Text></View>}

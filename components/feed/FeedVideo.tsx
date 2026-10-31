@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { forwardRef,useCallback,useEffect,useImperativeHandle,useMemo,useRef,useState } from 'react';
 import { Animated,Platform,StyleSheet,View } from 'react-native';
 import { useAnimatedStyle,useSharedValue,withRepeat,withSequence,withTiming } from 'react-native-reanimated';
+import { bunnyHlsAllowed,bunnyHlsUrl,recheckBunnyIfDue,reportBunnyHlsError } from '@/lib/bunny';
 import { USE_EXPO_VIDEO,VideoView,useVideoPlayer } from './expoVideo';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -100,11 +101,21 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   alwaysResumeRef.current = alwaysResume;
   // Bunny-HLS bevorzugen, bei Fehler (noch nicht transkodiert / kaputt) auf R2
   // zurückfallen — R2 ist die garantierte Quelle, also kann nichts brechen.
-  const hlsUrl = bunnyVideoId ? `https://vz-6857f4f1-6d5.b-cdn.net/${bunnyVideoId}/playlist.m3u8` : null;
-  const [useHls, setUseHls] = useState(!!hlsUrl);
+  // Ist Bunny gerade gesperrt (lib/bunny.ts), gleich R2 ohne Fehlversuch.
+  const hlsUrl = bunnyHlsUrl(bunnyVideoId);
+  const [useHls, setUseHls] = useState(() => !!hlsUrl && bunnyHlsAllowed());
   const useHlsRef = useRef(useHls);
   useHlsRef.current = useHls;
-  useEffect(() => { setUseHls(!!hlsUrl); }, [hlsUrl, uri]);
+  const bunnyIdRef = useRef(bunnyVideoId);
+  bunnyIdRef.current = bunnyVideoId;
+  // Läuft dieses Video schon, nicht mehr umschalten: Ein Quellenwechsel baut den
+  // Player neu und startet das Video von vorn (kam die guid nach der R2-Datei an).
+  const startedUriRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (bunnyVideoId) recheckBunnyIfDue(bunnyVideoId);
+    if (startedUriRef.current === uri) return;
+    setUseHls(!!hlsUrl && bunnyHlsAllowed());
+  }, [hlsUrl, uri, bunnyVideoId]);
   const shouldPlayRef = useRef(shouldPlay);
   const isMutedRef = useRef(isMuted);
   shouldPlayRef.current = shouldPlay;
@@ -201,6 +212,7 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     const sub = player.addListener('statusChange', (s: any) => {
       if (s.status === 'readyToPlay') {
         setReady(true);
+        startedUriRef.current = uri;
         // Resume: langes Video an gemerkter Stelle fortsetzen (frischer Mount /
         // Quellen-Wechsel R2→HLS). Kurze Clips haben keine gemerkte Position → 0.
         const dur = player.duration ?? 0;
@@ -217,6 +229,9 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
         }
       } else if (s.status === 'error' && useHlsRef.current) {
         // HLS fehlgeschlagen (z.B. noch nicht fertig transkodiert) → R2-Fallback.
+        // Einmal prüfen, ob ganz Bunny hängt; dann versuchen die nächsten Videos
+        // es gar nicht erst.
+        if (bunnyIdRef.current) reportBunnyHlsError(bunnyIdRef.current);
         setUseHls(false);
         setReady(false);
       }

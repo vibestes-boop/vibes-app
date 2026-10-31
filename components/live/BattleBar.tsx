@@ -63,22 +63,24 @@ export function BattleBar({ state, top }: BattleBarProps) {
   const animFraction = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
+    // Nativ: Segment per scaleX, Badge per translateX (statt width/left über die
+    // App-Logik, die im Battle mit Chat und Geschenken beschäftigt ist)
     Animated.spring(animFraction, {
       toValue:         state.hostFraction,
-      useNativeDriver: false, // width muss interpolation → no native driver
+      useNativeDriver: true,
       friction:        5,
       tension:         48,
     }).start();
   }, [state.hostFraction, animFraction]);
 
-  // Host-Anteil als Pixel-Breite (für farbiges Segment + Indikator-Position)
-  const hostBarW = animFraction.interpolate({
+  // Host-Anteil als Skalierung des vollen Segments (nicht ganz 0, das mag iOS nicht)
+  const hostBarScale = animFraction.interpolate({
     inputRange:  [0, 1],
-    outputRange: [0, SCREEN_W],
+    outputRange: [0.0001, 1],
     extrapolate: 'clamp',
   });
-  // Indikator-Badge folgt dem Boundary (= hostBarW)
-  const indicatorLeft = animFraction.interpolate({
+  // Indikator-Badge folgt dem Boundary
+  const indicatorX = animFraction.interpolate({
     inputRange:  [0, 1],
     outputRange: [16, SCREEN_W - 40],
     extrapolate: 'clamp',
@@ -149,7 +151,7 @@ export function BattleBar({ state, top }: BattleBarProps) {
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFillObject}
         />
-        <Animated.View style={[s.underlineHost, { width: hostBarW }]}>
+        <Animated.View style={[s.underlineHost, { width: SCREEN_W, transformOrigin: 'left', transform: [{ scaleX: hostBarScale }] }]}>
           <LinearGradient
             colors={[HOST_COLOR, HOST_COLOR_SOFT]}
             start={{ x: 0, y: 0.5 }}
@@ -159,8 +161,8 @@ export function BattleBar({ state, top }: BattleBarProps) {
         </Animated.View>
       </View>
 
-      {/* ── Indikator-Badge am Boundary (folgt hostBarW) ─────────────────── */}
-      <Animated.View style={[s.indicator, { left: indicatorLeft }]}>
+      {/* ── Indikator-Badge am Boundary (folgt dem Host-Anteil) ────────────── */}
+      <Animated.View style={[s.indicator, { left: 0, transform: [{ translateX: indicatorX }] }]}>
         <LinearGradient
           colors={
             leadingSide === 'host'  ? [HOST_COLOR_SOFT, HOST_COLOR]   :

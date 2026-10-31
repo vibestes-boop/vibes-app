@@ -32,15 +32,17 @@ const NEUTRAL_GRAD: [string, string] = ['#1e1e2e', '#2a2a3a'];
 // ─── Equalizer Bars ───────────────────────────────────────────────────────────
 function EqualizerBars({ color, active }: { color: string; active: boolean }) {
   const bars = [useRef(new Animated.Value(4)).current, useRef(new Animated.Value(10)).current, useRef(new Animated.Value(7)).current];
+  // Nativ: Höhe per scaleY vom unteren Rand. Die Schleife lief sonst über die
+  // App-Logik, solange ein Lied in der Auswahl spielte.
   useEffect(() => {
     if (!active) {
-      bars.forEach((b) => Animated.timing(b, { toValue: 4, duration: 200, useNativeDriver: false }).start());
+      bars.forEach((b) => Animated.timing(b, { toValue: 4, duration: 200, useNativeDriver: true }).start());
       return;
     }
     const durations = [320, 250, 400];
     const anims = bars.map((b, i) => Animated.loop(Animated.sequence([
-      Animated.timing(b, { toValue: 18, duration: durations[i], useNativeDriver: false }),
-      Animated.timing(b, { toValue: 4,  duration: durations[i], useNativeDriver: false }),
+      Animated.timing(b, { toValue: 18, duration: durations[i], useNativeDriver: true }),
+      Animated.timing(b, { toValue: 4,  duration: durations[i], useNativeDriver: true }),
     ])));
     anims.forEach((a) => a.start());
     return () => anims.forEach((a) => a.stop());
@@ -49,7 +51,7 @@ function EqualizerBars({ color, active }: { color: string; active: boolean }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 20, gap: 2 }}>
       {bars.map((b, i) => (
-        <Animated.View key={i} style={{ width: 3, borderRadius: 2, backgroundColor: color, height: b, opacity: active ? 1 : 0.25 }} />
+        <Animated.View key={i} style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: color, opacity: active ? 1 : 0.25, transformOrigin: 'bottom', transform: [{ scaleY: b.interpolate({ inputRange: [0, 18], outputRange: [0, 1] }) }] }} />
       ))}
     </View>
   );

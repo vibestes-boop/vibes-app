@@ -136,6 +136,39 @@ export function useConversations() {
 }
 
 // ── Nachrichten einer Konversation ────────────────────────────────────────
+// Ein Chat lädt nur die letzten Nachrichten, ältere kommen beim Hochscrollen
+// (useOlderMessages). Vorher kam der ganze Verlauf auf einmal.
+export const MESSAGES_PAGE = 50;
+
+const MESSAGE_SELECT = `
+  *,
+  post:post_id (
+    id,
+    media_url,
+    media_type,
+    caption,
+    profiles!posts_author_id_fkey ( username )
+  )
+`;
+
+// Normalize nested post shape
+function normalizeMessage(row: any): Message {
+  return {
+    ...row,
+    story_media_url: row.story_media_url ?? null,
+    story_author: null,   // Spalte nicht in DB — aus story_media_url/profil ableiten falls benötigt
+    post: row.post
+      ? {
+        id: row.post.id,
+        media_url: row.post.media_url ?? null,
+        media_type: row.post.media_type ?? null,
+        caption: row.post.caption ?? null,
+        author_username: row.post.profiles?.username ?? null,
+      }
+      : null,
+  } as Message;
+}
+
 export function useMessages(conversationId: string | null) {
   const userId = useAuthStore((s) => s.profile?.id);
   const queryClient = useQueryClient();
@@ -144,36 +177,18 @@ export function useMessages(conversationId: string | null) {
     queryKey: ['messages', conversationId],
     queryFn: async () => {
       if (!conversationId) return [];
+      // Beim Neuladen so viele holen, wie schon geladen sind: Ältere, zu denen
+      // der Nutzer hochgescrollt ist, verschwinden sonst unter ihm.
+      const loaded = queryClient.getQueryData<Message[]>(['messages', conversationId])?.length ?? 0;
       const { data, error } = await supabase
         .from('messages')
-        .select(`
-          *,
-          post:post_id (
-            id,
-            media_url,
-            media_type,
-            caption,
-            profiles!posts_author_id_fkey ( username )
-          )
-        `)
+        .select(MESSAGE_SELECT)
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(Math.max(MESSAGES_PAGE, loaded));
       if (error) throw error;
-      // Normalize nested post shape
-      return (data ?? []).map((row: any) => ({
-        ...row,
-        story_media_url: row.story_media_url ?? null,
-        story_author: null,   // Spalte nicht in DB — aus story_media_url/profil ableiten falls benötigt
-        post: row.post
-          ? {
-            id: row.post.id,
-            media_url: row.post.media_url ?? null,
-            media_type: row.post.media_type ?? null,
-            caption: row.post.caption ?? null,
-            author_username: row.post.profiles?.username ?? null,
-          }
-          : null,
-      } as Message));
+      // Im Cache bleibt die Reihenfolge alt → neu (Realtime/Senden hängen hinten an)
+      return (data ?? []).map(normalizeMessage).reverse();
     },
     enabled: !!conversationId,
     staleTime: 1000 * 30,  // Realtime hält Daten aktuell — kein sofortiger Refetch bei App-Fokus
@@ -202,6 +217,53 @@ export function useMessages(conversationId: string | null) {
   }, [conversationId, userId, queryClient]);
 
   return query;
+}
+
+/** Ältere Nachrichten nachladen (beim Hochscrollen im Chat). */
+export function useOlderMessages(conversationId: string | null) {
+  const queryClient = useQueryClient();
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const busyRef = useRef(false);
+  const exhaustedRef = useRef(false);
+  useEffect(() => { exhaustedRef.current = false; }, [conversationId]);
+
+  const fetchOlder = useCallback(async () => {
+    if (!conversationId || busyRef.current || exhaustedRef.current) return;
+    const current = queryClient.getQueryData<Message[]>(['messages', conversationId]) ?? [];
+    // Weniger als eine Seite geladen: Es gibt nichts Älteres
+    const oldest = current.find((m) => !m.id.startsWith('temp-'));
+    if (!oldest || current.length < MESSAGES_PAGE) {
+      exhaustedRef.current = true;
+      return;
+    }
+    busyRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(MESSAGE_SELECT)
+        .eq('conversation_id', conversationId)
+        .lt('created_at', oldest.created_at)
+        .order('created_at', { ascending: false })
+        .limit(MESSAGES_PAGE);
+      if (error) throw error;
+      const older = (data ?? []).map(normalizeMessage).reverse();
+      if (older.length < MESSAGES_PAGE) exhaustedRef.current = true;
+      if (older.length > 0) {
+        queryClient.setQueryData<Message[]>(['messages', conversationId], (old = []) => {
+          const known = new Set(old.map((m) => m.id));
+          return [...older.filter((m) => !known.has(m.id)), ...old];
+        });
+      }
+    } catch {
+      /* beim nächsten Hochscrollen erneut versuchen */
+    } finally {
+      busyRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [conversationId, queryClient]);
+
+  return { fetchOlder, loadingOlder };
 }
 
 // ── Nachricht senden ──────────────────────────────────────────────────────

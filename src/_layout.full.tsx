@@ -378,8 +378,10 @@ const splashStyles = StyleSheet.create({
  * module level (module-level @tanstack/react-query calls can throw in Hermes).
  */
 export default function RootLayoutFull() {
-  // Load Inter font — must be called before any render
-  useFonts({
+  // Inter laden. Bis sie da ist, bleibt der Splash stehen (siehe unten): Text, der
+  // vorher gemessen wird, behält die Breite der Ersatzschrift — so wurde der
+  // Schriftzug oben im Feed zu „s…" abgeschnitten.
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
@@ -421,22 +423,29 @@ export default function RootLayoutFull() {
     });
   }
 
-  // Enable screens lazily (not at module init time)
-  useEffect(() => {
-    try {
-      const { enableScreens } =
-        require('react-native-screens') as typeof import('react-native-screens');
-      enableScreens(false);
-    } catch { /* stub may not export enableScreens */ }
-  }, []);
+  // Native Screens bleiben an (Vorgabe von react-native-screens). Hier stand bis
+  // Oktober 2026 enableScreens(false) aus dem allerersten Stand, ohne Begründung.
+  // Damit blieben alle besuchten Tabs als gewöhnliche Views hinter dem aktiven
+  // Tab hängen und rechneten weiter; Einfrieren (freezeOnBlur) ging gar nicht.
+  // Weil der Schalter erst nach dem ersten Rendern umsprang, baute die Tab-Leiste
+  // ihren Inhalt beim nächsten Rendern außerdem einmal komplett neu auf.
 
+  const ready = fontsLoaded || !!fontError;
   useEffect(() => {
-    // Splash so früh wie möglich verstecken — kein künstliches Delay.
+    // Splash verstecken, sobald die Schrift da ist — kein künstliches Delay.
     // PersistQueryClientProvider liefert gecachte Daten sofort → kein weißer Blitz.
-    const hide = () =>
-      (require('expo-splash-screen') as any).hideAsync?.().catch(() => { });
-    hide(); // sofort versuchen
-    const t = setTimeout(hide, 3000); // Garantie-Fallback
+    if (!ready) return;
+    (require('expo-splash-screen') as any).hideAsync?.().catch(() => { });
+  }, [ready]);
+  useEffect(() => {
+    // Garantie-Fallback, falls das Laden der Schrift hängt
+    const t = setTimeout(() => (require('expo-splash-screen') as any).hideAsync?.().catch(() => { }), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  // Hängt die Schrift länger als der Splash, trotzdem anzeigen (Ersatzschrift)
+  const [fontWaitOver, setFontWaitOver] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontWaitOver(true), 3000);
     return () => clearTimeout(t);
   }, []);
 
@@ -454,6 +463,9 @@ export default function RootLayoutFull() {
     'user-posts',
     'bookmarked-posts',
   ]);
+
+  // Bis die Schrift geladen ist, bleibt der native Splash sichtbar
+  if (!ready && !fontWaitOver) return null;
 
   return (
     <ErrorBoundary>
@@ -483,10 +495,22 @@ export default function RootLayoutFull() {
               sie war 4 Sekunden lang das Erste, was jeder Nutzer sah. */}
           {__DEV__ && <BuildBanner />}
           <OfflineBanner />
-          <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(onboarding)" />
+          {/* Übergänge: Ohne eigene Angabe schiebt sich ein Bildschirm wie ein iOS-Push
+              von rechts herein, mit Wisch-zurück. Vorher galt 'none', rund 30 Bildschirme
+              (Shop, Coin-Shop, Creator, Live-Liste, Frauen-Bereich …) ploppten hart auf.
+              animationDuration gilt auf iOS für slide_from_bottom und fade; die Vorgabe
+              dort ist 500 ms und wirkte träge. 280 ms wie die untere Leiste. */}
+          <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', animationDuration: 280 }}>
+            {/* Gruppenwechsel (Kaltstart, Anmelden → App) bleiben ohne Animation */}
+            <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
+            <Stack.Screen name="(auth)" options={{ animation: 'none' }} />
+            <Stack.Screen name="(onboarding)" options={{ animation: 'none' }} />
+            {/* Erstellen kommt von unten (wie bei Instagram/TikTok); die Kamera blendet
+                danach nur über, damit sie ohne Ruckeln startet */}
+            <Stack.Screen name="create/start" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="create/camera" options={{ animation: 'fade' }} />
+            <Stack.Screen name="create/ar-camera" options={{ animation: 'fade' }} />
+            <Stack.Screen name="create-story" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen
               name="create/index"
               // 'card' statt 'modal': der iOS-Modal hat eine native Swipe-down-zum-Schließen-
@@ -525,7 +549,7 @@ export default function RootLayoutFull() {
               name="story-viewer"
               options={{
                 headerShown: false,
-                animation: 'none',
+                animation: 'fade',
                 presentation: 'fullScreenModal',
               }}
             />
@@ -534,7 +558,7 @@ export default function RootLayoutFull() {
               options={{
                 headerShown: false,
                 presentation: 'modal',
-                animation: 'none',
+                animation: 'slide_from_bottom',
               }}
             />
             <Stack.Screen
@@ -565,15 +589,16 @@ export default function RootLayoutFull() {
             />
             <Stack.Screen
               name="live/start"
-              options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }}
+              options={{ headerShown: false, animation: 'fade', presentation: 'fullScreenModal' }}
             />
+            {/* Host folgt direkt auf live/start mit derselben Kamera: kein Übergang */}
             <Stack.Screen
               name="live/host"
               options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }}
             />
             <Stack.Screen
               name="live/watch/[id]"
-              options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }}
+              options={{ headerShown: false, animation: 'fade', presentation: 'fullScreenModal' }}
             />
           </Stack>
           </GestureHandlerRootView>

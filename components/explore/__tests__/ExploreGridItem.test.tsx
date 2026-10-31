@@ -35,6 +35,19 @@ it('uses a video thumbnail and never decodes an MP4 as an image', () => {
   screen.rerender(<ExploreGridItem item={{ ...video, thumbnail_url: null }} />);
   expect(screen.queryByTestId('media-image')).toBeNull();
 });
+it('zeigt bei Fotos das kleine Vorschaubild statt des Originals', () => {
+  const photo = { ...item, thumbnail_url: 'https://example.test/photo-720.jpg' };
+  const screen = render(<ExploreGridItem item={photo} />);
+  expect(screen.getByTestId('media-image').props.source).toEqual({ uri: photo.thumbnail_url });
+});
+it('fällt aufs Original zurück, wenn das Vorschaubild nicht lädt', () => {
+  const photo = { ...item, thumbnail_url: 'https://example.test/photo-720.jpg' };
+  const screen = render(<ExploreGridItem item={photo} />);
+  fireEvent(screen.getByTestId('media-image'), 'error');
+  expect(screen.getByTestId('media-image').props.source).toEqual({ uri: photo.media_url });
+  fireEvent(screen.getByTestId('media-image'), 'error');
+  expect(screen.queryByTestId('media-image')).toBeNull();
+});
 it('recovers a failed preview when the recycled card gets a different image', () => {
   const screen = render(<ExploreGridItem item={item} />);
   fireEvent(screen.getByTestId('media-image'), 'error');

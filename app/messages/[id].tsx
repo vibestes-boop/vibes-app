@@ -5,7 +5,7 @@ import {
 useDeleteMessage,
 useMarkMessagesRead,
 useMessageReactions,
-useMessages,useSendMessage,
+useMessages,useOlderMessages,useSendMessage,
 useToggleReaction,
 useTypingPresence,
 type Message,type PostPreview,
@@ -21,7 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { ArrowLeft,ImagePlus,Play,Reply,Send,Trash2,User,X } from 'lucide-react-native';
-import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import { useCallback,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,Alert,
 Dimensions,
@@ -500,7 +500,6 @@ export default function ChatScreen() {
   const userId = useAuthStore((s) => s.profile?.id);
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
-  const isAtBottomRef = useRef(true); // BUG-F: Guard gegen ungewolltes Auto-Scroll
   const [text, setText] = useState('');
   const [activePickerId, setActivePickerId] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
@@ -549,24 +548,13 @@ export default function ChatScreen() {
   useMarkMessagesRead(conversationId ?? null);
   const { otherIsTyping, onTypingStart, onTypingStop } = useTypingPresence(conversationId ?? null);
 
-  // Zuverlässig zum Ende scrollen beim Öffnen des Chats
-  const isFirstLoadRef = useRef(true);
-
-  useEffect(() => {
-    if (messages.length === 0) return;
-
-    if (isFirstLoadRef.current) {
-      // Erster Load: 2 Versuche (Layout + Bild-Layout)
-      isFirstLoadRef.current = false;
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 150);
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 600);
-    } else {
-      // Neue Nachricht: nur scrollen wenn User am Ende ist
-      if (isAtBottomRef.current) {
-        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-      }
-    }
-  }, [messages.length]);
+  // Umgedrehte Liste (neueste unten): Der Chat öffnet von selbst am Ende, ohne
+  // die zwei verzögerten Sprünge nach unten. Hochscrollen lädt Älteres nach.
+  const listData = useMemo(() => [...messages].reverse(), [messages]);
+  const { fetchOlder, loadingOlder } = useOlderMessages(conversationId ?? null);
+  const scrollToNewest = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   const handleSend = useCallback(async () => {
     if (!text.trim() || !conversationId || sending) return;
@@ -576,8 +564,9 @@ export default function ChatScreen() {
     setReplyTo(null);
     onTypingStop();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scrollToNewest();
     await sendMessage({ conversationId, content, postId: null, replyToId: replyId });
-  }, [text, conversationId, sending, sendMessage, onTypingStop, replyTo]);
+  }, [text, conversationId, sending, sendMessage, onTypingStop, replyTo, scrollToNewest]);
 
   // B: Bild aus Galerie senden
   const handleSendImage = useCallback(async () => {
@@ -599,24 +588,26 @@ export default function ChatScreen() {
     try {
       const mimeType = asset.mimeType ?? 'image/jpeg';
       const { url } = await uploadPostMedia(userId, asset.uri, mimeType);
+      scrollToNewest();
       await sendMessage({ conversationId, content: '', postId: null, imageUrl: url });
     } catch (e: any) {
       Alert.alert(t('messages.imgFailTitle'), e?.message ?? t('messages.imgFailText'));
     } finally {
       setImageUploading(false);
     }
-  }, [conversationId, userId, sendMessage]);
+  }, [conversationId, userId, sendMessage, scrollToNewest]);
 
   // C: GIF senden (via Tenor URL direkt als image_url)
   const handleSendGif = useCallback(async (gifUrl: string) => {
     if (!conversationId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scrollToNewest();
     try {
       await sendMessage({ conversationId, content: '', postId: null, imageUrl: gifUrl });
     } catch (e: any) {
       Alert.alert(t('messages.gifFailTitle'), e?.message ?? t('messages.gifFailText'));
     }
-  }, [conversationId, sendMessage]);
+  }, [conversationId, sendMessage, scrollToNewest]);
 
   const handlePostPress = useCallback((postId: string) => {
     router.push(`/post/${postId}` as any);
@@ -645,7 +636,9 @@ export default function ChatScreen() {
 
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.sender_id === userId;
-    const prev = messages[index - 1];
+    // Liste ist umgedreht: die zeitlich vorige Nachricht steht bei index + 1.
+    // Das Datum steht über der ersten Nachricht eines Tages.
+    const prev = listData[index + 1];
     const showDay = !prev || formatDay(prev.created_at) !== formatDay(item.created_at);
     const reactions = reactionsMap[item.id] ?? [];
     // colors comes from outer ChatScreen scope via closure
@@ -681,7 +674,7 @@ export default function ChatScreen() {
 
       </>
     );
-  }, [messages, userId, reactionsMap, activePickerId, handlePostPress, handleLongPress, handleSwipeReply, handleDelete, toggleReaction, colors]);
+  }, [listData, userId, reactionsMap, activePickerId, handlePostPress, handleLongPress, handleSwipeReply, handleDelete, toggleReaction, colors]);
 
   return (
     <>
@@ -732,31 +725,20 @@ export default function ChatScreen() {
             ) : (
               <FlatList
                 ref={listRef}
-                data={messages}
+                inverted
+                data={listData}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 style={{ flex: 1, width: '100%' }}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
-                scrollEventThrottle={16}
                 initialNumToRender={20}
                 maxToRenderPerBatch={20}
                 windowSize={5}
-                onScroll={(e) => {
-                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                  const dist = contentSize.height - layoutMeasurement.height - contentOffset.y;
-                  isAtBottomRef.current = dist < 60;
-                }}
-                onContentSizeChange={() => {
-                  // Beim ersten Load IMMER ans Ende scrollen
-                  if (isFirstLoadRef.current || isAtBottomRef.current) {
-                    listRef.current?.scrollToEnd({ animated: false });
-                  }
-                }}
-                onLayout={() => {
-                  // Nach erstem Layout-Pass zum Ende scrollen
-                  listRef.current?.scrollToEnd({ animated: false });
-                }}
+                // Umgedreht ist das „Ende" oben: dort ältere Nachrichten nachladen
+                onEndReached={fetchOlder}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={loadingOlder ? <ActivityIndicator style={{ marginVertical: 12 }} color={colors.text.muted} /> : null}
                 ListEmptyComponent={
                   <View style={styles.center}>
                     <Text style={[styles.emptyText, { color: colors.text.muted }]}>{t('messages.firstMessage')}</Text>
