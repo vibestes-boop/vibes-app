@@ -92,11 +92,15 @@ export const VideoProgressBar = React.memo(
     const seekLockRef = useRef(false);
     const seekLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const seekTargetRef = useRef(0); // Ziel-Fraktion des Seeks
-    // Alle Animationen nativ
-    const fillWidth = useRef(new RNAnimated.Value(0)).current;
-    const trackHeight = useRef(new RNAnimated.Value(3)).current;
+    // Alle Animationen nativ (useNativeDriver): Füllung per scaleX (Anteil 0–1),
+    // Knopf per translateX (Pixel), Verdicken beim Anfassen per scaleY. Vorher
+    // liefen width/left/height über die App-Logik — bei jedem Video, in jedem Bild.
+    const fillScale = useRef(new RNAnimated.Value(0)).current;
+    const trackScale = useRef(new RNAnimated.Value(1)).current;
     const thumbOpacity = useRef(new RNAnimated.Value(0)).current;
     const thumbX = useRef(new RNAnimated.Value(0)).current;
+    // Nicht ganz 0: eine Skalierung von exakt 0 mag iOS nicht
+    const fillScaleX = useRef(fillScale.interpolate({ inputRange: [0, 1], outputRange: [0.0001, 1], extrapolate: 'clamp' })).current;
 
     React.useImperativeHandle(ref, () => ({
       setProgress: (p: number) => {
@@ -123,9 +127,9 @@ export const VideoProgressBar = React.memo(
         // Sprung (Reset/Rückwärts/großer Vorwärts-Sprung/Seek) oder noch keine
         // Track-Breite → sofort setzen, nicht interpolieren.
         if (trackWidth.current === 0 || dt <= 0 || dt > 800 || dp < 0 || dp > 0.12) {
-          fillWidth.stopAnimation();
+          fillScale.stopAnimation();
           thumbX.stopAnimation();
-          fillWidth.setValue(p * trackWidth.current);
+          fillScale.setValue(p);
           thumbX.setValue(p * trackWidth.current);
           return;
         }
@@ -134,12 +138,11 @@ export const VideoProgressBar = React.memo(
         // über das Tick-Intervall. Extrapolation = kein sichtbarer Lag bei kurzen
         // Videos; die Bewegung ist kontinuierlich statt zu springen.
         const predicted = Math.min(1, p + Math.max(0, dp));
-        const target = predicted * trackWidth.current;
         const duration = Math.min(Math.max(dt, 100), 500);
-        RNAnimated.timing(fillWidth, { toValue: target, duration, easing: (t) => t, useNativeDriver: false }).start();
-        RNAnimated.timing(thumbX,   { toValue: target, duration, easing: (t) => t, useNativeDriver: false }).start();
+        RNAnimated.timing(fillScale, { toValue: predicted, duration, easing: (t) => t, useNativeDriver: true }).start();
+        RNAnimated.timing(thumbX,   { toValue: predicted * trackWidth.current, duration, easing: (t) => t, useNativeDriver: true }).start();
       },
-    }), [isScrubbing, fillWidth, thumbX]);
+    }), [isScrubbing, fillScale, thumbX]);
 
     const panResponder = useRef(
       PanResponder.create({
@@ -162,8 +165,8 @@ export const VideoProgressBar = React.memo(
           scrubStartFractionRef.current = currentFractionRef.current;
           scrubProgress.current = currentFractionRef.current;
           RNAnimated.parallel([
-            RNAnimated.spring(trackHeight, { toValue: 6, useNativeDriver: false, bounciness: 0, speed: 30 }),
-            RNAnimated.timing(thumbOpacity, { toValue: 1, duration: 100, useNativeDriver: false }),
+            RNAnimated.spring(trackScale, { toValue: 2, useNativeDriver: true, bounciness: 0, speed: 30 }),
+            RNAnimated.timing(thumbOpacity, { toValue: 1, duration: 100, useNativeDriver: true }),
           ]).start();
           // Kein onSeek hier — Video springt nicht zur Tipp-Position
         },
@@ -174,7 +177,7 @@ export const VideoProgressBar = React.memo(
           const delta = gs.dx / (trackWidth.current || 1);
           const frac = Math.max(0, Math.min(1, scrubStartFractionRef.current + delta));
           scrubProgress.current = frac;
-          fillWidth.setValue(frac * trackWidth.current);
+          fillScale.setValue(frac);
           thumbX.setValue(frac * trackWidth.current);
           onSeek?.(frac);
         },
@@ -193,8 +196,8 @@ export const VideoProgressBar = React.memo(
 
           setIsScrubbing(false);
           RNAnimated.parallel([
-            RNAnimated.spring(trackHeight, { toValue: 3, useNativeDriver: false, bounciness: 0, speed: 30 }),
-            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+            RNAnimated.spring(trackScale, { toValue: 1, useNativeDriver: true, bounciness: 0, speed: 30 }),
+            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
           ]).start();
           onSeekEnd?.(target);
         },
@@ -207,8 +210,8 @@ export const VideoProgressBar = React.memo(
             seekLockTimerRef.current = null;
           }
           RNAnimated.parallel([
-            RNAnimated.spring(trackHeight, { toValue: 3, useNativeDriver: false, bounciness: 0, speed: 30 }),
-            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+            RNAnimated.spring(trackScale, { toValue: 1, useNativeDriver: true, bounciness: 0, speed: 30 }),
+            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
           ]).start();
         },
       })
@@ -220,12 +223,13 @@ export const VideoProgressBar = React.memo(
         {...panResponder.panHandlers}
         onLayout={(e) => { trackWidth.current = e.nativeEvent.layout.width; }}
       >
-        <RNAnimated.View style={[pbStyles.track, { height: trackHeight }]}>
-          <RNAnimated.View style={[pbStyles.fill, { width: fillWidth }]} />
-          <RNAnimated.View
-            style={[pbStyles.thumb, { left: thumbX, opacity: thumbOpacity }]}
-          />
+        <RNAnimated.View style={[pbStyles.track, { transform: [{ scaleY: trackScale }] }]}>
+          <RNAnimated.View style={[pbStyles.fill, { transformOrigin: 'left', transform: [{ scaleX: fillScaleX }] }]} />
         </RNAnimated.View>
+        {/* Knopf außerhalb der Spur, sonst würde scaleY ihn zum Oval ziehen */}
+        <RNAnimated.View
+          style={[pbStyles.thumb, { opacity: thumbOpacity, transform: [{ translateX: thumbX }] }]}
+        />
       </View>
     );
   })
@@ -244,23 +248,26 @@ const pbStyles = StyleSheet.create({
 
   track: {
     width: '100%',
+    height: 3,
     backgroundColor: 'rgba(255,255,255,0.35)',
     borderRadius: 3,
     overflow: 'visible',
   },
   fill: {
+    width: '100%',
     height: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 3,
   },
   thumb: {
+    // Mitte auf Höhe der Spurmitte (Spur 3 px hoch, unten in der Trefferfläche)
     position: 'absolute',
-    top: '50%',
+    left: 0,
+    bottom: 1.5 - 7,
     width: 14,
     height: 14,
     borderRadius: 7,
     backgroundColor: '#fff',
-    marginTop: -7,
     marginLeft: -7,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

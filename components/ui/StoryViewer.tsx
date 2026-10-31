@@ -809,9 +809,17 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const { mutateAsync: addComment, isPending: addingComment } = useAddStoryComment();
   const { mutate: removeHighlight } = useRemoveHighlight();
 
-  // Progress: RNAnimated (wie FeedItem.tsx) — zuverlässiger als Reanimated+CJS-Hack
+  // Progress: RNAnimated (wie FeedItem.tsx) — zuverlässiger als Reanimated+CJS-Hack.
+  // Läuft mit nativem Treiber (scaleX statt width): Der Balken gleitet weiter,
+  // auch wenn die App gerade lädt. Vorher lief er über die App-Logik und stockte.
   const progressAnim = useRef(new RNAnimated.Value(0)).current;
-  const progressRef = useRef(0); // aktuellen 0-1 Wert verfolgen
+  // Aktueller Stand ohne Listener auf dem nativen Wert: Start, Ausgangswert, Dauer
+  const progressRunRef = useRef<{ at: number; from: number; duration: number } | null>(null);
+  const currentProgress = () => {
+    const run = progressRunRef.current;
+    if (!run || run.duration <= 0) return 0;
+    return Math.min(1, run.from + ((Date.now() - run.at) / run.duration) * (1 - run.from));
+  };
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const durationFixedRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
@@ -876,12 +884,12 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     timerRef.current && clearTimeout(timerRef.current);
     progressAnim.stopAnimation();
     progressAnim.setValue(0);
-    progressRef.current = 0;
+    progressRunRef.current = { at: Date.now(), from: 0, duration };
     RNAnimated.timing(progressAnim, {
       toValue: 1,
       duration,
       easing: EasingRN.linear,
-      useNativeDriver: false, // width kann keinen native driver nutzen
+      useNativeDriver: true,
     }).start();
     timerRef.current = setTimeout(() => goNext(), duration);
   }, [goNext, progressAnim]);
@@ -923,7 +931,8 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   // Hold-Handler: Fortschritt merken + Animation stoppen
   const handleHoldStart = useCallback(() => {
-    holdProgressRef.current = progressRef.current;
+    holdProgressRef.current = currentProgress();
+    progressRunRef.current = null;
     wasHoldingRef.current = true;
     progressAnim.stopAnimation();
     // Timer stoppen — verhindert auto-goNext während gehalten
@@ -947,12 +956,12 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         // Sofort den gespeicherten Wert setzen — kein sichtbares Flash
         progressAnim.stopAnimation();
         progressAnim.setValue(saved);
-        progressRef.current = saved;
+        progressRunRef.current = { at: Date.now(), from: saved, duration: remaining };
         RNAnimated.timing(progressAnim, {
           toValue: 1,
           duration: remaining,
           easing: EasingRN.linear,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }).start();
         timerRef.current = setTimeout(() => goNext(), remaining);
       } else {
@@ -1000,20 +1009,15 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     startProgress(ms);
   }, [startProgress]);
 
-  // progressRef listener: aktuellen Wert für Hold-Resume verfolgen
-  useEffect(() => {
-    const id = progressAnim.addListener(({ value }) => { progressRef.current = value; });
-    return () => progressAnim.removeListener(id);
-  }, [progressAnim]);
-
   const segW = group.stories.length > 0
     ? (W - 24 - 4 * (group.stories.length - 1)) / group.stories.length
     : W - 24;
 
-  // RNAnimated interpolate: width 0 → segW (kein Reanimated nötig)
-  const progressWidth = progressAnim.interpolate({
+  // Breite fest, gefüllt wird per scaleX vom linken Rand (nativer Treiber).
+  // Nicht ganz 0: eine Skalierung von exakt 0 mag iOS nicht.
+  const progressScale = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, segW],
+    outputRange: [0.0001, 1],
   });
 
   // ─ Short-Video-style Tap-Flash ─
@@ -1143,7 +1147,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
             {i < storyIndex
               ? <View style={styles.progressFillFull} />
               : i === storyIndex
-                ? <RNAnimated.View style={[styles.progressFillAnim, { width: progressWidth }]} />
+                ? <RNAnimated.View style={[styles.progressFillAnim, { width: segW, transformOrigin: 'left', transform: [{ scaleX: progressScale }] }]} />
                 : null}
           </View>
         ))}
