@@ -9,6 +9,7 @@ withRepeat,
 withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { tabBarTop } from '@/lib/tabBarLayout';
 import { SCREEN_HEIGHT,SCREEN_WIDTH } from './feedConstants';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
@@ -58,7 +59,7 @@ function SkeletonCard({ delay }: { delay: number }) {
       </View>
 
       {/* Action-Buttons rechts */}
-      <View style={[styles.actions, { bottom: insets.bottom + 80 }]}>
+      <View style={[styles.actions, { bottom: tabBarTop(insets.bottom) + 26 }]}>
         {[0, 1, 2].map((i) => (
           <Animated.View key={i} style={[styles.actionBtn, placeholder, shimmerStyle]} />
         ))}

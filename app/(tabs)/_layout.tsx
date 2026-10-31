@@ -24,7 +24,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   // Neuer Tab: Leiste wieder voll, wie bei Instagram
   useEffect(() => { setTabBarCompact(false); }, [focusedRoute]);
   return <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+    {/* Über dem Video-Feed ist es immer dunkel, auch im hellen Modus */}
     <AppTabBar focusedRoute={focusedRoute} bottomInset={insets.bottom} unreadMessages={unreadDMs} unreadNotifications={unreadNotifs} refreshing={refreshing}
+      tone={focusedRoute === 'index' ? 'dark' : 'auto'}
       onCreate={() => { impactAsync(ImpactFeedbackStyle.Medium); router.push('/create/start'); }}
       onNavigate={route => {
         impactAsync(ImpactFeedbackStyle.Light);

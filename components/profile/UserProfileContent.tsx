@@ -583,15 +583,15 @@ export function UserProfileContent({ userId, onBack }: Props) {
             {orderRating.sellerCount > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
-                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>{t('profile.asSeller', { count: orderRating.sellerCount })}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12, color: colors.text.muted }}>{t('profile.asSeller', { count: orderRating.sellerCount })}</Text>
               </View>
             ) : null}
             {orderRating.buyerCount > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.buyerAvg?.toFixed(1)}</Text>
-                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>{t('profile.asBuyer', { count: orderRating.buyerCount })}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>{orderRating.buyerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12, color: colors.text.muted }}>{t('profile.asBuyer', { count: orderRating.buyerCount })}</Text>
               </View>
             ) : null}
           </View>
@@ -635,7 +635,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 }]}>
                   {followLoading
                     ? <ActivityIndicator size="small" color={colors.text.primary} />
-                    : <><UserCheck size={14} color={colors.text.primary} strokeWidth={2.2} /><Text style={[s.followBtnText, { color: colors.text.primary, fontSize: 13 }]}>{t('profile.youFollow')}</Text></>
+                    : <><UserCheck size={14} color={colors.text.primary} strokeWidth={2.2} /><Text style={[s.followBtnText, { color: colors.text.primary, fontSize: 14 }]}>{t('profile.youFollow')}</Text></>
                   }
                 </View>
               ) : hasPendingRequest ? (
@@ -643,7 +643,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <View style={[s.followBtnOutline, { borderColor: 'rgba(251,191,36,0.5)', backgroundColor: 'rgba(251,191,36,0.08)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
                   {withdrawing
                     ? <ActivityIndicator size="small" color="#FBBF24" />
-                    : <><Timer size={14} color="#FBBF24" strokeWidth={2.2} /><Text style={[s.followBtnText, { color: '#FBBF24', fontSize: 13 }]}>{t('profile.requested')}</Text></>
+                    : <><Timer size={14} color="#FBBF24" strokeWidth={2.2} /><Text style={[s.followBtnText, { color: '#FBBF24', fontSize: 14 }]}>{t('profile.requested')}</Text></>
                   }
                 </View>
               ) : (
@@ -1089,7 +1089,9 @@ const s = StyleSheet.create({
     flex: 1, flexDirection: 'row', justifyContent: 'space-around',
   },
   statItem: { alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 18, fontWeight: '600', letterSpacing: -0.5 }, // color via inline
+  // Schriftstufen wie im eigenen Profil (profileStyles): Name 20, Zahlen 17,
+  // Text und Knöpfe 14, alles Nebensächliche 12
+  statValue: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 }, // color via inline
   statLabel: { fontSize: 12, fontWeight: '500' }, // color via inline
 
   // ── User Info Section ───────────────────────────────────────
@@ -1105,14 +1107,14 @@ const s = StyleSheet.create({
   avatarInitials: { color: '#fff', fontSize: 36, fontWeight: '600', letterSpacing: -1 },
   infoSection: { paddingHorizontal: 20, paddingBottom: 8, gap: 10 },   // backgroundColor via inline
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  username: { fontSize: 22, fontWeight: '600', letterSpacing: -0.7 }, // color via inline
+  username: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }, // color via inline
   guildPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5,
     alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     // backgroundColor + borderColor via inline mit colors
   },
-  guildPillText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.1 },
+  guildPillText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.1 },
   bio: { fontSize: 14, lineHeight: 21, maxWidth: 280 }, // color via inline
   websiteRow: {
     flexDirection: 'row',
@@ -1123,7 +1125,7 @@ const s = StyleSheet.create({
   },
   websiteLink: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     maxWidth: 240,
   },
@@ -1142,7 +1144,7 @@ const s = StyleSheet.create({
     gap: 8, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
   },
-  followBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  followBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   iconBtn: {
     width: 48, height: 48, borderRadius: 12,
     borderWidth: 1,
