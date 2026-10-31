@@ -33,13 +33,14 @@ export function LiveGoalBar({ goal, justReached }: Props) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const celebrateAnim = useRef(new Animated.Value(0)).current;
 
-  // Balken animieren wenn `current` sich ändert
+  // Balken animieren wenn `current` sich ändert. Nativ (scaleX statt width):
+  // Im Live ist die App-Logik mit Chat und Geschenken beschäftigt, dort stockte er.
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: progress,
       duration: 600,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   }, [progress, progressAnim]);
 
@@ -67,9 +68,11 @@ export function LiveGoalBar({ goal, justReached }: Props) {
     ]).start();
   }, [justReached, celebrateAnim]);
 
-  const barWidth = progressAnim.interpolate({
+  // Nicht ganz 0: eine Skalierung von exakt 0 mag iOS nicht
+  const barScale = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
+    outputRange: [0.0001, 1],
+    extrapolate: 'clamp',
   });
 
   const barColor = goal.reached ? '#22c55e' : '#8b5cf6';
@@ -103,7 +106,7 @@ export function LiveGoalBar({ goal, justReached }: Props) {
       {/* Progress Track */}
       <View style={s.track}>
         <Animated.View
-          style={[s.fill, { width: barWidth, backgroundColor: barColor }]}
+          style={[s.fill, { width: '100%', backgroundColor: barColor, transformOrigin: 'left', transform: [{ scaleX: barScale }] }]}
         />
         {/* Shine */}
         <View style={s.shine} pointerEvents="none" />

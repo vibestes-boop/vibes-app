@@ -75,17 +75,20 @@ function ResultBar({
 }) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    // Nativ (scaleX statt width), stockt so nicht neben Chat und Geschenken
     Animated.timing(anim, {
       toValue: percent / 100,
       duration: 450,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   }, [anim, percent]);
 
-  const widthInterp = anim.interpolate({
+  // Nicht ganz 0: eine Skalierung von exakt 0 mag iOS nicht
+  const scaleInterp = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
+    outputRange: [0.0001, 1],
+    extrapolate: 'clamp',
   });
 
   const fillColor = isMyVote
@@ -97,7 +100,7 @@ function ResultBar({
   return (
     <View style={styles.resultRow}>
       <Animated.View
-        style={[StyleSheet.absoluteFill, styles.resultFill, { width: widthInterp, backgroundColor: fillColor }]}
+        style={[StyleSheet.absoluteFill, styles.resultFill, { backgroundColor: fillColor, transformOrigin: 'left', transform: [{ scaleX: scaleInterp }] }]}
       />
       <View style={styles.resultContent}>
         <Text style={styles.resultLabel} numberOfLines={1}>
