@@ -43,6 +43,8 @@ import type { FeedEngagementMaps } from '@/lib/useFeedEngagement';
 import type { UseLikeBatch } from '@/lib/useLike';
 import type { StoryGroup } from '@/lib/useStories';
 import { useWomenOnly } from '@/lib/useWomenOnly';
+import { useI18n } from '@/lib/i18n';
+import { IMAGE_RETRY_DELAYS, retryUri } from '@/lib/imageRetry';
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import {
 ActionButton,
@@ -541,7 +543,26 @@ export const FeedItem = React.memo(function FeedItem({
   const [longPressOpen, setLongPressOpen] = useState(false);
   const [likersOpen, setLikersOpen] = useState(false);
   // progress wurde in VideoProgressBar ausgelagert — kein Re-Render des ganzen FeedItem mehr
+  const { t } = useI18n();
+  // Foto: Ein einzelner Ladefehler (Netz kurz weg, Anfrage abgebrochen) ließ das
+  // Bild bisher dauerhaft fast schwarz, ohne neuen Versuch. Jetzt zweimal still
+  // neu laden, danach freundlich melden und Neuladen per Tippen anbieten.
   const [imageError, setImageError] = useState(false);
+  const [imageAttempt, setImageAttempt] = useState(0);
+  const autoRetriesRef = useRef(0);
+  const imageRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (imageRetryTimerRef.current) clearTimeout(imageRetryTimerRef.current); }, []);
+  const handleImageError = useCallback(() => {
+    const n = autoRetriesRef.current;
+    if (n >= IMAGE_RETRY_DELAYS.length) { setImageError(true); return; }
+    autoRetriesRef.current = n + 1;
+    imageRetryTimerRef.current = setTimeout(() => setImageAttempt((a) => a + 1), IMAGE_RETRY_DELAYS[n]);
+  }, []);
+  const retryImage = useCallback(() => {
+    autoRetriesRef.current = 0;
+    setImageError(false);
+    setImageAttempt((a) => a + 1);
+  }, []);
   const isVideo = item.mediaType === 'video';
 
   // ── Musik-Track: Inline Audio-Playback (expo-av) ──────────────────────────
@@ -775,13 +796,13 @@ export const FeedItem = React.memo(function FeedItem({
           {/* Das kleine Vorschaubild (meist schon vorausgeladen) steht sofort,
               bis das große Original (teils über 20 MB) da ist */}
           <Image
-            source={{ uri: item.mediaUrl }}
+            source={{ uri: retryUri(item.mediaUrl, imageAttempt) }}
             placeholder={item.thumbnailUrl ? { uri: item.thumbnailUrl } : undefined}
             placeholderContentFit="contain"
             style={StyleSheet.absoluteFill}
             contentFit="contain"
             cachePolicy="memory-disk"
-            onError={() => setImageError(true)}
+            onError={handleImageError}
           />
         </>
       )}
@@ -864,6 +885,23 @@ export const FeedItem = React.memo(function FeedItem({
         {/* Sound-Button → jetzt in der rightActions-Spalte über dem Like-Button */}
 
       </Pressable>
+
+      {/* Foto lädt auch nach zwei stillen Versuchen nicht: freundlich sagen und
+          Neuladen anbieten. Über der Tipp-Fläche, Doppeltippen daneben bleibt Like. */}
+      {item.mediaUrl && !isVideo && imageError && (
+        <View style={imageFailStyles.wrap} pointerEvents="box-none">
+          <Text style={imageFailStyles.text}>{t('feed.imageFailed')}</Text>
+          <Pressable
+            onPress={retryImage}
+            style={imageFailStyles.button}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('nativeUi.retry')}
+          >
+            <Text style={imageFailStyles.buttonText}>{t('nativeUi.retry')}</Text>
+          </Pressable>
+        </View>
+      )}
 
       <PostShareModal
         visible={shareOpen}
@@ -1151,4 +1189,25 @@ const feedFlashStyles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 60,
   },
+});
+
+// Liegt immer über dunklem Medien-Hintergrund, darum feste helle Schrift
+const imageFailStyles = StyleSheet.create({
+  wrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    paddingHorizontal: 40,
+  },
+  text: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  button: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

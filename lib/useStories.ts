@@ -13,6 +13,8 @@ export type Story = {
   user_id: string;
   media_url: string;
   media_type: string;
+  /** Standbild (bei Videos), deckt das Laden im Viewer ab; bisher nur bei Highlights gesetzt */
+  thumbnail_url?: string | null;
   created_at: string;
   username: string | null;
   avatar_url: string | null;
