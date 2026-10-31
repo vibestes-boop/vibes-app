@@ -6,16 +6,15 @@ import {
 ActivityIndicator,
 Dimensions,
 FlatList,
-PanResponder,
 Platform,
 Pressable,
 RefreshControl,
-Animated as RNAnimated,
 ScrollView,
 Text,
 View,
 type ViewToken,
 } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() is used to avoid _interopRequireDefault crash in Hermes HBC.
 import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
@@ -26,9 +25,9 @@ import { FeedItem } from '@/components/feed/FeedItem';
 import { FeedSkeleton } from '@/components/feed/FeedSkeleton';
 import { vibeFeedScreenStyles as styles } from '@/components/feed/feedStyles';
 import { FollowingEmptyState } from '@/components/feed/FollowingEmptyState';
+import { ProfileSwipePanel, useProfileSwipePanel } from '@/components/feed/ProfileSwipePanel';
 import type { FeedItemData } from '@/components/feed/types';
 import { LiveFeedCard } from '@/components/live/LiveFeedCard';
-import { UserProfileContent } from '@/components/profile/UserProfileContent';
 import { SerloLoader } from '@/components/ui/SerloLoader';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useAuthStore } from '@/lib/authStore';
@@ -81,12 +80,10 @@ export default function VibeFeedScreen() {
   const [feedMode, setFeedMode] = useState<'foryou' | 'following'>('foryou');
   const [secondaryQueriesEnabled, setSecondaryQueriesEnabled] = useState(false);
 
-  // ── Short-Video-Style: Finger-folgendes Profil-Panel ─────────────────────
-  // Refs wegen stale closure (PanResponder wird nur einmal erstellt)
+  // Refs für stabile Callbacks (renderItem, Kaltstart-Abgleich)
   const feedDataRef = useRef<FeedItemData[]>([]);
   const visibleItemIdRef = useRef<string | null>(null);
   const SCREEN_W = Dimensions.get('window').width;
-  const profileSlideX = useRef(new RNAnimated.Value(SCREEN_W)).current;
 
   // ── Foldables (Galaxy Z Fold): reale Feed-Viewport-Größe messen ─────────
   // Modul-Load-Dimensions stimmen bei Cover↔Main-Wechsel/edge-to-edge nicht →
@@ -94,92 +91,6 @@ export default function VibeFeedScreen() {
   // extraData + Swipe-Grenzen. Ohne Messung: statische Maße (iPhone identisch).
   const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
   const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
-  const [profilePanel, setProfilePanel] = useState<{ authorId: string } | null>(null);
-  const profilePanelRef = useRef<{ authorId: string } | null>(null);
-
-  const snapPanelIn = () => RNAnimated.spring(profileSlideX, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 20 }).start();
-  const snapPanelOut = () => RNAnimated.spring(profileSlideX, { toValue: SCREEN_W, useNativeDriver: true, bounciness: 0, speed: 25 }).start(
-    () => { setProfilePanel(null); profilePanelRef.current = null; }
-  );
-
-  // Y-Grenze: Swipes die IM Header-Bereich beginnen (Status Bar + Toggle)
-  // sollen den Profil-Swipe NICHT auslösen.
-  // feedModeBar (52px) + Puffer = ~60px (Kategorie-Chips entfernt)
-  const swipeTopBoundaryRef = useRef(150);
-  // Bottom-Grenze: Progress Bar + Tab-Bar Bereich ausschließen (insets.bottom + 49 + 60px Buffer)
-  const swipeBottomBoundaryRef = useRef(9999);
-  useEffect(() => {
-    swipeTopBoundaryRef.current = insets.top + 60;
-    // Seitenhöhe - (insets.bottom + tab-bar 49px + hitArea 28px + 20px Puffer);
-    // gemessene Höhe statt statischer SCREEN_HEIGHT (Foldables)
-    swipeBottomBoundaryRef.current = (pageSize?.h ?? SCREEN_HEIGHT) - insets.bottom - 110;
-  }, [insets.top, insets.bottom, pageSize]);
-
-  const swipePan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (evt, g) =>
-        // Ist das Profil-Panel schon offen, darf der Links-Swipe es NICHT erneut
-        // auslösen — dann steuert nur backPan (Rechts-Swipe = zurück zu Home).
-        !profilePanelRef.current &&
-        // Swipes im Header-Bereich (Tags, Toggle) NICHT abfangen
-        evt.nativeEvent.pageY > swipeTopBoundaryRef.current &&
-        // Swipes im Progress-Bar / Tab-Bar Bereich NICHT abfangen
-        evt.nativeEvent.pageY < swipeBottomBoundaryRef.current &&
-        g.dx < -18 &&
-        Math.abs(g.dx) > Math.abs(g.dy) * 2.0,
-
-      onPanResponderGrant: () => {
-        const post = feedDataRef.current.find((p) => p.id === visibleItemIdRef.current);
-        if (!post?.authorId) return;
-        const panel = { authorId: post.authorId };
-        profilePanelRef.current = panel;
-        setProfilePanel(panel);
-        profileSlideX.setValue(SCREEN_W);
-      },
-
-      onPanResponderMove: (_, g) => {
-        if (!profilePanelRef.current) return;
-        profileSlideX.setValue(Math.max(0, SCREEN_W + g.dx));
-      },
-
-      onPanResponderRelease: (_, g) => {
-        if (!profilePanelRef.current) return;
-        if (g.dx < -(SCREEN_W * 0.35) || g.vx < -0.5) {
-          impactAsync(ImpactFeedbackStyle.Medium);
-          snapPanelIn();
-        } else {
-          snapPanelOut();
-        }
-      },
-
-      onPanResponderTerminate: () => snapPanelOut(),
-    })
-  ).current;
-
-  // ── Zurück-Swipe direkt auf dem Profil-Panel (folgt dem Finger) ───────────
-  const backPan = useRef(
-    PanResponder.create({
-      // Nur Rechts-Gesten übernehmen (Zurück) — klar horizontal
-      onMoveShouldSetPanResponder: (_, g) =>
-        g.dx > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
-
-      onPanResponderMove: (_, g) => {
-        // Panel folgt dem Finger nach rechts (aber nicht über SCREEN_W hinaus)
-        profileSlideX.setValue(Math.min(SCREEN_W, Math.max(0, g.dx)));
-      },
-
-      onPanResponderRelease: (_, g) => {
-        if (g.dx > SCREEN_W * 0.35 || g.vx > 0.5) {
-          impactAsync(ImpactFeedbackStyle.Light);
-          snapPanelOut();
-        } else {
-          snapPanelIn();
-        }
-      },
-
-      onPanResponderTerminate: () => snapPanelIn(),
-    })
-  ).current;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const lastFetchedAt = useRef<string>(new Date().toISOString());
 
@@ -488,10 +399,26 @@ export default function VibeFeedScreen() {
     if (postIds.length > 0) setFeedNavPostIds(postIds, 'vibes');
   }, [postIds, setFeedNavPostIds]);
 
-  // Refs für PanResponder aktuell halten (kein stale closure)
+  // Refs aktuell halten (stabile Callbacks lesen daraus)
   const activePlaybackItemId = visibleItemId ?? (screenFocused ? (feedData[0]?.id ?? null) : null);
   feedDataRef.current = feedData;
   visibleItemIdRef.current = activePlaybackItemId;
+
+  // ── Profil des Autors per Wisch nach links (folgt dem Finger, UI-Thread) ──
+  // Wischen im Kopfbereich (Umschalter) und über Fortschrittsbalken/Tab-Leiste
+  // zählt nicht; gemessene Höhe statt statischer (Foldables).
+  const activeAuthorId = useMemo(
+    () => feedData.find((p) => p.id === activePlaybackItemId)?.authorId ?? null,
+    [feedData, activePlaybackItemId],
+  );
+  const profileSwipe = useProfileSwipePanel({
+    width: pageSize?.w ?? SCREEN_W,
+    authorId: activeAuthorId,
+    topBound: insets.top + 60,
+    bottomBound: (pageSize?.h ?? SCREEN_HEIGHT) - insets.bottom - 110,
+  });
+  // Stabil über alle Renders (für renderItem)
+  const profilePanelRef = profileSwipe.panelRef;
 
   // Rolling-Prefetch: die nächsten 3 Poster + Avatare AB dem aktiven Item
   // vorausladen → beim Weiterscrollen erscheint das Bild SOFORT, auch tief im
@@ -593,7 +520,7 @@ export default function VibeFeedScreen() {
       );
     },
     // Nur stabile Callbacks als Dependencies — keine volatilen Werte
-    [onMuteToggle, handleOpenStory, onOpenTune]
+    [onMuteToggle, handleOpenStory, onOpenTune, profilePanelRef]
   );
 
   const overMedia = !isLoading && feedRows.length > 0;
@@ -602,7 +529,8 @@ export default function VibeFeedScreen() {
   const showFollowingEmpty = feedMode === 'following' && !isLoading && !isError && feedRows.length === 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: overMedia ? '#000000' : colors.bg.primary }]} {...swipePan.panHandlers}>
+    <GestureDetector gesture={profileSwipe.openGesture}>
+    <View style={[styles.container, { backgroundColor: overMedia ? '#000000' : colors.bg.primary }]}>
       {!overMedia && <StudioBackdrop />}
       {isLoading && <FeedSkeleton />}
       {isError && feedRows.length === 0 && (
@@ -688,7 +616,7 @@ export default function VibeFeedScreen() {
       {!showFollowingEmpty && <FlatList
         ref={listRef}
         data={feedRows}
-        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}:${profilePanel ? '1' : '0'}:${pageSize ? `${pageSize.h}x${pageSize.w}` : ''}`}
+        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}:${profileSwipe.panel ? '1' : '0'}:${pageSize ? `${pageSize.h}x${pageSize.w}` : ''}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         onLayout={(e) => {
@@ -787,23 +715,9 @@ export default function VibeFeedScreen() {
       <TuneMyVibeOverlay visible={overlayVisible} onClose={() => setOverlayVisible(false)} />
 
       {/* ── Short-Video Swipe: Echtes Profil folgt dem Finger ── */}
-      {profilePanel && (
-        <RNAnimated.View
-          style={{
-            position: 'absolute', inset: 0, zIndex: 400,
-            transform: [{ translateX: profileSlideX }],
-          }}
-          {...backPan.panHandlers}
-        >
-          {/* Schatten-Linie links (Tiefeneffekt) */}
-          <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, zIndex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} />
-          <UserProfileContent
-            userId={profilePanel.authorId}
-            onBack={snapPanelOut}
-          />
-        </RNAnimated.View>
-      )}
+      <ProfileSwipePanel control={profileSwipe} />
     </View>
+    </GestureDetector>
   );
 }
 
