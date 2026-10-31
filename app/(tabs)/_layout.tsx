@@ -35,7 +35,10 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 }
 export default function TabLayout() {
   const { colors } = useTheme();
-  return <Tabs tabBar={props => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, lazy: true, sceneStyle: { backgroundColor: colors.bg.primary } }}>
+  // freezeOnBlur: Ein verlassener Tab rendert nicht weiter (Chats, Feed, Profil
+  // liefen sonst im Hintergrund mit). react-native-screens friert erst einen Takt
+  // nach dem Wechsel ein, das Pausieren der Videos beim Verlassen läuft vorher.
+  return <Tabs tabBar={props => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, lazy: true, freezeOnBlur: true, sceneStyle: { backgroundColor: colors.bg.primary } }}>
     <Tabs.Screen name="index" /><Tabs.Screen name="explore" /><Tabs.Screen name="messages" /><Tabs.Screen name="profile" />
     <Tabs.Screen name="guild" options={{ href: null }} /><Tabs.Screen name="shop" options={{ href: null }} /><Tabs.Screen name="notifications" options={{ href: null }} />
   </Tabs>;
