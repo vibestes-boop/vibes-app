@@ -263,7 +263,7 @@ export function ProfileListHeader({
         initials={avatarInitial}
         onClose={() => setAvatarZoomed(false)}
       />
-      {/* ── Avatar + Info (Foto-Feed-Style) ── */}
+      {/* ── Kopf wie TikTok: Bild mittig, darunter Name, @Name und die Zahlen ── */}
       <View style={s.profileTop}>
         {/* Avatar — Klick = Stories ansehen */}
         <Pressable
@@ -307,47 +307,7 @@ export function ProfileListHeader({
           </Pressable>
         </Pressable>
 
-        {/* Stats-Reihe */}
-        <View style={s.statsRow}>
-          <View style={s.statItem}>
-            <Text style={s.statNum}>{loadingPosts ? '–' : formatCount(postCount)}</Text>
-            <Text style={s.statLabel}>{t('profile.posts')}</Text>
-          </View>
-          <View style={s.statDivider} />
-          <Pressable
-            style={s.statItem}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (profile?.id) router.push({
-                pathname: '/follow-list',
-                params: { userId: profile.id, mode: 'followers', username: profile.username },
-              });
-            }}
-          >
-            <Text style={s.statNum}>{formatCount(followCounts?.followers ?? 0)}</Text>
-            <Text style={s.statLabel}>{t('profile.followers')}</Text>
-          </Pressable>
-          <View style={s.statDivider} />
-          <Pressable
-            style={s.statItem}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (profile?.id) router.push({
-                pathname: '/follow-list',
-                params: { userId: profile.id, mode: 'following', username: profile.username },
-              });
-            }}
-          >
-            <Text style={s.statNum}>{formatCount(followCounts?.following ?? 0)}</Text>
-            <Text style={s.statLabel}>{t('profile.followingCount')}</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* ── Name + Bio ── */}
-      <View style={s.bioSection}>
-        {/* Name-Hierarchie wie Web: Anzeigename groß + @username dezent. Ein Badge,
-            neutrale Farbe (text.primary) — konsistent mit Web (fill-foreground). */}
+        {/* Name und @Name unter dem Bild, darunter die Zahlen (wie TikTok) */}
         <View style={s.nameRow}>
           <Text style={s.displayName} numberOfLines={1}>{displayName}</Text>
           {profile?.is_verified ? (
@@ -364,6 +324,45 @@ export function ProfileListHeader({
           <Text style={{ color: colors.text.muted, fontSize: 12, fontWeight: '500' }}>@{uname}</Text>
         ) : null}
 
+        {/* Zahlen in der Reihenfolge wie TikTok: Folge ich · Follower · Beiträge */}
+        <View style={s.statsRow}>
+          <Pressable
+            style={s.statItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (profile?.id) router.push({
+                pathname: '/follow-list',
+                params: { userId: profile.id, mode: 'following', username: profile.username },
+              });
+            }}
+          >
+            <Text style={s.statNum}>{formatCount(followCounts?.following ?? 0)}</Text>
+            <Text style={s.statLabel}>{t('profile.followingCount')}</Text>
+          </Pressable>
+          <View style={s.statDivider} />
+          <Pressable
+            style={s.statItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (profile?.id) router.push({
+                pathname: '/follow-list',
+                params: { userId: profile.id, mode: 'followers', username: profile.username },
+              });
+            }}
+          >
+            <Text style={s.statNum}>{formatCount(followCounts?.followers ?? 0)}</Text>
+            <Text style={s.statLabel}>{t('profile.followers')}</Text>
+          </Pressable>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={s.statNum}>{loadingPosts ? '–' : formatCount(postCount)}</Text>
+            <Text style={s.statLabel}>{t('profile.posts')}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ── Bio, Link, Abzeichen (mittig) ── */}
+      <View style={s.bioSection}>
         {profile?.bio ? (
           <Text style={s.bio} numberOfLines={3}>{profile.bio}</Text>
         ) : null}
