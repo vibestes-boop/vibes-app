@@ -31,6 +31,7 @@ import { useReportUser } from '@/lib/useReport';
 import { formatEur,useOrderRating,useShopProducts,type Product } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useTabSwitchScrollHold } from '@/lib/useTabSwitchScrollHold';
+import { profileSurface } from './profileStyles';
 import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -506,7 +507,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
   const Header = (
     <View>
       {/* ── Compact Nav Bar — nur Buttons, kein doppelter Username ── */}
-      <View style={[s.navBar, { paddingTop: insets.top, backgroundColor: colors.bg.secondary, borderBottomColor: colors.border.subtle }]}>
+      <View style={[s.navBar, { paddingTop: insets.top, backgroundColor: profileSurface(colors), borderBottomColor: colors.border.subtle }]}>
         <Pressable onPress={onBack} hitSlop={12} style={s.navIconBtn}>
           <ArrowLeft size={20} color={colors.text.primary} strokeWidth={2.2} />
         </Pressable>
@@ -706,7 +707,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
       <ProfileHighlightsRow userId={id ?? null} isOwn={isOwn} />
 
       {/* ── TABS ── */}
-      <View style={[s.tabBar, { borderTopColor: colors.border.subtle, backgroundColor: colors.bg.secondary }]}>
+      <View style={[s.tabBar, { borderTopColor: colors.border.subtle, backgroundColor: profileSurface(colors) }]}>
         <SlidingPill selection={tabLine} style={{ borderRadius: 1, backgroundColor: activeTab === 'liked' ? '#F472B6' : activeTab === 'battles' ? '#FF2E63' : colors.text.primary }} />
         <SpringPressable
           style={s.tab}
@@ -776,7 +777,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
   ];
 
   return (
-    <View style={[s.root, { backgroundColor: colors.bg.secondary }]}>
+    <View style={[s.root, { backgroundColor: profileSurface(colors) }]}>
       <AvatarZoomViewer
         visible={avatarZoomed}
         avatarUrl={profile.avatar_url}

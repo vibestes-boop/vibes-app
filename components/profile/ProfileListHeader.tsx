@@ -470,8 +470,8 @@ export function ProfileListHeader({
         {([{ tab: 'vibes', Icon: Grid3X3, label: t('nativeUi.posts') }, { tab: 'reposts', Icon: Repeat2, label: t('nativeUi.reposts') }, { tab: 'saved', Icon: Bookmark, label: t('nativeUi.saved') }, { tab: 'shop', Icon: ShoppingBag, label: t('tabs.shop') }] as const).map(({ tab, Icon, label }) =>
           <SpringPressable key={tab} onLayout={tabLine.onLayoutFor(tab)} onPress={() => onTabChange(tab)} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }} accessibilityLabel={label}
             style={[s.tabBtn, { flex: 1, minWidth: 0, paddingHorizontal: 2 }]}>
-            <Icon size={22} color={activeTab === tab ? colors.accent.primary : colors.icon.inactive} />
-            <Text numberOfLines={2} style={[s.tabLabel, { color: activeTab === tab ? colors.accent.primary : colors.text.secondary, textAlign: 'center' }]}>{label}</Text>
+            {/* Nur das Symbol wie bei TikTok; den Namen liest der Screenreader (accessibilityLabel) */}
+            <Icon size={24} color={activeTab === tab ? colors.accent.primary : colors.icon.inactive} />
           </SpringPressable>)}
       </View>
       {!['vibes', 'reposts', 'saved', 'shop'].includes(activeTab) && <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12, backgroundColor: colors.bg.elevated }}>
