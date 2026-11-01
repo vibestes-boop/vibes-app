@@ -5,6 +5,7 @@ import { Bell, ChevronRight, LogOut, Settings, X } from 'lucide-react-native';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderButton } from './HeaderButton';
+import { profileSurface } from './profileStyles';
 
 export function ProfileStudioHeader({ username, paddingTop, unreadNotifs, onNotifications, onSettings, onSignOut }: {
   username: string; paddingTop: number; unreadNotifs: number; onNotifications: () => void; onSettings: () => void; onSignOut: () => void;
@@ -14,7 +15,7 @@ export function ProfileStudioHeader({ username, paddingTop, unreadNotifs, onNoti
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   return <>
-    <View style={[s.header, { paddingTop, backgroundColor: colors.bg.primary }]}>
+    <View style={[s.header, { paddingTop, backgroundColor: profileSurface(colors) }]}>
       <Text style={[s.title, { color: colors.text.primary }]}>{t('tabs.profile')}</Text>
       <View style={s.actions}><HeaderButton label={t('tabs.notifications')} icon={Bell} onPress={onNotifications} badge={unreadNotifs} /><HeaderButton label={t('mobileDesign.profileMenu')} icon={Settings} onPress={() => setMenuOpen(true)} /></View>
     </View>

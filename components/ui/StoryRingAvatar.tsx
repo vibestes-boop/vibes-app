@@ -126,7 +126,8 @@ export function StoryRingAvatar({
           <View
             style={[
               StyleSheet.absoluteFill,
-              { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.elevated },
+              // Ohne Profilbild ein sichtbarer grauer Kreis (bg.elevated war im hellen Modus weiß auf weiß)
+              { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg.input },
             ]}
           >
             <User size={Math.round(size * 0.42)} color={colors.text.muted} strokeWidth={1.5} />

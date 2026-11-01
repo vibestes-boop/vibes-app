@@ -13,9 +13,28 @@ export function getProfileStyles(colors: ThemeColors) {
   return s;
 }
 
+/** Dunkle Palette erkennen (hex-Helligkeit von bg.primary) */
+function isDarkPalette(c: ThemeColors): boolean {
+  const hex = c.bg.primary.replace('#', '');
+  if (hex.length < 6) return false;
+  const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+}
+
+/**
+ * Eine Fläche fürs ganze Profil: hell weiß, dunkel schwarz (Zaur 01.11.2026).
+ * Vorher wechselten Grau (bg.primary) und Weiß (bg.secondary) ab, und die
+ * Reiterleiste wirkte ausgegraut.
+ */
+export function profileSurface(c: ThemeColors): string {
+  return isDarkPalette(c) ? c.bg.primary : c.bg.secondary;
+}
+
 function buildStyles(c: ThemeColors) {
+  const surface = profileSurface(c);
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: c.bg.primary },
+    root: { flex: 1, backgroundColor: surface },
+    surfaceBg: { backgroundColor: surface },
     heroBg: { position: 'absolute', top: 0, left: 0, right: 0 },
 
     // ── Top Navigation Header ─────────────────────────────────
@@ -25,7 +44,7 @@ function buildStyles(c: ThemeColors) {
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingBottom: 10,
-      backgroundColor: c.bg.primary,   // consistent profile surface im Light-Mode
+      backgroundColor: surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border.subtle,
     },
@@ -74,29 +93,32 @@ function buildStyles(c: ThemeColors) {
     hBadgeText: { color: '#fff', fontSize: 7, fontWeight: '600' },
 
     // ── Profile Top (Avatar + Stats) ─────────────────────────
+    // Bild links, rechts daneben oben Name und @Name, darunter die Zahlen
+    // (Zaur 01.11.2026: Name und Nickname über den Zahlen wie bei TikTok, Bild aber links)
     profileTop: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,   // einheitliches 16er-Raster (vorher 20 → bruch mit Buttons/Tabs)
+      paddingHorizontal: 16,   // einheitliches 16er-Raster
       paddingTop: 8,
-      paddingBottom: 18,
-      gap: 20,
-      backgroundColor: c.bg.primary,   // consistent profile surface
+      paddingBottom: 16,
+      gap: 16,
+      backgroundColor: surface,
     },
+    profileInfo: { flex: 1, gap: 2 },
     avatarWrap: { position: 'relative' },
     avatarRing: {
-      width: 84,
-      height: 84,
-      borderRadius: 42,
+      width: 88,
+      height: 88,
+      borderRadius: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarGap: {
-      width: 75,
-      height: 75,
-      borderRadius: 37.5,
+      width: 79,
+      height: 79,
+      borderRadius: 39.5,
       overflow: 'hidden',
-      backgroundColor: c.bg.primary,  // Gap passt zur Karten-Fläche (vorher bg.primary → farbiger Donut)
+      backgroundColor: surface,  // Spalt zwischen Ring und Bild in Flächenfarbe
     },
     avatarImg: { width: '100%', height: '100%' },
     avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -136,10 +158,9 @@ function buildStyles(c: ThemeColors) {
 
     // Stats
     statsRow: {
-      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-around',
+      marginTop: 10,
     },
     statItem: { alignItems: 'center', flex: 1 },
     // Schriftstufen des Profils (Zaur 01.11.2026: „zu viele Textgrößen“): Name 20,
@@ -152,11 +173,11 @@ function buildStyles(c: ThemeColors) {
     bioSection: {
       paddingHorizontal: 16,             // einheitliches Raster
       paddingBottom: 10,
-      paddingTop: 2,
+      paddingTop: 0,
       gap: 4,
-      backgroundColor: c.bg.primary,   // fortsetzung der Karte — KEIN borderBottom mehr
+      backgroundColor: surface,   // fortsetzung der Karte — KEIN borderBottom mehr
     },                                   // (durchgehende Fläche statt gestapelter Bänder)
-    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     displayName: { color: c.text.primary, fontSize: 20, fontWeight: '700', letterSpacing: -0.3, flexShrink: 1 },
     verifiedBadge: {
       width: 20,
@@ -372,7 +393,7 @@ function buildStyles(c: ThemeColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border.subtle,
       marginBottom: GRID_GAP,
-      backgroundColor: c.bg.primary,
+      backgroundColor: surface,
     },
     tabBtn: {
       gap: 6, minWidth: 82, paddingHorizontal: 12,

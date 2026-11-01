@@ -401,6 +401,42 @@ export const feedItemStyles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#000',
   },
+  // Profilbild oben in der rechten Spalte (wie TikTok)
+  sideAvatarWrap: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  sideAvatarFrame: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  sideStoryRing: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    padding: 2.5,
+  },
+  sideAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  sideFollowBadge: {
+    position: 'absolute',
+    bottom: -9,
+    alignSelf: 'center',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#a78bfa',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#000',
+  },
   followBadgeActive: {
     backgroundColor: '#4ade80',
   },

@@ -31,6 +31,7 @@ import { useReportUser } from '@/lib/useReport';
 import { formatEur,useOrderRating,useShopProducts,type Product } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useTabSwitchScrollHold } from '@/lib/useTabSwitchScrollHold';
+import { profileSurface } from './profileStyles';
 import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -506,7 +507,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
   const Header = (
     <View>
       {/* ── Compact Nav Bar — nur Buttons, kein doppelter Username ── */}
-      <View style={[s.navBar, { paddingTop: insets.top, backgroundColor: colors.bg.secondary, borderBottomColor: colors.border.subtle }]}>
+      <View style={[s.navBar, { paddingTop: insets.top, backgroundColor: profileSurface(colors), borderBottomColor: colors.border.subtle }]}>
         <Pressable onPress={onBack} hitSlop={12} style={s.navIconBtn}>
           <ArrowLeft size={20} color={colors.text.primary} strokeWidth={2.2} />
         </Pressable>
@@ -520,7 +521,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
         )}
       </View>
 
-      {/* ── Profile Row: Avatar links + Inline Stats rechts (Foto-Feed) ── */}
+      {/* ── Kopf: Bild links, rechts daneben @Name und darunter die Zahlen ── */}
       <View style={s.profileRow}>
         <Pressable
           onLongPress={() => {
@@ -540,43 +541,46 @@ export function UserProfileContent({ userId, onBack }: Props) {
           </Animated.View>
         </Pressable>
 
+        {/* Rechts neben dem Bild: oben @Name, darunter die Zahlen */}
+        <View style={s.profileInfo}>
+        <View style={s.nameRowCentered}>
+          <Text style={[s.username, { color: colors.text.primary }]} numberOfLines={1}>
+            @{profile.username}
+          </Text>
+          {profile.is_verified && (
+            <CheckCircle2 size={15} color="#FBBF24" fill="rgba(251,191,36,0.15)" strokeWidth={2.5} />
+          )}
+          {profile.guild_name && (
+            <View style={[s.guildPill, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}>
+              <Zap size={9} color={colors.text.primary} fill={colors.text.primary} />
+              <Text style={[s.guildPillText, { color: colors.text.primary }]}>{profile.guild_name}</Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }} />
+          {!loading && <VibeScoreRing score={avgResonanz} size={40} />}
+        </View>
+
+        {/* Zahlen in der Reihenfolge wie TikTok: Folge ich · Follower · Beiträge */}
         <View style={s.inlineStatsWrap}>
-          <View style={s.statItem}>
-            <Text style={[s.statValue, { color: colors.text.primary }]}>{postCount}</Text>
-            <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.posts')}</Text>
-          </View>
-          <Pressable style={s.statItem} onPress={() => router.push({ pathname: '/follow-list', params: { userId: id, mode: 'followers', username: profile.username } })}>
-            <Text style={[s.statValue, { color: colors.text.primary }]}>{counts?.followers ?? 0}</Text>
-            <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.followers')}</Text>
-          </Pressable>
           <Pressable style={s.statItem} onPress={() => router.push({ pathname: '/follow-list', params: { userId: id, mode: 'following', username: profile.username } })}>
             <Text style={[s.statValue, { color: colors.text.primary }]}>{counts?.following ?? 0}</Text>
             <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.followingCount')}</Text>
           </Pressable>
+          <Pressable style={s.statItem} onPress={() => router.push({ pathname: '/follow-list', params: { userId: id, mode: 'followers', username: profile.username } })}>
+            <Text style={[s.statValue, { color: colors.text.primary }]}>{counts?.followers ?? 0}</Text>
+            <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.followers')}</Text>
+          </Pressable>
+          <View style={s.statItem}>
+            <Text style={[s.statValue, { color: colors.text.primary }]}>{postCount}</Text>
+            <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.posts')}</Text>
+          </View>
+        </View>
+
         </View>
       </View>
 
-      {/* ── Username + Badges + VibeScore kompakt in einer Zeile ── */}
+      {/* ── Bio, Bewertungen, Link ── */}
       <View style={s.userInfoSection}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-          {/* Links: Username + alle Badges in flexWrap Row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, flexWrap: 'wrap' }}>
-            <Text style={[s.username, { color: colors.text.primary }]} numberOfLines={1}>
-              @{profile.username}
-            </Text>
-            {profile.is_verified && (
-              <CheckCircle2 size={15} color="#FBBF24" fill="rgba(251,191,36,0.15)" strokeWidth={2.5} />
-            )}
-            {profile.guild_name && (
-              <View style={[s.guildPill, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}>
-                <Zap size={9} color={colors.text.primary} fill={colors.text.primary} />
-                <Text style={[s.guildPillText, { color: colors.text.primary }]}>{profile.guild_name}</Text>
-              </View>
-            )}
-          </View>
-          {/* Rechts: VibeScore Ring */}
-          {!loading && <VibeScoreRing score={avgResonanz} size={48} />}
-        </View>
 
         {profile.bio ? <Text style={[s.bio, { color: colors.text.secondary }]}>{profile.bio}</Text> : null}
 
@@ -703,7 +707,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
       <ProfileHighlightsRow userId={id ?? null} isOwn={isOwn} />
 
       {/* ── TABS ── */}
-      <View style={[s.tabBar, { borderTopColor: colors.border.subtle, backgroundColor: colors.bg.secondary }]}>
+      <View style={[s.tabBar, { borderTopColor: colors.border.subtle, backgroundColor: profileSurface(colors) }]}>
         <SlidingPill selection={tabLine} style={{ borderRadius: 1, backgroundColor: activeTab === 'liked' ? '#F472B6' : activeTab === 'battles' ? '#FF2E63' : colors.text.primary }} />
         <SpringPressable
           style={s.tab}
@@ -773,7 +777,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
   ];
 
   return (
-    <View style={[s.root, { backgroundColor: colors.bg.secondary }]}>
+    <View style={[s.root, { backgroundColor: profileSurface(colors) }]}>
       <AvatarZoomViewer
         visible={avatarZoomed}
         avatarUrl={profile.avatar_url}
@@ -1089,14 +1093,20 @@ const s = StyleSheet.create({
   },
 
   // ── Profile Row ─────────────────────────────────────────────
+  // Bild links, rechts daneben oben @Name, darunter die Zahlen
+  // (Zaur 01.11.2026: Name über den Zahlen wie bei TikTok, Bild aber links)
   profileRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 16, gap: 20,
+    paddingHorizontal: 16, paddingVertical: 16, gap: 16,
+  },
+  profileInfo: { flex: 1, gap: 2 },
+  nameRowCentered: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   inlineStatsWrap: {
-    flex: 1, flexDirection: 'row', justifyContent: 'space-around',
+    flexDirection: 'row', marginTop: 8,
   },
-  statItem: { alignItems: 'center', gap: 2 },
+  statItem: { alignItems: 'center', gap: 2, flex: 1 },
   // Schriftstufen wie im eigenen Profil (profileStyles): Name 20, Zahlen 17,
   // Text und Knöpfe 14, alles Nebensächliche 12
   statValue: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 }, // color via inline
@@ -1144,7 +1154,8 @@ const s = StyleSheet.create({
     // backgroundColor und borderColor via inline mit colors
   },
   metricDivider: { width: StyleSheet.hairlineWidth, marginVertical: 10 },   // backgroundColor via inline
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  // Seitenrand wie im eigenen Profil (vorher klebten die Knöpfe am Bildschirmrand)
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2, paddingHorizontal: 16 },
   followBtnWrap: { borderRadius: 12, overflow: 'hidden' },
   followBtnFill: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12 },
   followBtnOutline: {
@@ -1159,7 +1170,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     // backgroundColor + borderColor via inline mit colors
   },
-  editBtn: { marginTop: 4, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 12, borderWidth: 1, alignSelf: 'stretch', alignItems: 'center' },
+  editBtn: { marginTop: 4, marginHorizontal: 16, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 12, borderWidth: 1, alignSelf: 'stretch', alignItems: 'center' },
   editBtnText: { fontSize: 14, fontWeight: '600' },
   tabBar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.07)', marginTop: 8 },
   tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderBottomWidth: 2, borderBottomColor: 'transparent' },

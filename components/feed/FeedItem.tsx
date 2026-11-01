@@ -536,6 +536,23 @@ export const FeedItem = React.memo(function FeedItem({
   }, []);
   const isVideo = item.mediaType === 'video';
 
+  // Profilbild rechts in der Spalte: ungesehene Stories öffnen, sonst das Profil
+  const openAuthor = () => {
+    if (storyGroup?.hasUnviewed && onOpenStory) {
+      impactAsync(ImpactFeedbackStyle.Light);
+      onOpenStory(storyGroup);
+    } else if (item.authorId) {
+      router.push({ pathname: '/user/[id]', params: { id: item.authorId } });
+    }
+  };
+  const sideAvatarImage = item.avatarUrl ? (
+    <Image source={{ uri: item.avatarUrl }} style={styles.sideAvatarImg} cachePolicy="memory-disk" />
+  ) : (
+    <View style={[styles.sideAvatarImg, styles.authorAvatarFallback]}>
+      <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
+    </View>
+  );
+
   // ── Musik-Track: Inline Audio-Playback (expo-av) ──────────────────────────
   // Lautstärke kommt aus DB (audio_volume), gesetzt vom Creator im Picker
   const audioSoundRef = useRef<any>(null);
@@ -944,65 +961,8 @@ export const FeedItem = React.memo(function FeedItem({
           <View style={[styles.tagDot, { backgroundColor: item.accentColor }]} />
           <Text style={[styles.tagText, { color: item.accentColor }]}>{item.tag}</Text>
         </View>
-        {/* ── Avatar + Name (horizontal) ── */}
+        {/* ── Name unten links (wie TikTok); das Profilbild sitzt rechts oben über dem Like ── */}
         <View style={styles.authorRow}>
-          <Pressable
-            onPress={() => {
-              // Short-Video-Style:
-              // • hasUnviewed → Story-Viewer öffnen
-              // • alle gesehen (kein Ring) → direkt auf Profil
-              if (storyGroup?.hasUnviewed && onOpenStory) {
-                impactAsync(ImpactFeedbackStyle.Light);
-                onOpenStory(storyGroup);
-              } else if (item.authorId) {
-                router.push({ pathname: '/user/[id]', params: { id: item.authorId } });
-              }
-            }}
-            hitSlop={8}
-            style={styles.authorAvatarWrap}
-          >
-            {storyGroup?.hasUnviewed ? (
-              /* Bunter Ring = ungesehene Stories → Klick öffnet Viewer */
-              <LinearGradient
-                colors={['#FFFFFF', '#F472B6', '#FB923C']}
-                style={styles.storyRingGradient}
-                start={{ x: 0, y: 1 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <View style={styles.storyRingGap}>
-                  {item.avatarUrl ? (
-                    <Image source={{ uri: item.avatarUrl }} style={[styles.authorAvatar, { width: '100%', height: '100%' }]} cachePolicy="memory-disk" />
-                  ) : (
-                    <View style={[styles.authorAvatar, styles.authorAvatarFallback, { width: '100%', height: '100%' }]}>
-                      <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
-                    </View>
-                  )}
-                </View>
-              </LinearGradient>
-            ) : item.avatarUrl ? (
-              /* Kein Ring (alle gesehen oder keine Stories) → einfacher Avatar, Klick → Profil */
-              <Image source={{ uri: item.avatarUrl }} style={styles.authorAvatar} cachePolicy="memory-disk" />
-            ) : (
-              <View style={[styles.authorAvatar, styles.authorAvatarFallback]}>
-                <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
-              </View>
-            )}
-            {/* Short-Video-Style: "+" nur wenn NOCH NICHT gefolgt. Entfolgen → nur auf dem Profil. */}
-            {!isOwnProfile && !isFollowing && (
-              <Pressable
-                onPress={() => {
-                  impactAsync(ImpactFeedbackStyle.Light);
-                  toggleFollow();
-                }}
-                style={styles.followBadge}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.author} folgen`}
-              >
-                <Text style={styles.followBadgePlus}>+</Text>
-              </Pressable>
-            )}
-          </Pressable>
           <Pressable
             onPress={() => item.authorId && router.push({ pathname: '/user/[id]', params: { id: item.authorId } })}
             hitSlop={8}
@@ -1079,26 +1039,34 @@ export const FeedItem = React.memo(function FeedItem({
         style={[styles.rightActions, { bottom: tabBarTop(insets.bottom) + 48 }, overlayFadeStyle]}
         pointerEvents={commentsOpen ? 'none' : 'auto'}
       >
-        {/* Mute-Button — für Videos UND für Bild-Posts mit Musik-Track */}
-        {(isVideo || audioUrl) && (
-          <>
+        {/* ── Profilbild oben in der Spalte, direkt über dem Like (wie TikTok).
+            Bunter Ring = ungesehene Stories (Tippen öffnet sie), sonst Profil.
+            „+“ nur, solange man noch nicht folgt; entfolgen nur auf dem Profil. ── */}
+        <View style={styles.sideAvatarWrap}>
+          <Pressable onPress={openAuthor} hitSlop={6} accessibilityRole="button" accessibilityLabel={`Profil von ${item.author}`}>
+            {storyGroup?.hasUnviewed ? (
+              <LinearGradient colors={['#FFFFFF', '#F472B6', '#FB923C']} style={styles.sideStoryRing} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }}>
+                <View style={styles.storyRingGap}>{sideAvatarImage}</View>
+              </LinearGradient>
+            ) : (
+              <View style={styles.sideAvatarFrame}>{sideAvatarImage}</View>
+            )}
+          </Pressable>
+          {!isOwnProfile && !isFollowing && (
             <Pressable
-              onPress={(e) => { e.stopPropagation?.(); onMuteToggle(); }}
-              style={styles.actionBtn}
-              hitSlop={14}
+              onPress={() => {
+                impactAsync(ImpactFeedbackStyle.Light);
+                toggleFollow();
+              }}
+              style={styles.sideFollowBadge}
+              hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={isMuted ? 'Ton einschalten' : 'Ton ausschalten'}
+              accessibilityLabel={`${item.author} folgen`}
             >
-              <View style={styles.muteBtnInner}>
-                {isMuted
-                  ? <VolumeX size={18} color="rgba(255,255,255,0.85)" strokeWidth={0} fill="rgba(255,255,255,0.85)" />
-                  : <Volume2 size={18} color="rgba(255,255,255,0.85)" strokeWidth={0} fill="rgba(255,255,255,0.85)" />}
-              </View>
+              <Text style={styles.followBadgePlus}>+</Text>
             </Pressable>
-            {/* Separator */}
-            <View style={styles.muteSeparator} />
-          </>
-        )}
+          )}
+        </View>
         <LikeButton
           accentColor={item.accentColor}
           liked={liked}
@@ -1139,6 +1107,25 @@ export const FeedItem = React.memo(function FeedItem({
             setShareOpen(true);
           }}
         />
+        {/* Ton-Knopf unten in der Spalte (oben sitzt jetzt das Profilbild) */}
+        {(isVideo || audioUrl) && (
+          <>
+            <View style={styles.muteSeparator} />
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onMuteToggle(); }}
+              style={styles.actionBtn}
+              hitSlop={14}
+              accessibilityRole="button"
+              accessibilityLabel={isMuted ? 'Ton einschalten' : 'Ton ausschalten'}
+            >
+              <View style={styles.muteBtnInner}>
+                {isMuted
+                  ? <VolumeX size={18} color="rgba(255,255,255,0.85)" strokeWidth={0} fill="rgba(255,255,255,0.85)" />
+                  : <Volume2 size={18} color="rgba(255,255,255,0.85)" strokeWidth={0} fill="rgba(255,255,255,0.85)" />}
+              </View>
+            </Pressable>
+          </>
+        )}
       </Animated.View>
 
     </Animated.View>

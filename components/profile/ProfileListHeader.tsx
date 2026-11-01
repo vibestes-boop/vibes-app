@@ -72,22 +72,21 @@ function ToolSection({
   );
 }
 
-function ProfileActionRow({ profile, colors, onEditProfile, onBuyCoins, onMyShop, onSavedProducts, onMyOrders, onCreatorStudio, onCreatorStats, onTabChange, showBattles }: {
+function ProfileActionRow({ profile, colors, onEditProfile, onBuyCoins, onMyShop, onSavedProducts, onMyOrders, onCreatorStudio, onCreatorStats, onTabChange, showBattles, toolsOpen, setToolsOpen }: {
   profile: Profile | null; colors: any; onEditProfile: () => void; onBuyCoins?: () => void;
   onMyShop?: () => void; onSavedProducts?: () => void; onMyOrders?: () => void;
   onCreatorStudio?: () => void; onCreatorStats?: () => void; onTabChange: (tab: ProfileTab) => void; showBattles: boolean;
+  /** Werkzeug-Blatt: geöffnet wird es über die kleine Schaltfläche in der Abzeichen-Zeile */
+  toolsOpen: boolean; setToolsOpen: (open: boolean) => void;
 }) {
   const { t } = useI18n(); const insets = useSafeAreaInsets();
-  const [toolsOpen, setToolsOpen] = useState(false); const [shareOpen, setShareOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const openTab = (tab: ProfileTab) => { setToolsOpen(false); onTabChange(tab); };
   return <>
     <View style={msx.row}>
       <Pressable accessibilityRole="button" style={[msx.primaryBtn, { backgroundColor: colors.text.primary }]} onPress={onEditProfile}><Edit3 size={15} color={colors.bg.primary} /><Text style={[msx.primaryText, { color: colors.bg.primary, flexShrink: 1 }]}>{t('profile.editProfile')}</Text></Pressable>
       <Pressable accessibilityRole="button" style={[msx.secondaryBtn, { borderColor: colors.border.strong }]} onPress={() => setShareOpen(true)}><Share2 size={15} color={colors.text.primary} /><Text style={[msx.secondaryText, { color: colors.text.primary, flexShrink: 1 }]}>{t('profile.share')}</Text></Pressable>
     </View>
-    <Pressable accessibilityRole="button" onPress={() => setToolsOpen(true)} style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 6, minHeight: 48, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.bg.elevated, borderRadius: 14, borderWidth: 1, borderColor: colors.border.default }}>
-      <Sparkles size={18} color={colors.accent.primary} /><Text style={{ flex: 1, color: colors.text.primary, fontSize: 14, fontWeight: '600' }}>{t('ux.studioTools')}</Text><ChevronRight size={18} color={colors.icon.muted} />
-    </Pressable>
     {profile?.id && <ProfileShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} userId={profile.id} username={profile.username} avatarUrl={profile.avatar_url} isOwnProfile />}
     <Modal visible={toolsOpen} transparent animationType="slide" onRequestClose={() => setToolsOpen(false)}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
@@ -226,6 +225,8 @@ export function ProfileListHeader({
   // die Liste startet pro Reiter neu, darum merkt sich die Unterstreichung ihre Lage
   const tabLine = useSlidingSelection((['vibes', 'reposts', 'saved', 'shop'] as string[]).includes(activeTab) ? activeTab : null, { underline: 2, persistKey: 'own-profile-tabs' });
   const [avatarZoomed, setAvatarZoomed] = useState(false);
+  // Werkzeug-Blatt „Studio & Werkzeuge“ (Schaltfläche in der Abzeichen-Zeile)
+  const [toolsOpen, setToolsOpen] = useState(false);
   const formatCount = (n: number) =>
     n >= 1000000 ? `${(n / 1000000).toFixed(1)}M`
       : n >= 1000 ? `${(n / 1000).toFixed(1)}K`
@@ -263,7 +264,7 @@ export function ProfileListHeader({
         initials={avatarInitial}
         onClose={() => setAvatarZoomed(false)}
       />
-      {/* ── Avatar + Info (Foto-Feed-Style) ── */}
+      {/* ── Kopf: Bild links, rechts daneben Name, @Name und darunter die Zahlen ── */}
       <View style={s.profileTop}>
         {/* Avatar — Klick = Stories ansehen */}
         <Pressable
@@ -307,47 +308,8 @@ export function ProfileListHeader({
           </Pressable>
         </Pressable>
 
-        {/* Stats-Reihe */}
-        <View style={s.statsRow}>
-          <View style={s.statItem}>
-            <Text style={s.statNum}>{loadingPosts ? '–' : formatCount(postCount)}</Text>
-            <Text style={s.statLabel}>{t('profile.posts')}</Text>
-          </View>
-          <View style={s.statDivider} />
-          <Pressable
-            style={s.statItem}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (profile?.id) router.push({
-                pathname: '/follow-list',
-                params: { userId: profile.id, mode: 'followers', username: profile.username },
-              });
-            }}
-          >
-            <Text style={s.statNum}>{formatCount(followCounts?.followers ?? 0)}</Text>
-            <Text style={s.statLabel}>{t('profile.followers')}</Text>
-          </Pressable>
-          <View style={s.statDivider} />
-          <Pressable
-            style={s.statItem}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (profile?.id) router.push({
-                pathname: '/follow-list',
-                params: { userId: profile.id, mode: 'following', username: profile.username },
-              });
-            }}
-          >
-            <Text style={s.statNum}>{formatCount(followCounts?.following ?? 0)}</Text>
-            <Text style={s.statLabel}>{t('profile.followingCount')}</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* ── Name + Bio ── */}
-      <View style={s.bioSection}>
-        {/* Name-Hierarchie wie Web: Anzeigename groß + @username dezent. Ein Badge,
-            neutrale Farbe (text.primary) — konsistent mit Web (fill-foreground). */}
+        {/* Rechts neben dem Bild: oben Name und @Name, darunter die Zahlen */}
+        <View style={s.profileInfo}>
         <View style={s.nameRow}>
           <Text style={s.displayName} numberOfLines={1}>{displayName}</Text>
           {profile?.is_verified ? (
@@ -364,6 +326,46 @@ export function ProfileListHeader({
           <Text style={{ color: colors.text.muted, fontSize: 12, fontWeight: '500' }}>@{uname}</Text>
         ) : null}
 
+        {/* Zahlen in der Reihenfolge wie TikTok: Folge ich · Follower · Beiträge */}
+        <View style={s.statsRow}>
+          <Pressable
+            style={s.statItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (profile?.id) router.push({
+                pathname: '/follow-list',
+                params: { userId: profile.id, mode: 'following', username: profile.username },
+              });
+            }}
+          >
+            <Text style={s.statNum}>{formatCount(followCounts?.following ?? 0)}</Text>
+            <Text style={s.statLabel}>{t('profile.followingCount')}</Text>
+          </Pressable>
+          <View style={s.statDivider} />
+          <Pressable
+            style={s.statItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (profile?.id) router.push({
+                pathname: '/follow-list',
+                params: { userId: profile.id, mode: 'followers', username: profile.username },
+              });
+            }}
+          >
+            <Text style={s.statNum}>{formatCount(followCounts?.followers ?? 0)}</Text>
+            <Text style={s.statLabel}>{t('profile.followers')}</Text>
+          </Pressable>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={s.statNum}>{loadingPosts ? '–' : formatCount(postCount)}</Text>
+            <Text style={s.statLabel}>{t('profile.posts')}</Text>
+          </View>
+        </View>
+        </View>
+      </View>
+
+      {/* ── Bio, Link, Abzeichen ── */}
+      <View style={s.bioSection}>
         {profile?.bio ? (
           <Text style={s.bio} numberOfLines={3}>{profile.bio}</Text>
         ) : null}
@@ -389,8 +391,9 @@ export function ProfileListHeader({
             öffentlichen Profil). „Resonanz" (avgDwell) entfernt — interner
             Creator-Jargon. Battle nur bei echter Bilanz (sonst sah „0–0 · 0%"
             leer/kaputt aus). */}
-        {(profile?.women_only_verified || showBattleRecord) ? (
-          <View style={s.metaRow}>
+        {/* Abzeichen-Zeile mit kleiner Schaltfläche „Studio & Werkzeuge“ (Zaur 01.11.2026:
+            vorher eine große Leiste unter den Knöpfen) */}
+        <View style={s.metaRow}>
             {profile?.women_only_verified ? (
               <View style={[s.metaChip, { backgroundColor: 'rgba(244,114,182,0.12)', borderColor: 'rgba(244,114,182,0.3)' }]}>
                 <Flower2 size={13} color="#F472B6" strokeWidth={2} />
@@ -406,8 +409,18 @@ export function ProfileListHeader({
                 </Text>
               </View>
             ) : null}
-          </View>
-        ) : null}
+            <Pressable
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setToolsOpen(true); }}
+              style={({ pressed }) => [s.metaChip, pressed && { opacity: 0.6 }]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t('ux.studioTools')}
+            >
+              <Sparkles size={13} color={colors.accent.primary} strokeWidth={2} />
+              <Text style={s.metaChipText}>{t('ux.studioTools')}</Text>
+              <ChevronRight size={13} color={colors.icon.muted} strokeWidth={2} />
+            </Pressable>
+        </View>
 
         {/* Order-Reputation: Verkäufer-/Käufer-Bewertung (Parität mit Web + fremden Profilen) */}
         {orderRating && (orderRating.sellerCount > 0 || orderRating.buyerCount > 0) ? (
@@ -445,6 +458,8 @@ export function ProfileListHeader({
         onCreatorStats={onCreatorStats}
         onTabChange={onTabChange}
         showBattles={showBattleTab}
+        toolsOpen={toolsOpen}
+        setToolsOpen={setToolsOpen}
       />
 
       {/* ── Story Highlights ── */}
@@ -455,8 +470,8 @@ export function ProfileListHeader({
         {([{ tab: 'vibes', Icon: Grid3X3, label: t('nativeUi.posts') }, { tab: 'reposts', Icon: Repeat2, label: t('nativeUi.reposts') }, { tab: 'saved', Icon: Bookmark, label: t('nativeUi.saved') }, { tab: 'shop', Icon: ShoppingBag, label: t('tabs.shop') }] as const).map(({ tab, Icon, label }) =>
           <SpringPressable key={tab} onLayout={tabLine.onLayoutFor(tab)} onPress={() => onTabChange(tab)} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }} accessibilityLabel={label}
             style={[s.tabBtn, { flex: 1, minWidth: 0, paddingHorizontal: 2 }]}>
-            <Icon size={22} color={activeTab === tab ? colors.accent.primary : colors.icon.inactive} />
-            <Text numberOfLines={2} style={[s.tabLabel, { color: activeTab === tab ? colors.accent.primary : colors.text.secondary, textAlign: 'center' }]}>{label}</Text>
+            {/* Nur das Symbol wie bei TikTok; den Namen liest der Screenreader (accessibilityLabel) */}
+            <Icon size={24} color={activeTab === tab ? colors.accent.primary : colors.icon.inactive} />
           </SpringPressable>)}
       </View>
       {!['vibes', 'reposts', 'saved', 'shop'].includes(activeTab) && <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12, backgroundColor: colors.bg.elevated }}>

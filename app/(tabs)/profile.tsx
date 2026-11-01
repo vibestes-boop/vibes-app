@@ -401,7 +401,7 @@ export default function ProfileScreen() {
           und die Seite sprang nach oben. Die Spaltenzahl ist für alle Reiter gleich. */}
       <View style={{ flex: 1 }} onLayout={scrollHold.onListLayout}>
       <FlatList
-        style={{ backgroundColor: colors.bg.secondary }}
+        style={s.surfaceBg}
         data={listData}
         extraData={activeTab}
         keyExtractor={(item) => item.id}
@@ -422,7 +422,7 @@ export default function ProfileScreen() {
         ListHeaderComponent={
           <View onLayout={scrollHold.onHeaderLayout}>
             {(isRefreshing || loadingPosts) && (
-              <View style={{ paddingVertical: 26, alignItems: 'center', backgroundColor: colors.bg.secondary }}>
+              <View style={[{ paddingVertical: 26, alignItems: 'center' }, s.surfaceBg]}>
                 <SerloLoader />
               </View>
             )}

@@ -35,6 +35,7 @@ Text,
 View,
 } from 'react-native';
 import { HighlightPickerSheet } from './HighlightPickerSheet';
+import { profileSurface } from './profileStyles';
 
 const BUBBLE_SIZE = 66;
 
@@ -176,7 +177,7 @@ export function ProfileHighlightsRow({
   if (!isLoading && highlights.length === 0 && !isOwn) return null;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg.secondary }]}>
+    <View style={[styles.container, { backgroundColor: profileSurface(colors) }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -245,7 +246,7 @@ export function ProfileHighlightsRow({
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 4,
-    // backgroundColor via inline (bg.secondary)
+    // backgroundColor via inline (Profilfläche: hell weiß, dunkel schwarz)
   },
   scrollContent: { paddingHorizontal: 16, gap: 14, paddingVertical: 10 },
   bubble: { alignItems: 'center', gap: 6, width: BUBBLE_SIZE },
