@@ -30,6 +30,7 @@ import { useIsHostMuted,useToggleMuteHost } from '@/lib/useMutedLiveHosts';
 import { useReportUser } from '@/lib/useReport';
 import { formatEur,useOrderRating,useShopProducts,type Product } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
+import { useTabSwitchScrollHold } from '@/lib/useTabSwitchScrollHold';
 import { SlidingPill, SpringPressable, useSlidingSelection } from '@/components/ui/SlidingSelection';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -160,6 +161,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
   const [likedLoading, setLikedLoading] = useState(false);
   const [repostLoading, setRepostLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'liked' | 'reposts' | 'battles' | 'shop'>('posts');
+  // Reiterwechsel verschiebt die Seite nicht (wie im eigenen Profil)
+  const scrollHold = useTabSwitchScrollHold();
   // Unterstreichung gleitet mit Feder zum gewählten Reiter (wie die Auswahl der unteren Leiste)
   const tabLine = useSlidingSelection(activeTab, { underline: 2 });
 
@@ -910,6 +913,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
         isOwnProfile={isOwn}
       />
 
+      {/* Gemessen wird die Hülle, nicht die FlatList (die meldet auch den Leer-Platzhalter) */}
+      <View style={{ flex: 1 }} onLayout={scrollHold.onListLayout}>
       <FlatList
         ref={listRef}
         refreshControl={
@@ -930,14 +935,16 @@ export function UserProfileContent({ userId, onBack }: Props) {
                   : activeTab === 'shop' ? (shopProducts as any)
                     : []
         }
-        // columnWrapperStyle darf nicht bei numColumns=1 (bzw. leerer Liste mit numColumns) gesetzt werden
-        key={activeTab === 'battles' ? 'battles-list' : 'grid'}
+        // Gleiche Spaltenzahl für alle Reiter (Battles zeigt seine Liste über
+        // ListEmptyComponent, data ist dort leer). Vorher wechselte die Spaltenzahl
+        // samt key, die Liste wurde neu eingehängt und sprang nach oben.
         keyExtractor={(item) => item.id}
-        numColumns={activeTab === 'battles' ? 1 : GRID_COLS}
+        numColumns={GRID_COLS}
+        extraData={activeTab}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        ListHeaderComponent={Header}
-        columnWrapperStyle={activeTab === 'battles' ? undefined : s.gridRow}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24, minHeight: scrollHold.minHeight }}
+        ListHeaderComponent={<View onLayout={scrollHold.onHeaderLayout}>{Header}</View>}
+        columnWrapperStyle={s.gridRow}
         ListEmptyComponent={
           activeTab === 'battles' ? (
             <BattleHistoryList userId={id} />
@@ -1050,6 +1057,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
           );
         }}
       />
+      </View>
 
 
       {/* ── Left-Edge-Swipe → zurück ── */}

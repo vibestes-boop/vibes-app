@@ -17,6 +17,7 @@ import { CoinIcon } from '@/components/ui/CoinIcon';
 import { ProfileGridSkeleton } from '@/components/profile/ProfileGridSkeleton';
 import { SerloLoader } from '@/components/ui/SerloLoader';
 import { getProfileStyles } from '@/components/profile/profileStyles';
+import { useTabSwitchScrollHold } from '@/lib/useTabSwitchScrollHold';
 import { useAuthStore } from '@/lib/authStore';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { supabase } from '@/lib/supabase';
@@ -75,6 +76,8 @@ export default function ProfileScreen() {
   const { profile, signOut } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('vibes');
+  // Reiterwechsel verschiebt die Seite nicht (Zaur 01.11.2026: sprang nach oben)
+  const scrollHold = useTabSwitchScrollHold();
   const [managePost, setManagePost] = useState<{ id: string; media_url?: string; media_type?: string; thumbnail_url?: string | null } | null>(null);
   const [repostedPosts, setRepostedPosts] = useState<ProfilePostGridItem[]>([]);
   const [likedPosts, setLikedPosts] = useState<ProfilePostGridItem[]>([]);
@@ -394,15 +397,18 @@ export default function ProfileScreen() {
         onSignOut={handleSignOut}
       />
 
+      {/* Kein key je Reiter mehr: Der löste beim Wechsel ein neues Einhängen aus,
+          und die Seite sprang nach oben. Die Spaltenzahl ist für alle Reiter gleich. */}
+      <View style={{ flex: 1 }} onLayout={scrollHold.onListLayout}>
       <FlatList
-        key={activeTab}
         style={{ backgroundColor: colors.bg.secondary }}
         data={listData}
+        extraData={activeTab}
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLUMNS}
         columnWrapperStyle={{ gap: GRID_GAP }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100, gap: GRID_GAP }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100, gap: GRID_GAP, minHeight: scrollHold.minHeight }}
         onScroll={tabBarScroll}
         scrollEventThrottle={16}
         refreshControl={
@@ -414,7 +420,7 @@ export default function ProfileScreen() {
           />
         }
         ListHeaderComponent={
-          <>
+          <View onLayout={scrollHold.onHeaderLayout}>
             {(isRefreshing || loadingPosts) && (
               <View style={{ paddingVertical: 26, alignItems: 'center', backgroundColor: colors.bg.secondary }}>
                 <SerloLoader />
@@ -449,7 +455,7 @@ export default function ProfileScreen() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
-          </>
+          </View>
         }
         renderItem={renderGridItem}
         ListEmptyComponent={
@@ -542,6 +548,7 @@ export default function ProfileScreen() {
           )
         }
       />
+      </View>
 
       <PostManageModal
         visible={!!managePost}
