@@ -1,5 +1,6 @@
-import React,{ useCallback,useEffect,useRef,useState } from 'react';
-import { Dimensions,PanResponder,Pressable,Animated as RNAnimated,StyleSheet,Text,View } from 'react-native';
+import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import { Dimensions,Pressable,Animated as RNAnimated,StyleSheet,Text,View } from 'react-native';
+import { Gesture,GestureDetector } from 'react-native-gesture-handler';
 
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { RichText } from '@/components/ui/RichText';
@@ -27,6 +28,7 @@ Easing,
 Extrapolation,
 cancelAnimation,
 interpolate,
+runOnJS,
 useAnimatedStyle,
 useSharedValue,
 withRepeat,
@@ -68,11 +70,24 @@ const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 // ─── VideoProgressBar ───────────────────────────────────────────────────────────────
-// Isolierte Komponente — Video-Ticks (bis 60/s) lösen NUR hier einen Re-Render aus.
-// Scrubbing: Finger drücken → Balken expandiert → Drag vorwärts/rückwärts → Seek
+// Isolierte Komponente — Video-Ticks lösen NUR hier etwas aus.
+// Scrubbing: Finger aufs Balkenfeld → Balken wird dicker → waagerecht ziehen → Seek.
+// Läuft komplett auf dem UI-Thread (Gesture Handler + Reanimated): Der Balken folgt
+// dem Finger ohne Ruckeln. Vorher PanResponder (JS): Er ruckelte, sobald die App
+// beschäftigt war, und das Profil-Wischen im Feed (Gesture Handler, sieht das
+// JS-Touch-System nicht) bekam ein Zurückziehen als Wischen nach links mit und
+// öffnete das Profil. Jetzt gewinnt das Ziehen am Balken die Geste nativ.
 export interface VideoProgressHandle {
   setProgress: (p: number) => void;
 }
+
+// Seeks beim Ziehen gedrosselt: jedes Bild ein Seek hielt den Player nur beschäftigt
+const SEEK_THROTTLE_MS = 90;
+// Nach dem Loslassen: Video-Ticks erst wieder annehmen, wenn das Video an der
+// Zielstelle angekommen ist, spätestens nach dieser Zeit (vorher 400 ms; war das
+// Video langsamer, sprang der Balken kurz zurück und dann wieder vor)
+const SEEK_UNLOCK_MS = 1200;
+const GRAB_SPRING = { damping: 22, stiffness: 380, mass: 0.6 };
 
 export const VideoProgressBar = React.memo(
   React.forwardRef<VideoProgressHandle, {
@@ -81,159 +96,113 @@ export const VideoProgressBar = React.memo(
     onSeekEnd?: (fraction: number) => void;
     bottomOffset?: number;
   }>(function VideoProgressBar({ onSeek, onSeekEnd, bottomOffset = 60 }, ref) {
-    const [isScrubbing, setIsScrubbing] = useState(false);
-    const trackWidth = useRef(0);
-    // Aktueller Abspiel-Fortschritt (als Ref, damit PanResponder Zugriff hat)
-    const currentFractionRef = useRef(0);
-    // Fortschritt zum Zeitpunkt des Touch-Starts (für relative Berechnung)
-    const scrubStartFractionRef = useRef(0);
-    const scrubProgress = useRef(0);
-    // Zeitstempel des letzten Ticks — für flüssige Interpolation zwischen den
-    // (nur ~4×/s feuernden) onProgress-Events.
+    const width = useSharedValue(0);
+    const progress = useSharedValue(0);       // angezeigter Anteil 0–1
+    const startFrac = useSharedValue(0);      // Anteil beim Anfassen (relatives Ziehen)
+    const scrubbing = useSharedValue(false);
+    const grabbed = useSharedValue(0);        // 0–1: Spur dicker, Knopf sichtbar
+    const lockTarget = useSharedValue(-1);    // ≥ 0: nach dem Loslassen bis das Video dort ist
+    // Zeitstempel/Wert des letzten Ticks — für flüssige Interpolation zwischen den
+    // (nur ~4×/s feuernden) onProgress-Events
     const lastTsRef = useRef(0);
-    // Sperrt setProgress nach Release bis Video an Ziel angekommen ist (verhindert Sprung-Effekt)
-    const seekLockRef = useRef(false);
-    const seekLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const seekTargetRef = useRef(0); // Ziel-Fraktion des Seeks
-    // Alle Animationen nativ (useNativeDriver): Füllung per scaleX (Anteil 0–1),
-    // Knopf per translateX (Pixel), Verdicken beim Anfassen per scaleY. Vorher
-    // liefen width/left/height über die App-Logik — bei jedem Video, in jedem Bild.
-    const fillScale = useRef(new RNAnimated.Value(0)).current;
-    const trackScale = useRef(new RNAnimated.Value(1)).current;
-    const thumbOpacity = useRef(new RNAnimated.Value(0)).current;
-    const thumbX = useRef(new RNAnimated.Value(0)).current;
-    // Nicht ganz 0: eine Skalierung von exakt 0 mag iOS nicht
-    const fillScaleX = useRef(fillScale.interpolate({ inputRange: [0, 1], outputRange: [0.0001, 1], extrapolate: 'clamp' })).current;
+    const lastPRef = useRef(0);
+    const lastSeekRef = useRef(0);
+    const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => { if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); }, []);
 
     React.useImperativeHandle(ref, () => ({
       setProgress: (p: number) => {
-        // Während Scrubbing ODER während Seek-Sperre: keine externen Updates annehmen.
-        // Seek-Sperre bleibt aktiv bis Video nahe am Ziel ist (oder Timeout).
-        if (isScrubbing || seekLockRef.current) {
-          // Seek-Sperre aufheben sobald Video nahe am Ziel angekommen ist (±3%)
-          if (seekLockRef.current && Math.abs(p - seekTargetRef.current) < 0.03) {
-            seekLockRef.current = false;
-            if (seekLockTimerRef.current) {
-              clearTimeout(seekLockTimerRef.current);
-              seekLockTimerRef.current = null;
-            }
-          } else {
-            return; // noch nicht am Ziel → Update ignorieren
-          }
+        // Während des Ziehens und bis das Video an der Zielstelle ist: keine Ticks
+        if (scrubbing.value) return;
+        if (lockTarget.value >= 0) {
+          if (Math.abs(p - lockTarget.value) < 0.03) lockTarget.value = -1;
+          else return;
         }
         const now = Date.now();
         const dt = lastTsRef.current ? now - lastTsRef.current : 0;
-        const dp = p - currentFractionRef.current;
-        currentFractionRef.current = p;
+        const dp = p - lastPRef.current;
         lastTsRef.current = now;
-
+        lastPRef.current = p;
         // Sprung (Reset/Rückwärts/großer Vorwärts-Sprung/Seek) oder noch keine
-        // Track-Breite → sofort setzen, nicht interpolieren.
-        if (trackWidth.current === 0 || dt <= 0 || dt > 800 || dp < 0 || dp > 0.12) {
-          fillScale.stopAnimation();
-          thumbX.stopAnimation();
-          fillScale.setValue(p);
-          thumbX.setValue(p * trackWidth.current);
+        // Breite → sofort setzen, nicht interpolieren
+        if (width.value === 0 || dt <= 0 || dt > 800 || dp < 0 || dp > 0.12) {
+          cancelAnimation(progress);
+          progress.value = p;
           return;
         }
-
-        // Flüssig gleiten: linear zur (leicht vorwärts extrapolierten) Position
-        // über das Tick-Intervall. Extrapolation = kein sichtbarer Lag bei kurzen
-        // Videos; die Bewegung ist kontinuierlich statt zu springen.
+        // Flüssig gleiten: linear zur leicht vorwärts geschätzten Position über
+        // das Tick-Intervall (kein sichtbarer Lag bei kurzen Videos)
         const predicted = Math.min(1, p + Math.max(0, dp));
-        const duration = Math.min(Math.max(dt, 100), 500);
-        RNAnimated.timing(fillScale, { toValue: predicted, duration, easing: (t) => t, useNativeDriver: true }).start();
-        RNAnimated.timing(thumbX,   { toValue: predicted * trackWidth.current, duration, easing: (t) => t, useNativeDriver: true }).start();
+        progress.value = withTiming(predicted, { duration: Math.min(Math.max(dt, 100), 500), easing: Easing.linear });
       },
-    }), [isScrubbing, fillScale, thumbX]);
+    }), [scrubbing, lockTarget, width, progress]);
 
-    const panResponder = useRef(
-      PanResponder.create({
-        // Capture Phase: beansprucht Geste BEVOR parent-Handler (Profil-Swipe)
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponderCapture: (_, gs) =>
-          Math.abs(gs.dx) > 4 && Math.abs(gs.dx) > Math.abs(gs.dy),
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+    const seekWhileDragging = useCallback((f: number) => {
+      const now = Date.now();
+      if (now - lastSeekRef.current < SEEK_THROTTLE_MS) return;
+      lastSeekRef.current = now;
+      onSeek?.(f);
+    }, [onSeek]);
 
-        onPanResponderGrant: () => {
-          // Seek-Sperre aufheben wenn neues Scrubbing startet
-          seekLockRef.current = false;
-          if (seekLockTimerRef.current) {
-            clearTimeout(seekLockTimerRef.current);
-            seekLockTimerRef.current = null;
-          }
-          setIsScrubbing(true);
-          // Short-Video-Style: Merke aktuellen Fortschritt — Video springt NICHT zur Tipp-Position
-          scrubStartFractionRef.current = currentFractionRef.current;
-          scrubProgress.current = currentFractionRef.current;
-          RNAnimated.parallel([
-            RNAnimated.spring(trackScale, { toValue: 2, useNativeDriver: true, bounciness: 0, speed: 30 }),
-            RNAnimated.timing(thumbOpacity, { toValue: 1, duration: 100, useNativeDriver: true }),
-          ]).start();
-          // Kein onSeek hier — Video springt nicht zur Tipp-Position
-        },
+    const seekDone = useCallback((f: number) => {
+      if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+      unlockTimerRef.current = setTimeout(() => { lockTarget.value = -1; }, SEEK_UNLOCK_MS);
+      lastTsRef.current = 0;
+      lastPRef.current = f;
+      onSeekEnd?.(f);
+    }, [onSeekEnd, lockTarget]);
 
-        onPanResponderMove: (_, gs) => {
-          // Relative Berechnung: delta vom Start-Fortschritt
-          // 1 Trackbreite = 100%; dx / trackWidth = Fortschritts-Delta
-          const delta = gs.dx / (trackWidth.current || 1);
-          const frac = Math.max(0, Math.min(1, scrubStartFractionRef.current + delta));
-          scrubProgress.current = frac;
-          fillScale.setValue(frac);
-          thumbX.setValue(frac * trackWidth.current);
-          onSeek?.(frac);
-        },
-
-        onPanResponderRelease: () => {
-          const target = scrubProgress.current;
-          seekTargetRef.current = target;
-          // Seek-Sperre setzen: verhindert Sprung durch alte onProgress-Events
-          // während das Video noch zur Zielposition seeked.
-          seekLockRef.current = true;
-          // Fallback-Timeout: Sperre nach 400ms aufheben (falls Video nie nahe genug kommt)
-          seekLockTimerRef.current = setTimeout(() => {
-            seekLockRef.current = false;
-            seekLockTimerRef.current = null;
-          }, 400);
-
-          setIsScrubbing(false);
-          RNAnimated.parallel([
-            RNAnimated.spring(trackScale, { toValue: 1, useNativeDriver: true, bounciness: 0, speed: 30 }),
-            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-          ]).start();
-          onSeekEnd?.(target);
-        },
-
-        onPanResponderTerminate: () => {
-          setIsScrubbing(false);
-          seekLockRef.current = false;
-          if (seekLockTimerRef.current) {
-            clearTimeout(seekLockTimerRef.current);
-            seekLockTimerRef.current = null;
-          }
-          RNAnimated.parallel([
-            RNAnimated.spring(trackScale, { toValue: 1, useNativeDriver: true, bounciness: 0, speed: 30 }),
-            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-          ]).start();
-        },
+    const pan = useMemo(() => Gesture.Pan()
+      // Nur waagerecht: senkrechtes Wischen (nächstes Video) bleibt beim Feed
+      .activeOffsetX([-3, 3])
+      .failOffsetY([-12, 12])
+      .hitSlop({ top: 10 })
+      .onBegin(() => {
+        grabbed.value = withSpring(1, GRAB_SPRING);
       })
-    ).current;
+      .onStart(() => {
+        scrubbing.value = true;
+        lockTarget.value = -1;
+        cancelAnimation(progress);
+        // Short-Video-Stil: relativ ziehen, das Video springt NICHT zur Tippstelle
+        startFrac.value = progress.value;
+      })
+      .onUpdate((e) => {
+        const f = Math.min(1, Math.max(0, startFrac.value + e.translationX / Math.max(1, width.value)));
+        progress.value = f;
+        runOnJS(seekWhileDragging)(f);
+      })
+      .onEnd(() => {
+        lockTarget.value = progress.value;
+        runOnJS(seekDone)(progress.value);
+      })
+      .onFinalize(() => {
+        scrubbing.value = false;
+        grabbed.value = withTiming(0, { duration: 160 });
+      }), [seekWhileDragging, seekDone, grabbed, scrubbing, lockTarget, progress, startFrac, width]);
+
+    // Füllung per scaleX vom linken Rand, Knopf per translateX, Verdicken per scaleY.
+    // Nicht ganz 0: eine Skalierung von exakt 0 mag iOS nicht.
+    const trackStyle = useAnimatedStyle(() => ({ transform: [{ scaleY: 1 + grabbed.value }] }));
+    const fillStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: Math.max(0.0001, progress.value) }] }));
+    const thumbStyle = useAnimatedStyle(() => ({
+      opacity: grabbed.value,
+      transform: [{ translateX: progress.value * width.value }, { scale: 0.6 + 0.4 * grabbed.value }],
+    }));
 
     return (
-      <View
-        style={[pbStyles.hitArea, { bottom: bottomOffset }]}
-        {...panResponder.panHandlers}
-        onLayout={(e) => { trackWidth.current = e.nativeEvent.layout.width; }}
-      >
-        <RNAnimated.View style={[pbStyles.track, { transform: [{ scaleY: trackScale }] }]}>
-          <RNAnimated.View style={[pbStyles.fill, { transformOrigin: 'left', transform: [{ scaleX: fillScaleX }] }]} />
-        </RNAnimated.View>
-        {/* Knopf außerhalb der Spur, sonst würde scaleY ihn zum Oval ziehen */}
-        <RNAnimated.View
-          style={[pbStyles.thumb, { opacity: thumbOpacity, transform: [{ translateX: thumbX }] }]}
-        />
-      </View>
+      <GestureDetector gesture={pan}>
+        <View
+          style={[pbStyles.hitArea, { bottom: bottomOffset }]}
+          onLayout={(e) => { width.value = e.nativeEvent.layout.width; }}
+        >
+          <Animated.View style={[pbStyles.track, trackStyle]}>
+            <Animated.View style={[pbStyles.fill, fillStyle]} />
+          </Animated.View>
+          {/* Knopf außerhalb der Spur, sonst würde scaleY ihn zum Oval ziehen */}
+          <Animated.View style={[pbStyles.thumb, thumbStyle]} />
+        </View>
+      </GestureDetector>
     );
   })
 );
@@ -261,6 +230,7 @@ const pbStyles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 3,
+    transformOrigin: 'left',
   },
   thumb: {
     // Mitte auf Höhe der Spurmitte (Spur 3 px hoch, unten in der Trefferfläche)
