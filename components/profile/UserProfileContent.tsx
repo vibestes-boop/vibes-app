@@ -520,7 +520,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
         )}
       </View>
 
-      {/* ── Kopf wie TikTok: Bild mittig, darunter @Name und die Zahlen ── */}
+      {/* ── Kopf: Bild links, rechts daneben @Name und darunter die Zahlen ── */}
       <View style={s.profileRow}>
         <Pressable
           onLongPress={() => {
@@ -540,7 +540,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
           </Animated.View>
         </Pressable>
 
-        {/* Name unter dem Bild, darunter die Zahlen (wie TikTok) */}
+        {/* Rechts neben dem Bild: oben @Name, darunter die Zahlen */}
+        <View style={s.profileInfo}>
         <View style={s.nameRowCentered}>
           <Text style={[s.username, { color: colors.text.primary }]} numberOfLines={1}>
             @{profile.username}
@@ -554,6 +555,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
               <Text style={[s.guildPillText, { color: colors.text.primary }]}>{profile.guild_name}</Text>
             </View>
           )}
+          <View style={{ flex: 1 }} />
+          {!loading && <VibeScoreRing score={avgResonanz} size={40} />}
         </View>
 
         {/* Zahlen in der Reihenfolge wie TikTok: Folge ich · Follower · Beiträge */}
@@ -572,22 +575,17 @@ export function UserProfileContent({ userId, onBack }: Props) {
           </View>
         </View>
 
-        {/* VibeScore rechts oben in der Ecke, damit die Mitte frei bleibt */}
-        {!loading && (
-          <View style={s.vibeScoreCorner}>
-            <VibeScoreRing score={avgResonanz} size={44} />
-          </View>
-        )}
+        </View>
       </View>
 
-      {/* ── Bio, Bewertungen, Link (mittig) ── */}
+      {/* ── Bio, Bewertungen, Link ── */}
       <View style={s.userInfoSection}>
 
         {profile.bio ? <Text style={[s.bio, { color: colors.text.secondary }]}>{profile.bio}</Text> : null}
 
         {/* Order-Reputation: Verkäufer-/Käufer-Bewertung */}
         {orderRating && (orderRating.sellerCount > 0 || orderRating.buyerCount > 0) ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 8 }}>
             {orderRating.sellerCount > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
@@ -1094,20 +1092,19 @@ const s = StyleSheet.create({
   },
 
   // ── Profile Row ─────────────────────────────────────────────
-  // Wie TikTok (Zaur 01.11.2026): Bild mittig, darunter @Name, dann die Zahlen
+  // Bild links, rechts daneben oben @Name, darunter die Zahlen
+  // (Zaur 01.11.2026: Name über den Zahlen wie bei TikTok, Bild aber links)
   profileRow: {
-    flexDirection: 'column', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 4,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 16, gap: 16,
   },
+  profileInfo: { flex: 1, gap: 2 },
   nameRowCentered: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap',
-    gap: 6, marginTop: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   inlineStatsWrap: {
-    flexDirection: 'row', justifyContent: 'space-around', alignSelf: 'stretch',
-    marginTop: 12, paddingHorizontal: 24,
+    flexDirection: 'row', marginTop: 8,
   },
-  vibeScoreCorner: { position: 'absolute', top: 12, right: 16 },
   statItem: { alignItems: 'center', gap: 2, flex: 1 },
   // Schriftstufen wie im eigenen Profil (profileStyles): Name 20, Zahlen 17,
   // Text und Knöpfe 14, alles Nebensächliche 12
@@ -1115,7 +1112,7 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 12, fontWeight: '500' }, // color via inline
 
   // ── User Info Section ───────────────────────────────────────
-  userInfoSection: { paddingHorizontal: 24, paddingBottom: 12, gap: 6, alignItems: 'center' },
+  userInfoSection: { paddingHorizontal: 16, paddingBottom: 10, gap: 6 },
   userNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
 
   avatarRingGradient: {
@@ -1135,13 +1132,13 @@ const s = StyleSheet.create({
     // backgroundColor + borderColor via inline mit colors
   },
   guildPillText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.1 },
-  bio: { fontSize: 14, lineHeight: 21, maxWidth: 300, textAlign: 'center' }, // color via inline
+  bio: { fontSize: 14, lineHeight: 21, maxWidth: 280 }, // color via inline
   websiteRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     marginTop: 2,
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
   },
   websiteLink: {
     color: '#FFFFFF',

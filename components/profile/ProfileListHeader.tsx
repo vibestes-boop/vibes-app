@@ -263,7 +263,7 @@ export function ProfileListHeader({
         initials={avatarInitial}
         onClose={() => setAvatarZoomed(false)}
       />
-      {/* ── Kopf wie TikTok: Bild mittig, darunter Name, @Name und die Zahlen ── */}
+      {/* ── Kopf: Bild links, rechts daneben Name, @Name und darunter die Zahlen ── */}
       <View style={s.profileTop}>
         {/* Avatar — Klick = Stories ansehen */}
         <Pressable
@@ -307,7 +307,8 @@ export function ProfileListHeader({
           </Pressable>
         </Pressable>
 
-        {/* Name und @Name unter dem Bild, darunter die Zahlen (wie TikTok) */}
+        {/* Rechts neben dem Bild: oben Name und @Name, darunter die Zahlen */}
+        <View style={s.profileInfo}>
         <View style={s.nameRow}>
           <Text style={s.displayName} numberOfLines={1}>{displayName}</Text>
           {profile?.is_verified ? (
@@ -359,9 +360,10 @@ export function ProfileListHeader({
             <Text style={s.statLabel}>{t('profile.posts')}</Text>
           </View>
         </View>
+        </View>
       </View>
 
-      {/* ── Bio, Link, Abzeichen (mittig) ── */}
+      {/* ── Bio, Link, Abzeichen ── */}
       <View style={s.bioSection}>
         {profile?.bio ? (
           <Text style={s.bio} numberOfLines={3}>{profile.bio}</Text>

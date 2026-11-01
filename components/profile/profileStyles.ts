@@ -74,28 +74,30 @@ function buildStyles(c: ThemeColors) {
     hBadgeText: { color: '#fff', fontSize: 7, fontWeight: '600' },
 
     // ── Profile Top (Avatar + Stats) ─────────────────────────
-    // Wie TikTok (Zaur 01.11.2026): Bild mittig, darunter Name und @Name, dann die Zahlen
+    // Bild links, rechts daneben oben Name und @Name, darunter die Zahlen
+    // (Zaur 01.11.2026: Name und Nickname über den Zahlen wie bei TikTok, Bild aber links)
     profileTop: {
-      flexDirection: 'column',
+      flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,   // einheitliches 16er-Raster
       paddingTop: 8,
-      paddingBottom: 12,
-      gap: 4,
+      paddingBottom: 16,
+      gap: 16,
       backgroundColor: c.bg.primary,   // consistent profile surface
     },
+    profileInfo: { flex: 1, gap: 2 },
     avatarWrap: { position: 'relative' },
     avatarRing: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
+      width: 88,
+      height: 88,
+      borderRadius: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarGap: {
-      width: 87,
-      height: 87,
-      borderRadius: 43.5,
+      width: 79,
+      height: 79,
+      borderRadius: 39.5,
       overflow: 'hidden',
       backgroundColor: c.bg.primary,  // Gap passt zur Karten-Fläche (vorher bg.primary → farbiger Donut)
     },
@@ -139,10 +141,7 @@ function buildStyles(c: ThemeColors) {
     statsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      alignSelf: 'stretch',
-      marginTop: 12,
-      paddingHorizontal: 24,
+      marginTop: 10,
     },
     statItem: { alignItems: 'center', flex: 1 },
     // Schriftstufen des Profils (Zaur 01.11.2026: „zu viele Textgrößen“): Name 20,
@@ -153,14 +152,13 @@ function buildStyles(c: ThemeColors) {
 
     // ── Bio Section ───────────────────────────────────────────
     bioSection: {
-      paddingHorizontal: 24,             // einheitliches Raster
-      paddingBottom: 12,
+      paddingHorizontal: 16,             // einheitliches Raster
+      paddingBottom: 10,
       paddingTop: 0,
       gap: 4,
-      alignItems: 'center',             // mittig wie der Kopf darüber
       backgroundColor: c.bg.primary,   // fortsetzung der Karte — KEIN borderBottom mehr
     },                                   // (durchgehende Fläche statt gestapelter Bänder)
-    nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     displayName: { color: c.text.primary, fontSize: 20, fontWeight: '700', letterSpacing: -0.3, flexShrink: 1 },
     verifiedBadge: {
       width: 20,
@@ -178,7 +176,6 @@ function buildStyles(c: ThemeColors) {
     metaRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
       flexWrap: 'wrap',
       gap: 8,
       marginTop: 8,
@@ -203,7 +200,6 @@ function buildStyles(c: ThemeColors) {
       color: c.text.secondary,
       fontSize: 14,
       lineHeight: 20,
-      textAlign: 'center',
       fontWeight: '400',
     },
     websiteRow: {
@@ -211,7 +207,7 @@ function buildStyles(c: ThemeColors) {
       alignItems: 'center',
       gap: 5,
       marginTop: 2,
-      alignSelf: 'center',
+      alignSelf: 'flex-start',
     },
     websiteText: {
       color: c.accent.primary,
